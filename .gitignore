@@ -82,3 +82,18 @@ android/project/jni/libfwknop/*.c
 # Erlang
 erlang/_build
 erlang/rebar.lock
+
+# MSVC / Visual Studio build output (win32/)
+win32/x64/
+win32/Win32/
+win32/libfko/
+win32/fwknop-client/
+*.obj
+*.pdb
+*.iobj
+*.ipdb
+*.lib
+*.exp
+*.recipe
+*.tlog
+*.lastbuildstate
