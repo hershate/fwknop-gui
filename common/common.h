@@ -106,17 +106,21 @@
   #define S_IRUSR		_S_IREAD
   #define S_IWUSR		_S_IWRITE
   #define PATH_SEP      '\\'
-  // --DSS needed for VS versions before 2010
-  #ifndef __MINGW32__
-    typedef __int8 int8_t;
+  // Needed for VS versions before 2010 (VS2010+ has stdint.h)
+  #if defined(_MSC_VER) && _MSC_VER < 1600
+    #ifndef __MINGW32__
+      typedef __int8 int8_t;
+    #endif
+    typedef unsigned __int8 uint8_t;
+    typedef __int16 int16_t;
+    typedef unsigned __int16 uint16_t;
+    typedef __int32 int32_t;
+    typedef unsigned __int32 uint32_t;
+    typedef __int64 int64_t;
+    typedef unsigned __int64 uint64_t;
+  #else
+    #include <stdint.h>
   #endif
-  typedef unsigned __int8 uint8_t;
-  typedef __int16 int16_t;
-  typedef unsigned __int16 uint16_t;
-  typedef __int32 int32_t;
-  typedef unsigned __int32 uint32_t;
-  typedef __int64 int64_t;
-  typedef unsigned __int64 uint64_t;
 
 #else
   #include <signal.h>
