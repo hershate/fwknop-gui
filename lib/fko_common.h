@@ -79,10 +79,23 @@
   #define PATH_SEP    '\\'
 
   /* These are needed for the digest code under windows.
+   * VS versions before 2010 lack <stdint.h>; MinGW and VS2010+ provide it,
+   * so only old MSVC needs the manual fixed-width typedefs.
   */
-  typedef unsigned __int8   uint8_t;
-  typedef unsigned __int32	uint32_t;
-  typedef unsigned __int64	uint64_t;
+  #if defined(_MSC_VER) && _MSC_VER < 1600
+    #ifndef __MINGW32__
+      typedef __int8             int8_t;
+    #endif
+    typedef unsigned __int8     uint8_t;
+    typedef __int16             int16_t;
+    typedef unsigned __int16    uint16_t;
+    typedef __int32             int32_t;
+    typedef unsigned __int32    uint32_t;
+    typedef __int64             int64_t;
+    typedef unsigned __int64    uint64_t;
+  #else
+    #include <stdint.h>
+  #endif
 #else
   #if HAVE_STDINT_H
     #include <stdint.h>

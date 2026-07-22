@@ -67,6 +67,11 @@ enum {
     FD_SET_ALT,
     FAULT_INJECTION_TAG,
 
+    /* TOTP dynamic destination port (port-hopping SPA) */
+    TOTP_PORT,
+    TOTP_SEED,
+    PORT_RANGE,
+
     /* Put GPG-related items below the following line */
     GPG_ENCRYPTION      = 0x200,
     GPG_RECIP_KEY,
@@ -158,6 +163,9 @@ static struct option cmd_opts[] =
     {"verbose",             0, NULL, 'v'},
     {"version",             0, NULL, 'V'},
     {"wget-cmd",            1, NULL, 'w'},
+    {"totp-port",           0, NULL, TOTP_PORT},
+    {"totp-seed",           1, NULL, TOTP_SEED},
+    {"port-range",          1, NULL, PORT_RANGE},
     {0, 0, 0, 0}
 };
 

@@ -64,6 +64,13 @@ void  chop_newline(char *str);
 void  chop_char(char *str, const char chop);
 void  chop_spaces(char *str);
 
+/* Map a decimal TOTP code string to a port within [port_start, port_end].
+ * Used by the port-hopping SPA feature (see lib/fko_totp.c). Returns 0 on
+ * invalid arguments (callers should treat 0 as an error since ports are >=1).
+*/
+unsigned int fko_totp_to_port(const char *code,
+        unsigned int port_start, unsigned int port_end);
+
 /**
  *
  * \brief counts the occurrences of a character

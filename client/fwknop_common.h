@@ -91,6 +91,15 @@ typedef struct fko_cli_options
     char spoof_ip_src_str[MAX_IPV4_STR_LEN];
     char spoof_user[MAX_USERNAME_LEN];
     int  rand_port;
+
+    /* TOTP dynamic destination port (port-hopping SPA) */
+    unsigned char   use_totp_port;
+    unsigned char   have_totp_seed;
+    char            totp_seed_base64[MAX_B64_KEY_LEN+1];
+    int             totp_seed_len;
+    unsigned int    totp_port_start;
+    unsigned int    totp_port_end;
+
     char gpg_recipient_key[MAX_GPG_KEY_ID];
     char gpg_signer_key[MAX_GPG_KEY_ID];
     char gpg_home_dir[MAX_PATH_LEN];

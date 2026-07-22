@@ -31,9 +31,11 @@
 #include "spa_comm.h"
 #include "utils.h"
 #include "getpasswd.h"
+#include "fko_totp.h"
 
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <time.h>
 
 
 /* prototypes
@@ -53,6 +55,7 @@ static int set_nat_access(fko_ctx_t ctx, fko_cli_options_t *options,
 static int set_access_buf(fko_ctx_t ctx, fko_cli_options_t *options,
         char *access_buf);
 static int get_rand_port(fko_ctx_t ctx);
+static int get_totp_port(fko_cli_options_t *options);
 int resolve_ip_https(fko_cli_options_t *options);
 int resolve_ip_http(fko_cli_options_t *options);
 static void clean_exit(fko_ctx_t ctx, fko_cli_options_t *opts,
@@ -431,6 +434,23 @@ main(int argc, char **argv)
         options.spa_dst_port = tmp_port;
     }
 
+    /* SPA packet TOTP (dynamic) destination port handling (port-hopping).
+     * The destination port is derived from the current TOTP window so there
+     * is no fixed listening port for scanners to find.
+    */
+    if (options.use_totp_port)
+    {
+        tmp_port = get_totp_port(&options);
+        if(tmp_port < 0)
+            clean_exit(ctx, &options, key, &orig_key_len,
+                    hmac_key, &hmac_key_len, EXIT_FAILURE);
+        options.spa_dst_port = tmp_port;
+        if(options.verbose)
+            log_msg(LOG_VERBOSITY_NORMAL,
+                "TOTP destination port: %u (range %u-%u)",
+                options.spa_dst_port, options.totp_port_start, options.totp_port_end);
+    }
+
     /* If we are using one the "raw" modes (normally because
      * we're going to spoof the SPA packet source IP), then select
      * a random source port unless the source port is already set
@@ -656,6 +676,51 @@ get_rand_port(fko_ctx_t ctx)
     }
 
     return port;
+}
+
+/* Compute the destination port for the current time window from the shared
+ * TOTP seed (port-hopping SPA). Returns the port, or -1 on error.
+*/
+static int
+get_totp_port(fko_cli_options_t *options)
+{
+    unsigned char seed[MAX_B64_KEY_LEN+1] = {0};
+    int           seed_len = 0;
+    unsigned int  port = 0;
+    time_t        now;
+    int           res;
+
+    if(!options->have_totp_seed || options->totp_seed_base64[0] == 0x0)
+    {
+        log_msg(LOG_VERBOSITY_ERROR,
+            "get_totp_port(): TOTP port mode requires a TOTP seed");
+        return -1;
+    }
+
+    seed_len = fko_base64_decode(options->totp_seed_base64, seed);
+    if(seed_len <= 0)
+    {
+        log_msg(LOG_VERBOSITY_ERROR,
+            "get_totp_port(): invalid TOTP seed (base64 decode failed)");
+        return -1;
+    }
+
+    now = time(NULL);
+    res = fko_totp_port_now(seed, seed_len, now, FKO_TOTP_DEFAULT_DIGITS,
+            options->totp_port_start, options->totp_port_end, &port);
+
+    /* Wipe the decoded seed from memory.
+    */
+    zero_buf_wrapper((char *)seed, (int)sizeof(seed));
+
+    if(res != FKO_SUCCESS || port == 0)
+    {
+        log_msg(LOG_VERBOSITY_ERROR,
+            "get_totp_port(): TOTP port computation failed: %s", fko_errstr(res));
+        return -1;
+    }
+
+    return (int)port;
 }
 
 /* Set access buf

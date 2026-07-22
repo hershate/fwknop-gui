@@ -1222,4 +1222,30 @@ int register_utils_test(void)
     return register_ts(&TEST_SUITE(utils_test));
 }
 #endif /* LCOV_EXCL_STOP */
+
+/* Map a decimal TOTP code string to a port in [port_start, port_end] using a
+ * deterministic modulo mapping. Both client and server compute this from the
+ * shared TOTP seed so they always agree on the hopping destination port for a
+ * given time window. Returns 0 on invalid arguments (ports are >= 1, so 0 is
+ * a safe error sentinel).
+*/
+unsigned int
+fko_totp_to_port(const char *code, unsigned int port_start, unsigned int port_end)
+{
+    unsigned long long val   = 0;
+    unsigned long long range;
+    const char        *ndx;
+
+    if(code == NULL || port_end < port_start)
+        return(0);
+
+    for(ndx = code; *ndx >= '0' && *ndx <= '9'; ndx++)
+        val = val * 10ULL + (unsigned long long)(*ndx - '0');
+
+    range = (unsigned long long)port_end
+          - (unsigned long long)port_start + 1ULL;
+
+    return((unsigned int)((unsigned long long)port_start + (val % range)));
+}
+
 /***EOF***/

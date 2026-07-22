@@ -133,6 +133,9 @@ enum
     FWKNOP_CLI_ARG_RESOLVE_HTTP_ONLY,
     FWKNOP_CLI_ARG_WGET_CMD,
     FWKNOP_CLI_ARG_NO_SAVE_ARGS,
+    FWKNOP_CLI_ARG_USE_TOTP_PORT,
+    FWKNOP_CLI_ARG_TOTP_SEED,
+    FWKNOP_CLI_ARG_PORT_RANGE,
     FWKNOP_CLI_LAST_ARG
 } fwknop_cli_arg_t;
 
@@ -181,7 +184,10 @@ static fko_var_t fko_var_array[FWKNOP_CLI_LAST_ARG] =
     { "RESOLVE_IP_HTTPS",      FWKNOP_CLI_ARG_RESOLVE_IP_HTTPS      },
     { "RESOLVE_HTTP_ONLY",     FWKNOP_CLI_ARG_RESOLVE_HTTP_ONLY     },
     { "WGET_CMD",              FWKNOP_CLI_ARG_WGET_CMD              },
-    { "NO_SAVE_ARGS",          FWKNOP_CLI_ARG_NO_SAVE_ARGS          }
+    { "NO_SAVE_ARGS",          FWKNOP_CLI_ARG_NO_SAVE_ARGS          },
+    { "USE_TOTP_PORT",         FWKNOP_CLI_ARG_USE_TOTP_PORT         },
+    { "TOTP_SEED_BASE64",      FWKNOP_CLI_ARG_TOTP_SEED             },
+    { "PORT_RANGE",            FWKNOP_CLI_ARG_PORT_RANGE            }
 };
 
 /* Array to define which conf. variables are critical and should not be
@@ -1084,6 +1090,33 @@ parse_rc_param(fko_cli_options_t *options, const char *var_name, char * val)
             options->rand_port = 1;
         else;
     }
+    /* TOTP dynamic destination port (port-hopping SPA) */
+    else if (var->pos == FWKNOP_CLI_ARG_USE_TOTP_PORT)
+    {
+        if (is_yes_str(val))
+            options->use_totp_port = 1;
+    }
+    else if (var->pos == FWKNOP_CLI_ARG_TOTP_SEED)
+    {
+        if (! is_base64((unsigned char *) val, strlen(val)))
+        {
+            log_msg(LOG_VERBOSITY_WARNING,
+                "TOTP_SEED_BASE64 argument '%s' doesn't look like base64-encoded data.", val);
+            parse_error = -1;
+        }
+        strlcpy(options->totp_seed_base64, val, sizeof(options->totp_seed_base64));
+        options->have_totp_seed = 1;
+    }
+    else if (var->pos == FWKNOP_CLI_ARG_PORT_RANGE)
+    {
+        if(sscanf(val, "%u-%u",
+                    &options->totp_port_start, &options->totp_port_end) != 2)
+        {
+            log_msg(LOG_VERBOSITY_WARNING,
+                "PORT_RANGE '%s' invalid; expected START-END (e.g. 30000-60000).", val);
+            parse_error = -1;
+        }
+    }
     /* Rijndael key */
     else if (var->pos == FWKNOP_CLI_ARG_KEY_RIJNDAEL)
     {
@@ -1399,6 +1432,16 @@ add_single_var_to_rc(FILE* fhandle, short var_pos, fko_cli_options_t *options)
             break;
         case FWKNOP_CLI_ARG_RAND_PORT :
             bool_to_yesno(options->rand_port, val, sizeof(val));
+            break;
+        case FWKNOP_CLI_ARG_USE_TOTP_PORT :
+            bool_to_yesno(options->use_totp_port, val, sizeof(val));
+            break;
+        case FWKNOP_CLI_ARG_TOTP_SEED :
+            strlcpy(val, options->totp_seed_base64, sizeof(val));
+            break;
+        case FWKNOP_CLI_ARG_PORT_RANGE :
+            snprintf(val, sizeof(val), "%u-%u",
+                    options->totp_port_start, options->totp_port_end);
             break;
         case FWKNOP_CLI_ARG_KEY_FILE :
             strlcpy(val, options->get_key_file, sizeof(val));
@@ -1938,6 +1981,26 @@ validate_options(fko_cli_options_t *options)
     if(options->key_gen && options->hmac_type == FKO_HMAC_UNKNOWN)
         options->hmac_type = FKO_DEFAULT_HMAC_MODE;
 
+    /* TOTP port-hopping validation */
+    if(options->use_totp_port)
+    {
+        if(options->totp_port_start < 1
+                || options->totp_port_end > MAX_PORT
+                || options->totp_port_end <= options->totp_port_start)
+        {
+            log_msg(LOG_VERBOSITY_ERROR,
+                "Invalid TOTP port range %u-%u (need 1 <= start < end <= %u).",
+                options->totp_port_start, options->totp_port_end, MAX_PORT);
+            exit(EXIT_FAILURE);
+        }
+        if(!options->have_totp_seed || options->totp_seed_base64[0] == 0x0)
+        {
+            log_msg(LOG_VERBOSITY_ERROR,
+                "TOTP port mode (--totp-port) requires --totp-seed <base64>.");
+            exit(EXIT_FAILURE);
+        }
+    }
+
     return;
 }
 
@@ -1950,6 +2013,12 @@ set_defaults(fko_cli_options_t *options)
     options->spa_proto      = FKO_DEFAULT_PROTO;
     options->spa_dst_port   = FKO_DEFAULT_PORT;
     options->fw_timeout     = -1;
+
+    /* TOTP port-hopping defaults: disabled; range [30000,60000] when enabled */
+    options->use_totp_port   = 0;
+    options->have_totp_seed  = 0;
+    options->totp_port_start = 30000;
+    options->totp_port_end   = 60000;
 
     options->key_len        = FKO_DEFAULT_KEY_LEN;
     options->hmac_key_len   = FKO_DEFAULT_HMAC_KEY_LEN;
@@ -2298,6 +2367,32 @@ config_init(fko_cli_options_t *options, int argc, char **argv)
             case 'r':
                 options->rand_port = 1;
                 add_var_to_bitmask(FWKNOP_CLI_ARG_RAND_PORT, &var_bitmask);
+                break;
+            case TOTP_PORT:
+                options->use_totp_port = 1;
+                add_var_to_bitmask(FWKNOP_CLI_ARG_USE_TOTP_PORT, &var_bitmask);
+                break;
+            case TOTP_SEED:
+                if (! is_base64((unsigned char *) optarg, strlen(optarg)))
+                {
+                    log_msg(LOG_VERBOSITY_ERROR,
+                        "TOTP seed '%s' doesn't look like base64-encoded data.", optarg);
+                    exit(EXIT_FAILURE);
+                }
+                strlcpy(options->totp_seed_base64, optarg, sizeof(options->totp_seed_base64));
+                options->have_totp_seed = 1;
+                add_var_to_bitmask(FWKNOP_CLI_ARG_TOTP_SEED, &var_bitmask);
+                break;
+            case PORT_RANGE:
+                if(sscanf(optarg, "%u-%u",
+                            &options->totp_port_start, &options->totp_port_end) != 2)
+                {
+                    log_msg(LOG_VERBOSITY_ERROR,
+                        "Invalid --port-range '%s'; expected START-END (e.g. 30000-60000).",
+                        optarg);
+                    exit(EXIT_FAILURE);
+                }
+                add_var_to_bitmask(FWKNOP_CLI_ARG_PORT_RANGE, &var_bitmask);
                 break;
             case 'R':
                 options->resolve_ip_http_https = 1;
