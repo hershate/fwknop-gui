@@ -32,6 +32,7 @@
 #include "utils.h"
 #include "getpasswd.h"
 #include "fko_totp.h"
+#include "cli_subcmds.h"
 
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -98,6 +99,21 @@ main(int argc, char **argv)
 
     /* Initialize the log module */
     log_new();
+
+    /* Friendly subcommand dispatch (fwknop setup|knock|lint).  setup/lint
+     * run and exit; knock rewrites argv into the normal send flow; anything
+     * else falls through to classic getopt behavior.
+    */
+    {
+        int  sub_argc = argc;
+        char **sub_argv = argv;
+
+        if(cli_handle_subcommand(argc, argv, &sub_argc, &sub_argv) == CLI_SUB_KNOCK)
+        {
+            argc = sub_argc;
+            argv = sub_argv;
+        }
+    }
 
     /* Handle command line
     */
