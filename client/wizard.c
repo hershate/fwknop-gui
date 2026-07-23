@@ -12,15 +12,11 @@
  */
 #include "fwknop_common.h"
 #include "fko.h"
-#include "fingerprint.h"
 #include "wizard.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
-/* Provided by lib/cipher_funcs.c (compiled into the client). */
-extern void get_random_data(unsigned char *data, const size_t len);
 
 /* ------------------------------------------------------------------ */
 /* Minimal RFC 4648 base32 encoder (unpadded) for otpauth secrets.     */
@@ -130,10 +126,12 @@ wizard_setup(void)
 
     char key_b64[MAX_B64_KEY_LEN+1]      = {0};
     char hmac_b64[MAX_B64_KEY_LEN+1]     = {0};
+    char trash_b64[MAX_B64_KEY_LEN+1]    = {0};
     char seed_b64[MAX_B64_KEY_LEN+1]     = {0};
     char seed_b32[MAX_B64_KEY_LEN+1]     = {0};
     char fp_b64[MAX_B64_KEY_LEN+1]       = {0};
-    unsigned char seed_raw[32];
+    unsigned char seed_raw[MAX_B64_KEY_LEN];
+    int  seed_raw_len                    = 0;
 
     printf("\n=== fwknop setup wizard ===\n");
     printf("Generates keys, TOTP seed, and a device fingerprint, and emits\n");
@@ -158,12 +156,26 @@ wizard_setup(void)
         return EXIT_FAILURE;
     }
 
-    get_random_data(seed_raw, sizeof(seed_raw));
-    fko_base64_encode(seed_raw, seed_b64, (int)sizeof(seed_raw));
-    b32_encode(seed_raw, (int)sizeof(seed_raw), seed_b32, sizeof(seed_b32));
+    /* TOTP seed: harvest a random base64 string via the public key-gen
+     * API (the discarded Rijndael output), then decode it to raw bytes so
+     * we can also emit a base32 secret for the otpauth URI.  Using only
+     * exported fko_* APIs keeps the client linkable against libfko.so. */
+    if(fko_key_gen(trash_b64, 0, seed_b64, 0, FKO_HMAC_SHA256) != FKO_SUCCESS)
+    {
+        fprintf(stderr, "Error: TOTP seed generation failed.\n");
+        return EXIT_FAILURE;
+    }
+    seed_raw_len = fko_base64_decode(seed_b64, seed_raw);
+    if(seed_raw_len <= 0)
+    {
+        fprintf(stderr, "Error: TOTP seed decode failed.\n");
+        return EXIT_FAILURE;
+    }
+    b32_encode(seed_raw, seed_raw_len, seed_b32, sizeof(seed_b32));
     memset(seed_raw, 0, sizeof(seed_raw));
+    memset(trash_b64, 0, sizeof(trash_b64));
 
-    if(gen_device_fingerprint(fp_b64, sizeof(fp_b64)) != 0)
+    if(fko_gen_device_fingerprint(fp_b64, (int)sizeof(fp_b64)) != FKO_SUCCESS)
     {
         fprintf(stderr, "Error: device fingerprint generation failed.\n");
         return EXIT_FAILURE;

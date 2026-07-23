@@ -591,6 +591,20 @@ DLL_API int fko_set_device_id(fko_ctx_t ctx, const char * const device_id);
 DLL_API int fko_get_device_id(fko_ctx_t ctx, char **device_id);
 
 /**
+ * \brief Generate a per-device fingerprint (plan Appendix C)
+ *
+ * Computes a stable, per-device fingerprint as a base64 string
+ * (SHA-256 of canonicalized host attributes, first 16 bytes).  Intended
+ * as the value passed to fko_set_device_id().  Only the hashed digest
+ * is produced; no plaintext hardware attributes are exposed.
+ *
+ * \param out_b64 Output buffer (recommend >= 32 bytes).
+ * \param out_b64_len Size of out_b64.
+ * \return FKO_SUCCESS on success, FKO_ERROR_INVALID_DATA otherwise.
+ */
+DLL_API int fko_gen_device_fingerprint(char *out_b64, const int out_b64_len);
+
+/**
  * \brief Set the message digest type.
  *
  *If a value other than the those that are supported is given,
