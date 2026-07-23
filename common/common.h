@@ -165,6 +165,7 @@ enum {
 
 #define MAX_KEY_LEN                 128
 #define MAX_B64_KEY_LEN             180
+#define MAX_DEVICE_ID_LEN           128
 
 #if HAVE_LIBFIU
   #define MAX_FAULT_TAG_LEN 128

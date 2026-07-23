@@ -53,7 +53,7 @@ extern "C" {
 
 /* General params
 */
-#define FKO_PROTOCOL_VERSION "3.0.0" /**< The fwknop protocol version */
+#define FKO_PROTOCOL_VERSION "4.0.0" /**< The fwknop protocol version */
 
 /**
  *
@@ -200,6 +200,10 @@ typedef enum {
     FKO_ERROR_INVALID_DATA_DECODE_TIMEOUT_TOOBIG, /**< Args contain invalid data: FKO_ERROR_INVALID_DATA_DECODE_TIMEOUT_TOOBIG*/
     FKO_ERROR_INVALID_DATA_DECODE_TIMEOUT_VALIDFAIL, /**< Args contain invalid data: FKO_ERROR_INVALID_DATA_DECODE_TIMEOUT_VALIDFAIL*/
     FKO_ERROR_INVALID_DATA_DECODE_TIMEOUT_DECODEFAIL, /**< Args contain invalid data: FKO_ERROR_INVALID_DATA_DECODE_TIMEOUT_DECODEFAIL*/
+    FKO_ERROR_INVALID_DATA_DECODE_DEVICEID_TOOBIG, /**< Args contain invalid data: FKO_ERROR_INVALID_DATA_DECODE_DEVICEID_TOOBIG*/
+    FKO_ERROR_INVALID_DATA_DECODE_DEVICEID_DECODEFAIL, /**< Args contain invalid data: FKO_ERROR_INVALID_DATA_DECODE_DEVICEID_DECODEFAIL*/
+    FKO_ERROR_INVALID_DATA_DECODE_DEVICEID_VALIDFAIL, /**< Args contain invalid data: FKO_ERROR_INVALID_DATA_DECODE_DEVICEID_VALIDFAIL*/
+    FKO_ERROR_INVALID_DATA_DEVICEID_TOOBIG, /**< Args contain invalid data: FKO_ERROR_INVALID_DATA_DEVICEID_TOOBIG*/
     FKO_ERROR_INVALID_DATA_ENCODE_MESSAGE_TOOBIG, /**< Args contain invalid data: FKO_ERROR_INVALID_DATA_ENCODE_MESSAGE_TOOBIG*/
     FKO_ERROR_INVALID_DATA_ENCODE_MSGLEN_VALIDFAIL, /**< Args contain invalid data: FKO_ERROR_INVALID_DATA_ENCODE_MSGLEN_VALIDFAIL*/
     FKO_ERROR_INVALID_DATA_ENCODE_DIGEST_VALIDFAIL, /**< Args contain invalid data: FKO_ERROR_INVALID_DATA_ENCODE_DIGEST_VALIDFAIL*/
@@ -554,6 +558,37 @@ DLL_API int fko_set_spa_server_auth(fko_ctx_t ctx, const char * const server_aut
  * \return FKO_SUCCESS if successful, returns an error code otherwise
  */
 DLL_API int fko_set_spa_client_timeout(fko_ctx_t ctx, const int timeout);
+
+/**
+ * \brief Set the optional SPA device_id field (protocol v4)
+ *
+ * Set the device identity (e.g. a device fingerprint) that is carried
+ * as an optional trailing field of the encoded SPA data when the SPA
+ * protocol version is 4.0.0 or higher.  The value is base64-encoded
+ * into the packet by 'fko_encode_spa_data'.  Passing NULL (or an empty
+ * string) clears the field so it is not sent.
+ *
+ * \param ctx The FKO context to modify
+ * \param device_id The device identity string to set (may be NULL to clear)
+ *
+ * \return FKO_SUCCESS if successful, returns an error code otherwise
+ */
+DLL_API int fko_set_device_id(fko_ctx_t ctx, const char * const device_id);
+
+/**
+ * \brief get the device_id from FKO context
+ *
+ * Assigns the pointer to the string holding the device_id associated
+ * with the current context to the address DEVICE_ID is pointing to.
+ * The pointer is NULL if no device_id was set (or the decoded SPA data
+ * did not carry one).
+ *
+ * \param ctx The FKO context to access
+ * \param device_id Pointer to the pointer to be assigned
+ *
+ * \return FKO_SUCCESS if successful, returns an error code otherwise
+ */
+DLL_API int fko_get_device_id(fko_ctx_t ctx, char **device_id);
 
 /**
  * \brief Set the message digest type.

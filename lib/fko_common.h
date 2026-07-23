@@ -172,6 +172,7 @@
 #include "fko_context.h"
 #include "fko_message.h"
 #include "fko_user.h"
+#include "fko_device_id.h"
 
 /* Try to cover for those that do not have bzero.
 */

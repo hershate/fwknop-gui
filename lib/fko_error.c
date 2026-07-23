@@ -170,6 +170,18 @@ fko_errstr(const int err_code)
         case FKO_ERROR_INVALID_DATA_DECODE_TIMEOUT_DECODEFAIL:
             return("Args contain invalid data: FKO_ERROR_INVALID_DATA_DECODE_TIMEOUT_DECODEFAIL");
 
+        case FKO_ERROR_INVALID_DATA_DECODE_DEVICEID_TOOBIG:
+            return("Args contain invalid data: FKO_ERROR_INVALID_DATA_DECODE_DEVICEID_TOOBIG");
+
+        case FKO_ERROR_INVALID_DATA_DECODE_DEVICEID_DECODEFAIL:
+            return("Args contain invalid data: FKO_ERROR_INVALID_DATA_DECODE_DEVICEID_DECODEFAIL");
+
+        case FKO_ERROR_INVALID_DATA_DECODE_DEVICEID_VALIDFAIL:
+            return("Args contain invalid data: FKO_ERROR_INVALID_DATA_DECODE_DEVICEID_VALIDFAIL");
+
+        case FKO_ERROR_INVALID_DATA_DEVICEID_TOOBIG:
+            return("Args contain invalid data: FKO_ERROR_INVALID_DATA_DEVICEID_TOOBIG");
+
         case FKO_ERROR_INVALID_DATA_ENCODE_MESSAGE_TOOBIG:
             return("Args contain invalid data: FKO_ERROR_INVALID_DATA_ENCODE_MESSAGE_TOOBIG");
 

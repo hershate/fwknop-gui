@@ -74,6 +74,7 @@ struct fko_context {
     char           *nat_access;
     char           *server_auth;
     unsigned int    client_timeout;
+    char           *device_id;  /**< Optional device identity (protocol v4) */
     /*@}*/
     /** \name FKO SPA user-settable message encoding types */
     /*@{*/

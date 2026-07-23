@@ -302,6 +302,9 @@ fko_destroy(fko_ctx_t ctx)
     if(ctx->server_auth != NULL)
         free(ctx->server_auth);
 
+    if(ctx->device_id != NULL)
+        free(ctx->device_id);
+
     if(ctx->digest != NULL)
         if(zero_free(ctx->digest, ctx->digest_len) != FKO_SUCCESS)
             zero_free_rv = FKO_ERROR_ZERO_OUT_DATA;

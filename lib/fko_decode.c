@@ -33,7 +33,7 @@
 #include "base64.h"
 #include "digest.h"
 
-#define FIELD_PARSERS 9
+#define FIELD_PARSERS 10
 
 /* Char used to separate SPA fields in an SPA packet */
 #define SPA_FIELD_SEPARATOR    ":"
@@ -57,6 +57,21 @@ num_fields(char *str)
         str = tmp + 1;
     }
     return i;
+}
+
+/* Return non-zero if the SPA packet being decoded uses protocol
+ * version 4 or higher (which adds the optional trailing device_id
+ * field).  The version string is parsed before the fields that need
+ * this check (parse_version runs prior to parse_msg_type), so the
+ * ctx->version value is available here.
+*/
+static int
+is_proto_v4(fko_ctx_t ctx)
+{
+    if(ctx->version == NULL)
+        return 0;
+
+    return (atoi(ctx->version) >= 4);
 }
 
 static int
@@ -309,6 +324,17 @@ parse_server_auth(char *tbuf, char **ndx, int *t_size, fko_ctx_t ctx)
         {
             *t_size = strcspn(*ndx, ":");
 
+            /* Protocol v4: the packet may carry a trailing device_id
+             * field, in which case the remaining data can also be
+             * "<timeout>:<device_id>" with no server_auth at all.  The
+             * timeout is always decimal, so if the first field is all
+             * digits we leave it for parse_client_timeout instead of
+             * consuming it as server_auth.
+            */
+            if(is_proto_v4(ctx) && *t_size > 0
+                    && strspn(*ndx, "0123456789") == (size_t)*t_size)
+                return FKO_SUCCESS;
+
             if (*t_size > MAX_SPA_MESSAGE_SIZE)
                 return(FKO_ERROR_INVALID_DATA_DECODE_EXTRA_TOOBIG);
 
@@ -329,6 +355,18 @@ parse_server_auth(char *tbuf, char **ndx, int *t_size, fko_ctx_t ctx)
     }
     else
     {
+        /* Protocol v4: for message types without a client timeout the
+         * trailing optional field is the device_id, and server_auth is
+         * only present when a further ':' delimiter follows it.  If no
+         * ':' remains, the last field is the device_id and is handled
+         * by parse_device_id.
+        */
+        if(is_proto_v4(ctx) && strchr(*ndx, ':') == NULL)
+            return FKO_SUCCESS;
+
+        if(is_proto_v4(ctx))
+            *t_size = strcspn(*ndx, ":");
+
         strlcpy(tbuf, *ndx, *t_size+1);
 
         if(ctx->server_auth != NULL)
@@ -340,6 +378,9 @@ parse_server_auth(char *tbuf, char **ndx, int *t_size, fko_ctx_t ctx)
 
         if(b64_decode(tbuf, (unsigned char*)ctx->server_auth) < 0)
             return(FKO_ERROR_INVALID_DATA_DECODE_SRVAUTH_DECODEFAIL);
+
+        if(is_proto_v4(ctx))
+            *ndx += *t_size + 1;
     }
 
     return FKO_SUCCESS;
@@ -360,16 +401,72 @@ parse_client_timeout(char *tbuf, char **ndx, int *t_size, fko_ctx_t ctx)
         if (*t_size > MAX_SPA_MESSAGE_SIZE)
             return(FKO_ERROR_INVALID_DATA_DECODE_TIMEOUT_TOOBIG);
 
+        /* Protocol v4: an optional device_id field may follow the
+         * timeout, so the timeout itself ends at the next ':'.
+        */
+        if(is_proto_v4(ctx))
+            *t_size = strcspn(*ndx, ":");
+
+        if(*t_size < 1)
+            return(FKO_ERROR_INVALID_DATA_DECODE_TIMEOUT_MISSING);
+
         /* Should be a number only.
         */
-        if(strspn(*ndx, "0123456789") != *t_size)
+        if(strspn(*ndx, "0123456789") != (size_t)*t_size)
             return(FKO_ERROR_INVALID_DATA_DECODE_TIMEOUT_VALIDFAIL);
 
-        ctx->client_timeout = (unsigned int) strtol_wrapper(*ndx, 0,
+        strlcpy(tbuf, *ndx, *t_size+1);
+
+        ctx->client_timeout = (unsigned int) strtol_wrapper(tbuf, 0,
                 (2 << 15), NO_EXIT_UPON_ERR, &is_err);
         if(is_err != FKO_SUCCESS)
             return(FKO_ERROR_INVALID_DATA_DECODE_TIMEOUT_DECODEFAIL);
+
+        /* Move past the timeout (and its ':' separator if present) so
+         * a trailing device_id field remains for parse_device_id.
+        */
+        if(is_proto_v4(ctx))
+        {
+            *ndx += *t_size;
+            if(**ndx == ':')
+                (*ndx)++;
+        }
     }
+
+    return FKO_SUCCESS;
+}
+
+/* Protocol v4: optional trailing device_id field (base64-encoded).
+ * Whatever remains at this point belongs to the device_id.
+*/
+static int
+parse_device_id(char *tbuf, char **ndx, int *t_size, fko_ctx_t ctx)
+{
+    if(!is_proto_v4(ctx))
+        return FKO_SUCCESS;
+
+    if((*t_size = strlen(*ndx)) < 1)
+        return FKO_SUCCESS; /* device_id is optional */
+
+    if(*t_size > MAX_SPA_DEVICE_ID_SIZE)
+        return(FKO_ERROR_INVALID_DATA_DECODE_DEVICEID_TOOBIG);
+
+    strlcpy(tbuf, *ndx, *t_size+1);
+
+    if(ctx->device_id != NULL)
+        free(ctx->device_id);
+
+    ctx->device_id = calloc(1, *t_size+1); /* Yes, more than we need */
+    if(ctx->device_id == NULL)
+        return(FKO_ERROR_MEMORY_ALLOCATION);
+
+    if(b64_decode(tbuf, (unsigned char*)ctx->device_id) < 0)
+        return(FKO_ERROR_INVALID_DATA_DECODE_DEVICEID_DECODEFAIL);
+
+    if(validate_device_id(ctx->device_id) != FKO_SUCCESS)
+        return(FKO_ERROR_INVALID_DATA_DECODE_DEVICEID_VALIDFAIL);
+
+    *ndx += *t_size;
 
     return FKO_SUCCESS;
 }
@@ -394,36 +491,42 @@ parse_msg_type(char *tbuf, char **ndx, int *t_size, fko_ctx_t ctx)
         return(FKO_ERROR_INVALID_DATA_DECODE_MSGTYPE_DECODEFAIL);
 
     /* Now that we have a valid type, ensure that the total
-     * number of SPA fields is also valid for the type
+     * number of SPA fields is also valid for the type.  Protocol
+     * v4 adds one optional trailing device_id field, so the v3
+     * limits are raised by one for v4 packets.
     */
     remaining_fields = num_fields(*ndx);
 
-    switch(ctx->message_type)
     {
-        /* optional server_auth + digest */
-        case FKO_COMMAND_MSG:
-        case FKO_ACCESS_MSG:
-            if(remaining_fields > 2)
-                return FKO_ERROR_INVALID_DATA_DECODE_WRONG_NUM_FIELDS;
-            break;
+        int extra = is_proto_v4(ctx) ? 1 : 0;
 
-        /* nat or client timeout + optional server_auth + digest */
-        case FKO_NAT_ACCESS_MSG:
-        case FKO_LOCAL_NAT_ACCESS_MSG:
-        case FKO_CLIENT_TIMEOUT_ACCESS_MSG:
-            if(remaining_fields > 3)
-                return FKO_ERROR_INVALID_DATA_DECODE_WRONG_NUM_FIELDS;
-            break;
+        switch(ctx->message_type)
+        {
+            /* optional server_auth + digest */
+            case FKO_COMMAND_MSG:
+            case FKO_ACCESS_MSG:
+                if(remaining_fields > 2 + extra)
+                    return FKO_ERROR_INVALID_DATA_DECODE_WRONG_NUM_FIELDS;
+                break;
 
-        /* client timeout + nat + optional server_auth + digest */
-        case FKO_CLIENT_TIMEOUT_NAT_ACCESS_MSG:
-        case FKO_CLIENT_TIMEOUT_LOCAL_NAT_ACCESS_MSG:
-            if(remaining_fields > 4)
-                return FKO_ERROR_INVALID_DATA_DECODE_WRONG_NUM_FIELDS;
-            break;
+            /* nat or client timeout + optional server_auth + digest */
+            case FKO_NAT_ACCESS_MSG:
+            case FKO_LOCAL_NAT_ACCESS_MSG:
+            case FKO_CLIENT_TIMEOUT_ACCESS_MSG:
+                if(remaining_fields > 3 + extra)
+                    return FKO_ERROR_INVALID_DATA_DECODE_WRONG_NUM_FIELDS;
+                break;
 
-        default: /* Should not reach here */
-            return(FKO_ERROR_INVALID_DATA_DECODE_MSGTYPE_DECODEFAIL);
+            /* client timeout + nat + optional server_auth + digest */
+            case FKO_CLIENT_TIMEOUT_NAT_ACCESS_MSG:
+            case FKO_CLIENT_TIMEOUT_LOCAL_NAT_ACCESS_MSG:
+                if(remaining_fields > 4 + extra)
+                    return FKO_ERROR_INVALID_DATA_DECODE_WRONG_NUM_FIELDS;
+                break;
+
+            default: /* Should not reach here */
+                return(FKO_ERROR_INVALID_DATA_DECODE_MSGTYPE_DECODEFAIL);
+        }
     }
 
     *ndx += *t_size + 1;
@@ -543,7 +646,8 @@ fko_decode_spa_data(fko_ctx_t ctx)
             parse_msg,            /* SPA msg string */
             parse_nat_msg,        /* SPA NAT msg string */
             parse_server_auth,    /* optional server authentication method */
-            parse_client_timeout  /* client defined timeout */
+            parse_client_timeout, /* client defined timeout */
+            parse_device_id       /* optional device identity (protocol v4) */
           };
 
     if (! is_valid_encoded_msg_len(ctx->encoded_msg_len))

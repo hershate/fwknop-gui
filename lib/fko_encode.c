@@ -203,6 +203,19 @@ fko_encode_spa_data(fko_ctx_t ctx)
                 ":%i", ctx->client_timeout);
     }
 
+    /* Protocol v4: if a device_id was given, add it as the (optional)
+     * final field.
+    */
+    if(ctx->device_id != NULL)
+    {
+        strlcat(tbuf, ":", FKO_ENCODE_TMP_BUF_SIZE);
+        if((res = append_b64(tbuf, ctx->device_id)) != FKO_SUCCESS)
+        {
+            free(tbuf);
+            return(res);
+        }
+    }
+
     /* If encoded_msg is not null, then we assume it needs to
      * be freed before re-assignment.
     */
