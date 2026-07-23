@@ -72,6 +72,9 @@ enum {
     TOTP_SEED,
     PORT_RANGE,
 
+    /* SPA protocol v4 device identity */
+    DEVICE_ID,
+
     /* Put GPG-related items below the following line */
     GPG_ENCRYPTION      = 0x200,
     GPG_RECIP_KEY,
@@ -166,6 +169,7 @@ static struct option cmd_opts[] =
     {"totp-port",           0, NULL, TOTP_PORT},
     {"totp-seed",           1, NULL, TOTP_SEED},
     {"port-range",          1, NULL, PORT_RANGE},
+    {"device-id",           1, NULL, DEVICE_ID},
     {0, 0, 0, 0}
 };
 

@@ -100,6 +100,10 @@ typedef struct fko_cli_options
     unsigned int    totp_port_start;
     unsigned int    totp_port_end;
 
+    /* SPA protocol v4 device identity (device fingerprint)
+    */
+    char            device_id[MAX_DEVICE_ID_LEN+1];
+
     char gpg_recipient_key[MAX_GPG_KEY_ID];
     char gpg_signer_key[MAX_GPG_KEY_ID];
     char gpg_home_dir[MAX_PATH_LEN];

@@ -267,6 +267,20 @@ main(int argc, char **argv)
         }
     }
 
+    /* Set SPA device_id (protocol v4) if specified.  Carries an optional
+     * device identity (e.g. a fingerprint) as the trailing encoded field.
+    */
+    if(options.device_id[0] != 0x0)
+    {
+        res = fko_set_device_id(ctx, options.device_id);
+        if(res != FKO_SUCCESS)
+        {
+            errmsg("fko_set_device_id", res);
+            clean_exit(ctx, &options, key, &key_len,
+                hmac_key, &hmac_key_len, EXIT_FAILURE);
+        }
+    }
+
     /* Set up for using GPG if specified.
     */
     if(options.use_gpg)

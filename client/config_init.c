@@ -136,6 +136,7 @@ enum
     FWKNOP_CLI_ARG_USE_TOTP_PORT,
     FWKNOP_CLI_ARG_TOTP_SEED,
     FWKNOP_CLI_ARG_PORT_RANGE,
+    FWKNOP_CLI_ARG_DEVICE_ID,
     FWKNOP_CLI_LAST_ARG
 } fwknop_cli_arg_t;
 
@@ -187,7 +188,8 @@ static fko_var_t fko_var_array[FWKNOP_CLI_LAST_ARG] =
     { "NO_SAVE_ARGS",          FWKNOP_CLI_ARG_NO_SAVE_ARGS          },
     { "USE_TOTP_PORT",         FWKNOP_CLI_ARG_USE_TOTP_PORT         },
     { "TOTP_SEED_BASE64",      FWKNOP_CLI_ARG_TOTP_SEED             },
-    { "PORT_RANGE",            FWKNOP_CLI_ARG_PORT_RANGE            }
+    { "PORT_RANGE",            FWKNOP_CLI_ARG_PORT_RANGE            },
+    { "DEVICE_ID",             FWKNOP_CLI_ARG_DEVICE_ID             }
 };
 
 /* Array to define which conf. variables are critical and should not be
@@ -1117,6 +1119,18 @@ parse_rc_param(fko_cli_options_t *options, const char *var_name, char * val)
             parse_error = -1;
         }
     }
+    /* SPA protocol v4 device identity */
+    else if (var->pos == FWKNOP_CLI_ARG_DEVICE_ID)
+    {
+        if(strnlen(val, MAX_DEVICE_ID_LEN+1) > MAX_DEVICE_ID_LEN)
+        {
+            log_msg(LOG_VERBOSITY_WARNING,
+                "DEVICE_ID argument too long (max %d chars).", MAX_DEVICE_ID_LEN);
+            parse_error = -1;
+        }
+        else
+            strlcpy(options->device_id, val, sizeof(options->device_id));
+    }
     /* Rijndael key */
     else if (var->pos == FWKNOP_CLI_ARG_KEY_RIJNDAEL)
     {
@@ -1442,6 +1456,9 @@ add_single_var_to_rc(FILE* fhandle, short var_pos, fko_cli_options_t *options)
         case FWKNOP_CLI_ARG_PORT_RANGE :
             snprintf(val, sizeof(val), "%u-%u",
                     options->totp_port_start, options->totp_port_end);
+            break;
+        case FWKNOP_CLI_ARG_DEVICE_ID :
+            strlcpy(val, options->device_id, sizeof(val));
             break;
         case FWKNOP_CLI_ARG_KEY_FILE :
             strlcpy(val, options->get_key_file, sizeof(val));
@@ -2020,6 +2037,9 @@ set_defaults(fko_cli_options_t *options)
     options->totp_port_start = 30000;
     options->totp_port_end   = 60000;
 
+    /* SPA protocol v4 device identity: empty by default (not sent) */
+    options->device_id[0]    = 0x0;
+
     options->key_len        = FKO_DEFAULT_KEY_LEN;
     options->hmac_key_len   = FKO_DEFAULT_HMAC_KEY_LEN;
     options->hmac_type      = FKO_HMAC_UNKNOWN;  /* updated when HMAC key is used */
@@ -2394,6 +2414,16 @@ config_init(fko_cli_options_t *options, int argc, char **argv)
                 }
                 add_var_to_bitmask(FWKNOP_CLI_ARG_PORT_RANGE, &var_bitmask);
                 break;
+            case DEVICE_ID:
+                if(strnlen(optarg, MAX_DEVICE_ID_LEN+1) > MAX_DEVICE_ID_LEN)
+                {
+                    log_msg(LOG_VERBOSITY_ERROR,
+                        "Device ID '%s' too long (max %d chars).", optarg, MAX_DEVICE_ID_LEN);
+                    exit(EXIT_FAILURE);
+                }
+                strlcpy(options->device_id, optarg, sizeof(options->device_id));
+                add_var_to_bitmask(FWKNOP_CLI_ARG_DEVICE_ID, &var_bitmask);
+                break;
             case 'R':
                 options->resolve_ip_http_https = 1;
                 add_var_to_bitmask(FWKNOP_CLI_ARG_RESOLVE_IP_HTTPS, &var_bitmask);
@@ -2694,6 +2724,17 @@ usage(void)
       " -r, --rand-port             Send the SPA packet over a randomly assigned\n"
       "                             port (requires a broader pcap filter on the\n"
       "                             server side than the default of udp 62201).\n"
+      "     --totp-port            Send the SPA packet to a destination port derived\n"
+      "                             from the current TOTP value (port-hopping SPA).\n"
+      "                             Requires --totp-seed.\n"
+      "     --totp-seed            Base64-encoded TOTP seed used to compute the\n"
+      "                             hopping destination port (RFC 6238,\n"
+      "                             HMAC-SHA256, 30s step).\n"
+      "     --port-range           Destination port range for --totp-port as\n"
+      "                             START-END (default 30000-60000).\n"
+      "     --device-id            Set the SPA v4 device identity carried as an\n"
+      "                             optional trailing field (e.g. a device\n"
+      "                             fingerprint).\n"
       " -T, --test                  Build the SPA packet but do not send it over\n"
       "                             the network.\n"
       " -v, --verbose               Set verbose mode (may specify multiple times).\n"
