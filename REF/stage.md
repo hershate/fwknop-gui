@@ -21,7 +21,7 @@
 - **(推荐) 先 push 再 clone**：在 Windows 本机执行 `git push origin master`（需你对 `hershate/fwknop-gui` 有写权限）；Linux 上 `git clone https://github.com/hershate/fwknop-gui.git && git log --oneline` 确认能看到 `98feade3`/`31a5c958`/`05d11c67`/`d734a35b`/`9a097500`。
 - **整目录拷贝**：直接把整个仓库目录拷到 Linux（保留 `.git/`），分支与提交完整保留。
 
-> ⚠️ **REF/ 被 gitignore（`.gitignore` 第 100 行 `/REF`）**，因此 `stage.md`、`plan/Port Knocking.md`、`REF/build/` 的测试与产物 **不会随 git 同步**。迁移时请**手动拷贝** `REF/stage.md` 和 `REF/plan/Port Knocking.md` 到 Linux 仓库的同名路径（构建产物 `REF/build/*.exe` 不需要，Linux 会重新生成）。
+> ✅ **REF/ 开发记录已纳入 git**（提交 `cf2e2f73`，`.gitignore` 不再忽略 `/REF`，仅忽略 `REF/build/*.exe`/`*.o`/`config.h` 等构建产物）。因此 `stage.md`、`plan/Port Knocking.md`、`build/test_*.c` 会随 `git clone`/`pull` 自动同步到 Linux，无需手动拷贝；二进制产物在 Linux 重新构建即可。
 
 相关提交（本地 master，自旧及新）：
 ```
