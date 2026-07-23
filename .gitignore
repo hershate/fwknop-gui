@@ -97,4 +97,10 @@ win32/fwknop-client/
 *.recipe
 *.tlog
 *.lastbuildstate
-/REF
+
+# REF/ holds development records (stage.md, plan, test programs) -- tracked.
+# Ignore only generated build artifacts under REF/build/:
+REF/build/*.exe
+REF/build/*.o
+REF/build/config.h
+

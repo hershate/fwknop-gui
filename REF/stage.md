@@ -1,0 +1,221 @@
+# fwknop SPA 扩展实施进度与 Linux 迁移交接（REF/stage.md）
+
+> 计划来源：`REF/plan/Port Knocking.md`（v2.0）
+> 基线：fwknop `2.6.11`，分支 `master`
+> 远程：`https://github.com/hershate/fwknop-gui.git`（注意：**本机提交尚未 push**，见 §0.1）
+> Windows 环境：MinGW GCC 15.2.0（lib/+client/ 已编译+单元验证）；服务端 fwknopd 需 Linux
+> 提交规范：细粒度本地提交到 master，不写 co-author
+> 最后更新：2026-07-23
+
+> **总体状态**：阶段 1、3、5(CLI) 完成并验证；**Windows 可编译/可验证部分已全部完成**。
+> 剩余为 Linux 服务端（阶段 2/4/6）与大型 greenfield（透明代理/GUI/运维面板）。
+> **本文档即 Linux 续作的起点——先读 §0。**
+
+---
+
+## §0 迁移到 Linux 续作指南（最重要）
+
+### 0.1 获取代码到 Linux
+本机的阶段 1/3/5 提交都在 **本地 master**，远程 GitHub 上**没有**。两条路径任选其一：
+
+- **(推荐) 先 push 再 clone**：在 Windows 本机执行 `git push origin master`（需你对 `hershate/fwknop-gui` 有写权限）；Linux 上 `git clone https://github.com/hershate/fwknop-gui.git && git log --oneline` 确认能看到 `98feade3`/`31a5c958`/`05d11c67`/`d734a35b`/`9a097500`。
+- **整目录拷贝**：直接把整个仓库目录拷到 Linux（保留 `.git/`），分支与提交完整保留。
+
+> ⚠️ **REF/ 被 gitignore（`.gitignore` 第 100 行 `/REF`）**，因此 `stage.md`、`plan/Port Knocking.md`、`REF/build/` 的测试与产物 **不会随 git 同步**。迁移时请**手动拷贝** `REF/stage.md` 和 `REF/plan/Port Knocking.md` 到 Linux 仓库的同名路径（构建产物 `REF/build/*.exe` 不需要，Linux 会重新生成）。
+
+相关提交（本地 master，自旧及新）：
+```
+98feade3 Phase 5 (portability): client uses only exported libfko APIs; wire Makefile.am
+31a5c958 Phase 5: CLI usability — setup wizard, knock, lint, device fingerprint
+05d11c67 Phase 3 (client): --device-id / DEVICE_ID rc support
+d734a35b Phase 3 (lib): SPA v4 protocol with optional device_id field
+9a097500 Phase 1: TOTP engine and client port-hopping SPA support
+```
+
+### 0.2 在 Linux 上构建（autotools）
+仓库提供 `autogen.sh`（无预生成 `configure`）。标准流程：
+
+```bash
+cd fwknop-gui
+./autogen.sh            # 生成 configure（首次；等同 autoreconf -iv）
+./configure             # 按需加 --with-gpgme / --enable-{asan,coverage} 等
+make                    # 可加 -j$(nproc)
+sudo make install       # 可选，安装 libfko.so + fwknop + fwknopd
+```
+
+**关键**：阶段 1/3/5 新增的源文件已写入 `Makefile.am`，autotools 会自动编译：
+- `lib/Makefile.am` → `libfko_source_files` 含 `fko_totp.c/.h`、`fko_device_id.c/.h`、`fko_fingerprint.c`
+- `client/Makefile.am` → `BASE_SOURCE_FILES` 含 `wizard.c/.h`、`cli_subcmds.c/.h`
+
+> 若忘了 §0.5 的「可移植性」提交（`98feade3`），Linux 上客户端会因链接 `libfko.so` 找不到 `sha256`/`get_random_data` 而 undefined reference——该提交已修复（指纹移入 lib 为公开 API、种子改用 `fko_key_gen`）。
+
+**构建产物**：
+- `lib/libfko.la` → `libfko.so`（含 TOTP / device_id / fingerprint）
+- `client/fwknop`（增强客户端：`--totp-port` / `--device-id` / `setup` / `knock` / `lint`）
+- `server/fwknopd`（**Linux 上可构建**——这是阶段 2/4 的目标）
+- `lib/fko_utests`、`client/fwknop_utests`（CUnit 单元测试）
+
+### 0.3 在 Linux 上验证（复现 Windows 的结果）
+```bash
+# 1) 版本号应为 4.0.0
+client/fwknop --version    # → fwknop client 2.6.11, FKO protocol version 4.0.0
+
+# 2) CUnit 单元测试（注意 MAX_SPA_FIELDS 已 9→10；既有 decode 测试按符号引用应仍通过）
+lib/fko_utests
+client/fwknop_utests
+
+# 3) 子命令冒烟（无需网络）
+client/fwknop setup        # 交互向导，生成密钥/种子/指纹 + stanza + otpauth
+client/fwknop lint ~/.fwknoprc
+client/fwknop knock <profile>   # 等价 fwknop -n <profile> -R，会尝试发包
+
+# 4) v4 往返 / v3 兼容（移植 REF/build/test_device_id.c，或用 lib/fko_utests）
+#    编译方式与 Windows 类似，但去掉 -DWIN32，链 libfko 而非整库：
+gcc -std=c99 -O2 -Ilib -Icommon REF/build/test_device_id.c -L lib/.libs -lfko -o /tmp/t && /tmp/t
+#    期望：33/33 PASS（v4 带/不带 device_id、v3 向后兼容、timeout+device_id）
+```
+> TOTP RFC6238 向量测试源在 `REF/build/test_totp.c`（gitignored，需从 Windows 拷贝或重写）；期望 6/6 SHA-256 向量 PASS。
+
+### 0.4 关键不变量（移植/续作时必须保持）
+- **协议版本**：`FKO_PROTOCOL_VERSION == "4.0.0"`（`lib/fko.h`）。
+- **device_id**：v4 可选**末字段**，base64 编码；解码器按 `is_proto_v4(ctx)=atoi(version)>=4` 分支。**v3 包必须仍能解码**（向后兼容是硬约束，单测 Test3 守护）。
+- **字段上限**：`MAX_SPA_FIELDS=10`、`MAX_SPA_DEVICE_ID_SIZE=128`、`MIN_SPA_FIELDS` 仍为 6（`lib/fko_limits.h`）。
+- **TOTP**：RFC6238，HMAC-SHA256，步长 30s，默认 8 位，T0=0；时间参数为 `time_t`。端口映射 `fko_totp_to_port(code, start, end) = start + (val % range)`，确定性、边界安全（反转范围返回 0）。
+- **可移植性**：客户端代码**只能调用导出的 `fko_*` 符号**（libfko 导出正则 `^fko_`）。不得在 client/ 直接调用 `sha256/md5/get_random_data/b64_*` 等 lib 内部函数（详见 §可移植性修复）。
+- **安全**：敏感缓冲（TOTP 种子、密钥）用后 `zero_buf_wrapper`/`memset` 擦除；指纹只输出 SHA256 前 16 字节的 base64，不上链明文硬件属性。
+
+### 0.5 客户端↔服务端协议契约（阶段 4 服务端实现依据）
+客户端（已实现）发出的 v4 包含：`device_id=<指纹b64>`、目的端口 = `fko_totp_port_now(seed, time, digits, start, end)`。
+服务端（阶段 4 待实现）须：
+1. 解密后 `fko_get_device_id(ctx, &dev)` 取出 device_id，与 access.conf 的 `FINGERPRINT` 白名单做**常量时间比较**（复用 `common/fko_util.c` 的 `constant_runtime_cmp`）。
+2. 可选 `REQUIRE_TOTP_PORT_MATCH`：用 stanza 的 TOTP 种子+端口范围重算当前应到端口，与包**实际到达的 dst 端口**比对（NFQ 可获原始 dst）。
+3. 指纹不符 / 端口不匹配 / 过期 → 静默丢弃 + 结构化审计。
+- TOTP 种子与端口范围在客户端由 `fwknop setup` 生成并写入 fwknoprc（`TOTP_SEED_BASE64`/`PORT_RANGE`），服务端 stanza 需配相同种子与范围（`access.conf` 拟增 `TOTP_SEED_BASE64`/`TOTP_PORT_RANGE`，见 §待办阶段 4）。
+
+---
+
+## 状态总览
+
+| 阶段 | 内容 | 平台 | 状态 |
+| --- | --- | --- | --- |
+| 1 | TOTP 引擎 + 端口映射 + 客户端端口跳变 | Win✅ | ✅ 完成并验证 |
+| 2 | 服务端 NFQ/pcap 端口范围监听 | Linux | 待办（Linux） |
+| 3 | SPA v4 device_id（lib + client） | Win✅ | ✅ 完成并验证 |
+| 4 | 零信任硬化 + 审计/指标（服务端为主） | Linux | 待办（Linux） |
+| 5 | UX：CLI 易用性（向导/指纹/knock/lint） | Win✅ | ✅ 完成并验证 |
+| 5+ | UX：透明代理 / GUI / 运维面板 | 混合 | 待办（GUI greenfield、代理需 WFP/SOCKS、面板属服务端） |
+| 6 | 测试/打包/部署/迁移 | 混合 | 待办 |
+
+图例：Win✅ = 本机可编译+单元验证；Linux = 需 Linux 环境。
+
+---
+
+## 阶段 1 —— ✅ 完成并验证
+
+### 交付物（`9a097500`）
+| 文件 | 改动 |
+| --- | --- |
+| `lib/fko_totp.h`（新） | TOTP API：`fko_totp_generate`、`fko_totp_port_now`；常量（步长30s、默认8位） |
+| `lib/fko_totp.c`（新） | RFC 6238（HMAC-SHA256，复用 `lib/hmac.c`）+ 动态截断 + 大端计数器 |
+| `common/fko_util.h` | 声明 `fko_totp_to_port` |
+| `common/fko_util.c` | `fko_totp_to_port`：十进制 TOTP 码 → [start,end] 确定性模映射 |
+| `client/fwknop_common.h` | `fko_cli_options_t` 增 `use_totp_port`/`totp_seed_base64`/`totp_port_start/end` |
+| `client/cmd_opts.h` | 枚举 `TOTP_PORT/TOTP_SEED/PORT_RANGE` + `--totp-port/--totp-seed/--port-range` |
+| `client/config_init.c` | rc 变量 `USE_TOTP_PORT/TOTP_SEED_BASE64/PORT_RANGE`；parse/dump/getopt/defaults/validate |
+| `client/fwknop.c` | `get_totp_port()`（base64 解码种子→TOTP→端口，零填擦除）；发送前注入 TOTP 端口 |
+| `lib/fko_common.h` | 构建修复：WIN32 定宽 typedef 限定于 `_MSC_VER<1600`，MinGW/VS2010+ 走 `<stdint.h>` |
+
+### 验证（MinGW）
+TOTP RFC6238 6/6 SHA-256 向量 PASS；端口映射确定性/边界 PASS；整库+客户端构建 OK；`--test` 模式 TOTP 端口 46247（30000-60000）两次一致。
+
+### 设计要点
+单包优先（SPA 载荷不变，仅目的端口跳变）；`time_t` 时间参数；零侵入（关 `--totp-port` 即经典 fwknop）；种子用后擦除。
+
+---
+
+## 阶段 3 —— ✅ 完成并验证
+
+### 交付物（`d734a35b` lib + `05d11c67` client）
+| 文件 | 改动 |
+| --- | --- |
+| `lib/fko.h` | `FKO_PROTOCOL_VERSION 4.0.0`；声明 `fko_set/get_device_id`；4 个新错误码 |
+| `lib/fko_context.h` | `struct fko_context` 增 `char *device_id` |
+| `lib/fko_limits.h` | `MAX_SPA_FIELDS 10`；`MAX_SPA_DEVICE_ID_SIZE 128` |
+| `lib/fko_encode.c` | v4：设置时追加 `b64(device_id)` 为末字段 |
+| `lib/fko_decode.c` | 版本感知解码器（`is_proto_v4`）、`parse_device_id`、各 msg_type 上限 v4 +1；v3 路径不变 |
+| `lib/fko_error.c` / `fko_funcs.c` | 新错误码字符串；`fko_destroy` 释放 `device_id` |
+| `lib/fko_device_id.c/.h`（新） | `validate_device_id`、`fko_set/get_device_id` |
+| `lib/fko_common.h` / `common/common.h` | `#include "fko_device_id.h"`；`MAX_DEVICE_ID_LEN 128` |
+| `client/fwknop_common.h` / `cmd_opts.h` | `device_id[]` 字段；`--device-id` 选项 |
+| `client/config_init.c` / `fwknop.c` | rc `DEVICE_ID` 全套；usage 文案；加密前 `fko_set_device_id()` |
+
+### 验证（MinGW）
+v4 往返/v3 兼容/timeout+device_id 单测 **33/33 PASS**（`REF/build/test_device_id.c`）；客户端 `--device-id` 端到端冒烟（包内末字段 b64=`smoke-device-001`）。
+
+### 设计要点
+向后兼容（v3 走原布局）；device_id 可选（默认不发）；`validate_device_id` 拒 `:`/空白/不可打印。
+
+---
+
+## 阶段 5（CLI 易用性）—— ✅ 完成并验证
+
+> 范围经用户确认为「扩展 CLI 易用性」：设备指纹 + `fwknop setup` + `fwknop knock` + `fwknop lint`。
+
+### 交付物（`31a5c958` + 可移植性 `98feade3`）
+| 文件 | 改动 |
+| --- | --- |
+| `lib/fko_fingerprint.c`（新，`98feade3`） | **公开** `DLL_API fko_gen_device_fingerprint()`：hostname \| MachineGuid \| 系统盘卷序列号（Win）/ hostname \| /etc/machine-id（Unix）→ SHA256 前 16 字节 → base64。在 lib 内直接用内部 `sha256`/`fko_base64_encode` |
+| `lib/fko.h`（`98feade3`） | 声明 `fko_gen_device_fingerprint` |
+| `client/wizard.c/.h`（新） | `fwknop setup` 向导：问答 → `fko_key_gen`(Rijndael/HMAC) + TOTP 种子(经 `fko_key_gen`+`fko_base64_decode`) + `fko_gen_device_fingerprint` → 输出 fwknoprc stanza + access.conf stanza + `otpauth://`(base32) |
+| `client/cli_subcmds.c/.h`（新） | 派发：`setup`→向导；`lint [rc] [--access-conf f]`→校验 stanza；`knock [profile]`→argv 重写 `-n <profile> -R` 复用发送管线 |
+| `client/fwknop.c` | `main()` 在 `config_init` 前注入派发 |
+| `lib/Makefile.am` / `client/Makefile.am`（`98feade3`） | 把新源文件纳入 autotools 编译（Linux 必需） |
+
+### 验证（MinGW）
+指纹稳定（两次 setup 一致 `jv7pRIcHO/YElB7oj25s1Q==`）；setup 输出 stanza+otpauth 正确；lint 检出缺失 TOTP 种子/端口范围；knock 派发为 `-n` 查找；经典 `-T --device-id` 向后兼容。
+
+### 设计要点
+零侵入派发（仅 `argv[1]∈{setup,lint,knock}` 拦截）；knock 即 `-n -R` 别名；otpauth base32 与服务端 TOTP 一致（digits=8,SHA256,30s）；指纹不出明文；lint 只读。
+
+---
+
+## 可移植性修复（`98feade3`，Linux 必需）
+**问题**：阶段 5 初版（`31a5c958`）把指纹放 `client/fingerprint.c`（调内部 `sha256`）、向导调内部 `get_random_data`。libfko 导出正则 `^fko_`，客户端链接 `libfko.so` 时这些符号被隐藏 → Linux 上 undefined reference。
+**修复**：指纹移入 lib 为公开 `fko_gen_device_fingerprint`；TOTP 种子改用公开 `fko_key_gen`+`fko_base64_decode`；客户端从此**仅用导出 `fko_*`**。并补齐 `Makefile.am`（阶段 1/3/5 新文件之前未纳入 autotools）。
+> Linux 续作时务必基于含 `98feade3` 的代码；否则需手动应用此修复。
+
+---
+
+## 待办
+
+### 阶段 2 —— 服务端 NFQ 端口范围监听（Linux）
+- `server/nfq_capture.c`：支持 NFQ 端口范围队列，取原始 dst 端口供阶段 4 的 `REQUIRE_TOTP_PORT_MATCH`。
+- `server/pcap_capture.c`：pcap 回退用 `udp dst portrange START-END`。
+- `server/fwknopd_common.h` + `server/config_init.c`：增 `NFQ_PORT_RANGE` 配置项。
+- iptables 规则：`iptables -I INPUT -p udp --dport START:END -j NFQUEUE --queue-num <n>`。
+- `server/Makefile.am`：若新增源文件需登记。
+
+### 阶段 4 —— 零信任硬化 + 审计/指标（Linux）
+- `server/incoming_spa.c`：解密后 `fko_get_device_id` 取指纹 → 与 `FINGERPRINT` 白名单 `constant_runtime_cmp`；可选 `REQUIRE_TOTP_PORT_MATCH` 重算端口比对。
+- `server/access.c` + `fwknopd_common.h`：解析 `FINGERPRINT`（可多行，`acc_str_list`）、`REQUIRE_FINGERPRINT Y/N`、`TOTP_SEED_BASE64`、`TOTP_PORT_RANGE`、`REQUIRE_TOTP_PORT_MATCH`。
+- 审计/指标：结构化 JSON 审计（open/close/reject/replay/unknown_fp/port_mismatch/aged）+ Prometheus 指标（`server/` 新增或复用 `log_msg.c`）。
+
+### 阶段 6 —— 测试/打包/迁移（Linux）
+- 扩展 `test/tests/*.pl`（现 25 个）：端口跳变 / v4 device_id / 指纹白名单 / 时钟偏移 / v3 兼容。
+- AFL：`test/afl/` 增 fuzz 目标（TOTP 解析、device_id 字段、端口范围 BPF）。
+- 打包：systemd unit、MSVC `.vcxproj` 纳入新文件（`win32/`）、迁移文档与灰度策略。
+
+### 阶段 5+ —— 透明代理 / GUI / 运维面板（大型 / 混合）
+- 透明代理（`client/proxy/`，新目录）：Linux 用 iptables/nftables REDIRECT 或 LD_PRELOAD；Windows 用 SOCKS5 或 WFP callout。
+- GUI：greenfield（Qt 等）。
+- 运维面板：依赖阶段 4 的服务端审计/指标。
+- 其余 CLI：`fwknop profile {add|list|use|remove}`、`fwknop status`（时钟偏移）、错误码人话翻译。
+
+---
+
+## 变更日志
+- 2026-07-23：阶段 1 完成（`9a097500`）——TOTP 引擎 + 端口映射 + 客户端端口跳变；MinGW 验证 6/6 RFC 向量 + 端口确定性。
+- 2026-07-23：阶段 3 完成（`d734a35b`+`05d11c67`）——SPA v4 device_id；v4/v3 单测 33/33 PASS；客户端 `--device-id` 冒烟通过。
+- 2026-07-23：阶段 5（CLI 易用性）完成（`31a5c958`）——指纹 + setup 向导 + knock + lint；冒烟全通过。
+- 2026-07-23：可移植性修复（`98feade3`）——指纹移入 lib 为公开 API、客户端仅用导出 `fko_*`、补齐 `Makefile.am`；Linux 链接 libfko.so 不再 undefined。
+- 2026-07-23：**Windows 可编译/可验证部分全部完成**；编写本文档作为 Linux 迁移交接。下一步在 Linux 续作阶段 2/4/6。
