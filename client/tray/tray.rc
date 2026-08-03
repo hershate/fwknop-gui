@@ -1,0 +1,8 @@
+/*
+ * tray.rc — 资源文件：嵌入 manifest（visual styles + DPI 感知）。
+ * windres 编译：windres -i tray.rc -J rc -O coff -o tray_res.o
+ *
+ * 1 = 资源 ID；24 = RT_MANIFEST 资源类型。
+ */
+
+1 24 "tray.manifest"
