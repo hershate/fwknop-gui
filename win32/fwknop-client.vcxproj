@@ -141,6 +141,8 @@
     <ClCompile Include="..\client\http_resolve_host.c" />
     <ClCompile Include="..\client\log_msg.c" />
     <ClCompile Include="..\client\spa_comm.c" />
+    <ClCompile Include="..\client\wizard.c" />
+    <ClCompile Include="..\client\cli_subcmds.c" />
     <ClCompile Include="..\client\utils.c" />
     <ClCompile Include="..\common\fko_util.c" />
     <ClCompile Include="..\common\strlcat.c" />
@@ -162,6 +164,8 @@
     <ClInclude Include="..\client\log_msg.h" />
     <ClInclude Include="..\common\netinet_common.h" />
     <ClInclude Include="..\client\spa_comm.h" />
+    <ClInclude Include="..\client\wizard.h" />
+    <ClInclude Include="..\client\cli_subcmds.h" />
     <ClInclude Include="..\client\utils.h" />
   </ItemGroup>
   <ItemGroup>

@@ -144,6 +144,9 @@
     <ClCompile Include="..\common\fko_util.c" />
     <ClCompile Include="..\common\strlcat.c" />
     <ClCompile Include="..\common\strlcpy.c" />
+    <ClCompile Include="..\lib\fko_totp.c" />
+    <ClCompile Include="..\lib\fko_device_id.c" />
+    <ClCompile Include="..\lib\fko_fingerprint.c" />
     <ClCompile Include="getlogin.c" />
   </ItemGroup>
   <ItemGroup>
@@ -156,6 +159,8 @@
     <ClInclude Include="..\lib\fko_common.h" />
     <ClInclude Include="..\lib\fko_context.h" />
     <ClInclude Include="..\lib\fko_limits.h" />
+    <ClInclude Include="..\lib\fko_device_id.h" />
+    <ClInclude Include="..\lib\fko_totp.h" />
     <ClInclude Include="..\lib\fko_state.h" />
     <ClInclude Include="..\common\fko_util.h" />
     <ClInclude Include="getlogin.h" />
