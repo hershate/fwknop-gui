@@ -15,7 +15,7 @@
 | --- | --- |
 | [01-项目总览.md](01-项目总览.md) | fwknop / SPA 是什么、与端口敲门的区别、本 fork 的定位与版本状态 |
 | [02-架构与代码结构.md](02-架构与代码结构.md) | 三大组件（libfko / fwknop / fwknopd）、SPA 数据格式与加密流水线、目录树 |
-| [03-二次开发增强方案.md](03-二次开发增强方案.md) | 四大净新增：TOTP 端口跳变、SPA v4 device_id、CLI 易用性、待办的零信任/UX |
+| [03-二次开发增强方案.md](03-二次开发增强方案.md) | 四大净新增：TOTP 端口跳变、SPA v4 device_id、CLI 易用性、待办的零信任/UX/服务端管理易用性 |
 | [04-开发进度与构建验证.md](04-开发进度与构建验证.md) | 已完成/待办状态、构建与验证方法、关键不变量、提交规范 |
 | [05-Windows便携版托盘.md](05-Windows便携版托盘.md) | Windows 便携版托盘程序（子进程调用 fwknop.exe 真实敲门） |
 
@@ -25,7 +25,8 @@
 - **协议版本**：`FKO_PROTOCOL_VERSION` 由上游 `3.0.0` 升级为 **`4.0.0`**（[lib/fko.h:56](../lib/fko.h#L56)）。
 - **客户端版本号**：仍是 `2.6.11`（`fwknop client 2.6.11, FKO protocol version 4.0.0`）。
 - **已完成并验证**（Windows / MinGW）：阶段 1（TOTP+端口跳变）、阶段 3（v4 device_id）、阶段 5（CLI 易用性）、**Windows 便携版托盘程序**（[client/tray/](../client/tray/)）。
-- **待办**（需 Linux）：阶段 2（服务端 NFQ 范围监听）、阶段 4（零信任硬化+审计）、阶段 6（测试/打包/迁移）、阶段 5+（透明代理/GUI/运维面板）。
+- **待办**（需 Linux）：阶段 2（服务端 NFQ 范围监听）、阶段 4（零信任硬化+审计+**服务端管理工具 `fwknopd-admin`/授权 QR/凭证文件/TOFU**）、阶段 6（测试/打包/迁移）、阶段 5+（透明代理/GUI/TUI+WebUI 管理壳/运维面板）。
+- **服务端管理决策（2026-08-13）**：CLI 先行、凭证默认加密（scrypt+AES-GCM）、TOFU 指纹绑定默认启用。详见 [03-二次开发增强方案.md §6](03-二次开发增强方案.md)。
 - **许可证**：GPL v2+（见 [COPYING](../COPYING)）。
 - **二次开发记录**：[REF/stage.md](../REF/stage.md)（进度与 Linux 迁移交接）、[REF/plan/Port Knocking.md](../REF/plan/Port%20Knocking.md)（完整方案 v2.0）。
 
