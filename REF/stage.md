@@ -103,12 +103,12 @@ gcc -std=c99 -O2 -Ilib -Icommon REF/build/test_device_id.c -L lib/.libs -lfko -o
 | 3 | SPA v4 device_id（lib + client） | Win✅ | ✅ 完成并验证 |
 | 4 | 零信任硬化 + 审计/指标 + 服务端管理工具（`fwknopd-admin`/QR/凭证/TOFU） | Linux | ✅ 完成并验证 |
 | 5 | UX：CLI 易用性（向导/指纹/knock/lint/import） | Win✅ | ✅ 完成并验证 |
-| 5+ | UX：透明代理 / GUI / TUI+WebUI 管理壳 / 运维面板 | 混合 | 待办（greenfield） |
+| 5+ | UX：透明代理 / GUI / WebUI 管理壳 / 运维面板 | 混合 | ✅ WebUI+TUI+CLI 完成；透明代理/Qt GUI 待办（greenfield） |
 | 6 | 测试套件扩展（无 root 回归脚本） | Linux | ✅ 完成并验证；打包/迁移待办 |
 
 图例：Win✅ = 本机可编译+单元验证；Linux = 需 Linux 环境。
 
-> **2026-08-13 进展**：阶段 2、4（4a/4b/4c/4d）、6（测试）在 Linux 完成。`test/run_fork_tests.sh` 22/22 PASS 覆盖全部新功能（不需 root）。剩余：阶段 5+ 的透明代理/GUI/WebUI（大型 greenfield）、阶段 6 的打包/迁移文档。
+> **2026-08-13 进展**：阶段 2、4（4a/4b/4c/4d）、6（测试）、5+（WebUI+TUI+CLI profile）在 Linux 完成。`test/run_fork_tests.sh` 27/27 PASS 覆盖全部新功能（不需 root）。剩余：阶段 5+ 的透明代理/Qt GUI（多周大型 greenfield）、阶段 6 的打包/迁移文档。
 
 ---
 
@@ -224,7 +224,7 @@ v4 往返/v3 兼容/timeout+device_id 单测 **33/33 PASS**（`REF/build/test_de
 ---
 
 ## 变更日志
-- 2026-08-13：**阶段 2/4/6 在 Linux 实现并验证**。基线构建修复（`lib/Makefile.am` fko_utests LDADD 同目录相对引用）。阶段 2 `PCAP_PORT_RANGE`→`udp dst portrange` BPF（commit `6ade35dd`）。阶段 4a 指纹白名单+TOFU+`REQUIRE_TOTP_PORT_MATCH`（`46c683e2`）。阶段 4b 结构化 JSON 审计+Prometheus 指标（`ec205b82`）。阶段 4c `fwknopd-admin` CLI + 凭证/QR 发放 + `fko_encrypt_buf`（`4cf4386a`）。阶段 4d 客户端 `fwknop import`（`83d93479`）。阶段 6 无 root 回归脚本 `test/run_fork_tests.sh` 22/22 PASS（`7440971f`）。凭证加密改为复用 rij_encrypt 的 AES-256-CBC（非新原语，比方案 v2.1 的 scrypt+AES-GCM 更务实）。
+- 2026-08-13：**阶段 2/4/6/5+ 在 Linux 实现并验证**。基线构建修复（`lib/Makefile.am` fko_utests LDADD 同目录相对引用）。阶段 2 `PCAP_PORT_RANGE`→`udp dst portrange` BPF（commit `6ade35dd`）。阶段 4a 指纹白名单+TOFU+`REQUIRE_TOTP_PORT_MATCH`（`46c683e2`）。阶段 4b 结构化 JSON 审计+Prometheus 指标（`ec205b82`）。阶段 4c `fwknopd-admin` CLI + 凭证/QR 发放 + `fko_encrypt_buf`（`4cf4386a`）。阶段 4d 客户端 `fwknop import`（`83d93479`）。阶段 6 无 root 回归脚本 `test/run_fork_tests.sh`（`7440971f`）。阶段 5+：WebUI 运维面板 Go（`8b5b62a8`）、TUI 管理壳（`2b692138`）、`fwknop profile list`（`395d4d48`）。回归 27/27 PASS。凭证加密改为复用 rij_encrypt 的 AES-256-CBC（非新原语，比方案 v2.1 的 scrypt+AES-GCM 更务实）。
 - 2026-08-13：细化服务端管理易用性方案（用户决策：CLI 先行 / 凭证默认加密 / TOFU 默认启用）——`fwknopd-admin` CLI、授权 QR（`fwknop://`）、凭证文件（JSON v1，scrypt+AES-GCM）、TOFU 首次使用绑定；方案文档 v2.0 → v2.1（§7.6/附录 E）；阶段 4 升级为「零信任硬化 + 审计/指标 + 服务端管理工具」。
 - 2026-07-23：阶段 1 完成（`9a097500`）——TOTP 引擎 + 端口映射 + 客户端端口跳变；MinGW 验证 6/6 RFC 向量 + 端口确定性。
 - 2026-07-23：阶段 3 完成（`d734a35b`+`05d11c67`）——SPA v4 device_id；v4/v3 单测 33/33 PASS；客户端 `--device-id` 冒烟通过。
