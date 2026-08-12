@@ -43,6 +43,7 @@
 #include "fw_util.h"
 #include "fwknopd_errors.h"
 #include "replay_cache.h"
+#include "fko_totp.h"   /* stage 4: TOTP port factor (REQUIRE_TOTP_PORT_MATCH) */
 
 #define CTX_DUMP_BUFSIZE            4096                /*!< Maximum size allocated to a FKO context dump */
 
@@ -297,6 +298,12 @@ get_spa_data_fields(fko_ctx_t ctx, spa_data_t *spdat)
         return(res);
 
     res = fko_get_spa_client_timeout(ctx, (int *)&(spdat->client_timeout));
+    if(res != FKO_SUCCESS)
+        return(res);
+
+    /* SPA v4 optional device_id (NULL for v3 packets / when not set). */
+    spdat->device_id = NULL;
+    res = fko_get_device_id(ctx, &(spdat->device_id));
     if(res != FKO_SUCCESS)
         return(res);
 
@@ -823,6 +830,125 @@ check_username(acc_stanza_t *acc, spa_data_t *spadat, const int stanza_num)
     return 1;
 }
 
+/* Stage 4: validate the SPA v4 device_id against the stanza fingerprint
+ * whitelist (constant-time), or bind it via TOFU on first use.
+ *
+ *  - No fingerprint policy (require_fingerprint == 0): always pass (the
+ *    device_id, if present, is informational only).
+ *  - Explicit whitelist (fingerprint_list != NULL): pass iff the packet
+ *    device_id is present and matches an entry under constant_runtime_cmp.
+ *  - TOFU mode (require_fingerprint && list empty): if within the grace
+ *    window, bind the first-seen device_id into the whitelist (in-memory
+ *    and persisted to the TOFU state file); outside the window, reject.
+ *
+ * On any reject the function returns 0 (caller continues to the next
+ * stanza). A missing device_id on a v4 packet counts as a reject when a
+ * fingerprint policy is active.
+*/
+static int
+check_device_id(fko_srv_options_t *opts, acc_stanza_t *acc,
+        spa_data_t *spadat, const int stanza_num)
+{
+    acc_string_list_t   *fpr = NULL;
+
+    if(! acc->require_fingerprint)
+        return 1;
+
+    if(spadat->device_id == NULL || spadat->device_id[0] == '\0')
+    {
+        log_msg(LOG_WARNING,
+            "[%s] (stanza #%d) Fingerprint required but SPA packet has no device_id",
+            spadat->pkt_source_ip, stanza_num);
+        return 0;
+    }
+
+    /* Explicit whitelist: constant-time match against each entry. Only
+     * compare when lengths are equal (avoids reading past the shorter
+     * buffer); device_id values are not secret, but we use constant-time
+     * comparison per the design (REF/plan/Port Knocking.md §4.3). */
+    if(! acc->fingerprint_tofu)
+    {
+        size_t dev_len = strlen(spadat->device_id);
+        for(fpr = acc->fingerprint_list; fpr != NULL; fpr = fpr->next)
+        {
+            if(dev_len == strlen(fpr->str)
+                && constant_runtime_cmp(spadat->device_id, fpr->str,
+                        dev_len) == 0)
+            {
+                return 1;
+            }
+        }
+        log_msg(LOG_WARNING,
+            "[%s] (stanza #%d) device_id not in fingerprint whitelist",
+            spadat->pkt_source_ip, stanza_num);
+        return 0;
+    }
+
+    /* TOFU mode: bind within the grace window. */
+    if(acc->fingerprint_tofu_timeout > 0
+        && time(NULL) > acc->fingerprint_tofu_deadline)
+    {
+        log_msg(LOG_WARNING,
+            "[%s] (stanza #%d) TOFU grace window expired, device_id not bound",
+            spadat->pkt_source_ip, stanza_num);
+        return 0;
+    }
+
+    /* Bind this device_id. Persist via the TOFU state file and add to the
+     * in-memory list so subsequent packets from the same device match the
+     * explicit-whitelist path. */
+    if(tofu_bind_device(opts, acc, spadat->device_id, stanza_num) != 0)
+    {
+        log_msg(LOG_WARNING,
+            "[%s] (stanza #%d) Could not persist TOFU binding for device_id",
+            spadat->pkt_source_ip, stanza_num);
+        return 0;
+    }
+    log_msg(LOG_NOTICE,
+        "[%s] (stanza #%d) TOFU: bound new device_id %s",
+        spadat->pkt_source_ip, stanza_num, spadat->device_id);
+    return 1;
+}
+
+/* Stage 4: optional REQUIRE_TOTP_PORT_MATCH. Recompute the destination port
+ * the client should have used for the SPA packet's timestamp window and
+ * compare it (constant-time) to the port the packet actually arrived on
+ * (spa_pkt->packet_dst_port). This makes the destination port itself a
+ * one-time factor: an encrypted packet replayed to a different port is
+ * rejected even if the cryptography is intact. Requires the stanza to carry
+ * a TOTP seed and port range (validated at parse time). */
+static int
+check_totp_port(const fko_srv_options_t *opts, acc_stanza_t *acc,
+        spa_pkt_info_t *spa_pkt, spa_data_t *spadat, const int stanza_num)
+{
+    unsigned int expected = 0;
+    int res;
+
+    if(! acc->require_totp_port_match)
+        return 1;
+
+    res = fko_totp_port_now(acc->totp_seed, acc->totp_seed_len,
+            spadat->timestamp, acc->totp_port_digits,
+            acc->totp_port_start, acc->totp_port_end, &expected);
+    if(res != FKO_SUCCESS)
+    {
+        log_msg(LOG_WARNING,
+            "[%s] (stanza #%d) TOTP port computation failed",
+            spadat->pkt_source_ip, stanza_num);
+        return 0;
+    }
+
+    if(expected != spa_pkt->packet_dst_port)
+    {
+        log_msg(LOG_WARNING,
+            "[%s] (stanza #%d) TOTP port mismatch: arrived=%u expected=%u",
+            spadat->pkt_source_ip, stanza_num,
+            spa_pkt->packet_dst_port, expected);
+        return 0;
+    }
+    return 1;
+}
+
 static int
 check_nat_access_types(fko_srv_options_t *opts, acc_stanza_t *acc,
         spa_data_t *spadat, const int stanza_num)
@@ -1140,6 +1266,21 @@ incoming_spa(fko_srv_options_t *opts)
          * matches.
         */
         if(! check_username(acc, &spadat, stanza_num))
+        {
+            acc = acc->next;
+            continue;
+        }
+
+        /* Stage 4: SPA v4 device fingerprint whitelist / TOFU binding, and
+         * the optional TOTP destination-port factor. Both checks sit between
+         * identity (username) and the port-policy checks so a mismatch fails
+         * closed without opening the firewall. */
+        if(! check_device_id(opts, acc, &spadat, stanza_num))
+        {
+            acc = acc->next;
+            continue;
+        }
+        if(! check_totp_port(opts, acc, spa_pkt, &spadat, stanza_num))
         {
             acc = acc->next;
             continue;

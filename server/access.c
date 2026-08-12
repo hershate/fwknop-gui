@@ -39,6 +39,10 @@
 #include "log_msg.h"
 #include "cmd_cycle.h"
 #include <dirent.h>
+#include <fcntl.h>
+#include <time.h>
+#include <errno.h>
+#include "fko_totp.h"   /* stage 4: FKO_TOTP_MIN/MAX_DIGITS */
 
 #define FATAL_ERR -1
 
@@ -100,6 +104,46 @@ add_acc_string(char **var, const char *val, FILE *file_ptr,
         clean_exit(opts, NO_FW_CLEANUP, EXIT_FAILURE);
     }
     return;
+}
+
+/* Append a value to a multi-valued access string (comma-separated).
+ * Used for directives that may appear on multiple lines (e.g. FINGERPRINT):
+ * the first occurrence sets the value, subsequent lines append ",val".
+*/
+static void
+add_acc_string_append(char **var, const char *val, FILE *file_ptr,
+        fko_srv_options_t *opts)
+{
+    char *new_str = NULL;
+    if(var == NULL)
+    {
+        log_msg(LOG_ERR, "[*] add_acc_string_append() called with NULL variable");
+        if(file_ptr != NULL)
+            fclose(file_ptr);
+        clean_exit(opts, NO_FW_CLEANUP, EXIT_FAILURE);
+    }
+    if(*var == NULL)
+    {
+        if((new_str = strdup(val)) == NULL)
+            goto mem_err;
+    }
+    else
+    {
+        size_t need = strlen(*var) + 1 + strlen(val) + 1;
+        if((new_str = malloc(need)) == NULL)
+            goto mem_err;
+        snprintf(new_str, need, "%s,%s", *var, val);
+        free(*var);
+    }
+    *var = new_str;
+    return;
+
+mem_err:
+    log_msg(LOG_ERR,
+        "[*] Fatal memory allocation error appending access list entry");
+    if(file_ptr != NULL)
+        fclose(file_ptr);
+    clean_exit(opts, NO_FW_CLEANUP, EXIT_FAILURE);
 }
 
 /* Add an access user entry
@@ -958,6 +1002,19 @@ free_acc_stanza_data(acc_stanza_t *acc)
         free(acc->gpg_remote_fpr);
         free_acc_string_list(acc->gpg_remote_fpr_list);
     }
+
+    if(acc->fingerprint != NULL)
+    {
+        free(acc->fingerprint);
+        free_acc_string_list(acc->fingerprint_list);
+    }
+    if(acc->totp_seed_base64 != NULL)
+        free(acc->totp_seed_base64);
+    if(acc->totp_seed != NULL)
+    {
+        memset(acc->totp_seed, 0, acc->totp_seed_len);
+        free(acc->totp_seed);
+    }
     return;
 }
 
@@ -967,6 +1024,12 @@ static void
 expand_acc_ent_lists(fko_srv_options_t *opts)
 {
     acc_stanza_t   *acc = opts->acc_stanzas;
+
+    /* Stage 4: seed each stanza's fingerprint whitelist with any device_id
+     * values bound via TOFU in a prior run (persisted in the run dir). Done
+     * before the per-stanza TOFU-mode computation below so a stanza with
+     * prior bindings is treated as having an explicit whitelist. */
+    tofu_load_state(opts);
 
     /* We need to do this for each stanza.
     */
@@ -1033,6 +1096,52 @@ expand_acc_ent_lists(fko_srv_options_t *opts)
             }
         }
 
+        /* Stage 4: expand the SPA v4 device fingerprint whitelist (one or
+         * more base64 device_id values, comma-separated across FINGERPRINT
+         * directives). When REQUIRE_FINGERPRINT is set but no fingerprints
+         * are configured, the stanza enters TOFU mode. */
+        if(acc->fingerprint != NULL && strlen(acc->fingerprint))
+        {
+            if(expand_acc_string_list(&(acc->fingerprint_list),
+                        acc->fingerprint) != SUCCESS)
+            {
+                log_msg(LOG_ERR, "[*] Fatal invalid FINGERPRINT list in access stanza");
+                clean_exit(opts, NO_FW_CLEANUP, EXIT_FAILURE);
+            }
+        }
+        acc->fingerprint_tofu = (acc->require_fingerprint
+                && acc->fingerprint_list == NULL);
+        if(acc->fingerprint_tofu && acc->fingerprint_tofu_timeout > 0)
+            acc->fingerprint_tofu_deadline = time(NULL)
+                + acc->fingerprint_tofu_timeout;
+
+        /* Decode the TOTP seed for optional REQUIRE_TOTP_PORT_MATCH. */
+        if(acc->totp_seed_base64 != NULL && strlen(acc->totp_seed_base64))
+        {
+            int dlen = strlen(acc->totp_seed_base64);
+            acc->totp_seed = malloc(dlen + 1);
+            if(acc->totp_seed == NULL)
+            {
+                log_msg(LOG_ERR, "[*] Memory allocation error for TOTP seed");
+                clean_exit(opts, NO_FW_CLEANUP, EXIT_FAILURE);
+            }
+            acc->totp_seed_len = fko_base64_decode(acc->totp_seed_base64,
+                    acc->totp_seed);
+            if(acc->totp_seed_len <= 0)
+            {
+                log_msg(LOG_ERR, "[*] Invalid TOTP_SEED_BASE64 in access stanza");
+                clean_exit(opts, NO_FW_CLEANUP, EXIT_FAILURE);
+            }
+        }
+        if(acc->require_totp_port_match && acc->totp_seed == NULL)
+        {
+            log_msg(LOG_ERR,
+                "[*] REQUIRE_TOTP_PORT_MATCH requires TOTP_SEED_BASE64 in access stanza");
+            clean_exit(opts, NO_FW_CLEANUP, EXIT_FAILURE);
+        }
+        if(acc->totp_port_digits == 0)
+            acc->totp_port_digits = 8;
+
         acc = acc->next;
     }
     return;
@@ -1060,6 +1169,115 @@ free_acc_stanzas(fko_srv_options_t *opts)
     return;
 }
 
+/* Build a non-secret, stable identifier for an access stanza so TOFU
+ * bindings in the state file can be matched back to the right stanza after
+ * a restart. Uses admin-chosen config only (SOURCE + username + open_ports);
+ * no key material is persisted. Two stanzas that share all three fields will
+ * share TOFU bindings, which is acceptable. */
+static void
+tofu_stanza_key(const acc_stanza_t *acc, char *out, size_t out_sz)
+{
+    snprintf(out, out_sz, "%s|%s|%s",
+            acc->source ? acc->source : "",
+            acc->require_username ? acc->require_username : "",
+            acc->open_ports ? acc->open_ports : "");
+    return;
+}
+
+/* Path of the TOFU state file: <FWKNOP_RUN_DIR>/fwknop_tofu.state */
+static void
+tofu_state_path(const fko_srv_options_t *opts, char *out, size_t out_sz)
+{
+    snprintf(out, out_sz, "%s/fwknop_tofu.state",
+            opts->config[CONF_FWKNOP_RUN_DIR]);
+    return;
+}
+
+/* Append "<stanza_key> <device_id>\n" to the state file (create if needed).
+ * Writes are appended (O_APPEND) so concurrent binds are safe. */
+int
+tofu_bind_device(fko_srv_options_t *opts, acc_stanza_t *acc,
+        const char *device_id, const int stanza_num)
+{
+    char key[ACCESS_BUF_LEN + 128] = {0};
+    char path[MAX_PATH_LEN] = {0};
+    char line[MAX_SPA_DEVICE_ID_SIZE + sizeof(key) + 8];
+    int fd;
+
+    tofu_stanza_key(acc, key, sizeof(key));
+    tofu_state_path(opts, path, sizeof(path));
+
+    /* Mirror into the in-memory whitelist so subsequent packets match the
+     * explicit-whitelist path (and the stanza exits TOFU mode). */
+    if(add_string_list_ent(&(acc->fingerprint_list), (char *)device_id) != SUCCESS)
+    {
+        log_msg(LOG_ERR,
+            "[*] (stanza #%d) TOFU: memory allocation error binding device_id",
+            stanza_num);
+        return 1;
+    }
+    acc->fingerprint_tofu = 0;
+
+    snprintf(line, sizeof(line), "%s %s\n", key, device_id);
+
+    fd = open(path, O_WRONLY|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR);
+    if(fd < 0)
+    {
+        log_msg(LOG_WARNING,
+            "(stanza #%d) TOFU: could not open state file %s: %s",
+            stanza_num, path, strerror(errno));
+        return 0;  /* in-memory bind still succeeded */
+    }
+    if(write(fd, line, strlen(line)) < 0)
+        log_msg(LOG_WARNING,
+            "(stanza #%d) TOFU: write to state file failed: %s",
+            stanza_num, strerror(errno));
+    close(fd);
+    return 0;
+}
+
+/* Read the TOFU state file and seed each TOFU-mode stanza's whitelist with
+ * any previously-bound device_id values. Called after stanza parsing. */
+int
+tofu_load_state(fko_srv_options_t *opts)
+{
+    char path[MAX_PATH_LEN] = {0};
+    FILE *fp;
+    acc_stanza_t *acc;
+    char buf[256];
+
+    tofu_state_path(opts, path, sizeof(path));
+    fp = fopen(path, "r");
+    if(fp == NULL)
+        return 0;  /* no prior bindings — fine */
+
+    while(fgets(buf, sizeof(buf), fp) != NULL)
+    {
+        char *sp = strchr(buf, ' ');
+        char *nl;
+        if(sp == NULL)
+            continue;
+        *sp = '\0';
+        sp++;
+        nl = strchr(sp, '\n');
+        if(nl) *nl = '\0';
+        if(sp[0] == '\0')
+            continue;
+
+        for(acc = opts->acc_stanzas; acc != NULL; acc = acc->next)
+        {
+            char key[ACCESS_BUF_LEN + 128] = {0};
+            tofu_stanza_key(acc, key, sizeof(key));
+            if(strcmp(key, buf) == 0)
+            {
+                add_string_list_ent(&(acc->fingerprint_list), sp);
+                break;
+            }
+        }
+    }
+    fclose(fp);
+    return 0;
+}
 /**
  * \brief Frees the final access stanza
  *
@@ -1818,6 +2036,60 @@ parse_access_file(fko_srv_options_t *opts, char *access_filename, int *depth)
             add_acc_bool(&(curr_acc->require_source_address), val);
         else if(CONF_VAR_IS(var, "REQUIRE_SOURCE"))  /* synonym for REQUIRE_SOURCE_ADDRESS */
             add_acc_bool(&(curr_acc->require_source_address), val);
+
+        /* Stage 4: SPA v4 device fingerprint whitelist + TOFU. FINGERPRINT
+         * may appear multiple times and/or as a comma-separated list; each
+         * value is a base64 device_id produced by the client's
+         * fko_gen_device_fingerprint(). */
+        else if(CONF_VAR_IS(var, "FINGERPRINT"))
+            add_acc_string_append(&(curr_acc->fingerprint), val, file_ptr, opts);
+        else if(CONF_VAR_IS(var, "REQUIRE_FINGERPRINT"))
+            add_acc_bool(&(curr_acc->require_fingerprint), val);
+        else if(CONF_VAR_IS(var, "FINGERPRINT_TOFU_TIMEOUT"))
+        {
+            curr_acc->fingerprint_tofu_timeout = strtol_wrapper(val, 0,
+                    RCHK_MAX_FW_TIMEOUT, NO_EXIT_UPON_ERR, &is_err);
+            if(is_err != FKO_SUCCESS)
+            {
+                log_msg(LOG_ERR,
+                    "[*] FINGERPRINT_TOFU_TIMEOUT value not in range.");
+                fclose(file_ptr);
+                return EXIT_FAILURE;
+            }
+        }
+        else if(CONF_VAR_IS(var, "TOTP_SEED_BASE64"))
+            add_acc_string(&(curr_acc->totp_seed_base64), val, file_ptr, opts);
+        else if(CONF_VAR_IS(var, "TOTP_PORT_RANGE"))
+        {
+            /* Accept "START-END". */
+            if(sscanf(val, "%u-%u",
+                    &curr_acc->totp_port_start,
+                    &curr_acc->totp_port_end) != 2
+                || curr_acc->totp_port_start == 0
+                || curr_acc->totp_port_end <= curr_acc->totp_port_start
+                || curr_acc->totp_port_end > 65535)
+            {
+                log_msg(LOG_ERR,
+                    "[*] Invalid TOTP_PORT_RANGE '%s' (expected START-END).", val);
+                fclose(file_ptr);
+                return EXIT_FAILURE;
+            }
+        }
+        else if(CONF_VAR_IS(var, "TOTP_PORT_DIGITS"))
+        {
+            int dg = strtol_wrapper(val, FKO_TOTP_MIN_DIGITS,
+                    FKO_TOTP_MAX_DIGITS, NO_EXIT_UPON_ERR, &is_err);
+            if(is_err != FKO_SUCCESS)
+            {
+                log_msg(LOG_ERR, "[*] TOTP_PORT_DIGITS value not in range [6,10].");
+                fclose(file_ptr);
+                return EXIT_FAILURE;
+            }
+            curr_acc->totp_port_digits = (unsigned char)dg;
+        }
+        else if(CONF_VAR_IS(var, "REQUIRE_TOTP_PORT_MATCH"))
+            add_acc_bool(&(curr_acc->require_totp_port_match), val);
+
         else if(CONF_VAR_IS(var, "GPG_HOME_DIR"))
         {
             if (is_valid_dir(val))
@@ -2259,7 +2531,14 @@ dump_access_list(const fko_srv_options_t *opts)
             "            GPG_REQUIRE_SIG:  %s\n"
             "GPG_IGNORE_SIG_VERIFY_ERROR:  %s\n"
             "              GPG_REMOTE_ID:  %s\n"
-            "         GPG_FINGERPRINT_ID:  %s\n",
+            "         GPG_FINGERPRINT_ID:  %s\n"
+            "                 FINGERPRINT:  %s\n"
+            "         REQUIRE_FINGERPRINT:  %s\n"
+            "       FINGERPRINT_TOFU_MODE:  %s\n"
+            "    FINGERPRINT_TOFU_TIMEOUT:  %d\n"
+            "            TOTP_SEED_BASE64:  %s\n"
+            "             TOTP_PORT_RANGE:  %s\n"
+            "    REQUIRE_TOTP_PORT_MATCH:  %s\n",
             ++i,
             acc->source,
             (acc->destination == NULL) ? "<not set>" : acc->destination,
@@ -2300,7 +2579,14 @@ dump_access_list(const fko_srv_options_t *opts)
             acc->gpg_require_sig ? "Yes" : "No",
             acc->gpg_ignore_sig_error  ? "Yes" : "No",
             (acc->gpg_remote_id == NULL) ? "<not set>" : acc->gpg_remote_id,
-            (acc->gpg_remote_fpr == NULL) ? "<not set>" : acc->gpg_remote_fpr
+            (acc->gpg_remote_fpr == NULL) ? "<not set>" : acc->gpg_remote_fpr,
+            (acc->fingerprint == NULL) ? "<not set>" : acc->fingerprint,
+            acc->require_fingerprint ? "Yes" : "No",
+            acc->fingerprint_tofu ? "Yes" : "No",
+            acc->fingerprint_tofu_timeout,
+            (acc->totp_seed_base64 == NULL) ? "<not set>" : "<see the access.conf file>",
+            (acc->totp_port_start && acc->totp_port_end) ? "set" : "<not set>",
+            acc->require_totp_port_match ? "Yes" : "No"
         );
 
         fprintf(stdout, "\n");

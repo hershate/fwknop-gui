@@ -174,6 +174,27 @@ void free_acc_stanzas(fko_srv_options_t *opts);
  */
 void free_acc_port_list(acc_port_list_t *plist);
 
+/* Stage 4: TOFU (Trust On First Use) device binding persistence.
+ *
+ * tofu_load_state() is called after access.conf stanzas are parsed: for each
+ * stanza in TOFU mode (REQUIRE_FINGERPRINT Y, no explicit FINGERPRINT list),
+ * it reads previously-bound device_id values from the TOFU state file in the
+ * run directory and seeds them into the stanza whitelist so a restart does
+ * not lose bindings.
+ *
+ * tofu_bind_device() is called from incoming_spa when a fresh device_id
+ * passes key+HMAC+age checks in TOFU mode: it appends the device_id to the
+ * stanza whitelist (in-memory) and atomically appends it to the state file.
+ *
+ * The state file path is <FWKNOP_RUN_DIR>/fwknop_tofu.state. Lines are
+ * "<stanza_key> <device_id>", where stanza_key is a short stable identifier
+ * derived from the stanza key/hmac material so bindings do not collide
+ * across stanzas. Returns 0 on success, non-zero on error.
+ */
+int tofu_load_state(fko_srv_options_t *opts);
+int tofu_bind_device(fko_srv_options_t *opts, acc_stanza_t *acc,
+        const char *device_id, const int stanza_num);
+
 #ifdef HAVE_C_UNIT_TESTS
 int register_ts_access(void);
 #endif

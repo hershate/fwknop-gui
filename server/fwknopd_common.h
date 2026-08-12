@@ -428,6 +428,29 @@ typedef struct acc_stanza
     gid_t                cmd_exec_gid;
     char                *require_username;
     unsigned char        require_source_address;
+
+    /* SPA v4 device identity / fingerprint (stage 4 zero-trust).
+     * fingerprint_list is the explicit whitelist (one or more base64
+     * device_id values). When REQUIRE_FINGERPRINT is set but the list is
+     * empty, the stanza operates in TOFU mode: the first device_id that
+     * passes key+HMAC+age checks is bound (in-memory + persisted to the
+     * TOFU state file) within FINGERPRINT_TOFU_TIMEOUT seconds of daemon
+     * start. require_totp_port_match recomputes the expected destination
+     * port from the SPA timestamp and compares it to the port the packet
+     * actually arrived on. See REF/plan/Port Knocking.md §4.3/§7.6. */
+    char                *fingerprint;
+    acc_string_list_t   *fingerprint_list;
+    unsigned char        require_fingerprint;
+    unsigned char        fingerprint_tofu;          /* computed: require && list empty */
+    time_t               fingerprint_tofu_deadline; /* daemon_start + tofu_timeout */
+    int                  fingerprint_tofu_timeout;  /* seconds, 0 => no TOFU grace */
+    char                *totp_seed_base64;
+    unsigned char       *totp_seed;                 /* decoded raw bytes */
+    int                  totp_seed_len;
+    unsigned int         totp_port_start;
+    unsigned int         totp_port_end;
+    unsigned char        totp_port_digits;          /* default 8 */
+    unsigned char        require_totp_port_match;
     char                *gpg_home_dir;
     char                *gpg_exe;
     char                *gpg_decrypt_id;
@@ -634,6 +657,7 @@ typedef struct spa_data
     unsigned int    client_timeout;
     unsigned int    fw_access_timeout;
     char            *use_src_ip;
+    char           *device_id;   /* SPA v4 optional device fingerprint (b64) */
 } spa_data_t;
 
 /* fwknopd server configuration parameters and values
