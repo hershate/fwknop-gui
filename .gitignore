@@ -110,3 +110,7 @@ client/tray/build/
 client/tray/dist/
 !client/tray/Makefile
 
+
+# Stage 5+ WebUI dashboard (server/dashboard/) — Go build artifacts ignored;
+# the Go sources (main.go/embed.go/go.mod/web/) are tracked.
+server/dashboard/fwknop-dashboard

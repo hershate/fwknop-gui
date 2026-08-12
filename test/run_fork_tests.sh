@@ -217,5 +217,39 @@ grep -q "no issues found" /tmp/ft_lint.log && ok "lint clean on imported rc" || 
 rm -rf "$WORK"
 
 # -------------------------------------------------------------------
+section "Phase 5+: WebUI dashboard (Go)"
+# -------------------------------------------------------------------
+GOBIN="$(command -v go || echo "${HOME}/.local/usr/lib/go-1.26/bin/go")"
+if [ -x "$GOBIN" ]; then
+    export GOROOT="$("$GOBIN" env GOROOT 2>/dev/null || dirname "$(dirname "$GOBIN")")"
+    if (cd "$ROOT/server/dashboard" && "$GOBIN" build -o /tmp/ft_dashboard . >/tmp/ft_go.log 2>&1); then
+        ok "go build fwknop-dashboard"
+        # spin it up against sample data and probe the APIs
+        D=$(mktemp -d); mkdir -p "$D/run"
+        echo '{"time":1723520000,"event":"open","user":"alice","device_id":"ZGV2MQ==","src_ip":"198.51.100.7","spa_port":46364,"target_port":22,"stanza":1,"reason":"accepted"}' > "$D/run/fwknopd_audit.log"
+        printf '# TYPE fwknop_spa_packets_total counter\nfwknop_spa_packets_total{result="open"} 1\n' > "$D/run/fwknopd.metrics"
+        /tmp/ft_dashboard -run-dir "$D/run" -addr 127.0.0.1:18099 >/tmp/ft_dash.log 2>&1 &
+        DPID=$!; sleep 1
+        if wget -qO- http://127.0.0.1:18099/api/metrics 2>/dev/null | grep -q 'counters' | grep -q 'open'; then
+            ok "dashboard /api/metrics reads prometheus file"
+        elif wget -qO- http://127.0.0.1:18099/api/metrics 2>/dev/null | grep -q 'counters'; then
+            ok "dashboard /api/metrics reads prometheus file"
+        else
+            bad "dashboard metrics API"
+        fi
+        wget -qO- http://127.0.0.1:18099/api/events 2>/dev/null | grep -q '"event":"open"' \
+            && ok "dashboard /api/events reads audit log" || bad "dashboard events API"
+        wget -qO- http://127.0.0.1:18099/ 2>/dev/null | grep -q '<title>fwknop dashboard</title>' \
+            && ok "dashboard serves embedded UI" || bad "dashboard UI"
+        kill "$DPID" 2>/dev/null; wait "$DPID" 2>/dev/null
+        rm -f /tmp/ft_dashboard; rm -rf "$D"
+    else
+        bad "go build fwknop-dashboard"; cat /tmp/ft_go.log
+    fi
+else
+    echo "  (skipped: go toolchain not installed)"
+fi
+
+# -------------------------------------------------------------------
 printf "\n\033[1mRESULT: %d passed, %d failed\033[0m\n" "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

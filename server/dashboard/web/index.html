@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>fwknop dashboard</title>
+<style>
+  :root {
+    --bg:#0d1117; --panel:#161b22; --border:#30363d; --text:#c9d1d9;
+    --muted:#8b949e; --accent:#58a6ff; --green:#3fb950; --red:#f85149;
+    --yellow:#d29922; --purple:#bc8cff;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+         background:var(--bg); color:var(--text); }
+  header { padding:16px 24px; border-bottom:1px solid var(--border);
+           display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  header h1 { font-size:18px; margin:0; font-weight:600; }
+  header .meta { color:var(--muted); font-size:13px; }
+  main { padding:24px; max-width:1400px; margin:0 auto; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:24px; }
+  .tile { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:14px 16px; }
+  .tile .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:0.5px; }
+  .tile .value { font-size:26px; font-weight:600; margin-top:4px; }
+  .tile.open .value { color:var(--green); }
+  .tile.reject .value { color:var(--red); }
+  .tile.replay .value { color:var(--yellow); }
+  .tile.fingerprint .value { color:var(--purple); }
+  .tile.port .value { color:var(--red); }
+  .tile.aged .value { color:var(--yellow); }
+  .tile.tofu .value { color:var(--accent); }
+  section { background:var(--panel); border:1px solid var(--border); border-radius:8px; margin-bottom:24px; }
+  section h2 { margin:0; padding:14px 18px; font-size:14px; border-bottom:1px solid var(--border);
+               display:flex; justify-content:space-between; align-items:center; }
+  section h2 button { font-size:12px; padding:4px 10px; background:var(--border); color:var(--text);
+                      border:1px solid var(--border); border-radius:5px; cursor:pointer; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { padding:8px 18px; text-align:left; border-bottom:1px solid var(--border); }
+  th { color:var(--muted); font-weight:500; font-size:12px; text-transform:uppercase; }
+  td.time { color:var(--muted); white-space:nowrap; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+  .b-open{background:rgba(63,185,80,.15);color:var(--green);}
+  .b-close{background:rgba(139,148,158,.15);color:var(--muted);}
+  .b-reject{background:rgba(248,81,73,.15);color:var(--red);}
+  .b-replay{background:rgba(210,153,34,.15);color:var(--yellow);}
+  .b-unknown_fingerprint{background:rgba(188,140,255,.15);color:var(--purple);}
+  .b-port_mismatch{background:rgba(248,81,73,.15);color:var(--red);}
+  .b-aged{background:rgba(210,153,34,.15);color:var(--yellow);}
+  .b-tofu_bind{background:rgba(88,166,255,.15);color:var(--accent);}
+  #tofu, #admin-out { font-family:ui-monospace,monospace; font-size:12px; padding:14px 18px; color:var(--muted); }
+  details { padding:14px 18px; }
+  summary { cursor:pointer; color:var(--accent); font-size:13px; }
+  form { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-top:10px; }
+  label { font-size:12px; color:var(--muted); }
+  input { background:var(--bg); border:1px solid var(--border); color:var(--text);
+          padding:6px 8px; border-radius:5px; font-size:13px; }
+  button.add { background:var(--green); color:#000; border:none; padding:8px 14px; border-radius:5px;
+               font-weight:600; cursor:pointer; }
+  .err { color:var(--red); }
+</style>
+</head>
+<body>
+<header>
+  <h1>fwknop dashboard</h1>
+  <span class="meta" id="status">connecting…</span>
+</header>
+<main>
+  <div class="grid" id="tiles"></div>
+
+  <section>
+    <h2>Recent SPA events <button onclick="loadEvents()">refresh</button></h2>
+    <table>
+      <thead><tr><th>Time</th><th>Event</th><th>User</th><th>Device</th><th>Source IP</th><th>SPA port</th><th>Target</th><th>Reason</th></tr></thead>
+      <tbody id="events"></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>TOFU device bindings <button onclick="loadTOFU()">refresh</button></h2>
+    <div id="tofu">loading…</div>
+  </section>
+
+  <section>
+    <h2>Management (fwknopd-admin)</h2>
+    <details>
+      <summary>Issue a new credential (calls <code>fwknopd-admin user add</code>)</summary>
+      <form id="add-form">
+        <div><label>Name</label><input name="name" placeholder="alice" required></div>
+        <div><label>SPA server</label><input name="server" placeholder="203.0.113.10"></div>
+        <div><label>Access</label><input name="access" placeholder="tcp/22"></div>
+        <div><label>User</label><input name="user" placeholder="alice"></div>
+        <div><label>Port range</label><input name="port-range" placeholder="30000-60000"></div>
+        <div style="align-self:end"><button class="add" type="submit">Issue credential</button></div>
+      </form>
+      <pre id="admin-out"></pre>
+    </details>
+  </section>
+</main>
+
+<script>
+const EVT_LABELS = {open:'Open',close:'Close',reject:'Reject',replay:'Replay',
+  unknown_fingerprint:'Unknown FP',port_mismatch:'Port mismatch',aged:'Aged',tofu_bind:'TOFU bind'};
+function fmtTime(t){ return new Date(t*1000).toLocaleString(); }
+function badge(ev){ const c='b-'+ev; return `<span class="badge ${c}">${EVT_LABELS[ev]||ev}</span>`; }
+
+async function loadMetrics(){
+  try{
+    const r = await fetch('/api/metrics'); const d = await r.json();
+    const get = lbl => {
+      for(const k in d.counters){ if(k.includes('result="'+lbl+'"')) return d.counters[k]; }
+      return 0;
+    };
+    const order = ['open','close','reject','replay','unknown_fingerprint','port_mismatch','aged','tofu_bind'];
+    document.getElementById('tiles').innerHTML = order.map(e =>
+      `<div class="tile ${e}"><div class="label">${EVT_LABELS[e]||e}</div><div class="value">${get(e)}</div></div>`
+    ).join('');
+    document.getElementById('status').textContent =
+      'metrics refreshed ' + new Date().toLocaleTimeString();
+  }catch(e){ document.getElementById('status').textContent = 'metrics error: '+e; }
+}
+
+async function loadEvents(){
+  try{
+    const r = await fetch('/api/events'); const evs = await r.json();
+    document.getElementById('events').innerHTML = (evs||[]).map(e =>
+      `<tr><td class="time">${fmtTime(e.time)}</td><td>${badge(e.event)}</td>
+       <td>${e.user||''}</td><td>${(e.device_id||'').slice(0,16)}</td>
+       <td>${e.src_ip||''}</td><td>${e.spa_port||''}</td><td>${e.target_port||''}</td>
+       <td>${e.reason||''}</td></tr>`
+    ).join('') || '<tr><td colspan="8" style="color:var(--muted)">no events</td></tr>';
+  }catch(e){ document.getElementById('events').innerHTML = '<tr><td>error</td></tr>'; }
+}
+
+async function loadTOFU(){
+  try{
+    const r = await fetch('/api/tofu'); const lines = await r.json();
+    document.getElementById('tofu').textContent =
+      (lines&&lines.length)? lines.join('\n') : '(no TOFU bindings)';
+  }catch(e){ document.getElementById('tofu').textContent = 'error'; }
+}
+
+document.getElementById('add-form').addEventListener('submit', async (ev)=>{
+  ev.preventDefault();
+  const fd = new FormData(ev.target);
+  const r = await fetch('/api/admin/add', {method:'POST', body:fd});
+  const out = await r.json();
+  const el = document.getElementById('admin-out');
+  if(out.error){ el.innerHTML = '<span class="err">'+out.error+'</span>\n'; }
+  el.textContent += (out.output||'');
+});
+
+loadMetrics(); loadEvents(); loadTOFU();
+setInterval(loadMetrics, 5000);
+setInterval(loadEvents, 5000);
+</script>
+</body>
+</html>
