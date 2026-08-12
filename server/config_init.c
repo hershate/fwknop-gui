@@ -475,9 +475,27 @@ validate_options(fko_srv_options_t *opts)
             DEF_EXIT_AT_INTF_DOWN);
 
     /* PCAP Filter.
+     *
+     * If PCAP_PORT_RANGE is set (e.g. "30000-60000") and no explicit PCAP_FILTER
+     * was provided, auto-generate a "udp dst portrange START-END" BPF so the
+     * server listens across the whole TOTP port-hopping range (stage 2). An
+     * explicitly-configured PCAP_FILTER always wins.
     */
+    if(opts->config[CONF_PCAP_PORT_RANGE] == NULL)
+        set_config_entry(opts, CONF_PCAP_PORT_RANGE, DEF_PCAP_PORT_RANGE);
+
     if(opts->config[CONF_PCAP_FILTER] == NULL)
-        set_config_entry(opts, CONF_PCAP_FILTER, DEF_PCAP_FILTER);
+    {
+        if(opts->config[CONF_PCAP_PORT_RANGE][0] != '\0')
+        {
+            char range_filter[MAX_PCAP_FILTER_LEN] = {0};
+            snprintf(range_filter, sizeof(range_filter), "udp dst portrange %s",
+                opts->config[CONF_PCAP_PORT_RANGE]);
+            set_config_entry(opts, CONF_PCAP_FILTER, range_filter);
+        }
+        else
+            set_config_entry(opts, CONF_PCAP_FILTER, DEF_PCAP_FILTER);
+    }
 
     /* Enable SPA packet aging unless we're getting packet data
      * directly from a pcap file

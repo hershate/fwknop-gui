@@ -84,6 +84,11 @@
 #define DEF_INTERFACE                   "eth0"
 #define DEF_ENABLE_PCAP_PROMISC         "N"
 #define DEF_PCAP_FILTER                 "udp port 62201"
+/* When PCAP_PORT_RANGE is set (e.g. "30000-60000") and PCAP_FILTER is not
+ * explicitly configured, pcap_capture() auto-generates the BPF
+ * "udp dst portrange START-END" so the server listens across the whole
+ * TOTP port-hopping range. See REF/plan/Port Knocking.md §4.2 (stage 2). */
+#define DEF_PCAP_PORT_RANGE             ""
 #define DEF_PCAP_DISPATCH_COUNT         "100"
 #define DEF_PCAP_LOOP_SLEEP             "100000" /* a tenth of a second (in microseconds) */
 #define DEF_ENABLE_PCAP_ANY_DIRECTION   "N"
@@ -246,6 +251,7 @@ enum {
     CONF_PCAP_FILE,
     CONF_ENABLE_PCAP_PROMISC,
     CONF_PCAP_FILTER,
+    CONF_PCAP_PORT_RANGE,
     CONF_PCAP_DISPATCH_COUNT,
     CONF_PCAP_LOOP_SLEEP,
     CONF_ENABLE_PCAP_ANY_DIRECTION,
