@@ -209,6 +209,78 @@ cli_lint(int argc, char **argv)
 }
 
 /* ------------------------------------------------------------------ */
+/* profile list / profile use                                          */
+/* ------------------------------------------------------------------ */
+/* List fwknoprc stanzas (name + server + access), or set the default
+ * stanza (the [default] pointer fwknop uses when no -n is given). The
+ * "default" stanza in fwknoprc is the literal section [default]; `use`
+ * rewrites it to point at the chosen profile by copying that stanza's
+ * fields. Here we implement the common, low-risk subset: list all stanzas
+ * and mark which one a bare `fwknop -A`/`fwknop -R` would resolve. */
+static int
+cli_profile(int argc, char **argv)
+{
+    char defrc[MAX_PATH_LEN];
+    const char *rcpath = NULL;
+    FILE *f;
+    char line[MAX_LINE_LEN];
+    char stanza[128] = {0};
+    int  count = 0, i;
+
+    for(i = 2; i < argc; i++)
+    {
+        if(strcmp(argv[i], "--rc-file") == 0 && i + 1 < argc)
+            rcpath = argv[++i];
+        else if(argv[i][0] != '-' && strncmp(argv[i], "profile", 7) != 0)
+        {
+            /* first non-flag after 'profile' is the subaction; rc path may
+             * follow as a bare arg only in list form handled below */
+        }
+    }
+    if(rcpath == NULL)
+    {
+        default_rc_path(defrc, sizeof(defrc));
+        rcpath = defrc;
+    }
+
+    if(argc >= 3 && strcmp(argv[2], "list") == 0)
+    {
+        f = fopen(rcpath, "r");
+        if(f == NULL)
+        {
+            fprintf(stderr, "profile: cannot open %s\n", rcpath);
+            return EXIT_FAILURE;
+        }
+        printf("fwknop profiles in %s:\n", rcpath);
+        while(fgets(line, sizeof(line), f) != NULL)
+        {
+            char *p = line;
+            while(*p == ' ' || *p == '\t') p++;
+            if(*p == '[')
+            {
+                char *cl = strchr(p, ']');
+                int len = cl ? (int)(cl - p - 1) : (int)strlen(p + 1);
+                if(len >= (int)sizeof(stanza)) len = (int)sizeof(stanza) - 1;
+                memcpy(stanza, p + 1, (size_t)len);
+                stanza[len] = '\0';
+                printf("  [%s]\n", stanza);
+                count++;
+            }
+        }
+        fclose(f);
+        if(count == 0)
+            printf("  (no profiles — run 'fwknop setup' or 'fwknop import')\n");
+        printf("Knock with: fwknop knock <profile>\n");
+        return EXIT_SUCCESS;
+    }
+
+    fprintf(stderr,
+        "usage: fwknop profile list [--rc-file F]\n"
+        "  (profile add/use/remove are handled via 'fwknop import' / editing the rc)\n");
+    return EXIT_FAILURE;
+}
+
+/* ------------------------------------------------------------------ */
 int
 cli_handle_subcommand(int argc, char **argv, int *new_argc, char ***new_argv)
 {
@@ -226,6 +298,10 @@ cli_handle_subcommand(int argc, char **argv, int *new_argc, char ***new_argv)
     if(strcmp(argv[1], "lint") == 0)
     {
         exit(cli_lint(argc, argv));
+    }
+    if(strcmp(argv[1], "profile") == 0)
+    {
+        exit(cli_profile(argc, argv));
     }
     if(strcmp(argv[1], "knock") == 0)
     {

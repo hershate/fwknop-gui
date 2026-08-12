@@ -214,6 +214,10 @@ grep -q "KEY_BASE64" "$HOMERC" && grep -q "USE_TOTP_PORT" "$HOMERC" \
 
 HOME="$WORK" "$FWKNOP" lint "$HOMERC" >/tmp/ft_lint.log 2>&1
 grep -q "no issues found" /tmp/ft_lint.log && ok "lint clean on imported rc" || { bad "lint"; cat /tmp/ft_lint.log; }
+
+# profile list should show the imported stanza
+HOME="$WORK" "$FWKNOP" profile list --rc-file "$HOMERC" >/tmp/ft_prof.log 2>&1
+grep -q "prod-ssh" /tmp/ft_prof.log && ok "profile list shows imported stanza" || { bad "profile list"; cat /tmp/ft_prof.log; }
 rm -rf "$WORK"
 
 # -------------------------------------------------------------------
