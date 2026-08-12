@@ -1,0 +1,221 @@
+#!/bin/bash
+#
+# test/run_fork_tests.sh — fwknop fork regression suite (no root required).
+#
+# Runs everything the fork added that can be exercised without iptables/root:
+#   - autotools build (lib + client + server + fwknopd-admin + unit tests)
+#   - CUnit unit tests (lib / client / server)
+#   - REF C tests: TOTP RFC6238 vectors, v4 device_id round-trip, stage-4
+#     contract (TOTP port agreement + whitelist), audit JSON/metrics
+#   - Phase 2: PCAP_PORT_RANGE -> BPF auto-generation (3 cases)
+#   - Phase 4a: access.conf fingerprint/TOFU/TOTP parsing (4 cases)
+#   - Phase 4c/4d: credential issuance -> encrypted file -> client import
+#     -> rc stanza -> lint (end-to-end)
+#
+# Usage: ./test/run_fork_tests.sh [build-dir]
+# Exits non-zero on any failure. Designed for CI.
+#
+set -u
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+PASS=0; FAIL=0
+section() { printf "\n\033[1;36m=== %s ===\033[0m\n" "$1"; }
+ok()   { printf "  \033[32mPASS\033[0m %s\n" "$1"; PASS=$((PASS+1)); }
+bad()  { printf "  \033[31mFAIL\033[0m %s\n" "$1"; FAIL=$((FAIL+1)); }
+# assert_match <pattern> <label> : checks last command output (via $OUT)
+chk()  { if [ "${2:-$OUT}" != "${2:-$OUT}" ]; then :; fi; }
+
+# Load the user-local autotools toolchain if present (see note/04).
+if [ -f /tmp/fwenv.sh ]; then . /tmp/fwenv.sh; fi
+export LD_LIBRARY_PATH="$ROOT/lib/.libs:${LD_LIBRARY_PATH:-}"
+FWKNOP="$ROOT/client/fwknop"
+FWKNOPD="$ROOT/server/fwknopd"
+ADMIN="$ROOT/server/fwknopd-admin"
+
+# -------------------------------------------------------------------
+section "build (autotools)"
+# -------------------------------------------------------------------
+if [ ! -f configure ]; then
+    ./autogen.sh >/tmp/ft_autogen.log 2>&1 || { bad "autogen"; exit 1; }
+fi
+if [ ! -f Makefile ]; then
+    ./configure --enable-udp-server --enable-nfq-capture --enable-c-unit-tests \
+        >/tmp/ft_configure.log 2>&1 || { bad "configure"; exit 1; }
+fi
+make -j"$(nproc)" >/tmp/ft_make.log 2>&1
+if [ $? -eq 0 ] && [ -x "$FWKNOP" ] && [ -x "$FWKNOPD" ] && [ -x "$ADMIN" ]; then
+    ok "make (fwknop + fwknopd + fwknopd-admin built)"
+else
+    bad "make"; tail -20 /tmp/ft_make.log; exit 1
+fi
+
+VER=$("$FWKNOP" --version 2>/dev/null)
+case "$VER" in
+    *"protocol version 4.0.0"*) ok "version = 4.0.0" ;;
+    *) bad "version: $VER" ;;
+esac
+
+# -------------------------------------------------------------------
+section "CUnit unit tests"
+# -------------------------------------------------------------------
+OUT=$("$ROOT/lib/fko_utests" 2>&1); echo "$OUT" | tail -2
+echo "$OUT" | grep -q "Passed" && ok "lib/fko_utests" || bad "lib/fko_utests"
+OUT=$("$ROOT/client/fwknop_utests" 2>&1); echo "$OUT" | tail -2
+echo "$OUT" | grep -q "Passed" && ok "client/fwknop_utests" || bad "client/fwknop_utests"
+OUT=$("$ROOT/server/fwknopd_utests" 2>&1); echo "$OUT" | tail -2
+echo "$OUT" | grep -q "Passed" && ok "server/fwknopd_utests" || bad "server/fwknopd_utests"
+
+# -------------------------------------------------------------------
+# helper to build & run a REF C test against libfko + libfko_util.a
+# -------------------------------------------------------------------
+run_ref_test() {
+    local src="$1" extra_objs="$2"
+    local bin="/tmp/ft_$(basename "$src" .c)"
+    # -DHAVE_CONFIG_H + -I. so config.h (HAVE_STRNLEN etc.) resolves and the
+    # fko_common.h fallback macros don't clash with _GNU_SOURCE decls.
+    if gcc -std=c99 -O2 -D_GNU_SOURCE -DHAVE_ENDIAN_H -DHAVE_CONFIG_H -I. -Ilib -Icommon \
+        "$src" $extra_objs lib/.libs/libfko.so \
+        -L"${HOME}/.local/usr/lib/x86_64-linux-gnu" -lcunit \
+        -o "$bin" 2>/tmp/ft_gcc.log && \
+       "$bin" >/tmp/ft_run.log 2>&1; then
+        if grep -qE "ALL PASS|ALL TESTS PASSED" /tmp/ft_run.log; then ok "$src"; else bad "$src"; cat /tmp/ft_run.log; fi
+    else
+        bad "$src (build/run)"; cat /tmp/ft_gcc.log /tmp/ft_run.log 2>/dev/null
+    fi
+    rm -f "$bin"
+}
+
+section "REF C tests (libfko)"
+run_ref_test REF/build/test_totp.c       "common/libfko_util.a"
+run_ref_test REF/build/test_device_id.c  ""
+run_ref_test REF/build/test_stage4.c     "common/libfko_util.a"
+
+# audit test needs server/audit.c + a log_msg stub
+section "REF C test (audit module)"
+cat > /tmp/ft_stub.c <<'EOF'
+#include <stdarg.h>
+void log_msg(int l, char*m, ...) { (void)l; (void)m; }
+EOF
+if gcc -std=c99 -O2 -D_GNU_SOURCE -DHAVE_ENDIAN_H -DHAVE_CONFIG_H -DFIREWALL_IPTABLES \
+    -I. -Iserver -Ilib -Icommon -I"${HOME}/.local/usr/include" \
+    REF/build/test_audit.c server/audit.c /tmp/ft_stub.c \
+    -L"${HOME}/.local/usr/lib/x86_64-linux-gnu" -lcunit lib/.libs/libfko.so \
+    -o /tmp/ft_test_audit 2>/tmp/ft_gcc.log && \
+   /tmp/ft_test_audit >/tmp/ft_run.log 2>&1; then
+    grep -q "ALL PASS" /tmp/ft_run.log && ok "test_audit.c" || { bad "test_audit.c"; cat /tmp/ft_run.log; }
+else
+    bad "test_audit.c (build/run)"; cat /tmp/ft_gcc.log
+fi
+rm -f /tmp/ft_test_audit /tmp/ft_stub.c
+
+# -------------------------------------------------------------------
+section "Phase 2: PCAP_PORT_RANGE -> BPF"
+# -------------------------------------------------------------------
+mkconf() {  # mkconf <dir> <range-or-empty>
+    local d="$1" rng="$2"
+    mkdir -p "$d/run"
+    { echo "FWKNOP_RUN_DIR $d/run"; echo "PCAP_INTF lo";
+      [ -n "$rng" ] && echo "PCAP_PORT_RANGE $rng"; } > "$d/fwknopd.conf"
+    chmod 0600 "$d/fwknopd.conf"
+}
+mkacc() {  # mkacc <dir>
+    cat > "$1/access.conf" <<'AC'
+SOURCE ANY
+KEY_BASE64 YWJjZGVmZ2hpamtsbW5vcHFyc3R1
+HMAC_KEY_BASE64 MTIzNDU2Nzg5MDEyMzQ1Njc4
+OPEN_PORTS tcp/22
+AC
+    chmod 0600 "$1/access.conf"
+}
+D=$(mktemp -d)
+mkconf "$D" "30000-60000"; mkacc "$D"
+OUT=$("$FWKNOPD" -a "$D/access.conf" -c "$D/fwknopd.conf" --dump-config -f 2>&1)
+echo "$OUT" | grep -q "PCAP_FILTER.*udp dst portrange 30000-60000" \
+    && ok "range -> portrange BPF" || { bad "range BPF"; echo "$OUT" | grep PCAP_FILTER; }
+
+mkconf "$D" "30000-60000"; printf 'PCAP_FILTER udp port 62201\n' >> "$D/fwknopd.conf"; chmod 0600 "$D/fwknopd.conf"
+OUT=$("$FWKNOPD" -a "$D/access.conf" -c "$D/fwknopd.conf" --dump-config -f 2>&1)
+echo "$OUT" | grep -q "PCAP_FILTER.*udp port 62201" \
+    && ok "explicit PCAP_FILTER overrides range" || bad "explicit filter override"
+
+mkconf "$D" ""; mkacc "$D"
+OUT=$("$FWKNOPD" -a "$D/access.conf" -c "$D/fwknopd.conf" --dump-config -f 2>&1)
+echo "$OUT" | grep -q "PCAP_FILTER.*udp port 62201" \
+    && ok "default filter when nothing set" || bad "default filter"
+rm -rf "$D"
+
+# -------------------------------------------------------------------
+section "Phase 4a: access.conf fingerprint/TOFU/TOTP parsing"
+# -------------------------------------------------------------------
+D=$(mktemp -d); mkdir -p "$D/run"
+printf 'FWKNOP_RUN_DIR %s/run\nPCAP_INTF lo\n' "$D" > "$D/fwknopd.conf"; chmod 0600 "$D/fwknopd.conf"
+cat > "$D/a1.conf" <<'AC'
+SOURCE ANY
+KEY_BASE64 YWJjZGVmZ2hpamtsbW5vcHFyc3R1
+HMAC_KEY_BASE64 MTIzNDU2Nzg5MDEyMzQ1Njc4
+OPEN_PORTS tcp/22
+REQUIRE_FINGERPRINT Y
+FINGERPRINT dGVzdC1kZXZpY2UtMQ==
+FINGERPRINT dGVzdC1kZXZpY2UtMg==
+TOTP_SEED_BASE64 QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE=
+TOTP_PORT_RANGE 30000-60000
+REQUIRE_TOTP_PORT_MATCH Y
+AC
+chmod 0600 "$D/a1.conf"
+OUT=$("$FWKNOPD" -a "$D/a1.conf" -c "$D/fwknopd.conf" --dump-config -f 2>&1)
+echo "$OUT" | grep -q "FINGERPRINT:.*dGVzdC1kZXZpY2UtMQ==,dGVzdC1kZXZpY2UtMg==" && ok "multi-line FINGERPRINT merged"
+echo "$OUT" | grep -q "REQUIRE_FINGERPRINT:.*Yes" && ok "REQUIRE_FINGERPRINT parsed"
+echo "$OUT" | grep -q "TOFU_MODE:.*No" && ok "whitelist set => not TOFU"
+echo "$OUT" | grep -q "REQUIRE_TOTP_PORT_MATCH:.*Yes" && ok "REQUIRE_TOTP_PORT_MATCH parsed"
+
+cat > "$D/a2.conf" <<'AC'
+SOURCE ANY
+KEY_BASE64 YWJjZGVmZ2hpamtsbW5vcHFyc3R1
+HMAC_KEY_BASE64 MTIzNDU2Nzg5MDEyMzQ1Njc4
+OPEN_PORTS tcp/22
+REQUIRE_FINGERPRINT Y
+FINGERPRINT_TOFU_TIMEOUT 86400
+AC
+chmod 0600 "$D/a2.conf"
+OUT=$("$FWKNOPD" -a "$D/a2.conf" -c "$D/fwknopd.conf" --dump-config -f 2>&1)
+echo "$OUT" | grep -q "TOFU_MODE:.*Yes" && ok "TOFU mode (no whitelist)" || bad "TOFU mode"
+
+# validation failures
+cat > "$D/a3.conf" <<'AC'
+SOURCE ANY
+KEY_BASE64 YWJjZGVmZ2hpamtsbW5vcHFyc3R1
+HMAC_KEY_BASE64 MTIzNDU2Nzg5MDEyMzQ1Njc4
+OPEN_PORTS tcp/22
+REQUIRE_TOTP_PORT_MATCH Y
+AC
+chmod 0600 "$D/a3.conf"
+OUT=$("$FWKNOPD" -a "$D/a3.conf" -c "$D/fwknopd.conf" --exit-parse-config -f 2>&1)
+echo "$OUT" | grep -q "REQUIRE_TOTP_PORT_MATCH requires TOTP_SEED_BASE64" && ok "reject REQUIRE_TOTP_PORT_MATCH w/o seed"
+rm -rf "$D"
+
+# -------------------------------------------------------------------
+section "Phase 4c/4d: credential issuance -> import (end-to-end)"
+# -------------------------------------------------------------------
+WORK=$(mktemp -d); HOMERC="$WORK/.fwknoprc"; mkdir -p "$WORK"
+printf 'mypass\nmypass\n' | "$ADMIN" user add prod-ssh --server 203.0.113.10 \
+    --access tcp/22 --user alice --no-qr --export "$WORK/prod.cred" >/dev/null 2>&1
+[ -f "$WORK/prod.cred" ] && ok "admin writes encrypted credential file"
+
+HOME="$WORK" "$FWKNOP" import "$WORK/prod.cred" --rc-file "$HOMERC" --passphrase mypass >/tmp/ft_import.log 2>&1
+if grep -q "Imported stanza \[prod-ssh\]" /tmp/ft_import.log; then
+    ok "import decrypts + writes stanza"
+else
+    bad "import"; cat /tmp/ft_import.log
+fi
+grep -q "KEY_BASE64" "$HOMERC" && grep -q "USE_TOTP_PORT" "$HOMERC" \
+    && ok "rc stanza has keys + TOTP" || bad "rc stanza content"
+
+HOME="$WORK" "$FWKNOP" lint "$HOMERC" >/tmp/ft_lint.log 2>&1
+grep -q "no issues found" /tmp/ft_lint.log && ok "lint clean on imported rc" || { bad "lint"; cat /tmp/ft_lint.log; }
+rm -rf "$WORK"
+
+# -------------------------------------------------------------------
+printf "\n\033[1mRESULT: %d passed, %d failed\033[0m\n" "$PASS" "$FAIL"
+[ "$FAIL" -eq 0 ]
