@@ -114,3 +114,15 @@ client/tray/dist/
 # Stage 5+ WebUI dashboard (server/dashboard/) — Go build artifacts ignored;
 # the Go sources (main.go/embed.go/go.mod/web/) are tracked.
 server/dashboard/fwknop-dashboard
+
+# Autotools build outputs (programs/objects) — sources are tracked, binaries are not
+client/fwknop
+client/fwknop_utests
+lib/fko_utests
+server/fwknopd
+server/fwknopd-admin
+server/fwknopd_utests
+common/.deps/
+client/.libs/
+win32/.deps/
+config.h.in~
