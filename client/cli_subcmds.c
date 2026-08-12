@@ -12,6 +12,7 @@
 #include "fwknop_common.h"
 #include "fko.h"
 #include "wizard.h"
+#include "import.h"
 #include "cli_subcmds.h"
 
 #include <stdio.h>
@@ -217,6 +218,10 @@ cli_handle_subcommand(int argc, char **argv, int *new_argc, char ***new_argv)
     if(strcmp(argv[1], "setup") == 0)
     {
         exit(wizard_setup());
+    }
+    if(strcmp(argv[1], "import") == 0)
+    {
+        exit(cli_import(argc, argv));
     }
     if(strcmp(argv[1], "lint") == 0)
     {

@@ -4,7 +4,8 @@ BASE_SOURCE_FILES   = fwknop.h config_init.c config_init.h \
                       fwknop_common.h spa_comm.c spa_comm.h utils.c utils.h \
                       http_resolve_host.c getpasswd.c getpasswd.h cmd_opts.h \
                       log_msg.c log_msg.h \
-                      wizard.c wizard.h cli_subcmds.c cli_subcmds.h
+                      wizard.c wizard.h cli_subcmds.c cli_subcmds.h \
+                      import.c import.h
 
 fwknop_SOURCES      = fwknop.c $(BASE_SOURCE_FILES)
 
