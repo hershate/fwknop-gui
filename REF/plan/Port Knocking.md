@@ -1,8 +1,10 @@
 # 基于 fwknop SPA 扩展的动态端口隐身与零信任增强方案
 
-> 版本：v2.0　·　基线代码：fwknop `2.6.11`（`VERSION`、`configure.ac`）　·　最后更新：2026-07
+> 版本：v2.1　·　基线代码：fwknop `2.6.11`（`VERSION`、`configure.ac`）　·　最后更新：2026-08
 >
 > 本文档取代旧版「概念设计」，把方案**落地到 fwknop 实际代码库**（`lib/` libfko + `client/` fwknop + `server/` fwknopd），给出完整技术架构、分阶段升级路线、文件级改动清单与全维度 UX 设计。
+>
+> v2.1 变更（2026-08-13，用户决策确认）：新增 §7.6「服务端管理界面与凭证发放」——`fwknopd-admin` CLI 先行、授权 QR（`fwknop://`）、凭证文件（默认 scrypt+AES-GCM 加密）、TOFU 首次使用设备绑定（默认启用）；同步更新 §3.4/§5/§6/§12/附录 D/E。
 
 ---
 
@@ -162,6 +164,8 @@ iptables（参考实现，`server/fw_util_iptables.c`）：自定义链 `FWKNOP_
 | 交互式向导 | 新增 | `client/wizard.c` | 一键配置与密钥/TOTP 分发 |
 | 桌面 GUI | 新增 | `gui/`（新目录，Qt） | 配置/一键敲门/状态可视化 |
 | 运维面板 | 新增 | `server/dashboard/`（新目录） | 审计/指标/告警/轮换 |
+| 服务端管理工具 | 新增 | `server/fwknopd-admin.c` + `server/credential.c` | stanza 增删改、密钥/种子生成、授权 QR、凭证导出、TOFU 绑定管理、lint/status（§7.6） |
+| 客户端凭证导入 | 新增 | `client/import.c` | `fwknop import`：QR/URI/JSON 凭证 → 生成 rc stanza（§7.6） |
 
 ---
 
@@ -282,13 +286,14 @@ Client                            Network                      Server(NFQ@range)
 - 服务端：`acc_stanza_t` 增 `fingerprint_list`/`require_fingerprint`；`access.c` 解析 `FINGERPRINT`/`REQUIRE_FINGERPRINT`；`incoming_spa.c` 解密后校验。
 - **验收**：v4 包带 `device_id` 通过；白名单外被静默拒；v3 包仍兼容。
 
-### 阶段 4 —— 零信任硬化 + 审计（M）
+### 阶段 4 —— 零信任硬化 + 审计 + 服务端管理工具（L，由 M 升级）
 - 可选 `REQUIRE_TOTP_PORT_MATCH`：`incoming_spa.c` 用报文 `timestamp` 反推端口集合并校验到达端口。
 - 结构化审计（JSON 行）+ Prometheus 指标 + 异常告警钩子（见 §7.4）。
-- **验收**：重放/未知指纹/端口不匹配/过期均有结构化日志与指标。
+- **服务端管理工具**（§7.6，2026-08-13 决策）：`fwknopd-admin` CLI（stanza 管理 / 授权 QR / 凭证导出 / TOFU 绑定管理）+ 客户端 `fwknop import`；凭证默认 scrypt+AES-GCM 加密；TOFU 默认启用。
+- **验收**：重放/未知指纹/端口不匹配/过期均有结构化日志与指标；「QR/凭证发放 → 客户端导入 → TOFU 绑定 → 敲门开门」全链路可跑通。
 
 ### 阶段 5 —— UX 层（L，可拆分并行）
-- CLI 向导 `fwknop setup`（S）、一键 `fwknop knock`/`connect`（S）、透明敲门代理（L）、桌面 GUI（L）、运维面板（M）。详见 §7。
+- CLI 向导 `fwknop setup`（S）、一键 `fwknop knock`/`connect`（S）、透明敲门代理（L）、桌面 GUI（L）、运维面板（M）、服务端 TUI/WebUI 管理壳（包装 `fwknopd-admin`，M）。详见 §7。
 
 ### 阶段 6 —— 测试、打包、部署、迁移（M）
 - 扩展 `test/tests/`（端口跳变、v4、指纹、时钟偏移、兼容）；`test/afl/` 新 fuzz 目标；打包 systemd/MSVC；迁移文档与灰度策略。详见 §10–§12。
@@ -323,6 +328,9 @@ Client                            Network                      Server(NFQ@range)
 | `server/pcap_capture.c` | BPF 单端口 | `udp dst portrange`（回退） | 2 |
 | `server/fwknopd.conf(.inst)` | 链/端口配置 | 增 `NFQ_PORT_RANGE`/`PCAP_PORT_RANGE` | 2 |
 | `server/log_msg.c` + 新 `audit.c` | 文本日志 | 增结构化 JSON 审计 + 指标 | 4 |
+| `server/fwknopd-admin.c` | 不存在 | **新建** 服务端管理 CLI（stanza 管理/授权 QR/凭证导出/TOFU 管理/lint/status） | 4 |
+| `server/credential.c/.h` | 不存在 | **新建** 凭证文件 JSON 组装/解析 + scrypt+AES-GCM 加解密 | 4 |
+| `client/import.c` | 不存在 | **新建** `fwknop import`（QR/URI/JSON → rc stanza） | 4 |
 | `server/dashboard/*` | 不存在 | **新建** 运维面板（§7.4） | 5 |
 | `gui/*` | 不存在 | **新建** 桌面 GUI（§7.3） | 5 |
 | `test/tests/*.pl` | 集成脚本 | 增端口跳变/v4/指纹/偏移用例 | 6 |
@@ -401,6 +409,65 @@ Client                            Network                      Server(NFQ@range)
 - **文档**：快速上手（5 分钟）、运维手册、威胁模型（§8）、迁移指南（§11），中英双语。
 - **无障碍/国际化**：GUI 与 CLI 错误信息支持 i18n；CLI 输出可选 JSON（`--json`）便于脚本与面板消费。
 - **安全默认**：开箱即启用 HMAC + TOTP 端口跳变 + 指纹要求 + 短时效（≤300s），弱配置 `fwknop lint` 告警。
+
+### 7.6 服务端管理界面与凭证发放（v2.1 新增）
+
+> 决策（2026-08-13 用户确认）：
+> 1. **CLI 先行**：`fwknopd-admin` CLI 承载全部管理逻辑，WebUI/TUI 后置为壳；
+> 2. **凭证文件支持明文+加密，默认加密**（scrypt + AES-256-GCM）；
+> 3. **默认启用 TOFU 首次使用设备绑定**。
+
+**动机**：服务端现状只能手改 `access.conf` + SIGHUP 重载；密钥/TOTP 种子分发靠人工拷贝。上游 `extras/console-qr/console-qr.sh` 已有「access.conf → QR」雏形，但仅明文配置、无 HMAC/TOTP 密钥、无安全模型。本节把服务端管理升级为「安装即用的凭证发放闭环」。
+
+#### 7.6.1 界面分层
+
+| 层 | 形态 | 状态 |
+| --- | --- | --- |
+| 核心 | `fwknopd-admin` CLI（C，`server/`，复用 libfko 的 `fko_key_gen`） | 阶段 4 实现 |
+| TUI 壳 | dialog/whiptail 包装 CLI（服务器本机菜单） | 阶段 5+ 可选 |
+| WebUI 壳 | Go/Python 面板，写操作复用 `fwknopd-admin`；默认只读 + localhost 绑定 + 写操作额外认证 | 阶段 5+ |
+| GUI | 属客户端侧（§7.3），服务端管理不做桌面 GUI | — |
+
+#### 7.6.2 `fwknopd-admin` 子命令草案
+
+```
+fwknopd-admin user add <name>   # 生成 Rijndael/HMAC/TOTP 种子、写 stanza；
+                                # --totp-port --port-range --require-fingerprint
+                                # --fingerprint <b64> --expire <days>
+                                # --qr | --export <file> [--plain]
+fwknopd-admin user list|show|rm
+fwknopd-admin user qr <name>    # 一次性重渲染授权 QR
+fwknopd-admin rotate <name>     # 宽限期密钥轮换（服务端侧执行，见 §7.4）
+fwknopd-admin to-fingerprint list|unbind <name> <fp>   # TOFU 绑定管理
+fwknopd-admin lint|status
+```
+
+#### 7.6.3 授权 QR（客户端扫码自动配置）
+
+- **URI**：`fwknop://<server>?user=<u>&key=<b64>&hmac=<b64>&totp=<b64>&range=<s>-<e>&access=<proto/port>&name=<stanza>&v=1`（规范见附录 E）。
+- **渲染**：终端 ANSI 块状 QR（运行时可选依赖 `qrencode -t ANSIUTF8`；缺失时降级打印 URI 文本）；WebUI 阶段输出 PNG。
+- **客户端**：`fwknop import <qr.png|uri|cred.json>` —— zbar 解码（可选编译依赖）；GUI 阶段摄像头扫码。导入即生成 rc stanza + 本机 `DEVICE_ID`。
+- **与 otpauth:// 严格区分**：otpauth 供 Authenticator 验证器对照 TOTP；`fwknop://` 是给 fwknop 客户端的完整授权凭证。
+
+#### 7.6.4 凭证文件（导入即获权）
+
+- JSON schema 见附录 E；默认 **passphrase 加密**（scrypt + AES-256-GCM），`--plain` 显式输出明文。
+- 密文凭证可靠任意不安全渠道分发；凭证 = 邀请函，撤销 = `user rm`（reload 立即生效）。
+- 客户端 `fwknop import file.json` 写入 `~/.fwknoprc` stanza。
+
+#### 7.6.5 TOFU 首次使用设备绑定（默认启用）
+
+- access.conf 新增：`FINGERPRINT <b64>`（可多行，显式白名单）、`REQUIRE_FINGERPRINT Y`、`FINGERPRINT_TOFU_TIMEOUT <sec>`（默认 86400）。
+- 语义：
+  - 白名单非空 → 常量时间匹配（§4.3）；
+  - 白名单空 + `REQUIRE_FINGERPRINT Y` → **TOFU 模式**：首个通过密钥+HMAC+新鲜度校验的 v4 包，其 `device_id` 自动锁定进白名单（原子落盘 + 审计「新设备绑定」事件）。
+- **凭证泄露缓解**：偷到凭证的攻击者须在宽限期内抢先绑定才有用；绑定事件审计 + 可配告警兜底。
+- **诚实局限**：TOFU 不能阻止「首用抢占」（凭证被盗者先敲门），需结合短宽限窗口与 `fwknopd-admin to-fingerprint` 人工复核。
+
+#### 7.6.6 安全纪律
+
+- QR/凭证 = **持票凭证（bearer credential）**：一次性展示、不落日志/历史、导出即标记、可撤销。
+- WebUI 是攻击面：默认只读 + localhost 绑定；写操作需额外认证；面板不落凭证明文。
 
 ---
 
@@ -509,8 +576,8 @@ on_fail                 block               # block|allow|prompt
 | 1 | TOTP 引擎 + 客户端端口跳变 | 0 | M | M1 单包到跳变端口 |
 | 2 | 服务端 NFQ 范围监听 | 1 | M | M2 范围内可开门 |
 | 3 | SPA v4 身份绑定 | 1 | L | M3 device_id 白名单生效 |
-| 4 | 零信任硬化 + 审计/指标 | 2,3 | M | M4 端口因子 + 可观测 |
-| 5 | UX：向导/透明代理/GUI/面板 | 3,4 | L | M5 用户无感可用 |
+| 4 | 零信任硬化 + 审计/指标 + 服务端管理工具（`fwknopd-admin`/QR/凭证/TOFU） | 2,3 | L | M4 端口因子 + 可观测 + 凭证发放闭环 |
+| 5 | UX：透明代理/GUI/TUI+WebUI 管理壳/面板 | 3,4 | L | M5 用户无感可用 |
 | 6 | 测试/打包/部署/迁移 | 1–5 | M | M6 生产灰度 |
 
 ---
@@ -565,6 +632,40 @@ function server_expected_ports(seed, now, skew, start, end):
 | stanza | fwknoprc/access.conf 中的一段配置（一个用户/目标） |
 | NFQ | Netfilter Queue，Linux 内核包排队机制 |
 | 宽限期 | 密钥轮换时新旧并存的过渡期 |
+| TOFU | Trust On First Use：首次到达的 `device_id` 自动锁定进白名单（§7.6.5） |
+| bearer credential | 持票凭证：持有即拥有访问权（授权 QR / 凭证文件） |
+| fwknop:// | 授权 URI scheme，供 fwknop 客户端导入的完整凭证（附录 E） |
+
+### E. 凭证文件与授权 URI 规范（v2.1 新增）
+
+**凭证文件（JSON, fmt v1，未加密形态）**：
+
+```json
+{
+  "fmt": "fwknop-credential",
+  "version": 1,
+  "issued_at": 1753520000,
+  "expires_at": null,
+  "stanza": "prod-ssh",
+  "spa_server": "203.0.113.10",
+  "access": "tcp/22",
+  "key_base64": "<Rijndael b64>",
+  "hmac_key_base64": "<HMAC b64>",
+  "totp_seed_base64": "<TOTP seed b64>",
+  "port_range": "30000-60000"
+}
+```
+
+- 加密形态（默认）：passphrase → scrypt → AES-256-GCM 加密整个 JSON，输出 base64，magic 前缀 `fwknop-cred v1 enc`；`fwknop import` 按前缀自动识别。
+
+**授权 URI**：
+
+```
+fwknop://<server>?user=<u>&key=<b64>&hmac=<b64>&totp=<b64>&range=<s>-<e>&access=<proto/port>&name=<stanza>&v=1
+```
+
+- 值均为 URL 安全 base64（`+`→`-`、`/`→`_`、去 `=`）；QR 直接编码该 URI。
+- 客户端导入时按字段映射生成 rc stanza；`access` 缺省 `tcp/22`；`range` 仅在启用 TOTP 端口跳变时必需。
 
 ---
 
