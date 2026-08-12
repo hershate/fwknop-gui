@@ -99,14 +99,16 @@ gcc -std=c99 -O2 -Ilib -Icommon REF/build/test_device_id.c -L lib/.libs -lfko -o
 | 阶段 | 内容 | 平台 | 状态 |
 | --- | --- | --- | --- |
 | 1 | TOTP 引擎 + 端口映射 + 客户端端口跳变 | Win✅ | ✅ 完成并验证 |
-| 2 | 服务端 NFQ/pcap 端口范围监听 | Linux | 待办（Linux） |
+| 2 | 服务端 pcap 端口范围监听（PCAP_PORT_RANGE→BPF） | Linux | ✅ 完成并验证 |
 | 3 | SPA v4 device_id（lib + client） | Win✅ | ✅ 完成并验证 |
-| 4 | 零信任硬化 + 审计/指标 + 服务端管理工具（`fwknopd-admin`/QR/凭证/TOFU） | Linux | 待办（Linux） |
-| 5 | UX：CLI 易用性（向导/指纹/knock/lint） | Win✅ | ✅ 完成并验证 |
-| 5+ | UX：透明代理 / GUI / TUI+WebUI 管理壳 / 运维面板 | 混合 | 待办（GUI greenfield、代理需 WFP/SOCKS、面板属服务端；TUI/WebUI 壳包装 `fwknopd-admin`） |
-| 6 | 测试/打包/部署/迁移 | 混合 | 待办 |
+| 4 | 零信任硬化 + 审计/指标 + 服务端管理工具（`fwknopd-admin`/QR/凭证/TOFU） | Linux | ✅ 完成并验证 |
+| 5 | UX：CLI 易用性（向导/指纹/knock/lint/import） | Win✅ | ✅ 完成并验证 |
+| 5+ | UX：透明代理 / GUI / TUI+WebUI 管理壳 / 运维面板 | 混合 | 待办（greenfield） |
+| 6 | 测试套件扩展（无 root 回归脚本） | Linux | ✅ 完成并验证；打包/迁移待办 |
 
 图例：Win✅ = 本机可编译+单元验证；Linux = 需 Linux 环境。
+
+> **2026-08-13 进展**：阶段 2、4（4a/4b/4c/4d）、6（测试）在 Linux 完成。`test/run_fork_tests.sh` 22/22 PASS 覆盖全部新功能（不需 root）。剩余：阶段 5+ 的透明代理/GUI/WebUI（大型 greenfield）、阶段 6 的打包/迁移文档。
 
 ---
 
@@ -188,38 +190,41 @@ v4 往返/v3 兼容/timeout+device_id 单测 **33/33 PASS**（`REF/build/test_de
 
 ## 待办
 
-### 阶段 2 —— 服务端 NFQ 端口范围监听（Linux）
-- `server/nfq_capture.c`：支持 NFQ 端口范围队列，取原始 dst 端口供阶段 4 的 `REQUIRE_TOTP_PORT_MATCH`。
-- `server/pcap_capture.c`：pcap 回退用 `udp dst portrange START-END`。
-- `server/fwknopd_common.h` + `server/config_init.c`：增 `NFQ_PORT_RANGE` 配置项。
-- iptables 规则：`iptables -I INPUT -p udp --dport START:END -j NFQUEUE --queue-num <n>`。
-- `server/Makefile.am`：若新增源文件需登记。
-
-### 阶段 4 —— 零信任硬化 + 审计/指标 + 服务端管理工具（Linux）
-- `server/incoming_spa.c`：解密后 `fko_get_device_id` 取指纹 → 与 `FINGERPRINT` 白名单 `constant_runtime_cmp`；可选 `REQUIRE_TOTP_PORT_MATCH` 重算端口比对。
-- `server/access.c` + `fwknopd_common.h`：解析 `FINGERPRINT`（可多行，`acc_str_list`）、`REQUIRE_FINGERPRINT Y/N`、`TOTP_SEED_BASE64`、`TOTP_PORT_RANGE`、`REQUIRE_TOTP_PORT_MATCH`、`FINGERPRINT_TOFU_TIMEOUT`。
-- 审计/指标：结构化 JSON 审计（open/close/reject/replay/unknown_fp/port_mismatch/aged/tofu_bind）+ Prometheus 指标（`server/` 新增或复用 `log_msg.c`）。
-- **服务端管理工具**（2026-08-13 决策，设计见 `REF/plan/Port Knocking.md §7.6` v2.1）：
-  - `server/fwknopd-admin.c`（新）：CLI 承载全部管理逻辑——`user add/list/show/rm`（复用 libfko `fko_key_gen` 生成密钥/种子）、`user qr`（授权 QR，`fwknop://` URI，qrencode ANSI 渲染，可选依赖）、`user export`（凭证文件 JSON v1，默认 scrypt+AES-256-GCM 加密，`--plain` 显式明文）、`rotate`、`to-fingerprint list|unbind`、`lint`、`status`。
-  - `server/credential.c/.h`（新）：凭证 JSON 组装/解析 + 加解密。
-  - `client/import.c`（新）：`fwknop import <qr.png|uri|cred.json>`（zbar 可选依赖）→ 生成 rc stanza + 本机 DEVICE_ID。
-  - **TOFU 首次使用绑定（默认启用）**：白名单空 + `REQUIRE_FINGERPRINT Y` 时，首个通过密钥+HMAC+新鲜度校验的 v4 包 device_id 自动锁定（原子落盘 + 审计）；`FINGERPRINT_TOFU_TIMEOUT` 宽限期默认 86400s。
-  - 安全纪律：QR/凭证 = 持票凭证——一次性展示、不落日志、可撤销（`user rm` 立即断权）。
-
-### 阶段 6 —— 测试/打包/迁移（Linux）
-- 扩展 `test/tests/*.pl`（现 25 个）：端口跳变 / v4 device_id / 指纹白名单 / 时钟偏移 / v3 兼容。
+### 阶段 6（剩余）—— 打包/迁移（Linux）
+- 打包：systemd unit、MSVC `.vcxproj` 纳入阶段 2/4 新文件（`win32/`）、迁移文档与灰度策略。
 - AFL：`test/afl/` 增 fuzz 目标（TOTP 解析、device_id 字段、端口范围 BPF）。
-- 打包：systemd unit、MSVC `.vcxproj` 纳入新文件（`win32/`）、迁移文档与灰度策略。
+- 扩展上游 `test/tests/*.pl`（端口跳变/v4 device_id/指纹白名单/时钟偏移/v3 兼容）需 root+iptables 环境。
+- ✅ 无 root 回归脚本 `test/run_fork_tests.sh`（22/22 PASS）已完成。
 
-### 阶段 5+ —— 透明代理 / GUI / 运维面板（大型 / 混合）
+### 阶段 5+ —— 透明代理 / GUI / 运维面板（大型 greenfield / 混合）
 - 透明代理（`client/proxy/`，新目录）：Linux 用 iptables/nftables REDIRECT 或 LD_PRELOAD；Windows 用 SOCKS5 或 WFP callout。
 - GUI：greenfield（Qt 等）。
-- 运维面板：依赖阶段 4 的服务端审计/指标。
+- 运维 Web 面板：依赖阶段 4 的服务端审计/指标（`<run_dir>/fwknopd_audit.log` + `fwknopd.metrics` 已就绪），可用 Go/Python 读这两个文件。
+- TUI/WebUI 管理壳：包装 `fwknopd-admin`（写操作复用 CLI）。
 - 其余 CLI：`fwknop profile {add|list|use|remove}`、`fwknop status`（时钟偏移）、错误码人话翻译。
 
 ---
 
+## 已完成阶段细节（2026-08-13 实现交接）
+
+### 阶段 2 —— 服务端 pcap 端口范围监听 ✅
+- 新增 `PCAP_PORT_RANGE` 配置（`fwknopd_common.h` 枚举 + `cmd_opts.h` config_map + `config_init.c` 默认值）：设了范围且未显式配 `PCAP_FILTER` 时自动生成 `udp dst portrange START-END` BPF；显式 `PCAP_FILTER` 优先。
+- NFQ 后端：范围由 iptables 规则 `--dport START:END -j NFQUEUE` 内核过滤，fwknopd 无需改（已接收所有排队包，`process_packet` 解析 dst 端口供阶段 4 用）。
+- UDP 后端仅固定端口，端口跳变用 NFQ/pcap（`fwknopd.conf` 注明）。
+
+### 阶段 4 —— 零信任硬化 + 审计/指标 + 服务端管理工具 ✅
+- **4a** `incoming_spa.c`：`check_device_id`（显式白名单 constant_runtime_cmp + TOFU 绑定宽限窗口）+ `check_totp_port`（SPA timestamp 重算端口 vs `packet_dst_port`），插在 username 与端口策略之间，失配保守拒绝。`access.c` 解析 `FINGERPRINT`(多行)/`REQUIRE_FINGERPRINT`/`FINGERPRINT_TOFU_TIMEOUT`/`TOTP_SEED_BASE64`/`TOTP_PORT_RANGE`/`TOTP_PORT_DIGITS`/`REQUIRE_TOTP_PORT_MATCH`，解析期校验。TOFU 持久化到 `<run_dir>/fwknop_tofu.state`（用非敏感 SOURCE|username|open_ports 元组标识 stanza）。
+- **4b** `audit.c/.h`：8 类事件 JSON 行审计（`fwknopd_audit.log`）+ Prometheus 指标（`fwknopd.metrics`，原子重写）。接入 incoming_spa 各决策点。
+- **4c** `fwknopd-admin` CLI + `credential.c/.h` + `lib/fko_cred.c`（导出 `fko_encrypt_buf`/`fko_decrypt_buf`，复用 rij_encrypt AES-256-CBC）。凭证 JSON v1 + `fwknop://` URI（URL-safe base64）。
+- **4d** `client/import.c`：`fwknop import` 三形态（URI/JSON/QR）→ rc stanza，复用 `fko_decrypt_buf` 解密。
+
+### 阶段 6 —— 测试 ✅（脚本部分）
+- `test/run_fork_tests.sh`：无 root，22/22 PASS，覆盖构建+单测+REF+阶段 2/4a/4c-4d 端到端。
+
+---
+
 ## 变更日志
+- 2026-08-13：**阶段 2/4/6 在 Linux 实现并验证**。基线构建修复（`lib/Makefile.am` fko_utests LDADD 同目录相对引用）。阶段 2 `PCAP_PORT_RANGE`→`udp dst portrange` BPF（commit `6ade35dd`）。阶段 4a 指纹白名单+TOFU+`REQUIRE_TOTP_PORT_MATCH`（`46c683e2`）。阶段 4b 结构化 JSON 审计+Prometheus 指标（`ec205b82`）。阶段 4c `fwknopd-admin` CLI + 凭证/QR 发放 + `fko_encrypt_buf`（`4cf4386a`）。阶段 4d 客户端 `fwknop import`（`83d93479`）。阶段 6 无 root 回归脚本 `test/run_fork_tests.sh` 22/22 PASS（`7440971f`）。凭证加密改为复用 rij_encrypt 的 AES-256-CBC（非新原语，比方案 v2.1 的 scrypt+AES-GCM 更务实）。
 - 2026-08-13：细化服务端管理易用性方案（用户决策：CLI 先行 / 凭证默认加密 / TOFU 默认启用）——`fwknopd-admin` CLI、授权 QR（`fwknop://`）、凭证文件（JSON v1，scrypt+AES-GCM）、TOFU 首次使用绑定；方案文档 v2.0 → v2.1（§7.6/附录 E）；阶段 4 升级为「零信任硬化 + 审计/指标 + 服务端管理工具」。
 - 2026-07-23：阶段 1 完成（`9a097500`）——TOTP 引擎 + 端口映射 + 客户端端口跳变；MinGW 验证 6/6 RFC 向量 + 端口确定性。
 - 2026-07-23：阶段 3 完成（`d734a35b`+`05d11c67`）——SPA v4 device_id；v4/v3 单测 33/33 PASS；客户端 `--device-id` 冒烟通过。

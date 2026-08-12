@@ -19,6 +19,10 @@
 | [04-开发进度与构建验证.md](04-开发进度与构建验证.md) | 已完成/待办状态、构建与验证方法、关键不变量、提交规范 |
 | [05-Windows便携版托盘.md](05-Windows便携版托盘.md) | Windows 便携版托盘程序（子进程调用 fwknop.exe 真实敲门） |
 
+## 发版说明
+
+- [release/2.1.0.md](release/2.1.0.md) — 零信任硬化 + 服务端管理易用性（阶段 2/4/6，2026-08-13）
+
 ## 关键事实速查
 
 - **上游**：`mrash/fwknop`，基线版本 `2.6.11`（见 [VERSION](../VERSION)、[configure.ac](../configure.ac)）。
