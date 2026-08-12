@@ -44,6 +44,7 @@
 #include "fwknopd_errors.h"
 #include "replay_cache.h"
 #include "fko_totp.h"   /* stage 4: TOTP port factor (REQUIRE_TOTP_PORT_MATCH) */
+#include "audit.h"      /* stage 4: structured JSON audit + metrics */
 
 #define CTX_DUMP_BUFSIZE            4096                /*!< Maximum size allocated to a FKO context dump */
 
@@ -325,8 +326,12 @@ check_pkt_age(const fko_srv_options_t *opts, spa_data_t *spadat,
 
         if(ts_diff > opts->max_spa_packet_age)
         {
+            char reason[48];
             log_msg(LOG_WARNING, "[%s] (stanza #%d) SPA data time difference is too great (%i seconds).",
                 spadat->pkt_source_ip, stanza_num, ts_diff);
+            snprintf(reason, sizeof(reason), "aged_%ds", ts_diff);
+            audit_log_event(opts, AUDIT_AGED, spadat, NULL,
+                    opts->spa_pkt.packet_dst_port, 0, stanza_num, reason);
             return 0;
         }
     }
@@ -394,6 +399,9 @@ src_check(fko_srv_options_t *opts, spa_pkt_info_t *spa_pkt,
 
             if (is_replay(opts, *raw_digest) != SPA_MSG_SUCCESS)
             {
+                audit_log_event(opts, AUDIT_REPLAY, spadat,
+                        spadat->pkt_source_ip, spa_pkt->packet_dst_port,
+                        0, 0, "replay_digest_hit");
                 free(*raw_digest);
                 return 0;
             }
@@ -859,6 +867,9 @@ check_device_id(fko_srv_options_t *opts, acc_stanza_t *acc,
         log_msg(LOG_WARNING,
             "[%s] (stanza #%d) Fingerprint required but SPA packet has no device_id",
             spadat->pkt_source_ip, stanza_num);
+        audit_log_event(opts, AUDIT_UNKNOWN_FINGERPRINT, spadat, NULL,
+                opts->spa_pkt.packet_dst_port, 0, stanza_num,
+                "fingerprint_required_but_missing");
         return 0;
     }
 
@@ -881,6 +892,9 @@ check_device_id(fko_srv_options_t *opts, acc_stanza_t *acc,
         log_msg(LOG_WARNING,
             "[%s] (stanza #%d) device_id not in fingerprint whitelist",
             spadat->pkt_source_ip, stanza_num);
+        audit_log_event(opts, AUDIT_UNKNOWN_FINGERPRINT, spadat, NULL,
+                opts->spa_pkt.packet_dst_port, 0, stanza_num,
+                "device_id_not_in_whitelist");
         return 0;
     }
 
@@ -891,6 +905,9 @@ check_device_id(fko_srv_options_t *opts, acc_stanza_t *acc,
         log_msg(LOG_WARNING,
             "[%s] (stanza #%d) TOFU grace window expired, device_id not bound",
             spadat->pkt_source_ip, stanza_num);
+        audit_log_event(opts, AUDIT_UNKNOWN_FINGERPRINT, spadat, NULL,
+                opts->spa_pkt.packet_dst_port, 0, stanza_num,
+                "tofu_grace_expired");
         return 0;
     }
 
@@ -907,6 +924,8 @@ check_device_id(fko_srv_options_t *opts, acc_stanza_t *acc,
     log_msg(LOG_NOTICE,
         "[%s] (stanza #%d) TOFU: bound new device_id %s",
         spadat->pkt_source_ip, stanza_num, spadat->device_id);
+    audit_log_event(opts, AUDIT_TOFU_BIND, spadat, NULL,
+            opts->spa_pkt.packet_dst_port, 0, stanza_num, "tofu_bound");
     return 1;
 }
 
@@ -940,10 +959,15 @@ check_totp_port(const fko_srv_options_t *opts, acc_stanza_t *acc,
 
     if(expected != spa_pkt->packet_dst_port)
     {
+        char reason[64];
         log_msg(LOG_WARNING,
             "[%s] (stanza #%d) TOTP port mismatch: arrived=%u expected=%u",
             spadat->pkt_source_ip, stanza_num,
             spa_pkt->packet_dst_port, expected);
+        snprintf(reason, sizeof(reason),
+            "arrived=%u_expected=%u", spa_pkt->packet_dst_port, expected);
+        audit_log_event(opts, AUDIT_PORT_MISMATCH, spadat, NULL,
+                spa_pkt->packet_dst_port, 0, stanza_num, reason);
         return 0;
     }
     return 1;
@@ -1367,7 +1391,19 @@ incoming_spa(fko_srv_options_t *opts)
 
         /* If we made it here, then the SPA packet was processed according
          * to a matching access.conf stanza, so we're done with this packet.
-        */
+         * Emit a structured AUDIT_OPEN (target_port best-effort from the
+         * remaining SPA message, e.g. "tcp/22"). */
+        {
+            unsigned int tport = 0;
+            if(spadat.spa_message_remain != NULL)
+            {
+                const char *sl = strchr(spadat.spa_message_remain, '/');
+                if(sl != NULL)
+                    tport = (unsigned int)atoi(sl + 1);
+            }
+            audit_log_event(opts, AUDIT_OPEN, &spadat, NULL,
+                    spa_pkt->packet_dst_port, tport, stanza_num, "accepted");
+        }
         break;
     }
 

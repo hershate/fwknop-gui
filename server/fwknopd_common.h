@@ -89,6 +89,13 @@
  * "udp dst portrange START-END" so the server listens across the whole
  * TOTP port-hopping range. See REF/plan/Port Knocking.md §4.2 (stage 2). */
 #define DEF_PCAP_PORT_RANGE             ""
+
+/* Stage 4 structured audit. Default on; the file path defaults to
+ * <FWKNOP_RUN_DIR>/fwknopd_audit.log (resolved at runtime in config_init).
+ * Empty AUDIT_FILE/METRICS_FILE disables file output (syslog still used). */
+#define DEF_ENABLE_AUDIT                "Y"
+#define DEF_AUDIT_FILE                  ""    /* "" => <run_dir>/fwknopd_audit.log */
+#define DEF_METRICS_FILE                ""    /* "" => <run_dir>/fwknopd.metrics */
 #define DEF_PCAP_DISPATCH_COUNT         "100"
 #define DEF_PCAP_LOOP_SLEEP             "100000" /* a tenth of a second (in microseconds) */
 #define DEF_ENABLE_PCAP_ANY_DIRECTION   "N"
@@ -279,6 +286,10 @@ enum {
     CONF_NFQ_QUEUE_NUMBER,
     CONF_NFQ_LOOP_SLEEP,
 #endif
+    /* Stage 4: structured JSON audit + Prometheus metrics (audit.c). */
+    CONF_ENABLE_AUDIT,
+    CONF_AUDIT_FILE,
+    CONF_METRICS_FILE,
     CONF_LOCALE,
     CONF_SYSLOG_IDENTITY,
     CONF_SYSLOG_FACILITY,

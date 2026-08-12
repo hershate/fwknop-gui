@@ -72,6 +72,9 @@ static char *config_map[NUMBER_OF_CONFIG_ENTRIES] = {
     "NFQ_QUEUE_NUMBER",
     "NFQ_LOOP_SLEEP",
 #endif
+    "ENABLE_AUDIT",
+    "AUDIT_FILE",
+    "METRICS_FILE",
     "LOCALE",
     "SYSLOG_IDENTITY",
     "SYSLOG_FACILITY",

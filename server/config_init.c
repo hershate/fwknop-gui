@@ -441,6 +441,37 @@ validate_options(fko_srv_options_t *opts)
 #endif
     }
 
+    /* Stage 4 structured audit defaults. File paths default to the run dir
+     * when ENABLE_AUDIT is Y and the admin has not set an explicit path. */
+    if(opts->config[CONF_ENABLE_AUDIT] == NULL)
+        set_config_entry(opts, CONF_ENABLE_AUDIT, DEF_ENABLE_AUDIT);
+    if(opts->config[CONF_AUDIT_FILE] == NULL)
+    {
+        if(strncasecmp(opts->config[CONF_ENABLE_AUDIT], "Y", 1) == 0)
+        {
+            strlcpy(tmp_path, opts->config[CONF_FWKNOP_RUN_DIR], sizeof(tmp_path));
+            if(tmp_path[strlen(tmp_path)-1] != '/')
+                strlcat(tmp_path, "/", sizeof(tmp_path));
+            strlcat(tmp_path, "fwknopd_audit.log", sizeof(tmp_path));
+            set_config_entry(opts, CONF_AUDIT_FILE, tmp_path);
+        }
+        else
+            set_config_entry(opts, CONF_AUDIT_FILE, DEF_AUDIT_FILE);
+    }
+    if(opts->config[CONF_METRICS_FILE] == NULL)
+    {
+        if(strncasecmp(opts->config[CONF_ENABLE_AUDIT], "Y", 1) == 0)
+        {
+            strlcpy(tmp_path, opts->config[CONF_FWKNOP_RUN_DIR], sizeof(tmp_path));
+            if(tmp_path[strlen(tmp_path)-1] != '/')
+                strlcat(tmp_path, "/", sizeof(tmp_path));
+            strlcat(tmp_path, "fwknopd.metrics", sizeof(tmp_path));
+            set_config_entry(opts, CONF_METRICS_FILE, tmp_path);
+        }
+        else
+            set_config_entry(opts, CONF_METRICS_FILE, DEF_METRICS_FILE);
+    }
+
     /* Set remaining require CONF_ vars if they are not already set.  */
 
     /* PCAP capture interface - note that if '-r <pcap file>' is specified
