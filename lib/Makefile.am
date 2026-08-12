@@ -11,7 +11,8 @@ libfko_source_files = \
     gpgme_funcs.c gpgme_funcs.h \
     fko_totp.c fko_totp.h \
     fko_device_id.c fko_device_id.h \
-    fko_fingerprint.c
+    fko_fingerprint.c \
+    fko_cred.c
 
 if WANT_C_UNIT_TESTS
 noinst_PROGRAMS     = fko_utests

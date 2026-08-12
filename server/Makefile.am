@@ -1,4 +1,4 @@
-sbin_PROGRAMS       = fwknopd
+sbin_PROGRAMS       = fwknopd fwknopd-admin
 
 BASE_SOURCE_FILES   = fwknopd.h config_init.c config_init.h \
                       fwknopd_common.h incoming_spa.c incoming_spa.h \
@@ -16,6 +16,12 @@ BASE_SOURCE_FILES   = fwknopd.h config_init.c config_init.h \
                       audit.c audit.h
 
 fwknopd_SOURCES   = fwknopd.c $(BASE_SOURCE_FILES)
+
+# Stage 4c: fwknopd-admin server administration CLI (plan §7.6).
+fwknopd_admin_SOURCES = fwknopd-admin.c credential.c credential.h
+fwknopd_admin_CPPFLAGS = -I $(top_srcdir)/lib -I $(top_srcdir)/common \
+                         -DSYSCONFDIR=\"$(sysconfdir)\"
+fwknopd_admin_LDADD    = $(top_builddir)/lib/libfko.la
 
 if NFQ_CAPTURE
     fwknopd_SOURCES += nfq_capture.c nfq_capture.h

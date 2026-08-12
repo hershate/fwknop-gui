@@ -783,6 +783,15 @@ DLL_API int fko_base64_encode(unsigned char * const in, char * const out, int in
  */
 DLL_API int fko_base64_decode(const char * const in, unsigned char *out);
 
+/* Stage 4 credential-file crypto (fwknopd-admin / fwknop import). Reuses the
+ * proven Rijndael AES-256-CBC path (random salt, OpenSSL-compatible MD5 KDF).
+ * See lib/fko_cred.c. */
+DLL_API int fko_encrypt_buf(const char *pass, const int pass_len,
+        const unsigned char *in, const int in_len,
+        char *out_b64, const int out_b64_len);
+DLL_API int fko_decrypt_buf(const char *pass, const int pass_len,
+        const char *in_b64, unsigned char *out, const int out_len);
+
 
 /**
  * \brief Encodes data in SPA context
