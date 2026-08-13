@@ -1,8 +1,8 @@
 /**
  * \file client/import.h
  *
- * \brief `fwknop import` — load a credential (QR/URI/JSON file) into a
- *        fwknoprc stanza (plan §7.6.3). Server-issued credentials become a
+ * \brief `fwknop import` - load a credential (QR/URI/JSON file) into a
+ *        fwknoprc stanza (plan Sec.7.6.3). Server-issued credentials become a
  *        ready-to-use client profile.
  */
 #ifndef FKO_IMPORT_H

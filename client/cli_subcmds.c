@@ -1,7 +1,7 @@
 /**
  * \file client/cli_subcmds.c
  *
- * \brief Friendly subcommand dispatch: `fwknop setup|knock|lint` (plan §7.1).
+ * \brief Friendly subcommand dispatch: `fwknop setup|knock|lint` (plan Sec.7.1).
  *
  * These subcommands are thin, non-invasive conveniences layered on top of
  * the existing client.  `setup` runs an interactive wizard; `knock` is
@@ -269,7 +269,7 @@ cli_profile(int argc, char **argv)
         }
         fclose(f);
         if(count == 0)
-            printf("  (no profiles — run 'fwknop setup' or 'fwknop import')\n");
+            printf("  (no profiles - run 'fwknop setup' or 'fwknop import')\n");
         printf("Knock with: fwknop knock <profile>\n");
         return EXIT_SUCCESS;
     }

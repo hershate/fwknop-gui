@@ -1,7 +1,7 @@
 /**
  * \file client/wizard.c
  *
- * \brief Interactive `fwknop setup` wizard (plan §7.1).
+ * \brief Interactive `fwknop setup` wizard (plan Sec.7.1).
  *
  * Walks the user through the few inputs fwknop actually needs, then
  * generates everything else: a Rijndael key, an HMAC key, a TOTP seed

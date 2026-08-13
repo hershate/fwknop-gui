@@ -7,7 +7,7 @@
  * syslog at LOG_INFO. Prometheus-format counters are kept in memory and the
  * METRICS_FILE is rewritten (atomically) on audit_metrics_flush(). This keeps
  * a Web panel / node_exporter textfile collector decoupled from the C daemon
- * (see REF/plan/Port Knocking.md §7.4/§7.6).
+ * (see REF/plan/Port Knocking.md Sec.7.4/Sec.7.6).
  */
 /*  Fwknop is developed primarily by the people listed in the file 'AUTHORS'.
  *  Copyright (C) 2009-2015 fwknop developers and contributors.

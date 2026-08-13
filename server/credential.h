@@ -7,7 +7,7 @@
  * carries the full bearer material (Rijndael + HMAC + TOTP seed + port range)
  * so importing it produces a ready-to-use client stanza. Encryption defaults
  * to on (fko_encrypt_buf, AES-256-CBC + passphrase); --plain emits cleartext.
- * See REF/plan/Port Knocking.md §7.6 / appendix E.
+ * See REF/plan/Port Knocking.md Sec.7.6 / appendix E.
  */
 #ifndef CREDENTIAL_H
 #define CREDENTIAL_H

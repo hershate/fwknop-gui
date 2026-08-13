@@ -876,7 +876,7 @@ check_device_id(fko_srv_options_t *opts, acc_stanza_t *acc,
     /* Explicit whitelist: constant-time match against each entry. Only
      * compare when lengths are equal (avoids reading past the shorter
      * buffer); device_id values are not secret, but we use constant-time
-     * comparison per the design (REF/plan/Port Knocking.md §4.3). */
+     * comparison per the design (REF/plan/Port Knocking.md Sec.4.3). */
     if(! acc->fingerprint_tofu)
     {
         size_t dev_len = strlen(spadat->device_id);

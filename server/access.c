@@ -1249,7 +1249,7 @@ tofu_load_state(fko_srv_options_t *opts)
     tofu_state_path(opts, path, sizeof(path));
     fp = fopen(path, "r");
     if(fp == NULL)
-        return 0;  /* no prior bindings — fine */
+        return 0;  /* no prior bindings - fine */
 
     while(fgets(buf, sizeof(buf), fp) != NULL)
     {

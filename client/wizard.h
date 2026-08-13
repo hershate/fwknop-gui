@@ -1,7 +1,7 @@
 /**
  * \file client/wizard.h
  *
- * \brief Interactive `fwknop setup` wizard (plan §7.1).
+ * \brief Interactive `fwknop setup` wizard (plan Sec.7.1).
  */
 #ifndef FKO_WIZARD_H
 #define FKO_WIZARD_H 1

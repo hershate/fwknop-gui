@@ -9,8 +9,8 @@
  * key+IV via the OpenSSL-compatible MD5 KDF, emitting "Salted__<salt><ct>".
  * The result is base64-encoded so credential files stay text.
  *
- * This is NOT a new crypto primitive — it reuses cipher_funcs.c exactly as
- * fko_encryption.c does for SPA payloads (REF/plan/Port Knocking.md §7.6.4).
+ * This is NOT a new crypto primitive - it reuses cipher_funcs.c exactly as
+ * fko_encryption.c does for SPA payloads (REF/plan/Port Knocking.md Sec.7.6.4).
  */
 #include "fko_common.h"
 #include "fko.h"

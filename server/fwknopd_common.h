@@ -87,7 +87,7 @@
 /* When PCAP_PORT_RANGE is set (e.g. "30000-60000") and PCAP_FILTER is not
  * explicitly configured, pcap_capture() auto-generates the BPF
  * "udp dst portrange START-END" so the server listens across the whole
- * TOTP port-hopping range. See REF/plan/Port Knocking.md §4.2 (stage 2). */
+ * TOTP port-hopping range. See REF/plan/Port Knocking.md Sec.4.2 (stage 2). */
 #define DEF_PCAP_PORT_RANGE             ""
 
 /* Stage 4 structured audit. Default on; the file path defaults to
@@ -448,7 +448,7 @@ typedef struct acc_stanza
      * TOFU state file) within FINGERPRINT_TOFU_TIMEOUT seconds of daemon
      * start. require_totp_port_match recomputes the expected destination
      * port from the SPA timestamp and compares it to the port the packet
-     * actually arrived on. See REF/plan/Port Knocking.md §4.3/§7.6. */
+     * actually arrived on. See REF/plan/Port Knocking.md Sec.4.3/Sec.7.6. */
     char                *fingerprint;
     acc_string_list_t   *fingerprint_list;
     unsigned char        require_fingerprint;

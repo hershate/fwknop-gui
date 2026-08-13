@@ -1,7 +1,7 @@
 /**
  * \file server/fwknopd-admin.c
  *
- * \brief Server-side administration CLI (plan §7.6).
+ * \brief Server-side administration CLI (plan Sec.7.6).
  *
  * Carries all server management logic: stanza management, key/seed/fingerprint
  * generation, authorization QR (fwknop://), encrypted credential export, TOFU
@@ -210,7 +210,7 @@ static void
 usage(void)
 {
     fprintf(stderr,
-        "fwknopd-admin — fwknop server administration (plan §7.6)\n\n"
+        "fwknopd-admin - fwknop server administration (plan Sec.7.6)\n\n"
         "  fwknopd-admin user add <name> [--server H] [--access tcp/22]\n"
         "      [--user U] [--totp] [--port-range S-E] [--require-fingerprint]\n"
         "      [--tofu-timeout S] [--require-totp-port-match] [--no-qr]\n"

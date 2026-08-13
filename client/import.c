@@ -1,13 +1,13 @@
 /**
  * \file client/import.c
  *
- * \brief `fwknop import` — turn a server-issued credential into a fwknoprc
- *        stanza (plan §7.6.3).
+ * \brief `fwknop import` - turn a server-issued credential into a fwknoprc
+ *        stanza (plan Sec.7.6.3).
  *
  * Accepts three input forms, auto-detected:
  *   1. a fwknop:// URI (argument or a .txt file containing one)
  *   2. a credential JSON file (.json), optionally encrypted (fwknop-cred v1 enc)
- *   3. a QR image (.png/.jpg) holding a fwknop:// URI — decoded via `zbarimg`
+ *   3. a QR image (.png/.jpg) holding a fwknop:// URI - decoded via `zbarimg`
  *      if available (optional runtime dep), else the user provides the URI.
  *
  * The client only uses exported fko_* APIs (fko_decrypt_buf for encrypted

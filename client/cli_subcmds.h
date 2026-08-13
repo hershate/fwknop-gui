@@ -14,7 +14,7 @@ enum {
 
 /*
  * Inspect argv[1] for a known friendly subcommand and handle it:
- *   setup -> run the interactive wizard (plan §7.1), then exit()
+ *   setup -> run the interactive wizard (plan Sec.7.1), then exit()
  *   lint  -> validate fwknoprc (and optional --access-conf), then exit()
  *   knock -> rewrite argv into the normal send flow
  *            (`fwknop -n <profile> -R ...`) and return CLI_SUB_KNOCK so the
