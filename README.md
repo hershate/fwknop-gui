@@ -178,6 +178,23 @@ version. The latest release can be found at
 [http://www.cipherdyne.org/fwknop/](http://www.cipherdyne.org/fwknop/)
 
 
+## Quick Start (this fork)
+
+One command builds the project and brings up a self-contained demo (fwknopd on
+loopback + WebUI + a real SPA knock that opens an iptables door):
+
+```bash
+./scripts/quickstart.sh          # build + start + knock + verify (default: demo)
+./scripts/quickstart.sh status   # show running fwknopd + dashboard
+./scripts/quickstart.sh knock 443   # open another door
+./scripts/quickstart.sh stop     # stop everything
+```
+
+See [`scripts/README.md`](scripts/README.md) for all subcommands and options,
+and [`note/release/2.1.0.md`](note/release/2.1.0.md) for the fork's full feature
+set (TOTP port-hopping, device fingerprints + TOFU, structured audit/metrics,
+credential issuance via `fwknopd-admin`, client `fwknop import`).
+
 ## Current State
 This README file describes the present state of the fwknop project as of the
 2.5 release made in July, 2013. At present, we have an implementation of the
