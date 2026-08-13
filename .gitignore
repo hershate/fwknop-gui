@@ -126,3 +126,6 @@ common/.deps/
 client/.libs/
 win32/.deps/
 config.h.in~
+
+# autotools/editor backups
+configure~
