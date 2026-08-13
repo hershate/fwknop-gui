@@ -224,6 +224,7 @@ v4 往返/v3 兼容/timeout+device_id 单测 **33/33 PASS**（`REF/build/test_de
 ---
 
 ## 变更日志
+- 2026-08-13（续）：**完整上游测试套件验证**。`test/test-fwknop.pl` 全套 **692/34/726** 通过（103 分钟，fuzzing 9/0/9）。真实端到端 SPA 交换（[client+server] 类）全通过——`fw_rule_created=1`、iptables 实际安装 `ACCEPT tcp dpt:22 /* _exp_<ts> */` 并到期移除。34 项失败分类：11 项 pcap 测试因初次 `--enable-udp-server` 构建排除 pcap（pcap 构建重跑 17/4/21 通过，含 portrange filter 验证 PCAP_PORT_RANGE 无回归）；其余环境相关（hardening/interface/raw-socket/NAT/fko-wrapper）。**test 28 绑定修复**（`d368f761`）：device_id 错误码 + 多处漂移，从 libfko 重建 perl/python 绑定 143 个权威值。Fork 回归 27/27（系统工具链）。**结论：Stage 2/4/5+ 零回归**。
 - 2026-08-13：**阶段 2/4/6/5+ 在 Linux 实现并验证**。基线构建修复（`lib/Makefile.am` fko_utests LDADD 同目录相对引用）。阶段 2 `PCAP_PORT_RANGE`→`udp dst portrange` BPF（commit `6ade35dd`）。阶段 4a 指纹白名单+TOFU+`REQUIRE_TOTP_PORT_MATCH`（`46c683e2`）。阶段 4b 结构化 JSON 审计+Prometheus 指标（`ec205b82`）。阶段 4c `fwknopd-admin` CLI + 凭证/QR 发放 + `fko_encrypt_buf`（`4cf4386a`）。阶段 4d 客户端 `fwknop import`（`83d93479`）。阶段 6 无 root 回归脚本 `test/run_fork_tests.sh`（`7440971f`）。阶段 5+：WebUI 运维面板 Go（`8b5b62a8`）、TUI 管理壳（`2b692138`）、`fwknop profile list`（`395d4d48`）。回归 27/27 PASS。凭证加密改为复用 rij_encrypt 的 AES-256-CBC（非新原语，比方案 v2.1 的 scrypt+AES-GCM 更务实）。
 - 2026-08-13：细化服务端管理易用性方案（用户决策：CLI 先行 / 凭证默认加密 / TOFU 默认启用）——`fwknopd-admin` CLI、授权 QR（`fwknop://`）、凭证文件（JSON v1，scrypt+AES-GCM）、TOFU 首次使用绑定；方案文档 v2.0 → v2.1（§7.6/附录 E）；阶段 4 升级为「零信任硬化 + 审计/指标 + 服务端管理工具」。
 - 2026-07-23：阶段 1 完成（`9a097500`）——TOTP 引擎 + 端口映射 + 客户端端口跳变；MinGW 验证 6/6 RFC 向量 + 端口确定性。
