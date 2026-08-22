@@ -545,9 +545,9 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
     <button class="nav-item" data-page="about"><svg><use href="#i-info"/></svg>关于</button>
     <div class="spacer"></div>
     <div class="side-foot">
-      <div class="conn" id="conn-box" title="点击立即重连刷新" style="cursor:pointer"><span class="dot" id="conn-dot"></span><span id="conn-text">正在连接…</span>
+      <div class="conn" id="conn-box" title="点击立即重连刷新" style="cursor:pointer" role="status" aria-live="polite"><span class="dot" id="conn-dot"></span><span id="conn-text">正在连接…</span>
         <span class="hint" id="side-ver" style="margin-left:auto;font-size:11px" title="面板版本">v2.4.3</span></div>
-      <div class="hint" id="sess-ttl" style="display:none;font-size:11px;margin-top:2px"></div>
+      <div class="hint" id="sess-ttl" style="display:none;font-size:11px;margin-top:2px" aria-live="polite"></div>
       <div class="side-actions">
         <button class="icon-btn" id="kbd-btn" title="键盘快捷键（按 ? 随时打开）"><svg><use href="#i-key"/></svg>快捷键</button>
         <button class="icon-btn" id="notif-btn" title="通知历史"><svg><use href="#i-bell"/></svg>通知<span class="nb-badge" id="notif-badge" style="display:none"></span></button>
@@ -656,7 +656,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <div class="chips" id="event-chips"></div>
             <div id="event-ratio" style="margin-top:8px"></div>
             <div id="ev-active" style="display:none;margin-top:8px;flex-wrap:wrap;gap:6px;align-items:center"></div>
-            <button class="btn small" id="ev-new-pill" style="display:none;margin-top:8px;width:100%"></button>
+            <button class="btn small" id="ev-new-pill" style="display:none;margin-top:8px;width:100%" aria-live="polite"></button>
           </div>
           <div class="tb-wrap">
             <table class="tb">
@@ -710,7 +710,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <span id="custom-tpls" style="display:inline-flex;gap:8px;flex-wrap:wrap"></span>
                 <button type="button" class="tpl-chip" id="tpl-save" title="把当前表单的安全选项保存为可复用模板">＋ 存为模板</button>
               </div>
-              <div class="tpl-desc" id="tpl-desc"></div>
+              <div class="tpl-desc" id="tpl-desc" aria-live="polite"></div>
               <div class="form-sec">基本信息</div>
               <div class="form-grid">
                 <div class="field">
@@ -805,7 +805,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <button class="btn ghost" type="button" id="add-cancel">收起</button>
               </div>
             </form>
-            <div id="add-result" style="display:none; margin-top:18px">
+            <div id="add-result" style="display:none; margin-top:18px" aria-live="polite">
               <div class="form-sec">签发结果（仅显示一次）</div>
               <div class="uri-box" id="add-uri-box" style="display:none">
                 <code id="add-uri"></code>
