@@ -2484,11 +2484,34 @@ $('#add-form').name.addEventListener('input', ev => {
     el.textContent = '✗ 名称不能含空白、#、引号或反引号（会写入配置注释行）';
     el.className = 'auth-hint no'; return;
   }
+  const taken = n =>
+    ((S.users && S.users.stanzas) || []).some(x => x.name === n) ||
+    ((S.users && S.users.disabled) || []).some(x => x.name === n);
+  /* 重名时建议可用变体（name-2 / name-3 …），点击即填入 */
+  const suggest = () => {
+    for (let i = 2; i < 100; i++) {
+      const cand = v.slice(0, 96) + '-' + i;
+      if (!taken(cand)) return cand;
+    }
+    return '';
+  };
+  const fillSuggest = cand => {
+    el.innerHTML = cand ? ` → 可用：<a href="javascript:void 0" id="name-sugg" style="color:inherit;text-decoration:underline">${esc(cand)}</a>` : '';
+    const a = document.getElementById('name-sugg');
+    if (a) a.onclick = () => {
+      $('#add-form').name.value = cand;
+      $('#add-form').name.dispatchEvent(new Event('input'));
+    };
+  };
   const active = ((S.users && S.users.stanzas) || []).some(x => x.name === v);
   const disabled = ((S.users && S.users.disabled) || []).some(x => x.name === v);
-  if (active) { el.textContent = '✗ 已有同名授权，签发前请先撤销或改名'; el.className = 'auth-hint no'; }
-  else if (disabled) { el.textContent = '⚠ 存在同名已禁用授权，可直接「恢复」或在下方禁用区处理'; el.className = 'auth-hint no'; }
-  else { el.textContent = '✓ 名称可用'; el.className = 'auth-hint ok'; }
+  if (active) {
+    el.textContent = '✗ 已有同名授权，签发前请先撤销或改名'; el.className = 'auth-hint no';
+    fillSuggest(suggest());
+  } else if (disabled) {
+    el.textContent = '⚠ 存在同名已禁用授权，可直接「恢复」或在下方禁用区处理'; el.className = 'auth-hint no';
+    fillSuggest(suggest());
+  } else { el.textContent = '✓ 名称可用'; el.className = 'auth-hint ok'; }
 });
 
 $('#add-form').addEventListener('submit', async ev => {
