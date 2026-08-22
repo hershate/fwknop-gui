@@ -655,6 +655,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
                   <label>允许访问端口</label>
                   <input name="access" placeholder="默认 tcp/22">
                   <div class="tip">OPEN_PORTS，如 tcp/22,udp/53</div>
+                  <div class="auth-hint" id="add-access-hint"></div>
                 </div>
                 <div class="field">
                   <label>要求客户端用户名</label>
@@ -671,6 +672,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
                 <div class="field">
                   <label>TOTP 端口范围</label>
                   <input name="port-range" placeholder="默认 30000-60000">
+                  <div class="auth-hint" id="add-range-hint"></div>
                 </div>
                 <div class="field">
                   <label class="check-row"><input type="checkbox" name="require-fingerprint" checked style="width:auto"> 要求设备指纹绑定</label>
@@ -1685,6 +1687,26 @@ function loadAddDraft() {
 function clearAddDraft() { localStorage.removeItem(ADD_DRAFT_KEY); }
 $('#add-form').addEventListener('input', saveAddDraft);
 $('#add-form').addEventListener('change', saveAddDraft);
+
+/* 端口字段格式即时校验：OPEN_PORTS 与 TOTP 端口范围 */
+function fmtHint(el, ok, okText, badText) {
+  el.textContent = ok ? okText : badText;
+  el.className = 'auth-hint ' + (ok ? 'ok' : 'no');
+}
+$('#add-form').access.addEventListener('input', ev => {
+  const v = ev.target.value.trim(), el = $('#add-access-hint');
+  if (!v) { el.textContent = ''; el.className = 'auth-hint'; return; }
+  const ok = /^(tcp|udp)\/\d{1,5}(,(tcp|udp)\/\d{1,5})*$/.test(v) &&
+    v.split(',').every(x => { const n = +x.split('/')[1]; return n >= 1 && n <= 65535; });
+  fmtHint(el, ok, '✓ 格式正确', '✗ 格式应为 tcp/22 或 tcp/22,udp/53（端口 1-65535）');
+});
+$('#add-form')['port-range'].addEventListener('input', ev => {
+  const v = ev.target.value.trim(), el = $('#add-range-hint');
+  if (!v) { el.textContent = ''; el.className = 'auth-hint'; return; }
+  const m = v.match(/^(\d{1,5})-(\d{1,5})$/);
+  const ok = m && +m[1] >= 1024 && +m[2] <= 65535 && +m[1] < +m[2];
+  fmtHint(el, ok, '✓ 范围有效', '✗ 格式应为 30000-60000（1024-65535，起 < 止）');
+});
 
 /* 名称唯一性前置校验：与现有授权/已禁用授权重名时即时提示 */
 $('#add-form').name.addEventListener('input', ev => {
