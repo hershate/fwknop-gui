@@ -351,6 +351,9 @@ if [ -x "$GOBIN" ]; then
         wget -qO- --post-data '{"name":"p1"}' --header="$HDR" --header="$J" \
             http://127.0.0.1:18099/api/profiles/apply 2>/dev/null | grep -q '已切换到方案' \
             && ok "方案应用" || bad "方案应用"
+        wget -qO- --header="$TK" http://127.0.0.1:18099/api/profiles 2>/dev/null \
+            | grep -q '"name":"p1"[^}]*"current":true' \
+            && ok "方案应用后标记「当前生效」" || bad "方案当前生效标记"
         wget -qO- --post-data '{"name":"../evil"}' --header="$HDR" --header="$J" \
             http://127.0.0.1:18099/api/profiles/save 2>/dev/null | grep -q '方案名' \
             && ok "方案名路径穿越被拒绝" || bad "方案名防护"
