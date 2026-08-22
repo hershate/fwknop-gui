@@ -240,6 +240,8 @@ select.ctl, input.ctl {
 @keyframes numBump { 0% { transform:scale(1.18); filter:brightness(1.5); } 100% { transform:scale(1); filter:none; } }
 .num-bump { animation:numBump .6s ease; display:inline-block; }
 .nb-badge { background:var(--red); color:#fff; border-radius:9px; font-size:10px; line-height:1.6; padding:0 5px; margin-left:4px; vertical-align:2px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.spinning svg { animation:spin .8s linear infinite; }
 @keyframes prefillFlash { 0% { box-shadow:0 0 0 2px var(--accent); } 100% { box-shadow:none; } }
 .tile .lab { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); font-weight:500; }
 .tile .lab svg { width:14px; height:14px; }
@@ -1271,7 +1273,12 @@ function restartTimer() {
 }
 $('#auto-sw').onchange = e => { S.auto = e.target.checked; restartTimer(); };
 $('#ivl-sel').onchange = e => { S.ivl = +e.target.value; restartTimer(); };
-$('#refresh-btn').onclick = refreshNow;
+$('#refresh-btn').onclick = () => {
+  const b = $('#refresh-btn');
+  if (b.classList.contains('spinning')) return;  /* 防连点 */
+  b.classList.add('spinning');
+  refreshNow().then(() => b.classList.remove('spinning'));
+};
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) clearInterval(S.timer); else restartTimer(), refreshNow();
 });
@@ -1280,14 +1287,15 @@ document.addEventListener('visibilitychange', () => {
 function refreshNow() {
   S.nextTry = Date.now() + S.ivl;  /* 供断连倒计时显示 */
   setConn(true);
-  loadOverview();
-  if (S.page === 'overview') { loadMetrics(); loadEvents(); }
-  if (S.page === 'events') loadEvents();
-  if (S.page === 'users') { loadUsers(); loadEvents(); }
-  if (S.page === 'tofu') { loadTOFU(); loadEvents(); }
-  if (S.page === 'config') loadConfig();
-  if (S.page === 'profiles') loadProfiles();
+  const jobs = [loadOverview()];
+  if (S.page === 'overview') jobs.push(loadMetrics(), loadEvents());
+  if (S.page === 'events') jobs.push(loadEvents());
+  if (S.page === 'users') jobs.push(loadUsers(), loadEvents());
+  if (S.page === 'tofu') jobs.push(loadTOFU(), loadEvents());
+  if (S.page === 'config') jobs.push(loadConfig());
+  if (S.page === 'profiles') jobs.push(loadProfiles());
   if (S.page === 'about') renderAbout();
+  return Promise.allSettled(jobs);
 }
 
 /* 写操作门禁：只读模式下禁用管理控件 */
