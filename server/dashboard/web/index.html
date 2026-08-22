@@ -1855,7 +1855,13 @@ $('#ev-csv').onclick = () => {
   const blob = new Blob(['\ufeff' + head.join(',') + '\n' + lines.join('\n')], { type:'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'fwknop_events_' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.csv';
+  /* 文件名携带筛选上下文：类型芯片 + 时间窗 + 搜索词（安全字符化），多文件并排可区分 */
+  const tag = [S.evFilter !== 'all' ? S.evFilter : '',
+    S.evTime && S.evTime !== 'all' ? S.evTime : '',
+    S.evQuery ? S.evQuery.replace(/[^\w.-]/g, '_').slice(0, 24) : '']
+    .filter(Boolean).join('_');
+  a.download = 'fwknop_events_' + (tag ? tag + '_' : '') +
+    new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.csv';
   a.click();
   URL.revokeObjectURL(a.href);
   toast(`已导出 ${evs.length} 条事件`, 'ok');
