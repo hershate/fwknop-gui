@@ -25,15 +25,15 @@ go build -o fwknop-dashboard .
 ## 运行
 
 ```bash
-# 常规方式：首次打开页面时按向导设置管理员密码
+# 常规方式（默认即管理模式）：首次打开页面时按向导设置管理员密码
 ./fwknop-dashboard -run-dir /var/run/fwknop -addr 127.0.0.1:8088
 
-# 启用管理写操作（签发/撤销/解绑/配置编辑/服务控制）
-./fwknop-dashboard -run-dir /var/run/fwknop -enable-write
+# 只读展示模式（禁用签发/撤销/解绑/配置编辑/服务控制）
+./fwknop-dashboard -run-dir /var/run/fwknop -read-only
 
 # 无头/CI 场景：用令牌代替密码初始化（Bearer 对全部 API 有效）
 DASHBOARD_TOKEN=<随机长令牌> ./fwknop-dashboard \
-    -run-dir /var/run/fwknop -enable-write
+    -run-dir /var/run/fwknop
 ```
 
 然后打开 http://127.0.0.1:8088 。
@@ -70,7 +70,8 @@ DASHBOARD_TOKEN=<随机长令牌> ./fwknop-dashboard \
 | `-fwknopd-conf` | `/etc/fwknop/fwknopd.conf` | 服务配置（配置页数据源） |
 | `-pid-file` | `/var/run/fwknop/fwknopd.pid` | PID 文件（进程探测 / 停止 / SIGHUP） |
 | `-profile-dir` | `<run-dir>/profiles` | 配置方案存放目录 |
-| `-enable-write` | 关 | 启用写操作（签发/撤销/解绑/配置编辑/服务控制） |
+| `-enable-write` | 开 | 启用写操作（2.4.1 起默认开，仅为兼容旧启动脚本保留） |
+| `-read-only` | 关 | 只读模式：禁用所有管理写操作 |
 
 环境变量 `DASHBOARD_TOKEN`：设置后跳过密码初始化要求，作为 Bearer 凭证
 对全部 `/api` 有效（面向无头/CI；浏览器登录也可用该值作为密码）。
@@ -120,8 +121,8 @@ UX 细节：明/暗主题切换（记忆）、自动刷新（3/5/10/30 秒，标
 | `/api/profiles/save` `apply` `delete` | POST | 登录+写+CSRF | 方案保存 / 一键应用 / 删除 |
 
 「登录」= 会话 Cookie 或 `Authorization: Bearer $DASHBOARD_TOKEN`；「写」=
-启动时加 `-enable-write`；「CSRF」= Cookie 会话须带 `X-Fwknop-Request: 1`
-（Bearer 豁免）。
+默认启用（管理模式，`-read-only` 可关闭）；「CSRF」= Cookie 会话须带
+`X-Fwknop-Request: 1`（Bearer 豁免）。
 
 ## 安全说明
 
@@ -130,8 +131,10 @@ UX 细节：明/暗主题切换（记忆）、自动刷新（3/5/10/30 秒，标
   PBKDF2-HMAC-SHA256（10 万轮）存储，登录限流（5 次/5 分钟 → 锁 60 秒）。
 - **默认仅监听 localhost**；暴露到不受信网络时请置于 TLS 反向代理之后
   （TLS 下会话 Cookie 自动加 `Secure` 属性）。
-- 写操作默认关闭，需显式 `-enable-write`；Cookie 会话的写操作另需
-  `X-Fwknop-Request: 1` 自定义头，配合 `SameSite=Strict` Cookie 抵御 CSRF。
+- **默认即管理模式**：启动后即可进行签发/撤销/解绑/配置编辑/服务控制
+  （受登录 + CSRF 头保护）；如需纯展示，加 `-read-only` 进入只读模式。
+- Cookie 会话的写操作须带 `X-Fwknop-Request: 1` 自定义头，配合
+  `SameSite=Strict` Cookie 抵御 CSRF。
 - 面板**不读取密钥原文**：access.conf 解析只记录「是否配置」布尔值，方案预览中密钥一律掩码；stanza 在线编辑在服务端强校验拒绝密钥字段。
 - 所有配置落盘都遵循 **预检（fwknopd --exit-parse-config）→ 备份（`.bak-时间戳`）→ 原子替换 → SIGHUP 热加载**；服务启动/重启强制预检，预检失败拒绝执行。
 - 撤销/解绑/方案切换均为**可恢复**操作（自动备份）。
