@@ -294,6 +294,8 @@ if [ -x "$GOBIN" ]; then
         wget -qO- http://127.0.0.1:18099/ 2>/dev/null | grep -q 'ADD_TEMPLATES' \
             && grep -q 'data-tpl' <(wget -qO- http://127.0.0.1:18099/ 2>/dev/null) \
             && ok "签发表单含快速模板（一键填充）" || bad "签发模板界面"
+        wget -qO- http://127.0.0.1:18099/ 2>/dev/null | grep -q 'CONF_TEMPLATES' \
+            && ok "配置编辑器含快速模板（一键合并）" || bad "配置模板界面"
         wget -qO- --header="$TK" http://127.0.0.1:18099/api/overview 2>/dev/null | grep -q '"daemon"' \
             && ok "面板 /api/overview" || bad "面板 overview API"
         wget -qO- --header="$TK" http://127.0.0.1:18099/api/users 2>/dev/null | grep -q 'dashdemo' \
