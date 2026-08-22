@@ -1,19 +1,19 @@
 #!/bin/bash
 #
-# test/run_fork_tests.sh — fwknop fork regression suite (no root required).
+# test/run_fork_tests.sh — fwknop fork 回归测试套件（无需 root）。
 #
-# Runs everything the fork added that can be exercised without iptables/root:
-#   - autotools build (lib + client + server + fwknopd-admin + unit tests)
-#   - CUnit unit tests (lib / client / server)
-#   - REF C tests: TOTP RFC6238 vectors, v4 device_id round-trip, stage-4
-#     contract (TOTP port agreement + whitelist), audit JSON/metrics
-#   - Phase 2: PCAP_PORT_RANGE -> BPF auto-generation (3 cases)
-#   - Phase 4a: access.conf fingerprint/TOFU/TOTP parsing (4 cases)
-#   - Phase 4c/4d: credential issuance -> encrypted file -> client import
-#     -> rc stanza -> lint (end-to-end)
+# 覆盖 fork 新增的全部可在无 iptables/root 环境下验证的内容：
+#   - autotools 构建（lib + client + server + fwknopd-admin + 单元测试）
+#   - CUnit 单元测试（lib / client / server）
+#   - REF C 测试：TOTP RFC6238 测试向量、v4 device_id 往返、阶段 4
+#     契约（TOTP 端口协商 + 白名单）、审计 JSON/指标
+#   - 阶段 2：PCAP_PORT_RANGE -> BPF 自动生成（3 个用例）
+#   - 阶段 4a：access.conf 指纹/TOFU/TOTP 解析（4 个用例）
+#   - 阶段 4c/4d：凭证签发 -> 加密文件 -> 客户端导入
+#     -> rc stanza -> lint（端到端）
 #
-# Usage: ./test/run_fork_tests.sh [build-dir]
-# Exits non-zero on any failure. Designed for CI.
+# 用法：./test/run_fork_tests.sh [构建目录]
+# 任一失败即以非零码退出。适合 CI 使用。
 #
 set -u
 
@@ -24,10 +24,10 @@ PASS=0; FAIL=0
 section() { printf "\n\033[1;36m=== %s ===\033[0m\n" "$1"; }
 ok()   { printf "  \033[32mPASS\033[0m %s\n" "$1"; PASS=$((PASS+1)); }
 bad()  { printf "  \033[31mFAIL\033[0m %s\n" "$1"; FAIL=$((FAIL+1)); }
-# assert_match <pattern> <label> : checks last command output (via $OUT)
+# assert_match <模式> <标签>：检查上一条命令的输出（经由 $OUT）
 chk()  { if [ "${2:-$OUT}" != "${2:-$OUT}" ]; then :; fi; }
 
-# Load the user-local autotools toolchain if present (see note/04).
+# 若存在用户态 autotools 工具链则加载（见 note/04）。
 if [ -f /tmp/fwenv.sh ]; then . /tmp/fwenv.sh; fi
 export LD_LIBRARY_PATH="$ROOT/lib/.libs:${LD_LIBRARY_PATH:-}"
 FWKNOP="$ROOT/client/fwknop"
@@ -35,7 +35,7 @@ FWKNOPD="$ROOT/server/fwknopd"
 ADMIN="$ROOT/server/fwknopd-admin"
 
 # -------------------------------------------------------------------
-section "build (autotools)"
+section "构建（autotools）"
 # -------------------------------------------------------------------
 if [ ! -f configure ]; then
     ./autogen.sh >/tmp/ft_autogen.log 2>&1 || { bad "autogen"; exit 1; }
@@ -46,19 +46,19 @@ if [ ! -f Makefile ]; then
 fi
 make -j"$(nproc)" >/tmp/ft_make.log 2>&1
 if [ $? -eq 0 ] && [ -x "$FWKNOP" ] && [ -x "$FWKNOPD" ] && [ -x "$ADMIN" ]; then
-    ok "make (fwknop + fwknopd + fwknopd-admin built)"
+    ok "make（fwknop + fwknopd + fwknopd-admin 均已构建）"
 else
     bad "make"; tail -20 /tmp/ft_make.log; exit 1
 fi
 
 VER=$("$FWKNOP" --version 2>/dev/null)
 case "$VER" in
-    *"protocol version 4.0.0"*) ok "version = 4.0.0" ;;
-    *) bad "version: $VER" ;;
+    *"protocol version 4.0.0"*) ok "协议版本 = 4.0.0" ;;
+    *) bad "版本号异常：$VER" ;;
 esac
 
 # -------------------------------------------------------------------
-section "CUnit unit tests"
+section "CUnit 单元测试"
 # -------------------------------------------------------------------
 OUT=$("$ROOT/lib/fko_utests" 2>&1); echo "$OUT" | tail -2
 echo "$OUT" | grep -q "Passed" && ok "lib/fko_utests" || bad "lib/fko_utests"
@@ -68,13 +68,13 @@ OUT=$("$ROOT/server/fwknopd_utests" 2>&1); echo "$OUT" | tail -2
 echo "$OUT" | grep -q "Passed" && ok "server/fwknopd_utests" || bad "server/fwknopd_utests"
 
 # -------------------------------------------------------------------
-# helper to build & run a REF C test against libfko + libfko_util.a
+# 辅助函数：编译并运行针对 libfko + libfko_util.a 的 REF C 测试
 # -------------------------------------------------------------------
 run_ref_test() {
     local src="$1" extra_objs="$2"
     local bin="/tmp/ft_$(basename "$src" .c)"
-    # -DHAVE_CONFIG_H + -I. so config.h (HAVE_STRNLEN etc.) resolves and the
-    # fko_common.h fallback macros don't clash with _GNU_SOURCE decls.
+    # 加 -DHAVE_CONFIG_H + -I. 使 config.h（HAVE_STRNLEN 等）可被解析，
+    # 避免 fko_common.h 的兜底宏与 _GNU_SOURCE 声明冲突。
     if gcc -std=c99 -O2 -D_GNU_SOURCE -DHAVE_ENDIAN_H -DHAVE_CONFIG_H -I. -Ilib -Icommon \
         "$src" $extra_objs lib/.libs/libfko.so \
         -L"${HOME}/.local/usr/lib/x86_64-linux-gnu" -lcunit \
@@ -82,18 +82,18 @@ run_ref_test() {
        "$bin" >/tmp/ft_run.log 2>&1; then
         if grep -qE "ALL PASS|ALL TESTS PASSED" /tmp/ft_run.log; then ok "$src"; else bad "$src"; cat /tmp/ft_run.log; fi
     else
-        bad "$src (build/run)"; cat /tmp/ft_gcc.log /tmp/ft_run.log 2>/dev/null
+        bad "$src（构建/运行失败）"; cat /tmp/ft_gcc.log /tmp/ft_run.log 2>/dev/null
     fi
     rm -f "$bin"
 }
 
-section "REF C tests (libfko)"
+section "REF C 测试（libfko）"
 run_ref_test REF/build/test_totp.c       "common/libfko_util.a"
 run_ref_test REF/build/test_device_id.c  ""
 run_ref_test REF/build/test_stage4.c     "common/libfko_util.a"
 
-# audit test needs server/audit.c + a log_msg stub
-section "REF C test (audit module)"
+# 审计测试需要 server/audit.c 和一个 log_msg 桩函数
+section "REF C 测试（审计模块）"
 cat > /tmp/ft_stub.c <<'EOF'
 #include <stdarg.h>
 void log_msg(int l, char*m, ...) { (void)l; (void)m; }
@@ -106,21 +106,21 @@ if gcc -std=c99 -O2 -D_GNU_SOURCE -DHAVE_ENDIAN_H -DHAVE_CONFIG_H -DFIREWALL_IPT
    /tmp/ft_test_audit >/tmp/ft_run.log 2>&1; then
     grep -q "ALL PASS" /tmp/ft_run.log && ok "test_audit.c" || { bad "test_audit.c"; cat /tmp/ft_run.log; }
 else
-    bad "test_audit.c (build/run)"; cat /tmp/ft_gcc.log
+    bad "test_audit.c（构建/运行失败）"; cat /tmp/ft_gcc.log
 fi
 rm -f /tmp/ft_test_audit /tmp/ft_stub.c
 
 # -------------------------------------------------------------------
-section "Phase 2: PCAP_PORT_RANGE -> BPF"
+section "阶段 2：PCAP_PORT_RANGE -> BPF"
 # -------------------------------------------------------------------
-mkconf() {  # mkconf <dir> <range-or-empty>
+mkconf() {  # mkconf <目录> <端口范围或空>
     local d="$1" rng="$2"
     mkdir -p "$d/run"
     { echo "FWKNOP_RUN_DIR $d/run"; echo "PCAP_INTF lo";
       [ -n "$rng" ] && echo "PCAP_PORT_RANGE $rng"; } > "$d/fwknopd.conf"
     chmod 0600 "$d/fwknopd.conf"
 }
-mkacc() {  # mkacc <dir>
+mkacc() {  # mkacc <目录>
     cat > "$1/access.conf" <<'AC'
 SOURCE ANY
 KEY_BASE64 YWJjZGVmZ2hpamtsbW5vcHFyc3R1
@@ -133,21 +133,21 @@ D=$(mktemp -d)
 mkconf "$D" "30000-60000"; mkacc "$D"
 OUT=$("$FWKNOPD" -a "$D/access.conf" -c "$D/fwknopd.conf" --dump-config -f 2>&1)
 echo "$OUT" | grep -q "PCAP_FILTER.*udp dst portrange 30000-60000" \
-    && ok "range -> portrange BPF" || { bad "range BPF"; echo "$OUT" | grep PCAP_FILTER; }
+    && ok "端口范围 -> portrange BPF" || { bad "范围 BPF"; echo "$OUT" | grep PCAP_FILTER; }
 
 mkconf "$D" "30000-60000"; printf 'PCAP_FILTER udp port 62201\n' >> "$D/fwknopd.conf"; chmod 0600 "$D/fwknopd.conf"
 OUT=$("$FWKNOPD" -a "$D/access.conf" -c "$D/fwknopd.conf" --dump-config -f 2>&1)
 echo "$OUT" | grep -q "PCAP_FILTER.*udp port 62201" \
-    && ok "explicit PCAP_FILTER overrides range" || bad "explicit filter override"
+    && ok "显式 PCAP_FILTER 覆盖端口范围" || bad "显式过滤器覆盖"
 
 mkconf "$D" ""; mkacc "$D"
 OUT=$("$FWKNOPD" -a "$D/access.conf" -c "$D/fwknopd.conf" --dump-config -f 2>&1)
 echo "$OUT" | grep -q "PCAP_FILTER.*udp port 62201" \
-    && ok "default filter when nothing set" || bad "default filter"
+    && ok "未设置时使用默认过滤器" || bad "默认过滤器"
 rm -rf "$D"
 
 # -------------------------------------------------------------------
-section "Phase 4a: access.conf fingerprint/TOFU/TOTP parsing"
+section "阶段 4a：access.conf 指纹/TOFU/TOTP 解析"
 # -------------------------------------------------------------------
 D=$(mktemp -d); mkdir -p "$D/run"
 printf 'FWKNOP_RUN_DIR %s/run\nPCAP_INTF lo\n' "$D" > "$D/fwknopd.conf"; chmod 0600 "$D/fwknopd.conf"
@@ -165,10 +165,10 @@ REQUIRE_TOTP_PORT_MATCH Y
 AC
 chmod 0600 "$D/a1.conf"
 OUT=$("$FWKNOPD" -a "$D/a1.conf" -c "$D/fwknopd.conf" --dump-config -f 2>&1)
-echo "$OUT" | grep -q "FINGERPRINT:.*dGVzdC1kZXZpY2UtMQ==,dGVzdC1kZXZpY2UtMg==" && ok "multi-line FINGERPRINT merged"
-echo "$OUT" | grep -q "REQUIRE_FINGERPRINT:.*Yes" && ok "REQUIRE_FINGERPRINT parsed"
-echo "$OUT" | grep -q "TOFU_MODE:.*No" && ok "whitelist set => not TOFU"
-echo "$OUT" | grep -q "REQUIRE_TOTP_PORT_MATCH:.*Yes" && ok "REQUIRE_TOTP_PORT_MATCH parsed"
+echo "$OUT" | grep -q "FINGERPRINT:.*dGVzdC1kZXZpY2UtMQ==,dGVzdC1kZXZpY2UtMg==" && ok "多行 FINGERPRINT 合并"
+echo "$OUT" | grep -q "REQUIRE_FINGERPRINT:.*Yes" && ok "REQUIRE_FINGERPRINT 解析"
+echo "$OUT" | grep -q "TOFU_MODE:.*No" && ok "设置白名单 => 非 TOFU"
+echo "$OUT" | grep -q "REQUIRE_TOTP_PORT_MATCH:.*Yes" && ok "REQUIRE_TOTP_PORT_MATCH 解析"
 
 cat > "$D/a2.conf" <<'AC'
 SOURCE ANY
@@ -180,9 +180,9 @@ FINGERPRINT_TOFU_TIMEOUT 86400
 AC
 chmod 0600 "$D/a2.conf"
 OUT=$("$FWKNOPD" -a "$D/a2.conf" -c "$D/fwknopd.conf" --dump-config -f 2>&1)
-echo "$OUT" | grep -q "TOFU_MODE:.*Yes" && ok "TOFU mode (no whitelist)" || bad "TOFU mode"
+echo "$OUT" | grep -q "TOFU_MODE:.*Yes" && ok "TOFU 模式（无白名单）" || bad "TOFU 模式"
 
-# validation failures
+# 校验失败用例
 cat > "$D/a3.conf" <<'AC'
 SOURCE ANY
 KEY_BASE64 YWJjZGVmZ2hpamtsbW5vcHFyc3R1
@@ -192,78 +192,78 @@ REQUIRE_TOTP_PORT_MATCH Y
 AC
 chmod 0600 "$D/a3.conf"
 OUT=$("$FWKNOPD" -a "$D/a3.conf" -c "$D/fwknopd.conf" --exit-parse-config -f 2>&1)
-echo "$OUT" | grep -q "REQUIRE_TOTP_PORT_MATCH requires TOTP_SEED_BASE64" && ok "reject REQUIRE_TOTP_PORT_MATCH w/o seed"
+echo "$OUT" | grep -q "REQUIRE_TOTP_PORT_MATCH requires TOTP_SEED_BASE64" && ok "缺少种子时拒绝 REQUIRE_TOTP_PORT_MATCH"
 rm -rf "$D"
 
 # -------------------------------------------------------------------
-section "Phase 4c/4d: credential issuance -> import (end-to-end)"
+section "阶段 4c/4d：凭证签发 -> 导入（端到端）"
 # -------------------------------------------------------------------
 WORK=$(mktemp -d); HOMERC="$WORK/.fwknoprc"; mkdir -p "$WORK"
 printf 'mypass\nmypass\n' | "$ADMIN" user add prod-ssh --server 203.0.113.10 \
     --access tcp/22 --user alice --no-qr --export "$WORK/prod.cred" >/dev/null 2>&1
-[ -f "$WORK/prod.cred" ] && ok "admin writes encrypted credential file"
+[ -f "$WORK/prod.cred" ] && ok "admin 生成加密凭证文件"
 
 HOME="$WORK" "$FWKNOP" import "$WORK/prod.cred" --rc-file "$HOMERC" --passphrase mypass >/tmp/ft_import.log 2>&1
 if grep -q "Imported stanza \[prod-ssh\]" /tmp/ft_import.log; then
-    ok "import decrypts + writes stanza"
+    ok "import 解密并写入 stanza"
 else
     bad "import"; cat /tmp/ft_import.log
 fi
 grep -q "KEY_BASE64" "$HOMERC" && grep -q "USE_TOTP_PORT" "$HOMERC" \
-    && ok "rc stanza has keys + TOTP" || bad "rc stanza content"
+    && ok "rc stanza 含密钥 + TOTP" || bad "rc stanza 内容"
 
 HOME="$WORK" "$FWKNOP" lint "$HOMERC" >/tmp/ft_lint.log 2>&1
-grep -q "no issues found" /tmp/ft_lint.log && ok "lint clean on imported rc" || { bad "lint"; cat /tmp/ft_lint.log; }
+grep -q "no issues found" /tmp/ft_lint.log && ok "lint 检查导入的 rc 无问题" || { bad "lint"; cat /tmp/ft_lint.log; }
 
-# profile list should show the imported stanza
+# profile list 应显示刚导入的 stanza
 HOME="$WORK" "$FWKNOP" profile list --rc-file "$HOMERC" >/tmp/ft_prof.log 2>&1
-grep -q "prod-ssh" /tmp/ft_prof.log && ok "profile list shows imported stanza" || { bad "profile list"; cat /tmp/ft_prof.log; }
+grep -q "prod-ssh" /tmp/ft_prof.log && ok "profile list 显示已导入的 stanza" || { bad "profile list"; cat /tmp/ft_prof.log; }
 rm -rf "$WORK"
 
 # -------------------------------------------------------------------
-section "Phase 4c: fwknopd-admin management commands"
+section "阶段 4c：fwknopd-admin 管理命令"
 # -------------------------------------------------------------------
 D=$(mktemp -d)
 OUT=$("$ADMIN" user add webdemo --server 203.0.113.10 --user alice --no-qr 2>&1)
 echo "$OUT" | grep -q "### fwknopd-admin user: webdemo" \
-    && ok "user add emits name marker" || { bad "user add marker"; echo "$OUT"; }
+    && ok "user add 输出名称标记" || { bad "user add 标记"; echo "$OUT"; }
 sed -n '/### fwknopd-admin user/,/^$/p' <<<"$OUT" > "$D/access.conf"
 printf 'SOURCE 10.0.0.0/24\nKEY_BASE64 YWJjZA==\nHMAC_KEY_BASE64 MTIzNA==\n' >> "$D/access.conf"
 chmod 0600 "$D/access.conf"
 
 OUT=$("$ADMIN" user list --access-conf "$D/access.conf" 2>&1)
-grep -q "webdemo" <<<"$OUT" && ok "user list shows stanza" || { bad "user list"; echo "$OUT"; }
-grep -q "YWJjZA" <<<"$OUT" && bad "user list leaks key material" || ok "user list masks keys"
+grep -q "webdemo" <<<"$OUT" && ok "user list 显示 stanza" || { bad "user list"; echo "$OUT"; }
+grep -q "YWJjZA" <<<"$OUT" && bad "user list 泄露密钥材料" || ok "user list 掩码密钥"
 
 OUT=$("$ADMIN" lint "$D/access.conf" 2>&1)
-grep -q "0 error(s)" <<<"$OUT" && ok "lint clean" || { bad "lint"; echo "$OUT"; }
+grep -q "0 error(s)" <<<"$OUT" && ok "lint 无错误" || { bad "lint"; echo "$OUT"; }
 
 OUT=$("$ADMIN" user qr webdemo --access-conf "$D/access.conf" --server 203.0.113.10 2>&1)
-grep -q "fwknop://203.0.113.10" <<<"$OUT" && ok "user qr re-renders URI" || { bad "user qr"; echo "$OUT"; }
+grep -q "fwknop://203.0.113.10" <<<"$OUT" && ok "user qr 重新渲染 URI" || { bad "user qr"; echo "$OUT"; }
 
 printf 'ANY|alice|tcp/22 ZGV2MQ==\nANY||tcp/22 ZGV2Mg==\n' > "$D/tofu.state"
 OUT=$("$ADMIN" tofu unbind 'ANY|alice|tcp/22' 'ZGV2MQ==' --state-file "$D/tofu.state" --pid-file "$D/no.pid" 2>&1)
 grep -q "Removed 1" <<<"$OUT" && [ "$(wc -l < "$D/tofu.state")" = "1" ] \
-    && ok "tofu unbind removes binding" || { bad "tofu unbind"; echo "$OUT"; cat "$D/tofu.state"; }
+    && ok "tofu unbind 移除绑定" || { bad "tofu unbind"; echo "$OUT"; cat "$D/tofu.state"; }
 
 OUT=$("$ADMIN" user rm webdemo --access-conf "$D/access.conf" --pid-file "$D/no.pid" 2>&1)
-grep -q "Disabled stanza" <<<"$OUT" && ok "user rm disables stanza" || { bad "user rm"; echo "$OUT"; }
+grep -q "Disabled stanza" <<<"$OUT" && ok "user rm 禁用 stanza" || { bad "user rm"; echo "$OUT"; }
 OUT=$("$ADMIN" user list --access-conf "$D/access.conf" 2>&1)
-grep -q "webdemo" <<<"$OUT" && bad "rm: stanza still listed" || ok "rm: stanza gone from list"
+grep -q "webdemo" <<<"$OUT" && bad "rm：stanza 仍在列表中" || ok "rm：stanza 已从列表消失"
 grep -q "^# \[disabled by fwknopd-admin rm" "$D/access.conf" \
-    && ok "rm comments stanza (reversible)" || bad "rm comment format"
-ls "$D"/access.conf.bak-* >/dev/null 2>&1 && ok "rm creates backup" || bad "rm backup"
+    && ok "rm 注释 stanza（可逆）" || bad "rm 注释格式"
+ls "$D"/access.conf.bak-* >/dev/null 2>&1 && ok "rm 创建备份" || bad "rm 备份"
 rm -rf "$D"
 
 # -------------------------------------------------------------------
-section "Phase 5+: WebUI dashboard (Go)"
+section "阶段 5+：WebUI 运维面板（Go）"
 # -------------------------------------------------------------------
 GOBIN="$(command -v go || echo "${HOME}/.local/usr/lib/go-1.26/bin/go")"
 if [ -x "$GOBIN" ]; then
     export GOROOT="$("$GOBIN" env GOROOT 2>/dev/null || dirname "$(dirname "$GOBIN")")"
     if (cd "$ROOT/server/dashboard" && "$GOBIN" build -o /tmp/ft_dashboard . >/tmp/ft_go.log 2>&1); then
-        ok "go build fwknop-dashboard"
-        # spin it up against sample data and probe the APIs
+        ok "go 构建 fwknop-dashboard"
+        # 用样例数据启动面板并探测各 API
         D=$(mktemp -d); mkdir -p "$D/run"
         echo '{"time":1723520000,"event":"open","user":"alice","device_id":"ZGV2MQ==","src_ip":"198.51.100.7","spa_port":46364,"target_port":22,"stanza":1,"reason":"accepted"}' > "$D/run/fwknopd_audit.log"
         printf '# TYPE fwknop_spa_packets_total counter\nfwknop_spa_packets_total{result="open"} 1\n' > "$D/run/fwknopd.metrics"
@@ -276,96 +276,96 @@ if [ -x "$GOBIN" ]; then
             -pid-file "$D/run/fwknopd.pid" -admin "$ADMIN" -fwknopd "$FWKNOPD" -enable-write >/tmp/ft_dash.log 2>&1 &
         DPID=$!; sleep 1
         if wget -qO- http://127.0.0.1:18099/api/metrics 2>/dev/null | grep -q 'counters' | grep -q 'open'; then
-            ok "dashboard /api/metrics reads prometheus file"
+            ok "面板 /api/metrics 读取 prometheus 文件"
         elif wget -qO- http://127.0.0.1:18099/api/metrics 2>/dev/null | grep -q 'counters'; then
-            ok "dashboard /api/metrics reads prometheus file"
+            ok "面板 /api/metrics 读取 prometheus 文件"
         else
-            bad "dashboard metrics API"
+            bad "面板 metrics API"
         fi
         wget -qO- http://127.0.0.1:18099/api/events 2>/dev/null | grep -q '"event":"open"' \
-            && ok "dashboard /api/events reads audit log" || bad "dashboard events API"
+            && ok "面板 /api/events 读取审计日志" || bad "面板 events API"
         wget -qO- http://127.0.0.1:18099/ 2>/dev/null | grep -q '<title>fwknop 运维面板</title>' \
-            && ok "dashboard serves embedded UI (zh-CN)" || bad "dashboard UI"
+            && ok "面板提供内嵌 UI（zh-CN）" || bad "面板 UI"
         wget -qO- http://127.0.0.1:18099/api/overview 2>/dev/null | grep -q '"daemon"' \
-            && ok "dashboard /api/overview" || bad "dashboard overview API"
+            && ok "面板 /api/overview" || bad "面板 overview API"
         wget -qO- http://127.0.0.1:18099/api/users 2>/dev/null | grep -q 'dashdemo' \
-            && ok "dashboard /api/users parses access.conf" || bad "dashboard users API"
+            && ok "面板 /api/users 解析 access.conf" || bad "面板 users API"
         wget -qO- http://127.0.0.1:18099/api/users 2>/dev/null | grep -q 'KEY_BASE64.*[A-Za-z0-9+/=]\{8\}' \
-            && bad "dashboard /api/users leaks keys" || ok "dashboard /api/users masks keys"
+            && bad "面板 /api/users 泄露密钥" || ok "面板 /api/users 掩码密钥"
         wget -qO- http://127.0.0.1:18099/api/config 2>/dev/null | grep -q 'PCAP_PORT_RANGE' \
-            && ok "dashboard /api/config parses fwknopd.conf" || bad "dashboard config API"
+            && ok "面板 /api/config 解析 fwknopd.conf" || bad "面板 config API"
         wget -qO- http://127.0.0.1:18099/api/tofu 2>/dev/null | grep -q '"stanza_key":"ANY|alice|tcp/22"' \
-            && ok "dashboard /api/tofu structured" || bad "dashboard tofu API"
-        # write path: token required, then unbind via admin CLI wrapper
+            && ok "面板 /api/tofu 结构化输出" || bad "面板 tofu API"
+        # 写路径：要求令牌，然后经 admin CLI 包装执行解绑
         wget -qO- --post-data 'stanza_key=x&device_id=y' http://127.0.0.1:18099/api/admin/tofu/unbind 2>/dev/null \
-            && bad "unbind without token should fail" || ok "write endpoint requires token"
+            && bad "无令牌解绑应当失败" || ok "写端点要求令牌"
         wget -qO- --post-data 'stanza_key=ANY|alice|tcp/22&device_id=ZGV2MQ==' \
             --header='Authorization: Bearer fttok' http://127.0.0.1:18099/api/admin/tofu/unbind 2>/dev/null \
-            | grep -q 'Removed 1' && ok "dashboard tofu unbind (write path)" || bad "dashboard tofu unbind"
+            | grep -q 'Removed 1' && ok "面板 tofu 解绑（写路径）" || bad "面板 tofu 解绑"
 
-        # --- 2.3.0: service control / config editing / profiles ---
+        # --- 2.3.0：服务控制 / 配置编辑 / 配置方案 ---
         HDR='Authorization: Bearer fttok'; J='Content-Type: application/json'
         wget -qO- --post-data '' --header="$HDR" http://127.0.0.1:18099/api/service/validate 2>/dev/null \
-            | grep -q '预检通过' && ok "service validate (preflight)" || bad "service validate"
+            | grep -q '预检通过' && ok "服务预检（validate）" || bad "服务预检"
         wget -qO- --post-data '' http://127.0.0.1:18099/api/service/stop 2>/dev/null \
-            && bad "service stop without token" || ok "service endpoints require token"
+            && bad "无令牌停止服务" || ok "服务端点要求令牌"
 
-        # stanza edit: change OPEN_PORTS, add FW_ACCESS_TIMEOUT; keys must survive
+        # stanza 编辑：改 OPEN_PORTS、加 FW_ACCESS_TIMEOUT；密钥必须原样保留
         wget -qO- --post-data '{"index":1,"fields":{"OPEN_PORTS":"tcp/2222","FW_ACCESS_TIMEOUT":"60"}}' \
             --header="$HDR" --header="$J" http://127.0.0.1:18099/api/config/stanza 2>/dev/null \
-            | grep -q '已更新并通过预检' && ok "stanza edit saved+validated" || bad "stanza edit"
+            | grep -q '已更新并通过预检' && ok "stanza 编辑保存+预检" || bad "stanza 编辑"
         grep -q 'OPEN_PORTS tcp/2222' "$D/access.conf" && grep -q 'FW_ACCESS_TIMEOUT 60' "$D/access.conf" \
-            && ok "stanza edit wrote fields" || { bad "stanza edit content"; cat "$D/access.conf"; }
+            && ok "stanza 编辑写入字段" || { bad "stanza 编辑内容"; cat "$D/access.conf"; }
         grep -q 'KEY_BASE64.*[A-Za-z0-9+/]\{8\}' "$D/access.conf" \
-            && ok "stanza edit preserves keys" || bad "stanza edit lost keys"
+            && ok "stanza 编辑保留密钥" || bad "stanza 编辑丢失密钥"
         wget -qO- --post-data '{"index":1,"fields":{"KEY_BASE64":"xx"}}' \
             --header="$HDR" --header="$J" http://127.0.0.1:18099/api/config/stanza 2>/dev/null \
-            | grep -q '不允许在线编辑' && ok "stanza edit rejects key fields" || bad "stanza edit key guard"
+            | grep -q '不允许在线编辑' && ok "stanza 编辑拒绝密钥字段" || bad "stanza 编辑密钥防护"
 
-        # fwknopd.conf save: structured ok, garbage refused
+        # fwknopd.conf 保存：结构化保存成功，坏配置被拒绝
         wget -qO- --post-data '{"mode":"structured","lines":["FWKNOP_RUN_DIR '"$D"'/run","PCAP_INTF lo"]}' \
             --header="$HDR" --header="$J" http://127.0.0.1:18099/api/config/fwknopd 2>/dev/null \
-            | grep -q '已保存并通过预检' && ok "fwknopd.conf structured save" || bad "conf save"
+            | grep -q '已保存并通过预检' && ok "fwknopd.conf 结构化保存" || bad "conf 保存"
         wget -qO- --post-data '{"mode":"raw","raw":"PCAP_INTF"}' \
             --header="$HDR" --header="$J" http://127.0.0.1:18099/api/config/fwknopd 2>/dev/null \
-            | grep -q '放弃保存' && ok "bad conf refused (preflight)" || bad "bad conf accepted?"
+            | grep -q '放弃保存' && ok "坏配置被拒绝（预检）" || bad "坏配置竟被接受？"
 
-        # profiles: save -> list -> apply -> delete
+        # 配置方案：保存 -> 列表 -> 应用 -> 删除
         wget -qO- --post-data '{"name":"p1","note":"t"}' --header="$HDR" --header="$J" \
             http://127.0.0.1:18099/api/profiles/save 2>/dev/null | grep -q '已保存' \
-            && ok "profile save" || bad "profile save"
+            && ok "方案保存" || bad "方案保存"
         wget -qO- http://127.0.0.1:18099/api/profiles 2>/dev/null | grep -q '"name":"p1"' \
-            && ok "profile list" || bad "profile list"
+            && ok "方案列表" || bad "方案列表"
         wget -qO- 'http://127.0.0.1:18099/api/profiles/view?name=p1' 2>/dev/null | grep -q '已掩码' \
-            && ok "profile view masks keys" || bad "profile view"
+            && ok "方案预览掩码密钥" || bad "方案预览"
         wget -qO- --post-data '{"name":"p1"}' --header="$HDR" --header="$J" \
             http://127.0.0.1:18099/api/profiles/apply 2>/dev/null | grep -q '已切换到方案' \
-            && ok "profile apply" || bad "profile apply"
+            && ok "方案应用" || bad "方案应用"
         wget -qO- --post-data '{"name":"../evil"}' --header="$HDR" --header="$J" \
             http://127.0.0.1:18099/api/profiles/save 2>/dev/null | grep -q '方案名' \
-            && ok "profile name traversal rejected" || bad "profile name guard"
+            && ok "方案名路径穿越被拒绝" || bad "方案名防护"
         wget -qO- --post-data '{"name":"p1"}' --header="$HDR" --header="$J" \
             http://127.0.0.1:18099/api/profiles/delete 2>/dev/null | grep -q '已删除' \
-            && ok "profile delete" || bad "profile delete"
+            && ok "方案删除" || bad "方案删除"
 
-        # rm then enable round-trip via WebUI endpoints
+        # 经 WebUI 端点完成 rm（禁用）再 enable（恢复）的往返
         wget -qO- --post-data 'name=dashdemo' --header="$HDR" http://127.0.0.1:18099/api/admin/rm >/dev/null 2>&1
         wget -qO- http://127.0.0.1:18099/api/users 2>/dev/null | grep -q '"disabled".*dashdemo' \
-            && ok "disabled stanza surfaced" || bad "disabled stanza missing"
+            && ok "已禁用 stanza 在列表中可见" || bad "已禁用 stanza 缺失"
         wget -qO- --post-data '{"name":"dashdemo"}' --header="$HDR" --header="$J" \
             http://127.0.0.1:18099/api/config/stanza/enable 2>/dev/null | grep -q '已恢复' \
-            && ok "stanza re-enable" || bad "stanza re-enable"
+            && ok "stanza 恢复启用" || bad "stanza 恢复启用"
         wget -qO- http://127.0.0.1:18099/api/users 2>/dev/null | grep -q '"name":"dashdemo"' \
-            && ok "re-enabled stanza active again" || bad "re-enable verify"
+            && ok "恢复的 stanza 重新生效" || bad "恢复验证"
         kill "$DPID" 2>/dev/null; wait "$DPID" 2>/dev/null
         rm -f /tmp/ft_dashboard; rm -rf "$D"
     else
-        bad "go build fwknop-dashboard"; cat /tmp/ft_go.log
+        bad "go 构建 fwknop-dashboard"; cat /tmp/ft_go.log
     fi
 else
-    echo "  (skipped: go toolchain not installed)"
+    echo "  （跳过：未安装 Go 工具链）"
 fi
 
 # -------------------------------------------------------------------
-printf "\n\033[1mRESULT: %d passed, %d failed\033[0m\n" "$PASS" "$FAIL"
+printf "\n\033[1m结果：%d 通过，%d 失败\033[0m\n" "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]
