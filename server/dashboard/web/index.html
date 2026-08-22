@@ -373,7 +373,66 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
   </defs>
 </svg>
 
-<div id="app">
+<style>
+/* ============ 鉴权门（初始化向导 / 登录） ============ */
+#auth-gate{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:20px}
+.auth-card{width:100%;max-width:420px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:28px 26px;box-shadow:0 8px 40px rgba(0,0,0,.12)}
+.auth-card h2{margin:14px 0 6px;font-size:20px}
+.auth-card .desc{color:var(--dim);font-size:13px;line-height:1.7;margin-bottom:18px}
+.auth-card label{display:block;font-size:13px;color:var(--dim);margin:12px 0 5px}
+.auth-card input{width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);font-size:14px}
+.auth-card input:focus{outline:none;border-color:var(--accent)}
+.auth-card .btn{width:100%;margin-top:18px;justify-content:center}
+.auth-brand{display:flex;align-items:center;gap:10px;color:var(--accent)}
+.auth-brand .t1{font-weight:700;font-size:16px;color:var(--fg)}
+.auth-brand .t2{font-size:12px;color:var(--dim)}
+.auth-err{color:var(--red);font-size:13px;min-height:18px;margin-top:10px}
+.auth-steps{margin:0 0 14px;padding-left:18px;color:var(--dim);font-size:13px;line-height:1.9}
+</style>
+
+<!-- 鉴权门：首次初始化向导 / 登录（默认显示，JS 检查状态后切换） -->
+<div id="auth-gate">
+  <div class="auth-card" id="auth-loading">
+    <div class="auth-brand">
+      <svg width="30" height="30"><use href="#i-shield"/></svg>
+      <div><div class="t1">fwknop 运维面板</div><div class="t2">单包授权 · 零信任访问</div></div>
+    </div>
+    <p class="desc" style="margin-top:16px">正在检查面板状态…</p>
+  </div>
+
+  <div class="auth-card" id="auth-setup" style="display:none">
+    <div class="auth-brand">
+      <svg width="30" height="30"><use href="#i-shield"/></svg>
+      <div><div class="t1">首次启动初始化</div><div class="t2">fwknop 运维面板 v2.4.0</div></div>
+    </div>
+    <p class="desc">欢迎使用 fwknop 运维面板。作为面向网络提供服务的管理入口，面板在首次启动时必须完成初始化，之后所有访问都需要登录。</p>
+    <ol class="auth-steps">
+      <li>设置管理员密码（至少 8 位，加盐 PBKDF2 存储，不明文落盘）</li>
+      <li>初始化完成后自动登录进入面板</li>
+      <li>之后每次访问需凭密码登录（会话 12 小时有效）</li>
+    </ol>
+    <label for="setup-pw1">管理员密码</label>
+    <input type="password" id="setup-pw1" autocomplete="new-password" placeholder="至少 8 位">
+    <label for="setup-pw2">确认密码</label>
+    <input type="password" id="setup-pw2" autocomplete="new-password" placeholder="再次输入">
+    <button class="btn" id="setup-btn" style="background:var(--green)"><svg width="15" height="15"><use href="#i-check"/></svg>完成初始化并进入面板</button>
+    <div class="auth-err" id="setup-err"></div>
+  </div>
+
+  <div class="auth-card" id="auth-login" style="display:none">
+    <div class="auth-brand">
+      <svg width="30" height="30"><use href="#i-lock"/></svg>
+      <div><div class="t1">登录</div><div class="t2">fwknop 运维面板 v2.4.0</div></div>
+    </div>
+    <p class="desc">请输入管理员密码。连续失败 5 次将锁定 60 秒。</p>
+    <label for="login-pw">管理员密码（或 DASHBOARD_TOKEN）</label>
+    <input type="password" id="login-pw" autocomplete="current-password" placeholder="密码 / 令牌">
+    <button class="btn" id="login-btn"><svg width="15" height="15"><use href="#i-key"/></svg>登录</button>
+    <div class="auth-err" id="login-err"></div>
+  </div>
+</div>
+
+<div id="app" style="display:none">
   <!-- ============ 侧边栏 ============ -->
   <aside id="sidebar">
     <div class="brand">
@@ -382,7 +441,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
         <div class="t1">fwknop 运维面板</div>
         <div class="t2">单包授权 · 零信任访问</div>
       </div>
-      <span class="ver" id="brand-ver">v2.3.0</span>
+      <span class="ver" id="brand-ver">v2.4.0</span>
     </div>
     <button class="nav-item active" data-page="overview"><svg><use href="#i-dash"/></svg>概览</button>
     <button class="nav-item" data-page="events"><svg><use href="#i-list"/></svg>SPA 事件</button>
@@ -396,7 +455,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
       <div class="conn"><span class="dot" id="conn-dot"></span><span id="conn-text">正在连接…</span></div>
       <div class="side-actions">
         <button class="icon-btn" id="theme-btn" title="切换明暗主题"><svg><use href="#i-sun"/></svg><span id="theme-lab">浅色</span></button>
-        <button class="icon-btn" id="token-btn" title="管理令牌" style="display:none"><svg><use href="#i-key"/></svg>令牌</button>
+        <button class="icon-btn" id="logout-btn" title="注销登录"><svg><use href="#i-lock"/></svg>注销</button>
       </div>
     </div>
   </aside>
@@ -644,8 +703,11 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
           <div class="head"><h2>安全说明</h2></div>
           <div class="body">
             <ul style="margin:0; padding-left:20px; font-size:13px; color:var(--muted); line-height:2">
-              <li>面板默认仅监听 <code>127.0.0.1</code>，请勿直接暴露到不受信网络；如需远程访问请置于反向代理 + 认证之后。</li>
-              <li>写操作（服务控制 / 签发 / 撤销 / 解绑 / 配置编辑 / 方案切换）需启动时加 <code>-enable-write</code>，并建议设置 <code>DASHBOARD_TOKEN</code>。</li>
+              <li>面板首次启动必须完成初始化（设置管理员密码），之后所有 API 均需登录；密码以 PBKDF2-HMAC-SHA256（10 万轮加盐）存储在 <code>&lt;run-dir&gt;/dashboard_auth.json</code>，任何接口都不输出它。</li>
+              <li>登录签发的会话 Cookie 为 HttpOnly + SameSite=Strict（12 小时过期，可点左下角「注销」失效）；登录按 IP 限流（5 分钟 5 次失败锁定 60 秒）；Cookie 会话的写操作必须带防跨站请求头。</li>
+              <li>无头/CI 场景可用 <code>DASHBOARD_TOKEN</code> 作为 Bearer 凭证（对全部 API 有效），设置后可跳过初始化向导。</li>
+              <li>面板默认仅监听 <code>127.0.0.1</code>；如需远程访问请置于带 TLS 的反向代理之后。</li>
+              <li>写操作（服务控制 / 签发 / 撤销 / 解绑 / 配置编辑 / 方案切换）还需启动时加 <code>-enable-write</code>。</li>
               <li>面板本身不接触密钥原文：密钥由 <code>fwknopd-admin</code> 生成；access.conf 的密钥行在界面与 API 中一律掩码，stanza 在线编辑只允许修改非密钥指令。</li>
               <li>启动服务前强制配置预检（<code>--exit-parse-config</code>）；任何配置落盘都会先预检、自动备份（<code>.bak-时间戳</code>）并热加载（SIGHUP）。</li>
               <li>方案切换会先校验方案配置，再备份当前配置——可随时回滚。</li>
@@ -655,7 +717,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
         </div>
       </section>
 
-      <footer class="foot">fwknop 运维面板 · fwknop fork 2.3.0 · 协议 4.0.0 · 数据每 <span id="foot-ivl">5</span> 秒自动刷新</footer>
+      <footer class="foot">fwknop 运维面板 · fwknop fork 2.4.0 · 协议 4.0.0 · 数据每 <span id="foot-ivl">5</span> 秒自动刷新</footer>
     </div>
   </div>
 </div>
@@ -707,15 +769,98 @@ async function copyText(t, label) {
   }
 }
 
-/* 令牌（写操作时附加 Authorization 头） */
-let authToken = sessionStorage.getItem('dash_token') || '';
+/* ==================== 鉴权门（初始化 / 登录） ==================== */
+function showAuthView(which) {
+  $('#auth-gate').style.display = '';
+  $('#app').style.display = 'none';
+  ['auth-loading','auth-setup','auth-login'].forEach(id => {
+    $('#'+id).style.display = (id === which) ? '' : 'none';
+  });
+  const inp = which === 'auth-setup' ? $('#setup-pw1') : which === 'auth-login' ? $('#login-pw') : null;
+  if (inp) setTimeout(() => inp.focus(), 50);
+}
+
+function enterApp() {
+  $('#auth-gate').style.display = 'none';
+  $('#app').style.display = '';
+  refreshNow();
+  restartTimer();
+}
+
+async function bootAuth() {
+  try {
+    const st = await fetch('/api/auth/state').then(r => r.json());
+    S.writeEnabled = !!st.write_enabled;
+    if (st.needs_setup) showAuthView('auth-setup');
+    else if (st.authenticated) enterApp();
+    else showAuthView('auth-login');
+  } catch (e) {
+    $('#auth-loading .desc').textContent = '无法连接面板后端，请确认进程已启动后刷新页面。';
+  }
+}
+
+async function submitSetup() {
+  const pw1 = $('#setup-pw1').value, pw2 = $('#setup-pw2').value;
+  const errEl = $('#setup-err'); errEl.textContent = '';
+  if (pw1.length < 8) { errEl.textContent = '密码长度至少 8 位'; return; }
+  if (pw1 !== pw2) { errEl.textContent = '两次输入的密码不一致'; return; }
+  try {
+    const r = await fetch('/api/setup', { method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ password: pw1, confirm: pw2 }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { errEl.textContent = d.error || d.msg || ('初始化失败（HTTP ' + r.status + '）'); return; }
+    toast(d.msg || '初始化完成', 'ok');
+    enterApp();
+  } catch (e) { errEl.textContent = '网络错误，请重试'; }
+}
+
+async function submitLogin() {
+  const pw = $('#login-pw').value;
+  const errEl = $('#login-err'); errEl.textContent = '';
+  if (!pw) { errEl.textContent = '请输入密码'; return; }
+  try {
+    const r = await fetch('/api/login', { method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ password: pw }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      errEl.textContent = r.status === 429 ? (d.error || '失败次数过多，请稍后再试')
+        : (d.error || '密码错误');
+      $('#login-pw').value = ''; $('#login-pw').focus();
+      return;
+    }
+    $('#login-pw').value = '';
+    toast(d.msg || '登录成功', 'ok');
+    enterApp();
+  } catch (e) { errEl.textContent = '网络错误，请重试'; }
+}
+
+$('#setup-btn').onclick = submitSetup;
+$('#login-btn').onclick = submitLogin;
+$('#setup-pw2').addEventListener('keydown', e => { if (e.key === 'Enter') submitSetup(); });
+$('#login-pw').addEventListener('keydown', e => { if (e.key === 'Enter') submitLogin(); });
+
+$('#logout-btn').onclick = async () => {
+  try { await fetch('/api/logout', { method:'POST', headers:{'X-Fwknop-Request':'1'} }); } catch (e) {}
+  toast('已注销', 'ok');
+  showAuthView('auth-login');
+};
+
+/* ==================== API 封装（Cookie 会话 + CSRF 头） ==================== */
 function api(path, opts) {
   opts = opts || {};
   opts.headers = Object.assign({}, opts.headers);
-  if (authToken) opts.headers['Authorization'] = 'Bearer ' + authToken;
+  if ((opts.method || 'GET').toUpperCase() !== 'GET') opts.headers['X-Fwknop-Request'] = '1';
   return fetch(path, opts).then(async r => {
-    if (r.status === 401) { toast('令牌无效或未设置，请点击左下角「令牌」配置', 'err'); throw new Error('unauthorized'); }
-    if (r.status === 403) { toast('面板未启用写操作（-enable-write）', 'err'); throw new Error('forbidden'); }
+    if (r.status === 401) {
+      let needsSetup = false;
+      try { needsSetup = !!(await r.clone().json()).needs_setup; } catch (e) {}
+      if (needsSetup) showAuthView('auth-setup'); else showAuthView('auth-login');
+      throw new Error('unauthorized');
+    }
+    if (r.status === 403) { toast('面板未启用写操作（-enable-write）或缺少防跨站请求头', 'err'); throw new Error('forbidden'); }
+    if (r.status === 429) { toast('失败次数过多，已被临时锁定', 'err'); throw new Error('rate-limited'); }
     if (!r.ok) throw new Error('HTTP ' + r.status + '：' + (await r.text()).slice(0, 200));
     return r.json();
   });
@@ -786,12 +931,6 @@ $$('.nav-item').forEach(b => b.onclick = () => showPage(b.dataset.page));
 $('#burger').onclick = () => { $('#sidebar').classList.add('open'); $('#scrim').classList.add('show'); };
 $('#scrim').onclick = () => { $('#sidebar').classList.remove('open'); $('#scrim').classList.remove('show'); };
 
-/* ==================== 令牌 ==================== */
-$('#token-btn').onclick = () => {
-  const t = prompt('请输入管理令牌（DASHBOARD_TOKEN）。仅保存在当前会话（sessionStorage），关闭标签页即失效。', authToken);
-  if (t !== null) { authToken = t.trim(); sessionStorage.setItem('dash_token', authToken); toast(authToken ? '令牌已保存到会话' : '令牌已清除', 'ok'); }
-};
-
 /* ==================== 自动刷新 ==================== */
 function restartTimer() {
   clearInterval(S.timer);
@@ -822,7 +961,7 @@ function refreshNow() {
 function applyWriteGate() {
   const on = S.writeEnabled;
   ['svc-start','svc-stop','svc-restart','svc-reload','svc-validate'].forEach(id => { $('#'+id).disabled = !on; });
-  $('#svc-hint').textContent = on ? '' : '当前为只读模式：启动面板时加 -enable-write 并设置 DASHBOARD_TOKEN 后，可进行服务控制与配置编辑';
+  $('#svc-hint').textContent = on ? '' : '当前为只读模式：启动面板时加 -enable-write 后，可进行服务控制与配置编辑';
   $('#conf-edit-btn').style.display = on ? '' : 'none';
   if (!on) $('#conf-editor').style.display = 'none';
   $('#profile-save-card').style.display = on ? '' : 'none';
@@ -843,7 +982,6 @@ async function loadOverview() {
     const d = await api('/api/overview');
     S.overview = d;
     S.writeEnabled = !!d.write_enabled;
-    $('#token-btn').style.display = d.write_enabled ? '' : 'none';
     const pill = $('#daemon-pill');
     if (d.daemon && d.daemon.alive) {
       pill.className = 'pill on'; pill.innerHTML = '<span class="dot ok"></span>fwknopd 运行中 · PID ' + d.daemon.pid;
@@ -1597,8 +1735,7 @@ $('#pf-save').onclick = () => {
 };
 
 /* ==================== 启动 ==================== */
-refreshNow();
-restartTimer();
+bootAuth();
 </script>
 </body>
 </html>
