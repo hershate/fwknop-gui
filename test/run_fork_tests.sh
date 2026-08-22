@@ -363,11 +363,13 @@ if [ -x "$GOBIN" ]; then
         wget -qO- --header="$TK" http://127.0.0.1:18099/api/users 2>/dev/null | grep -q '"name":"dashdemo"' \
             && ok "恢复的 stanza 重新生效" || bad "恢复验证"
         # --- 2.4.0：首次启动初始化与登录鉴权（第二实例，无 DASHBOARD_TOKEN） ---
+        # 注：本实例刻意不传 -enable-write —— 2.4.1 起写操作默认启用，
+        # 「带 CSRF 头的写操作成功」用例同时验证默认管理模式。
         D2=$(mktemp -d); mkdir -p "$D2/run"
         /tmp/ft_dashboard -run-dir "$D2/run" -addr 127.0.0.1:18098 \
             -access-conf "$D/access.conf" -fwknopd-conf "$D/fwknopd.conf" \
             -pid-file "$D2/run/fwknopd.pid" -admin "$ADMIN" -fwknopd "$FWKNOPD" \
-            -enable-write >/tmp/ft_dash2.log 2>&1 &
+            >/tmp/ft_dash2.log 2>&1 &
         DPID2=$!; sleep 1
         code() { wget -q -S -O /dev/null "$@" 2>&1 | awk '/^  HTTP/{c=$2} END{print c}'; }
         JAR="$D2/cookies.txt"; CJ='Content-Type: application/json'; X='X-Fwknop-Request: 1'
@@ -415,6 +417,26 @@ if [ -x "$GOBIN" ]; then
             http://127.0.0.1:18098/api/login)" = 429 ] \
             && ok "连续失败触发登录限流（429）" || bad "登录限流"
         kill "$DPID2" 2>/dev/null; wait "$DPID2" 2>/dev/null; rm -rf "$D2"
+
+        # --- 2.4.1：默认管理模式 / -read-only 显式只读（第三实例） ---
+        D3=$(mktemp -d); mkdir -p "$D3/run"
+        DASHBOARD_TOKEN=fttok3 /tmp/ft_dashboard -run-dir "$D3/run" -addr 127.0.0.1:18097 \
+            -access-conf "$D/access.conf" -fwknopd-conf "$D/fwknopd.conf" \
+            -pid-file "$D3/run/fwknopd.pid" -admin "$ADMIN" -fwknopd "$FWKNOPD" \
+            -read-only >/tmp/ft_dash3.log 2>&1 &
+        DPID3=$!; sleep 1
+        TK3='Authorization: Bearer fttok3'
+        wget -qO- --header="$TK3" http://127.0.0.1:18097/api/auth/state 2>/dev/null \
+            | grep -q '"write_enabled":false' \
+            && ok "-read-only 实例报告只读" || bad "-read-only 状态"
+        body=$(wget -q --content-on-error -O- --post-data '' --header="$TK3" \
+            http://127.0.0.1:18097/api/service/validate 2>/dev/null)
+        [ "$(code --post-data '' --header="$TK3" http://127.0.0.1:18097/api/service/validate)" = 403 ] \
+            && echo "$body" | grep -q '只读模式' \
+            && ok "-read-only 拒绝写操作（403）" || bad "-read-only 写防护"
+        wget -qO- --header="$TK3" http://127.0.0.1:18097/api/overview 2>/dev/null | grep -q '"daemon"' \
+            && ok "-read-only 读接口正常" || bad "-read-only 读接口"
+        kill "$DPID3" 2>/dev/null; wait "$DPID3" 2>/dev/null; rm -rf "$D3"
 
         kill "$DPID" 2>/dev/null; wait "$DPID" 2>/dev/null
         rm -f /tmp/ft_dashboard; rm -rf "$D"
