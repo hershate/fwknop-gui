@@ -2645,7 +2645,9 @@ function renderTOFU() {
     (b.device_id||'').toLowerCase().includes(q) ||
     (b.username||'').toLowerCase().includes(q) ||
     (b.open_ports||'').toLowerCase().includes(q) ||
-    (b.source||'').toLowerCase().includes(q)) : all;
+    (b.source||'').toLowerCase().includes(q) ||
+    /* 支持从 CLI 复制整串 stanza_key（SOURCE|用户|端口）直接检索 */
+    (b.stanza_key||'').toLowerCase().includes(q)) : all;
   /* 列排序：点击表头切换，默认保持文件顺序；选择持久化 */
   const ts = S.tofuSort;
   if (ts && ts.key) {
