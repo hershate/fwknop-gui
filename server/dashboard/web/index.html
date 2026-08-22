@@ -248,6 +248,8 @@ select.ctl, input.ctl {
 .tile .lab { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); font-weight:500; }
 .tile .lab svg { width:14px; height:14px; }
 .tile .num { font-size:27px; font-weight:750; margin-top:5px; font-variant-numeric:tabular-nums; letter-spacing:-.5px; }
+.tile-delta { font-size:11.5px; font-weight:700; margin-left:6px; vertical-align:3px; letter-spacing:0;
+  color:var(--green); background:var(--green-soft); border-radius:8px; padding:1px 6px; }
 .tile .spark { position:absolute; right:10px; bottom:8px; opacity:.85; }
 .tile.c-green .num, .tile.c-green .lab svg, .tile.c-green .spark { color:var(--green); }
 .tile.c-red .num, .tile.c-red .lab svg, .tile.c-red .spark { color:var(--red); }
@@ -1778,12 +1780,13 @@ function renderTiles() {
   if (!S.tilePrev) S.tilePrev = {};
   $('#tiles').innerHTML = EVT_ORDER.map(e => {
     const m = evMeta(e), v = counterVal(S.metrics.counters, e);
-    /* 与上一轮数值比对：增长时脉冲提示（首次渲染不闪） */
+    /* 与上一轮数值比对：增长时脉冲提示 + 显示增量徽标（首次渲染不闪不显） */
     const bump = e in S.tilePrev && v > S.tilePrev[e] ? ' num-bump' : '';
+    const delta = e in S.tilePrev && v > S.tilePrev[e] ? v - S.tilePrev[e] : 0;
     S.tilePrev[e] = v;
     return `<div class="tile ${m.tile} tile-link" data-ev="${e}" tabindex="0" role="button" title="点击查看「${m.label}」事件列表">
       <div class="lab">${icon(m.icon, 14)}${m.label}</div>
-      <div class="num${bump}">${fmtNum(v)}</div>${sparkline(e)}
+      <div class="num${bump}">${fmtNum(v)}${delta ? `<span class="tile-delta">+${fmtNum(delta)}</span>` : ''}</div>${sparkline(e)}
     </div>`;
   }).join('');
   /* 点击/键盘（Enter/空格）计数卡直达事件页对应筛选 */
