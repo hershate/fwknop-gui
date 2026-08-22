@@ -290,7 +290,8 @@ type ProfileMeta struct {
 
 type Profile struct {
 	ProfileMeta
-	Path string `json:"path"`
+	Path    string `json:"path"`
+	Current bool   `json:"current"` // 与线上 fwknopd.conf + access.conf 完全一致
 }
 
 func profileDir(name string) string { return filepath.Join(cfg.ProfileDir, name) }
@@ -350,9 +351,24 @@ func listProfiles() []Profile {
 		if _, err := os.Stat(filepath.Join(dir, "fwknopd.conf")); err != nil {
 			continue // 不完整方案不展示
 		}
+		p.Current = fileEq(filepath.Join(dir, "fwknopd.conf"), cfg.FwknopdConf) &&
+			fileEq(filepath.Join(dir, "access.conf"), cfg.AccessConf)
 		out = append(out, p)
 	}
 	return out
+}
+
+// fileEq reports whether two files' contents are byte-identical.
+func fileEq(a, b string) bool {
+	da, err := os.ReadFile(a)
+	if err != nil {
+		return false
+	}
+	db, err := os.ReadFile(b)
+	if err != nil {
+		return false
+	}
+	return string(da) == string(db)
 }
 
 // viewProfile returns the profile's files (access.conf masked).
