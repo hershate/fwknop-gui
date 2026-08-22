@@ -1008,6 +1008,20 @@ const S = {
   rawMode: false,
 };
 const HIST_MAX = 72;   // 5s 间隔约 6 分钟
+const HIST_KEY = 'fwknop-hist';
+/* 趋势历史持久化（sessionStorage，标签页级）：刷新页面不丢迷你趋势 */
+function saveHist() { try { sessionStorage.setItem(HIST_KEY, JSON.stringify(S.hist)); } catch (e) {} }
+function loadHist() {
+  try {
+    const h = JSON.parse(sessionStorage.getItem(HIST_KEY) || '');
+    if (!h || typeof h !== 'object') return;
+    const cutoff = Date.now() / 1000 - 1800;  /* 丢弃 30 分钟前的旧点 */
+    for (const k in h) if (Array.isArray(h[k])) {
+      const pts = h[k].filter(p => p && p.t > cutoff).slice(-HIST_MAX);
+      if (pts.length) S.hist[k] = pts;
+    }
+  } catch (e) {}
+}
 
 const PAGE_TITLES = { overview:'概览', events:'SPA 事件', users:'用户与授权', tofu:'TOFU 设备绑定', config:'服务配置', profiles:'配置方案', about:'关于' };
 
@@ -1197,6 +1211,7 @@ async function loadMetrics() {
       (S.hist[e] = S.hist[e] || []).push({ t: now, v });
       if (S.hist[e].length > HIST_MAX) S.hist[e].shift();
     }
+    saveHist();
     if (S.page === 'overview') renderTiles(), renderSummary();
   } catch (e) { setConn(false); }
 }
@@ -2081,6 +2096,7 @@ $('#pf-save').onclick = () => {
 };
 
 /* ==================== 启动 ==================== */
+loadHist();
 bootAuth();
 </script>
 </body>
