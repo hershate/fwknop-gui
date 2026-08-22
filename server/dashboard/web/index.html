@@ -1246,6 +1246,20 @@ function setConn(ok) {
   }, 1000);
 }
 
+/* 运行时长实时显示：每秒跳动（已运行 X天X时X分X秒 · 启动于 …） */
+function fmtDur(sec) {
+  sec = Math.max(0, Math.floor(sec));
+  const d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600),
+        m = Math.floor(sec % 3600 / 60), ss = sec % 60;
+  return (d ? d + '天' : '') + (h ? h + '小时' : '') + (m ? m + '分' : '') + ss + '秒';
+}
+function tickUptime() {
+  if (!S.daemonStarted) return;
+  $('#svc-uptime').textContent =
+    `已运行 ${fmtDur(Date.now()/1000 - S.daemonStarted)} · 启动于 ${fmtAbs(S.daemonStarted)}`;
+}
+setInterval(tickUptime, 1000);
+
 /* ==================== 概览 ==================== */
 async function loadOverview() {
   try {
@@ -1255,9 +1269,11 @@ async function loadOverview() {
     const pill = $('#daemon-pill');
     if (d.daemon && d.daemon.alive) {
       pill.className = 'pill on'; pill.innerHTML = '<span class="dot ok"></span>fwknopd 运行中 · PID ' + d.daemon.pid;
-      $('#svc-uptime').textContent = d.daemon.started ? '启动于 ' + fmtAbs(d.daemon.started) : '';
+      S.daemonStarted = d.daemon.started || 0;
+      tickUptime();
     } else {
       pill.className = 'pill off'; pill.innerHTML = '<span class="dot err"></span>fwknopd 未运行（或 PID 文件不可读）';
+      S.daemonStarted = 0;
       $('#svc-uptime').textContent = '';
     }
     /* 服务未运行时的引导条（只读模式下提示但不给操作入口） */
