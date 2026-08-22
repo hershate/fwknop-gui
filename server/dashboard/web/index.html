@@ -1817,7 +1817,14 @@ function renderUsers() {
   if (!st.length) {
     $('#users-body').innerHTML = `<div class="empty">${icon('i-users',40)}
       <div class="t">${q ? '无匹配授权' : '还没有任何授权'}</div>
-      <div class="d">${q ? '试试更换搜索关键词' : '点击右上角「签发新凭证」为第一位用户创建访问授权'}</div></div>` + disHtml;
+      <div class="d">${q ? '试试更换搜索关键词' : '为第一位用户创建访问授权'}</div>
+      ${!q && S.writeEnabled ? `<button class="btn small" id="users-empty-add" style="margin-top:12px">${icon('i-plus',13)} 立即签发凭证</button>` : ''}</div>` + disHtml;
+    const ea = $('#users-empty-add');
+    if (ea) ea.onclick = () => {
+      const c = $('#add-card');
+      if (c.style.display === 'none') $('#show-add').click();  /* 展开（含草稿恢复/滚动定位） */
+      else c.scrollIntoView({ behavior:'smooth', block:'start' });
+    };
   } else {
   $('#users-body').innerHTML = st.map(s => {
     const name = s.name || ('授权 #' + s.index);
