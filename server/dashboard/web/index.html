@@ -909,6 +909,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
 const icon = (n, sz) => `<svg width="${sz||16}" height="${sz||16}"><use href="#i-${n}"/></svg>`;
 
 /* 通知历史：toast 入档（合并重发的累计计数同步到历史），侧栏铃铛可追溯 */
+try { S.notifLog = JSON.parse(sessionStorage.getItem('fwknop-notif-log') || '[]'); } catch (e) { S.notifLog = []; }
 function notifLog(msg, kind) {
   S.notifLog = S.notifLog || [];
   const last = S.notifLog[S.notifLog.length - 1];
@@ -922,6 +923,8 @@ function notifLog(msg, kind) {
   const badge = $('#notif-badge');
   badge.textContent = S.notifUnread > 99 ? '99+' : S.notifUnread;
   badge.style.display = '';
+  /* 持久化到会话存储：刷新页面后历史仍可追溯（关标签即清，不长期残留） */
+  try { sessionStorage.setItem('fwknop-notif-log', JSON.stringify(S.notifLog)); } catch (e) {}
 }
 
 function toast(msg, kind, ms) {
@@ -981,7 +984,11 @@ $('#notif-btn').onclick = () => {
     </div>`, true);
   S.notifUnread = 0;
   $('#notif-badge').style.display = 'none';
-  $('#notif-clear').onclick = () => { S.notifLog = []; closeModal(); toast('通知历史已清空', 'ok', 1500); };
+  $('#notif-clear').onclick = () => {
+    S.notifLog = [];
+    try { sessionStorage.removeItem('fwknop-notif-log'); } catch (e) {}
+    closeModal(); toast('通知历史已清空', 'ok', 1500);
+  };
   $('#notif-close').onclick = () => closeModal();
 };
 
