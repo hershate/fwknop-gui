@@ -2002,6 +2002,8 @@ function saveAddDraft() {
   const d = {};
   ADD_FIELDS.forEach(k => { d[k] = f[k].value; });
   ADD_CHECKS.forEach(k => { d[k] = f[k].checked; });
+  const act = $('.tpl-chip.active');
+  if (act) d._tpl = act.dataset.tpl;  /* 模板选择状态一并入草稿 */
   localStorage.setItem(ADD_DRAFT_KEY, JSON.stringify(d));
 }
 function loadAddDraft() {
@@ -2011,6 +2013,11 @@ function loadAddDraft() {
   const f = $('#add-form');
   ADD_FIELDS.forEach(k => { if (typeof d[k] === 'string') f[k].value = d[k]; });
   ADD_CHECKS.forEach(k => { if (typeof d[k] === 'boolean') f[k].checked = d[k]; });
+  /* 还原模板选择状态（高亮 + 描述），保持「当前基于哪个模板」的上下文 */
+  if (d._tpl && ADD_TEMPLATES[d._tpl]) {
+    $$('.tpl-chip').forEach(c => c.classList.toggle('active', c.dataset.tpl === d._tpl));
+    $('#tpl-desc').textContent = ADD_TEMPLATES[d._tpl].desc;
+  }
   if (ADD_FIELDS.some(k => d[k])) {
     const strip = $('#add-draft-strip');
     strip.innerHTML = `${icon('i-info',15)}<div>已恢复上次未提交的签发草稿。</div>
