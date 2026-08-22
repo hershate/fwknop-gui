@@ -403,7 +403,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
   <div class="auth-card" id="auth-setup" style="display:none">
     <div class="auth-brand">
       <svg width="30" height="30"><use href="#i-shield"/></svg>
-      <div><div class="t1">首次启动初始化</div><div class="t2">fwknop 运维面板 v2.4.0</div></div>
+      <div><div class="t1">首次启动初始化</div><div class="t2">fwknop 运维面板 v2.4.1</div></div>
     </div>
     <p class="desc">欢迎使用 fwknop 运维面板。作为面向网络提供服务的管理入口，面板在首次启动时必须完成初始化，之后所有访问都需要登录。</p>
     <ol class="auth-steps">
@@ -422,7 +422,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
   <div class="auth-card" id="auth-login" style="display:none">
     <div class="auth-brand">
       <svg width="30" height="30"><use href="#i-lock"/></svg>
-      <div><div class="t1">登录</div><div class="t2">fwknop 运维面板 v2.4.0</div></div>
+      <div><div class="t1">登录</div><div class="t2">fwknop 运维面板 v2.4.1</div></div>
     </div>
     <p class="desc">请输入管理员密码。连续失败 5 次将锁定 60 秒。</p>
     <label for="login-pw">管理员密码（或 DASHBOARD_TOKEN）</label>
@@ -441,7 +441,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
         <div class="t1">fwknop 运维面板</div>
         <div class="t2">单包授权 · 零信任访问</div>
       </div>
-      <span class="ver" id="brand-ver">v2.4.0</span>
+      <span class="ver" id="brand-ver">v2.4.1</span>
     </div>
     <button class="nav-item active" data-page="overview"><svg><use href="#i-dash"/></svg>概览</button>
     <button class="nav-item" data-page="events"><svg><use href="#i-list"/></svg>SPA 事件</button>
@@ -707,7 +707,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
               <li>登录签发的会话 Cookie 为 HttpOnly + SameSite=Strict（12 小时过期，可点左下角「注销」失效）；登录按 IP 限流（5 分钟 5 次失败锁定 60 秒）；Cookie 会话的写操作必须带防跨站请求头。</li>
               <li>无头/CI 场景可用 <code>DASHBOARD_TOKEN</code> 作为 Bearer 凭证（对全部 API 有效），设置后可跳过初始化向导。</li>
               <li>面板默认仅监听 <code>127.0.0.1</code>；如需远程访问请置于带 TLS 的反向代理之后。</li>
-              <li>写操作（服务控制 / 签发 / 撤销 / 解绑 / 配置编辑 / 方案切换）还需启动时加 <code>-enable-write</code>。</li>
+              <li>写操作（服务控制 / 签发 / 撤销 / 解绑 / 配置编辑 / 方案切换）<strong>默认即为管理模式</strong>；如需只读展示，启动时加 <code>-read-only</code>。</li>
               <li>面板本身不接触密钥原文：密钥由 <code>fwknopd-admin</code> 生成；access.conf 的密钥行在界面与 API 中一律掩码，stanza 在线编辑只允许修改非密钥指令。</li>
               <li>启动服务前强制配置预检（<code>--exit-parse-config</code>）；任何配置落盘都会先预检、自动备份（<code>.bak-时间戳</code>）并热加载（SIGHUP）。</li>
               <li>方案切换会先校验方案配置，再备份当前配置——可随时回滚。</li>
@@ -717,7 +717,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
         </div>
       </section>
 
-      <footer class="foot">fwknop 运维面板 · fwknop fork 2.4.0 · 协议 4.0.0 · 数据每 <span id="foot-ivl">5</span> 秒自动刷新</footer>
+      <footer class="foot">fwknop 运维面板 · fwknop fork 2.4.1 · 协议 4.0.0 · 数据每 <span id="foot-ivl">5</span> 秒自动刷新</footer>
     </div>
   </div>
 </div>
@@ -859,7 +859,7 @@ function api(path, opts) {
       if (needsSetup) showAuthView('auth-setup'); else showAuthView('auth-login');
       throw new Error('unauthorized');
     }
-    if (r.status === 403) { toast('面板未启用写操作（-enable-write）或缺少防跨站请求头', 'err'); throw new Error('forbidden'); }
+    if (r.status === 403) { toast('写操作被拒绝：只读模式（-read-only）或缺少防跨站请求头', 'err'); throw new Error('forbidden'); }
     if (r.status === 429) { toast('失败次数过多，已被临时锁定', 'err'); throw new Error('rate-limited'); }
     if (!r.ok) throw new Error('HTTP ' + r.status + '：' + (await r.text()).slice(0, 200));
     return r.json();
@@ -961,7 +961,7 @@ function refreshNow() {
 function applyWriteGate() {
   const on = S.writeEnabled;
   ['svc-start','svc-stop','svc-restart','svc-reload','svc-validate'].forEach(id => { $('#'+id).disabled = !on; });
-  $('#svc-hint').textContent = on ? '' : '当前为只读模式：启动面板时加 -enable-write 后，可进行服务控制与配置编辑';
+  $('#svc-hint').textContent = on ? '' : '当前为只读模式（-read-only）：去掉该参数重启后，可进行服务控制与配置编辑';
   $('#conf-edit-btn').style.display = on ? '' : 'none';
   if (!on) $('#conf-editor').style.display = 'none';
   $('#profile-save-card').style.display = on ? '' : 'none';
@@ -1009,7 +1009,7 @@ function renderStatusCards() {
       v: F.metrics && F.metrics.exists ? `正常 <small>${fmtAgo(F.metrics.mtime)}更新</small>` : '缺失' },
     { ic:'key', c: d.write_enabled ? 'var(--amber)' : 'var(--muted)',
       bg: d.write_enabled ? 'var(--amber-soft)' : 'var(--panel-2)', k:'写操作模式',
-      v: d.write_enabled ? '已启用 <small>可签发 / 撤销</small>' : '只读 <small>安全默认</small>' },
+      v: d.write_enabled ? '管理模式 <small>默认启用</small>' : '只读 <small>-read-only</small>' },
     { ic:'cfg', c: d.admin_tool && d.admin_tool.available ? 'var(--teal)' : 'var(--red)',
       bg: d.admin_tool && d.admin_tool.available ? 'var(--teal-soft)' : 'var(--red-soft)', k:'管理工具',
       v: d.admin_tool && d.admin_tool.available ? 'fwknopd-admin 可用' : 'fwknopd-admin 不可用' },
@@ -1665,7 +1665,7 @@ function renderProfiles() {
   if (!ps.length) {
     $('#profiles-body').innerHTML = `<div class="empty">${icon('i-archive',40)}
       <div class="t">还没有配置方案</div>
-      <div class="d">${S.writeEnabled ? '在上方把当前配置保存为方案，之后可一键切换' : '只读模式下不可保存方案（需 -enable-write）'}</div></div>`;
+      <div class="d">${S.writeEnabled ? '在上方把当前配置保存为方案，之后可一键切换' : '只读模式（-read-only）下不可保存方案'}</div></div>`;
     return;
   }
   $('#profiles-body').innerHTML = ps.map(p => `
