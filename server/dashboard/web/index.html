@@ -1498,7 +1498,16 @@ function renderSummary() {
     ['放行率', pctC(open, true), () => { S.evFilter='open'; S.evPage=0; showPage('events'); }],
     ['拦截 / 异常率', pctC(blocked, false), () => { S.evFilter='bad'; S.evPage=0; showPage('events'); }],
     ['TOFU 绑定数', fmtNum(counterVal(c,'tofu_bind')), () => showPage('tofu')],
-    ['最近事件', last, () => showPage('events')],
+    ['最近事件', last, () => {
+      /* 直达并展开最近一条事件的详情 */
+      S.evFilter = 'all'; S.evQuery = ''; S.evPage = 0; $('#event-search').value = '';
+      const e0 = S.events && S.events[0];
+      if (e0) {
+        if (!S.evExpanded) S.evExpanded = new Set();
+        S.evExpanded.add(`${e0.time}|${e0.event}|${e0.src_ip||''}|${e0.device_id||''}`);
+      }
+      showPage('events');
+    }],
     ['指标生成时间', (() => {
       if (!S.metrics.generated_at) return '—';
       const t = new Date(S.metrics.generated_at);
