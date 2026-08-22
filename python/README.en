@@ -1,55 +1,56 @@
-fko python 模块 版本 1.0
+fko python module version 1.0
 ==============================
 
-（本文件为 Zurker fork 翻译维护的中文译本；英文原文见 README.en。）
+This module is essentially a Python wrapper for the Firewall Knock
+Operator library, "libfko".  See the "libfko" documentation for
+additional information on the functionality provided by "libfko"
+and usage overview.
 
-本模块本质上是防火墙敲门操作符库 "libfko" 的 Python 包装。关于
-"libfko" 所提供的功能及用法概览的更多信息，见 "libfko" 文档。
+Before attempting to build this module, libfko needs to be installed on
+the system.
 
-在尝试构建本模块之前，需要先在系统上安装 libfko。
+To build and install the module:
 
-构建并安装本模块：
-
-   * 用 "python setup.py build" 构建
-   * 用 "python setup.py install" 安装
+   * Build with "python setup.py build"
+   * Install with "python setup.py install"
 
 
-简单用法示例：
+Simple usage example:
 
 #!/usr/bin/python
 #
-# 导入 Fko 类与全部常量。
+# Import the Fko class and all constants.
 #
 from fko import *
 
-# 创建一个空上下文的 Fko 实例。
+# Create an Fko instance with an empty context.
 #
 fko = Fko()
 
-# 设置 HMAC 摘要算法
+# Set the HMAC digest algorithm
 #
 fko.hmac_type(FKO_HMAC_SHA256)
 
-# 设置 SPA 消息（注意：不指定时默认为访问请求）。
+# Set the SPA message (Note: Access request is default if not specified).
 #
 fko.spa_message("0.0.0.0,tcp/22")
 
-# 生成最终的 SPA 数据消息字符串。
+# Create the final SPA data message string.
 #
 fko.spa_data_final("mypassword", "myhmackey")
 
-# 打印 SPA 消息。
+# print the spa message.
 #
 print fko.spa_data()
 
-（输出类似如下内容）：
+(prints something like this):
 /m4fc/3OGd1IOchWM8o/yUvoa8TdbsRgU0zrp4UWuese9DIcHl09pZ3ukrNy/2OZAH3gnRH186YVMQEB1qfx23xVMq3IXx/fBwxgLBIqNdii2yWGqUVlxw83tfiP/p3Fmr7AeM1mev62xpE8R5vdACNxIDMM51lmYKh6JtEMoHrXXFAIRqbwCXJvlTEQij4vlZ4KfhMpnxxiiUciDWB11mbVDGSsQqKU9MQ
 
-# 解码 SPA 数据：
+# To decode SPA data:
 #
 fko = Fko("/m4fc/3OGd1IOchWM8o/yUvoa8TdbsRgU0zrp4UWuese9DIcHl09pZ3ukrNy/2OZAH3gnRH186YVMQEB1qfx23xVMq3IXx/fBwxgLBIqNdii2yWGqUVlxw83tfiP/p3Fmr7AeM1mev62xpE8R5vdACNxIDMM51lmYKh6JtEMoHrXXFAIRqbwCXJvlTEQij4vlZ4KfhMpnxxiiUciDWB11mbVDGSsQqKU9MQ", "mypassword", "myhmackey")
 
-# 打印部分数据：
+# Print some of the data:
 #
 print "Version:", fko.version()
 print "Timestamp:", fko.timestamp()

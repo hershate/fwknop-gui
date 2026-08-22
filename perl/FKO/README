@@ -1,39 +1,36 @@
-FKO version 0.10
+FKO 版本 0.10
 ================
 
-This module is essentially a Perl wrapper for the Firewall Knock
-Operator library, "libfko".  See the "libfko" documentation for
-additional information on the functionality provided by "libfko"
-and usage overview.
+（本文件为 Zurker fork 翻译维护的中文译本；英文原文见 README.en。）
 
-INSTALLATION
+本模块本质上是防火墙敲门操作符库 "libfko" 的 Perl 包装。关于
+"libfko" 所提供的功能及用法概览的更多信息，见 "libfko" 文档。
 
-The library "libfko" should already be installed on the local
-system (in a location perl will find it) before attempting to
-build/install this module.
+安装
 
-To install this module type the following:
+在尝试构建/安装本模块之前，"libfko" 库应当已经安装在本地系统上
+（位于 perl 能够找到的位置）。
+
+要安装本模块，键入以下命令：
 
    perl Makefile.PL
    make
    make test
    make install
 
-DEPENDENCIES
+依赖
 
-This module requires these other modules and libraries:
+本模块需要以下其他模块和库：
 
-The Firewall Knock Operator library, "libfko".
+防火墙敲门操作符库 "libfko"。
 
-For a CPAN version of this module it may be advantageous to uncomment the
-Devel::Checklib lines in Makefile.PL, but this seems to introduce portability
-issues on FreeBSD.
+对于本模块的 CPAN 版本，取消 Makefile.PL 中 Devel::Checklib 行的注释
+可能会有好处，但这似乎会在 FreeBSD 上引入可移植性问题。
 
-COPYRIGHT AND LICENCE
+版权与许可证
 
-Copyright (C) 2009 by Damien S. Stuart <dstuart@dstuart.org>
+版权所有 (C) 2009 Damien S. Stuart <dstuart@dstuart.org>
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.8.8 or,
-at your option, any later version of Perl 5 you may have available.
-
+本库是自由软件；你可以按照与 Perl 本身相同的条款再分发和/或修改它，
+无论是 Perl 5.8.8 版本，还是（由你选择的）你可用的任何后续 Perl 5
+版本。

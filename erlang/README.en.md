@@ -1,19 +1,17 @@
 fwknop
 =====
 
-（本文件为 Zurker fork 翻译维护的中文译本；英文原文见 README.en.md。）
+Experimental native erlang fwknop client with Rijndael support.
 
-实验性的 Erlang 原生 fwknop 客户端，支持 Rijndael。
-
-构建
+Build
 -----
 
     $ rebar3 compile
     $ rebar3 eunit
 
-用法
+Usage
 -----
-
+  
     $ rebar3 shell
     1> server:start("Sz80RjpXOlhH2olGuKBUamHKcqyMBsS9BTgLaMugUsg=", "c0TOaMJ2aVPdYTh4Aa25Dwxni7PrLo2zLAtBoVwSepkvH6nLcW45Cjb9zaEC2SQd03kaaV+Ckx3FhCh5ohNM5Q==").
     2> fwknop:knock("localhost", 62201, "Sz80RjpXOlhH2olGuKBUamHKcqyMBsS9BTgLaMugUsg=", "c0TOaMJ2aVPdYTh4Aa25Dwxni7PrLo2zLAtBoVwSepkvH6nLcW45Cjb9zaEC2SQd03kaaV+Ckx3FhCh5ohNM5Q==", { tcp, "1.1.1.1", 22 } ).

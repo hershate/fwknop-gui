@@ -1,11 +1,10 @@
-README for the libfwknop directory (android/project/jni/libfwknop)
+libfwknop 目录说明（android/project/jni/libfwknop）
 ===============================================================================
 
-This directory should contain all of the .c and .h files from the fwknop
-main distribution "lib" directory. These are the source files for libfko.
-You can either manually copy the libfko source files to this directory,
-or run the "get_libfko_files.sh script.  Either way, the libfko *.[ch]
-files need to exist in this directory before you attempt to build the Android
-fwknop client.
+（本文件为 Zurker fork 翻译维护的中文译本；英文原文见 README.en。）
 
-
+本目录应当包含 fwknop 主发行版 "lib" 目录中的全部 .c 和 .h 文件——
+这些是 libfko 的源文件。你可以手工把 libfko 源文件复制到本目录，也
+可以运行 "get_libfko_files.sh" 脚本。无论用哪种方式，在尝试构建
+Android 版 fwknop 客户端之前，libfko 的 *.[ch] 文件都必须存在于本
+目录中。

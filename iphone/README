@@ -1,42 +1,38 @@
 ===============================================================================
-FWKNOP for Iphone
+FWKNOP for Iphone（iPhone 版 FWKNOP）
 
 Max Kastanas <max2idea@users.sourceforge.net>
 
-Based on fwknop C implementation by Damien Stuart
+基于 Damien Stuart 的 fwknop C 实现
 ===============================================================================
 
-1. Requirements:
+（本文件为 Zurker fork 翻译维护的中文译本；英文原文见 README.en。）
+
+1. 需求：
 
     a. MacOSX(10.5.8)
-	
-    b. XCode ver 4.1.3
+
+    b. XCode 4.1.3 版
 
 ===============================================================================
-2. Setup
+2. 安装设置
 
-    a. Untar the tar.gz file:
+    a. 解开 tar.gz 文件：
         tar -zxf Fwknop-0.9.tar.gz
 
-    b. Open project with XCode under folder ./iphone
+    b. 用 XCode 打开 ./iphone 目录下的项目
 
-    f. The relevant fwknop iphone C code can be found under the
-       ".../iphone/Classes" directory:
-         1. The "./iphone/Classes/libfwknop" directory should contain all of
-            the .c and .h files from the main fwknop/lib/ directory (the
-            libfko source files.  You can copy all of the *.[ch] files from
-            .../fwknop.../lib manually, or use the "get_libfko_files.sh"
-            script.
+    f. 相关的 fwknop iphone C 代码位于 ".../iphone/Classes" 目录：
+         1. "./iphone/Classes/libfwknop" 目录应当包含 fwknop 主目录
+            lib/ 下的全部 .c 和 .h 文件（即 libfko 源文件。你可以手工
+            把 .../fwknop.../lib 中的全部 *.[ch] 文件复制过来，或者使用
+            "get_libfko_files.sh" 脚本）。
 
-         2. Keep in mind file fko_common.b will replace the contents of file
-		fko_common.h. This is needed for additional preprocessor defines
-		for compilation MacOSX.
-
+         2. 注意：fko_common.b 文件会替换 fko_common.h 的内容。这是在
+            MacOSX 上编译所需的额外预处理器定义。
 
 
 ===============================================================================
-Changelog
-v0.9b Dec 16 2011
-1) Rijndael client support
-
-
+更新记录
+v0.9b 2011 年 12 月 16 日
+1) Rijndael 客户端支持

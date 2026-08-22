@@ -1,201 +1,188 @@
 
 ***
-Please note that this Android client has been deprecated in favor of Jonathan
-Bennett's new Android client that is available here:
+请注意：本 Android 客户端已被弃用，请改用 Jonathan Bennett 的新 Android
+客户端，见：
 
 https://github.com/jp-bennett/Fwknop2/releases/
 ****
 
+（本文件为 Zurker fork 翻译维护的中文译本；英文原文见 README.en。）
+
 ===============================================================================
-FWKNOP for Android
+FWKNOP for Android（Android 版 FWKNOP）
 
 Max Kastanas <max2idea@users.sourceforge.net>
 
-Based on fwknop C implementation by Damien Stuart
+基于 Damien Stuart 的 fwknop C 实现
 ===============================================================================
 
-- For those that are interested in Android development for the fwknop project,
-the ./project/sdk.paths file is meant to provide JAVE_HOME and PATH definitions
-for the local JVM and the Android SDK and NDK installations.  The general work
-flow is to first update the paths in in the sdk.paths file to point to the
-correct directories on your system, and you will also need to similarly update
-the sdk.dir and ndk.dir paths in the ./android/project/ant.properties file.
-Then:
+- 对 fwknop 项目的 Android 开发感兴趣的读者：./project/sdk.paths 文件用于
+为本地 JVM 以及 Android SDK 和 NDK 的安装提供 JAVA_HOME 和 PATH 定义。
+一般工作流程是：首先把 sdk.paths 文件中的路径更新为指向你系统上的正确
+目录；你还需要同样更新 ./android/project/ant.properties 文件中的
+sdk.dir 和 ndk.dir 路径。然后：
 
 $ source ./project/sdk.paths
 
-- Then, start up the Android SDK:
+- 然后，启动 Android SDK：
 
 $ android &
 
-- Now, make updates to the fwknop/android/project/ files if implementing new
-functionality or fixing bugs.  Then, with an Android emulator running:
+- 现在，如果要实现新功能或修复缺陷，就对 fwknop/android/project/ 下的
+文件进行修改。然后，在 Android 模拟器运行时：
 
 $ cd ./project
 $ ant clean
 $ ant debug
 $ adb install -r bin/fwknop-android-debug.apk
 
- - or -
+ - 或者 -
 
 $ cd ./project
 $ ant clean
 $ ant release
 $ adb install bin/fwknop-android-release-unsigned.apk
 
-- With the new Android app installed now in the emulator, you can fire it up
-and use it to send SPA packets.
+- 新的 Android 应用装进模拟器后，你就可以启动它并用它发送 SPA 数据包。
 
 
-### Legacy instructions follow: ###
+### 以下是旧版说明： ###
 
-1. Requirements:
+1. 需求：
 
     a. Apache Ant (1.7.1)
         http://ant.apache.org/bindownload.cgi
 
-    b. Android NDK (Android r5-linux)
+    b. Android NDK（Android r5-linux）
         http://developer.android.com/sdk/ndk/index.html
-        Unzip the contents under a directory ie:
+        把内容解压到某个目录，例如：
         /home/yourname/tools/android-sdk-linux_86
 
-    c. Android SDK (Android r08-linux)
+    c. Android SDK（Android r08-linux）
         http://developer.android.com/sdk/index.html
-        Unzip the contents under a directory ie:
+        把内容解压到某个目录，例如：
         /home/yourname/tools/android-ndk-r5
 
-    d. Include the Android SDK tools directory in your user PATH variable:
+    d. 把 Android SDK 的 tools 目录加入你的用户 PATH 变量：
         export PATH=$PATH:/home/dev/tools/android-sdk-linux_86/tools:/home/yourname/tools/android-ndk-r5
 
-    e. Download an SDK Android platform, in a command shell type: "android &"
-       to start up the "Android SDK and AVD Manager".  Download an SDK
-       platform (Android 2.1 and above is recommended) under the
-       "Available Packages" section.
+    e. 下载一个 SDK Android 平台：在命令行中键入 "android &" 启动
+       "Android SDK and AVD Manager"，在 "Available Packages" 一节下载
+       一个 SDK 平台（推荐 Android 2.1 及以上）。
 
-    f. Java SDK (1.6 and above)
+    f. Java SDK（1.6 及以上）
         http://www.oracle.com/technetwork/java/javase/downloads/index.html
 
-    g. Netbeans (6.9 and above) - Optional if you want to use Netbeans as
-       the IDE:
+    g. Netbeans（6.9 及以上）——如果你想用 Netbeans 作为 IDE 则为可选项：
         http://netbeans.org/downloads/
 
-    h. Netbeans Android plugin (0.11 and above) - Optional if you are using
-       the Netbeans IDE:
+    h. Netbeans Android 插件（0.11 及以上）——使用 Netbeans IDE 时为可
+       选项：
         http://kenai.com/projects/nbandroid/pages/Install
 
 ===============================================================================
-2. Setup
+2. 安装设置
 
-    a. Untar the tar.gz file:
+    a. 解开 tar.gz 文件：
         tar -zxf fwknop-2.0.4.tar.gz
 
-    b. Update the properties files with the path to the sdk and ndk tools:
+    b. 用 sdk 和 ndk 工具的路径更新属性文件：
         .../fwknop-android/project/build.properties
             sdk.dir=/home/yourname/tools/android-sdk-linux_86
             ndk.dir=/home/yourname/tools/android-ndk-r5
 
-       If you are running Android-4.1.2 or later, then these paths should look
-       more like:
+       如果你运行的是 Android-4.1.2 或更高版本，这些路径应该更像：
             sdk.dir=/home/yourname/tools/android-sdk-linux
             ndk.dir=/home/yourname/tools/android-ndk-r8b
 
-    c. Include the Android SDK platform directory in your user PATH variable
+    c. 把 Android SDK 的 platform 目录加入你的用户 PATH 变量：
         export PATH=$PATH:/home/yourname/tools/android-sdk-linux_86/platforms-tools
 
-       For Android-4.1.2:
+       对于 Android-4.1.2：
         export PATH=$PATH:/home/yourname/android-sdk-linux/tools: \
         /home/yourname/android-ndk-r8b:/home/yourname/android-sdk-linux/platform-tools
 
-    d. Create a new Android device, in a command shell type: "android".
-        This will start the android SDK and AVD Manager
-        Under Virtual Devices create an AVD device and name it as "Android2.1"
+    d. 创建一个新的 Android 设备：在命令行中键入 "android"。
+        这会启动 android SDK 和 AVD Manager。
+        在 Virtual Devices 下创建一个 AVD 设备，命名为 "Android2.1"。
 
-       For Android-4.1.2 name the new AVD device "Android_fwknop"
+       对于 Android-4.1.2，把新的 AVD 设备命名为 "Android_fwknop"。
 
-    e. Update (if needed) project file with the right virtual device as above:
+    e. （如有需要）用上面正确的虚拟设备更新项目文件：
         .../fwknop-android/project/nbproject/project.properties
             platform.active=Android2.1
 
-       For Android-4.1.2 use the .../fwknop-android/project/nbproject/project-4.1.2.properties
-       file (you might want to replace the project.properties file with this it).
-       Also for Android-4.1.2 users, you will probably want to replace the
-       build.properties file with the build-4.1.2.properties file.
+       对于 Android-4.1.2，使用
+       .../fwknop-android/project/nbproject/project-4.1.2.properties
+       文件（你可能想用它替换 project.properties 文件）。
+       同样，Android-4.1.2 用户可能还想用 build-4.1.2.properties 文件
+       替换 build.properties 文件。
 
-    f. The relevant fwknop android C code can be found under the
-       ".../project/jni" directory:
-         1. The ".../project/jni/libfwknop" directory should contain all of
-            the .c and .h files from the main fwknop/lib/ directory (the
-            libfko source files.  You can copy all of the *.[ch] files from
-            .../fwknop.../lib manually, or use the "get_libfko_files.sh"
-            script.
+    f. 相关的 fwknop android C 代码位于 ".../project/jni" 目录：
+         1. ".../project/jni/libfwknop" 目录应当包含 fwknop 主目录 lib/
+            下的全部 .c 和 .h 文件（即 libfko 源文件。你可以手工把
+            .../fwknop.../lib 中的全部 *.[ch] 文件复制过来，或者使用
+            "get_libfko_files.sh" 脚本）。
 
-         2. The ".../project/jni/fwknop" directory contains the code for
-            the android-specific client code (with the Java Native Interface
-            hooks).
+         2. ".../project/jni/fwknop" 目录包含 Android 特有的客户端代码
+            （带 Java Native Interface 钩子）。
 
 ===============================================================================
-3. Build
+3. 构建
 
-    a. To build the app make sure you're under the project directory:
+    a. 要构建该应用，确保你位于 project 目录下：
         $> cd /home/yourname/.../fwknop-android/project
 
-    b. To build the application type:
+    b. 构建应用程序，键入：
         $> ant jar
 
 ===============================================================================
-4. Run
+4. 运行
 
-    a. Now search under the .../fwknop-android/dist directory for a .apk
-       file.  You can copy the .apk file to your SD card by typing (make
-       sure the Android Emulator is on):
+    a. 现在在 .../fwknop-android/dist 目录下找到 .apk 文件。你可以键入
+       以下命令把 .apk 文件复制到 SD 卡上（确保 Android 模拟器已启动）：
             $> adb push Fwknop.apk /sdcard/
 
-    Then you can open it and install it from within your Android device
-    using a Filemanager like Astro. Make sure that you have turned on the 
-    "Unknown Sources" Option under Application settings.
+    然后你可以用 Astro 之类的文件管理器在 Android 设备内打开并安装它。
+    确保你已在应用程序设置中打开「未知来源」选项。
 
 ===============================================================================
-5. Android Emulator
+5. Android 模拟器
 
-    If you don't have a device you can install and run Fwknop in the Android
-    emulator. To do so follow these steps:
+    如果你没有实体设备，可以在 Android 模拟器中安装并运行 Fwknop。步骤
+    如下：
         $> android
 
-    Under the virtual devices find your device "Android2.1" and start it up
+    在虚拟设备中找到你的设备 "Android2.1" 并启动它。
 
-    In a command line type:
+    在命令行中键入：
         $> adb install Fwknop.apk
 
-    You can now find the Firewall Knock Operator app under the menu tap on
-    the icon to get started.
+    现在你可以在菜单中找到 Firewall Knock Operator 应用，点击图标即可
+    开始使用。
 
 ===============================================================================
-6. Developing with Netbeans
+6. 用 Netbeans 开发
 
-To develop and build with Netbeans make sure you have installed the nbandroid
-plugin (see requirements. Once you have that install a new Java platform under
-the Tool -> Java Platforms and choose a Google Android platform, navigate
-under the SDK platform directory you downloaded under step 1e. Finally, just
-open the .../fwknop-android/project directory as a Netbeans project.
+要用 Netbeans 开发和构建，请确保已安装 nbandroid 插件（见需求部分）。
+安装好之后，在 Tool -> Java Platforms 下添加一个新的 Java 平台，选择
+Google Android 平台，定位到你在第 1e 步下载的 SDK 平台目录。最后，直接
+把 .../fwknop-android/project 目录作为 Netbeans 项目打开即可。
 
 ===============================================================================
-7. Debugging
+7. 调试
 
-You can use gdb to debug the app.  Before you do so make sure you have the
-following attribute in your AndroidManifest.xml file:
-    android:debuggable="true" 
-Now rebuild the application and start the Android Emulator, then in a command
-shell type:
+你可以用 gdb 调试该应用。在此之前，确保你的 AndroidManifest.xml 文件中
+有以下属性：
+    android:debuggable="true"
+然后重新构建应用并启动 Android 模拟器，再在命令行中键入：
     $> ndk-gdb --project=<path-to>/android/project
 
-This will start gdb in remote debugging, similarly you can follow the same
-steps to debug a physical device
+这将以远程调试方式启动 gdb；类似地，你可以按相同步骤调试实体设备。
 
 ===============================================================================
-Changelog
-v0.9 Dec 28 2010
-1) Rijndael client support
-2) Local and External IP resolution
-2) Automatically start ConnectBot
-
-
+更新记录
+v0.9 2010 年 12 月 28 日
+1) Rijndael 客户端支持
+2) 本地与外部 IP 解析
+2) 自动启动 ConnectBot

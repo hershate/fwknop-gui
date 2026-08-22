@@ -1,18 +1,17 @@
-This directory holds files and subdirectories related to fwknop and the
-OpenWRT platform.
+本目录存放与 fwknop 及 OpenWRT 平台相关的文件和子目录。
 
-The "package" directory contains the individual OpenWRT package directories.
-Each of these package directories hold the Makefile and additional patch or
-file directories used by the OpenWRT build system.
+（本文件为 Zurker fork 翻译维护的中文译本；英文原文见 README.openwrt.en。）
 
-At present, the packages we include are "fwknop" and "gpgpme".  The gpgme
-package is include because it does not appear to be available on any of
-the OpenWRT package repositories I found.
+"package" 目录包含各个独立的 OpenWRT 软件包目录。每个软件包目录中存放
+OpenWRT 构建系统使用的 Makefile 以及额外的补丁或文件目录。
 
-It is assumed that if you are going to use these files, you already know
-what you are doing (or at least have an idea).
+目前我们收录的软件包是 "fwknop" 和 "gpgpme"。收录 gpgme 软件包是因为
+在我找到的 OpenWRT 软件仓库中似乎都没有它。
 
-You can find additional information on building OpenWRT packages at:
+这里默认：如果你要使用这些文件，你已经知道自己在做什么（或者至少有
+大致的概念）。
+
+关于构建 OpenWRT 软件包的更多信息见：
 
     http://kamikaze.openwrt.org/docs/openwrt.html#x1-460002.1.2
 
