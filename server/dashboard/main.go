@@ -1,4 +1,4 @@
-// Command fwknop-dashboard is the operations web panel for fwknopd (2.4.1).
+// Command fwknop-dashboard is the operations web panel for fwknopd (2.4.2).
 //
 // It reads the structured audit log (<run_dir>/fwknopd_audit.log, JSON lines),
 // the Prometheus metrics (<run_dir>/fwknopd.metrics), the TOFU state file,
@@ -35,7 +35,7 @@ import (
 	"time"
 )
 
-const version = "2.4.1"
+const version = "2.4.2"
 
 type Config struct {
 	RunDir      string
