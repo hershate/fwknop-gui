@@ -704,6 +704,14 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                   <label>允许访问端口</label>
                   <input name="access" placeholder="默认 tcp/22">
                   <div class="tip">OPEN_PORTS，如 tcp/22,udp/53</div>
+                  <div id="access-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+                    <button type="button" class="tpl-chip" data-port="tcp/22" title="SSH">tcp/22</button>
+                    <button type="button" class="tpl-chip" data-port="tcp/443" title="HTTPS">tcp/443</button>
+                    <button type="button" class="tpl-chip" data-port="tcp/80" title="HTTP">tcp/80</button>
+                    <button type="button" class="tpl-chip" data-port="udp/53" title="DNS">udp/53</button>
+                    <button type="button" class="tpl-chip" data-port="udp/1194" title="OpenVPN">udp/1194</button>
+                    <button type="button" class="tpl-chip" data-port="tcp/3389" title="RDP">tcp/3389</button>
+                  </div>
                   <div class="auth-hint" id="add-access-hint"></div>
                 </div>
                 <div class="field">
@@ -2118,6 +2126,22 @@ $$('.tpl-chip').forEach(chip => {
     saveAddDraft();
   };
 });
+
+/* 常用端口快捷芯片：点击在 OPEN_PORTS 列表中切换该项，已含则移除 */
+function syncAccessChips() {
+  const cur = $('#add-form').access.value.split(',').map(x => x.trim()).filter(Boolean);
+  $$('#access-chips [data-port]').forEach(c =>
+    c.classList.toggle('active', cur.includes(c.dataset.port)));
+}
+$$('#access-chips [data-port]').forEach(c => c.onclick = () => {
+  const f = $('#add-form');
+  let cur = f.access.value.split(',').map(x => x.trim()).filter(Boolean);
+  cur = cur.includes(c.dataset.port) ? cur.filter(x => x !== c.dataset.port) : [...cur, c.dataset.port];
+  f.access.value = cur.join(',');
+  f.access.dispatchEvent(new Event('input'));  /* 联动即时校验 + 草稿保存 */
+  syncAccessChips();
+});
+$('#add-form').access.addEventListener('input', syncAccessChips);
 
 /* 服务器地址历史（最近 5 个，datalist 下拉补全） */
 const SRV_HIST_KEY = 'fwknop-server-history';
