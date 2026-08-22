@@ -570,6 +570,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
             <div class="head">
               <h2>访问授权（access.conf）</h2><span class="sub" id="users-sub"></span>
               <div class="tools">
+                <input class="ctl" id="users-search" placeholder="搜索名称 / 用户 / 端口 / 来源…" style="width:220px">
                 <button class="btn small" id="show-add"><svg width="14" height="14"><use href="#i-plus"/></svg>签发新凭证</button>
               </div>
             </div>
@@ -916,7 +917,7 @@ const S = {
   overview: null, metrics: null, events: null, users: null, tofu: null, config: null,
   writeEnabled: false,
   evFilter: 'all', evQuery: '', evPage: 0, evPer: 20,
-  tofuQuery: '',
+  tofuQuery: '', usersQuery: '',
   hist: {},            // key -> [{t, v}] 计数器历史（前端采样，用于迷你趋势）
   rawMode: false,
 };
@@ -1242,8 +1243,16 @@ function renderUsers() {
     $('#users-sub').textContent = '';
     return;
   }
-  const st = d.stanzas || [];
-  $('#users-sub').textContent = `${st.length} 个授权 · ${d.file.exists ? '更新于 ' + fmtAbs(d.file.mtime) : '文件不存在'}`;
+  const all = d.stanzas || [];
+  const q = (S.usersQuery || '').toLowerCase();
+  const st = q ? all.filter(s =>
+    (s.name||'').toLowerCase().includes(q) ||
+    (s.require_username||'').toLowerCase().includes(q) ||
+    (s.open_ports||'').toLowerCase().includes(q) ||
+    (s.source||'').toLowerCase().includes(q)) : all;
+  $('#users-sub').textContent =
+    (q ? `匹配 ${st.length} / ${all.length} 个授权 · ` : `${all.length} 个授权 · `) +
+    (d.file.exists ? '更新于 ' + fmtAbs(d.file.mtime) : '文件不存在');
   const dis = d.disabled || [];
   const disHtml = dis.length ? `
     <div style="margin-top:6px">
@@ -1257,7 +1266,8 @@ function renderUsers() {
     </div>` : '';
   if (!st.length) {
     $('#users-body').innerHTML = `<div class="empty">${icon('i-users',40)}
-      <div class="t">还没有任何授权</div><div class="d">点击右上角「签发新凭证」为第一位用户创建访问授权</div></div>` + disHtml;
+      <div class="t">${q ? '无匹配授权' : '还没有任何授权'}</div>
+      <div class="d">${q ? '试试更换搜索关键词' : '点击右上角「签发新凭证」为第一位用户创建访问授权'}</div></div>` + disHtml;
   } else {
   $('#users-body').innerHTML = st.map(s => {
     const name = s.name || ('授权 #' + s.index);
@@ -1447,6 +1457,7 @@ function renderTOFU() {
   });
 }
 $('#tofu-search').oninput = e => { S.tofuQuery = e.target.value.trim(); renderTOFU(); };
+$('#users-search').oninput = e => { S.usersQuery = e.target.value.trim(); renderUsers(); };
 
 /* ==================== 服务配置 ==================== */
 /* 常见配置项中文说明（未收录的显示原值，归入「其他」） */
