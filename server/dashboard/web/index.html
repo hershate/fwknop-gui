@@ -553,6 +553,15 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
           </div>
         </div>
         <div class="grid-status" id="status-cards"></div>
+        <div class="card">
+          <div class="body" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:13px 20px">
+            <span class="hint">快速操作：</span>
+            <button class="btn ghost small" id="qa-add"><svg width="14" height="14"><use href="#i-plus"/></svg>签发新凭证</button>
+            <button class="btn ghost small" id="qa-bad"><svg width="14" height="14"><use href="#i-warn"/></svg>仅看异常事件</button>
+            <button class="btn ghost small" id="qa-profile"><svg width="14" height="14"><use href="#i-archive"/></svg>保存配置方案</button>
+            <a class="btn ghost small" href="/api/audit/download" download><svg width="14" height="14"><use href="#i-download"/></svg>导出审计日志</a>
+          </div>
+        </div>
         <div class="grid-tiles" id="tiles"></div>
         <div class="card">
           <div class="head"><h2>汇总</h2><span class="sub">基于当前计数器快照</span></div>
@@ -1143,6 +1152,8 @@ function applyWriteGate() {
   if (!on) $('#conf-editor').style.display = 'none';
   $('#profile-save-card').style.display = on ? '' : 'none';
   $('#show-add').style.display = on ? '' : 'none';
+  /* 快速操作中的写动作在只读模式禁用 */
+  $('#qa-add').disabled = !on; $('#qa-profile').disabled = !on;
 }
 
 let connFail = 0;
@@ -2082,6 +2093,17 @@ function renderDiff(pre, cur) {
   return '<pre class="out-pre" style="max-height:24vh">' + ops.map(([op, l]) =>
     `<span class="df-${op === '+' ? 'add' : 'del'}">${op} ${esc(l)}</span>`).join('\n') + '</pre>';
 }
+
+/* 概览快速操作：高频动作一键直达 */
+$('#qa-add').onclick = () => {
+  showPage('users');
+  if ($('#add-card').style.display === 'none') $('#show-add').click();
+};
+$('#qa-bad').onclick = () => { S.evFilter = 'bad'; S.evPage = 0; showPage('events'); };
+$('#qa-profile').onclick = () => {
+  showPage('profiles');
+  if (S.writeEnabled) $('#pf-name').focus();
+};
 
 /* ==================== 配置方案 ==================== */
 async function loadProfiles() {
