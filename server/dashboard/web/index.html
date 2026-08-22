@@ -707,6 +707,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
                   <label>TOFU 宽限期（秒）</label>
                   <input name="tofu-timeout" placeholder="留空 = 绑定本机指纹；86400 = 首用自动绑定">
                   <div class="tip">设值后首个敲门的设备自动绑定；留空则绑定当前设备</div>
+                  <div class="auth-hint" id="add-tofuto-hint"></div>
                 </div>
                 <div class="field">
                   <label class="check-row"><input type="checkbox" name="require-totp-port-match" style="width:auto"> 强制 TOTP 端口匹配</label>
@@ -1917,6 +1918,16 @@ $('#add-form')['port-range'].addEventListener('input', ev => {
   const m = v.match(/^(\d{1,5})-(\d{1,5})$/);
   const ok = m && +m[1] >= 1024 && +m[2] <= 65535 && +m[1] < +m[2];
   fmtHint(el, ok, '✓ 范围有效', '✗ 格式应为 30000-60000（1024-65535，起 < 止）');
+});
+
+$('#add-form')['tofu-timeout'].addEventListener('input', ev => {
+  const v = ev.target.value.trim(), el = $('#add-tofuto-hint');
+  if (!v) { el.textContent = ''; el.className = 'auth-hint'; return; }
+  /* 服务端范围：1 ～ RCHK_MAX_FW_TIMEOUT（2<<22 = 8388608）秒 */
+  const n = +v;
+  const ok = /^\d+$/.test(v) && n >= 1 && n <= 8388608;
+  fmtHint(el, ok, `✓ 宽限 ${n >= 86400 ? (n/86400).toFixed(n % 86400 ? 1 : 0) + ' 天' : n + ' 秒'}内首用自动绑定`,
+    '✗ 应为 1-8388608 的整数秒（常用 86400 = 1 天）');
 });
 
 /* 名称唯一性前置校验：与现有授权/已禁用授权重名时即时提示 */
