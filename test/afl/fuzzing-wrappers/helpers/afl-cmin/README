@@ -1,13 +1,13 @@
+（本文件为 Zurker fork 翻译维护的中文译本；英文原文见 README.en。）
 
-Normally the test corpus in the test/afl/test-cases/ directory is sufficient
-for effective AFL fuzzing rounds. However, if you want to test with an expanded
-set of files that have gone through afl-cmin, then you can leverage the scripts
-in this directory. This uses the complete set of main test suite config files
-in the test/conf/ directory as the input corpus for afl-cmin. The work flow
-would be (for the server-access.sh fuzzing wrapper for example):
+通常 test/afl/test-cases/ 目录中的测试语料库已足以进行有效的 AFL
+模糊测试。不过，如果你想用经过 afl-cmin 精简扩充的文件集来测试，可以
+利用本目录中的脚本。它把 test/conf/ 目录中完整的主测试套件配置文件作
+为 afl-cmin 的输入语料库。工作流程如下（以 server-access.sh 模糊测试
+包装脚本为例）：
 
 $ cd fwknop.git/test/afl/
 $ ./compile/afl-compile.sh
 $ ./fuzzing-wrappers/helpers/afl-cmin/server-access-cmin.sh
-<edit the script below to use the new test-cases/server-access.cmin directory>
+<编辑下面的脚本，改用新的 test-cases/server-access.cmin 目录>
 $ ./fuzzing-wrappers/server-access.sh

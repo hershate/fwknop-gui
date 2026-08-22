@@ -1,15 +1,16 @@
-This directory is used to collect information on which functions in the fwknop
-sources are never called when the test suite is executed.  This assumes that
-fwknop has been compiled with test coverage support like this:
+（本文件为 Zurker fork 翻译维护的中文译本；英文原文见 README.en。）
+
+本目录用于收集信息：在执行测试套件时，fwknop 源代码中的哪些函数从未
+被调用。这里假设 fwknop 已按如下方式以测试覆盖率支持编译：
 
 $ CFLAGS="-O0 -fprofile-arcs -ftest-coverage" LDFLAGS="-fprofile-arcs" ./configure --prefix=/usr --sysconfdir=/etc
 $ make
 
-Or, just do:
+或者直接：
 
 $ ./configure --enable-profile-coverage --prefix=/usr --sysconfdir=/etc
 
-Then the test suite can be executed with the --enable-profile-coverage-check
-argument so that functions that are never called can be seen:
+然后以 --enable-profile-coverage-check 参数执行测试套件，即可看到从未
+被调用的函数：
 
 # ./test-fwknop.pl --enable-profile-coverage-check
