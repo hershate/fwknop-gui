@@ -1,38 +1,36 @@
-NOTES on the generation of the fwknop man pages:
+关于 fwknop 手册页生成的说明：
 
-Until we decide on a better way, the man pages for 'fwknop' (client) and
-'fwknopd' (server) are generated from the asciidoc sources in this directory,
-then copied to their respective directories before check-in.
+（本文件为 Zurker fork 翻译维护的中文译本；英文原文见 README.en。）
 
-We use the "a2x" command to generate the initial nroff-formated version,
-which is then manually edited to clean it up a bit.  The "a2x" command is:
+在找到更好的办法之前，'fwknop'（客户端）和 'fwknopd'（服务端）的
+手册页由本目录中的 asciidoc 源文件生成，然后在检入前复制到各自的
+目录。
+
+我们使用 "a2x" 命令生成最初的 nroff 格式版本，然后手工编辑稍作
+清理。"a2x" 命令为：
 
     a2x -f manpage  fwknopd.man.asciidoc
 
-This creates the "fwknopd.8" man page.  However, depending on the a2x and.or
-asciidoc configuration on your system, you may have to edit the "fwknopd.8"
-file directly to remove the "[FIXME: source/manual]" string embedded within.
-At present, we simply remove them.  There may also be places where you want
-items on successive line without intervening lines (i.e. the AUTHORS section
-of the generated man page).  In those cases, simply change the ".sp"
-between those lines to ".br".
+这会生成 "fwknopd.8" 手册页。不过，取决于你系统上的 a2x 和/或
+asciidoc 配置，你可能需要直接编辑 "fwknopd.8" 文件，删除其中嵌入的
+"[FIXME: source/manual]" 字符串。目前我们只是直接删除它们。另外，
+有些地方你可能希望若干条目连续排列、行间不留空行（例如生成的手册页
+中的 AUTHORS 一节）。这种情况下，只需把这些行之间的 ".sp" 改成
+".br" 即可。
 
-Generating HTML versions of the documentation:
+生成 HTML 版本的文档：
 
-Here are some of the commands used to create/generate HTML versions of
-the fwknop documentation.
+下面是用于创建/生成 fwknop 文档 HTML 版本的一些命令。
 
-For the libfko API doc, you could just do a "make html" to create a
-libfki.html directory with a reasonable set of HTML pages.  You can also
-use "texi2html" which give a bit more flexibility.  For example:
+对于 libfko API 文档，直接执行 "make html" 即可创建包含一组合理
+HTML 页面的 libfki.html 目录。也可以使用 "texi2html"，它更灵活一些。
+例如：
 
     texi2html --noheader --nomenu --toc-links libfko.texi
 
-Will generate a single HTML document. With this, the table of contents is
-put at the end of the document, but it is not hard to edit the file and to
-relocate it to the top.
+会生成单个 HTML 文档。这样目录（TOC）被放在文档末尾，但编辑文件把
+它移到开头并不难。
 
-For creating HTML versions of the man pages, simply use the "-f xhtml"
-option to the "a2x" command:
+要创建手册页的 HTML 版本，只需给 "a2x" 命令加上 "-f xhtml" 选项：
 
     a2x -f xhtml fwknopd.man.asciidoc
