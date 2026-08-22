@@ -837,6 +837,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
               <tr><td style="width:130px"><code>1</code> – <code>7</code></td><td class="hint">切换页面（概览 / SPA 事件 / 用户与授权 / TOFU / 服务配置 / 配置方案 / 关于）</td></tr>
               <tr><td><code>/</code></td><td class="hint">聚焦当前页搜索框（SPA 事件 / 用户与授权 / TOFU 页可用）</td></tr>
               <tr><td><code>r</code></td><td class="hint">立即刷新当前页数据</td></tr>
+              <tr><td><code>←</code> / <code>→</code></td><td class="hint">事件页上/下一页</td></tr>
               <tr><td><code>Ctrl/⌘+S</code></td><td class="hint">配置编辑器打开时保存 fwknopd.conf（走预检→备份→热加载流程）</td></tr>
               <tr><td><code>Esc</code></td><td class="hint">关闭弹窗 / 退出输入框焦点</td></tr>
             </tbody></table>
@@ -1262,6 +1263,10 @@ document.addEventListener('keydown', ev => {
     if (sel) { ev.preventDefault(); $(sel).focus(); }
   } else if (ev.key === 'r') {
     refreshNow(); toast('已刷新', 'ok', 1200);
+  } else if ((ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') && S.page === 'events') {
+    /* 事件页 ←/→ 翻页：直接点分页器按钮，沿用其禁用边界 */
+    const btn = $(ev.key === 'ArrowLeft' ? '#pg-prev' : '#pg-next');
+    if (btn && !btn.disabled) { ev.preventDefault(); btn.click(); }
   }
 });
 
