@@ -1,27 +1,26 @@
 #!/bin/bash
 #
-# extras/tui/fwknopd-admin-tui.sh — TUI management shell for fwknopd-admin.
+# extras/tui/fwknopd-admin-tui.sh — fwknopd-admin 的 TUI 管理外壳。
 #
-# A server-local, menu-driven front-end (plan §7.6.1) that wraps the
-# fwknopd-admin CLI (Phase 4c) via dialog/whiptail. Intended for on-console
-# administration where a browser (the WebUI) is not available. All actions shell
-# out to fwknopd-admin, which remains the single source of truth for keys.
+# 一个服务器本地的菜单驱动前端（方案 §7.6.1），通过 dialog/whiptail 包装
+# fwknopd-admin CLI（阶段 4c）。适用于无法使用浏览器（WebUI）的控制台运维
+# 场景。所有操作都转调 fwknopd-admin——它仍是密钥的唯一权威来源。
 #
-# Usage:  fwknopd-admin-tui.sh [--admin /path/to/fwknopd-admin] [--run-dir DIR]
-# Requires: dialog or whiptail (falls back to a plain menu on a tty).
+# 用法：  fwknopd-admin-tui.sh [--admin /path/to/fwknopd-admin] [--run-dir DIR]
+# 依赖：  dialog 或 whiptail（在普通 tty 上退化为纯文本菜单）。
 #
 set -u
 ADMIN="${FWKNOPD_ADMIN:-fwknopd-admin}"
 RUN_DIR="${FWKNOP_RUN_DIR:-/var/run/fwknop}"
-# Use dialog/whiptail only when a usable terminal is present; otherwise fall
-# back to a plain read-driven menu (works over serial/ssh without a full tty).
+# 仅在存在可用终端时使用 dialog/whiptail；否则退化为 read 驱动的纯文本
+# 菜单（在没有完整 tty 的串口/ssh 会话中也能工作）。
 if [ -t 0 ] && [ -n "${TERM:-}" ] && [ "${TERM:-}" != dumb ]; then
     DIALOG="$(command -v dialog || command -v whiptail)"
 else
     DIALOG=""
 fi
 
-# Locate the admin binary next to this script if not on PATH.
+# 若不在 PATH 中，则在本脚本附近查找 admin 二进制。
 if ! command -v "$ADMIN" >/dev/null 2>&1; then
     HERE="$(cd "$(dirname "$0")" && pwd)"
     for cand in "$HERE/../../server/fwknopd-admin" "$HERE/../../server/.libs/fwknopd-admin"; do
@@ -29,7 +28,7 @@ if ! command -v "$ADMIN" >/dev/null 2>&1; then
     done
 fi
 
-# Parse args.
+# 解析参数。
 while [ $# -gt 0 ]; do
     case "$1" in
         --admin) ADMIN="$2"; shift 2 ;;
@@ -44,7 +43,7 @@ show_status() {
     local out
     out=$("$ADMIN" status 2>&1)
     if [ -n "$DIALOG" ]; then
-        $DIALOG --title "fwknopd-admin status" --msgbox "$out" 12 60
+        $DIALOG --title "fwknopd-admin 状态" --msgbox "$out" 12 60
     else
         echo "$out"
     fi
@@ -52,11 +51,11 @@ show_status() {
 
 show_audit() {
     local f="$RUN_DIR/fwknopd_audit.log"
-    if [ ! -r "$f" ]; then msg "No audit log at $f"; return; fi
+    if [ ! -r "$f" ]; then msg "审计日志不存在：$f"; return; fi
     local tail
     tail=$(tail -n 30 "$f")
     if [ -n "$DIALOG" ]; then
-        $DIALOG --title "Recent audit events (last 30)" --scrolltext --msgbox "$tail" 22 76
+        $DIALOG --title "最近审计事件（最近 30 条）" --scrolltext --msgbox "$tail" 22 76
     else
         echo "$tail"
     fi
@@ -64,11 +63,11 @@ show_audit() {
 
 show_metrics() {
     local f="$RUN_DIR/fwknopd.metrics"
-    if [ ! -r "$f" ]; then msg "No metrics file at $f"; return; fi
+    if [ ! -r "$f" ]; then msg "指标文件不存在：$f"; return; fi
     local m
     m=$(cat "$f")
     if [ -n "$DIALOG" ]; then
-        $DIALOG --title "Prometheus metrics" --msgbox "$m" 20 70
+        $DIALOG --title "Prometheus 指标" --msgbox "$m" 20 70
     else
         echo "$m"
     fi
@@ -77,9 +76,9 @@ show_metrics() {
 show_tofu() {
     local f="$RUN_DIR/fwknop_tofu.state"
     local out
-    if [ -r "$f" ]; then out=$(cat "$f"); else out="(no TOFU state file)"; fi
+    if [ -r "$f" ]; then out=$(cat "$f"); else out="（无 TOFU 状态文件）"; fi
     if [ -n "$DIALOG" ]; then
-        $DIALOG --title "TOFU device bindings" --msgbox "$out" 18 70
+        $DIALOG --title "TOFU 设备绑定" --msgbox "$out" 18 70
     else
         echo "$out"
     fi
@@ -88,15 +87,15 @@ show_tofu() {
 add_user() {
     local name server access user range
     if [ -z "$DIALOG" ]; then
-        read -rp "Name: " name; read -rp "SPA server: " server
-        read -rp "Access [tcp/22]: " access; read -rp "User: " user
-        read -rp "Port range [30000-60000]: " range
+        read -rp "名称: " name; read -rp "SPA 服务器: " server
+        read -rp "访问权限 [tcp/22]: " access; read -rp "用户名: " user
+        read -rp "端口范围 [30000-60000]: " range
     else
-        name=$($DIALOG --inputbox "Profile name" 8 50 --output-fd 1) || return
-        server=$($DIALOG --inputbox "SPA server" 8 50 --output-fd 1) || return
-        access=$($DIALOG --inputbox "Access (e.g. tcp/22)" 8 50 tcp/22 --output-fd 1) || return
-        user=$($DIALOG --inputbox "Username" 8 50 --output-fd 1) || return
-        range=$($DIALOG --inputbox "Port range" 8 50 30000-60000 --output-fd 1) || return
+        name=$($DIALOG --inputbox "凭证名称" 8 50 --output-fd 1) || return
+        server=$($DIALOG --inputbox "SPA 服务器" 8 50 --output-fd 1) || return
+        access=$($DIALOG --inputbox "访问权限（如 tcp/22）" 8 50 tcp/22 --output-fd 1) || return
+        user=$($DIALOG --inputbox "用户名" 8 50 --output-fd 1) || return
+        range=$($DIALOG --inputbox "端口范围" 8 50 30000-60000 --output-fd 1) || return
     fi
     local args=(user add "$name" --no-qr)
     [ -n "$server" ] && args+=(--server "$server")
@@ -112,14 +111,14 @@ add_user() {
     fi
 }
 
-# Main loop.
+# 主循环。
 while true; do
     if [ -z "$DIALOG" ]; then
-        # Plain tty fallback.
+        # 纯 tty 兜底菜单。
         echo; echo "== fwknopd-admin TUI =="
-        echo "  1) Status   2) Recent audit   3) Metrics   4) TOFU bindings"
-        echo "  5) Add user (issue credential)   0) Quit"
-        read -rp "Choice: " c
+        echo "  1) 状态   2) 最近审计   3) 指标   4) TOFU 绑定"
+        echo "  5) 签发用户凭证   0) 退出"
+        read -rp "请选择: " c
         case "$c" in
             1) show_status ;;
             2) show_audit ;;
@@ -129,14 +128,14 @@ while true; do
             0|q|Q) break ;;
         esac
     else
-        choice=$($DIALOG --title "fwknopd administration" --menu \
-            "fwknopd management (wraps fwknopd-admin)" 14 60 6 \
-            1 "Status" \
-            2 "Recent audit events" \
-            3 "Prometheus metrics" \
-            4 "TOFU device bindings" \
-            5 "Add user (issue credential)" \
-            0 "Quit" --output-fd 1) || break
+        choice=$($DIALOG --title "fwknopd 管理" --menu \
+            "fwknopd 管理（包装 fwknopd-admin）" 14 60 6 \
+            1 "服务状态" \
+            2 "最近审计事件" \
+            3 "Prometheus 指标" \
+            4 "TOFU 设备绑定" \
+            5 "签发用户凭证" \
+            0 "退出" --output-fd 1) || break
         case "$choice" in
             1) show_status ;;
             2) show_audit ;;
