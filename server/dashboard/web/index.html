@@ -1176,10 +1176,16 @@ function updateSetupHint() {
 $('#setup-pw1').addEventListener('input', updateSetupHint);
 $('#setup-pw2').addEventListener('input', updateSetupHint);
 
-$('#logout-btn').onclick = async () => {
-  try { await fetch('/api/logout', { method:'POST', headers:{'X-Fwknop-Request':'1'} }); } catch (e) {}
-  toast('已注销', 'ok');
-  showAuthView('auth-login');
+$('#logout-btn').onclick = () => {
+  const doLogout = async () => {
+    try { await fetch('/api/logout', { method:'POST', headers:{'X-Fwknop-Request':'1'} }); } catch (e) {}
+    toast('已注销', 'ok');
+    showAuthView('auth-login');
+  };
+  /* 有未保存的配置修改时注销前确认（会话注销后编辑现场丢失） */
+  if (typeof confDirty !== 'undefined' && confDirty) {
+    confirmDialog('注销登录', '服务配置有<b>未保存的修改</b>，注销后编辑现场将丢失。<b>确定注销吗？</b>', '仍要注销', doLogout);
+  } else doLogout();
 };
 
 /* ==================== API 封装（Cookie 会话 + CSRF 头） ==================== */
