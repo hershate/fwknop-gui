@@ -2529,18 +2529,35 @@ function renderProfiles() {
         <div class="mf"><button class="btn" onclick="document.getElementById('modal-root').classList.remove('show')">关闭</button></div>`, true);
     } catch (e) {}
   });
-  $$('#profiles-body [data-pa]').forEach(b => b.onclick = () => {
+  $$('#profiles-body [data-pa]').forEach(b => b.onclick = async () => {
     const name = b.dataset.pa;
-    confirmDialog('切换配置方案', `确定切换到方案「<b>${esc(name)}</b>」吗？<br>
-      流程：校验方案配置 → 备份当前配置（.bak-时间戳）→ 替换 fwknopd.conf 与 access.conf → 热加载。`, '切换',
-      async () => {
-        try {
-          const r = await api('/api/profiles/apply', { method:'POST',
-            headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
-          if (r.error) { toast('切换失败（配置未变）', 'err'); infoModal('方案切换 — 失败', r.output + '\n' + r.error, true); }
-          else { toast(`已切换到方案「${esc(name)}」`, 'ok'); infoModal('方案切换 — 完成', r.output); loadConfig(); loadUsers(); }
-        } catch (e) {}
-      });
+    /* 应用确认内嵌与当前配置的 diff：切换前直接看到影响面 */
+    b.disabled = true;
+    let diffHtml = '<div class="hint">差异加载中…</div>';
+    try {
+      if (!S.config) await loadConfig();
+      const v = await api('/api/profiles/view?name=' + encodeURIComponent(name));
+      diffHtml = renderDiff(v.fwknopd_conf, (S.config && S.config.raw) || '');
+    } catch (e) { diffHtml = '<div class="hint">差异预览不可用（不影响切换）</div>'; }
+    b.disabled = false;
+    openModal(`<h3>切换到方案「${esc(name)}」</h3>
+      <div class="hint" style="margin-bottom:10px">流程：校验方案配置 → 备份当前配置（.bak-时间戳）→ 替换 fwknopd.conf 与 access.conf → 热加载。</div>
+      <div class="form-sec">与当前配置的差异（fwknopd.conf）</div>
+      <div style="max-height:34vh;overflow:auto">${diffHtml}</div>
+      <div class="mf">
+        <button class="btn ghost" id="pf-apply-cancel">取消</button>
+        <button class="btn" id="pf-apply-ok">确认切换</button>
+      </div>`, true);
+    $('#pf-apply-cancel').onclick = () => closeModal();
+    $('#pf-apply-ok').onclick = async () => {
+      closeModal();
+      try {
+        const r = await api('/api/profiles/apply', { method:'POST',
+          headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
+        if (r.error) { toast('切换失败（配置未变）', 'err'); infoModal('方案切换 — 失败', r.output + '\n' + r.error, true); }
+        else { toast(`已切换到方案「${esc(name)}」`, 'ok'); infoModal('方案切换 — 完成', r.output); loadConfig(); loadUsers(); }
+      } catch (e) {}
+    };
   });
   $$('#profiles-body [data-pd]').forEach(b => b.onclick = () => {
     const name = b.dataset.pd;
