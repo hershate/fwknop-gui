@@ -272,6 +272,11 @@ table.tb { width:100%; border-collapse:collapse; font-size:13px; }
 .tb td { padding:9px 16px; border-bottom:1px solid var(--border-soft); vertical-align:middle; }
 .tb tbody tr { transition:background var(--trans); }
 .tb tbody tr:hover { background:var(--panel-2); }
+/* 斑马纹提升长表可读性：普通表隔行淡色；事件表按「主行+详情行」成对分组 */
+.tb tbody tr:nth-child(even) { background:color-mix(in srgb, var(--panel-2) 40%, transparent); }
+#events-body tr:nth-child(4n+1), #events-body tr:nth-child(4n+2) { background:transparent; }
+#events-body tr:nth-child(4n+3), #events-body tr:nth-child(4n) { background:color-mix(in srgb, var(--panel-2) 40%, transparent); }
+.tb tbody tr.ev-detail:hover { background:var(--panel-2); }
 .tb .mono { font-size:12px; }
 .tb-wrap { overflow-x:auto; }
 
