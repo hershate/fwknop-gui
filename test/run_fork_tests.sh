@@ -275,26 +275,31 @@ if [ -x "$GOBIN" ]; then
             -access-conf "$D/access.conf" -fwknopd-conf "$D/fwknopd.conf" \
             -pid-file "$D/run/fwknopd.pid" -admin "$ADMIN" -fwknopd "$FWKNOPD" -enable-write >/tmp/ft_dash.log 2>&1 &
         DPID=$!; sleep 1
-        if wget -qO- http://127.0.0.1:18099/api/metrics 2>/dev/null | grep -q 'counters' | grep -q 'open'; then
+        TK='Authorization: Bearer fttok'
+        wget -qO- http://127.0.0.1:18099/api/overview 2>/dev/null \
+            && bad "未认证访问应当被拒绝" || ok "未认证访问被拒绝（401）"
+        if wget -qO- --header="$TK" http://127.0.0.1:18099/api/metrics 2>/dev/null | grep -q 'counters' | grep -q 'open'; then
             ok "面板 /api/metrics 读取 prometheus 文件"
-        elif wget -qO- http://127.0.0.1:18099/api/metrics 2>/dev/null | grep -q 'counters'; then
+        elif wget -qO- --header="$TK" http://127.0.0.1:18099/api/metrics 2>/dev/null | grep -q 'counters'; then
             ok "面板 /api/metrics 读取 prometheus 文件"
         else
             bad "面板 metrics API"
         fi
-        wget -qO- http://127.0.0.1:18099/api/events 2>/dev/null | grep -q '"event":"open"' \
+        wget -qO- --header="$TK" http://127.0.0.1:18099/api/events 2>/dev/null | grep -q '"event":"open"' \
             && ok "面板 /api/events 读取审计日志" || bad "面板 events API"
         wget -qO- http://127.0.0.1:18099/ 2>/dev/null | grep -q '<title>fwknop 运维面板</title>' \
             && ok "面板提供内嵌 UI（zh-CN）" || bad "面板 UI"
-        wget -qO- http://127.0.0.1:18099/api/overview 2>/dev/null | grep -q '"daemon"' \
+        wget -qO- http://127.0.0.1:18099/ 2>/dev/null | grep -q '首次启动初始化' \
+            && ok "面板内嵌初始化向导界面" || bad "面板初始化界面"
+        wget -qO- --header="$TK" http://127.0.0.1:18099/api/overview 2>/dev/null | grep -q '"daemon"' \
             && ok "面板 /api/overview" || bad "面板 overview API"
-        wget -qO- http://127.0.0.1:18099/api/users 2>/dev/null | grep -q 'dashdemo' \
+        wget -qO- --header="$TK" http://127.0.0.1:18099/api/users 2>/dev/null | grep -q 'dashdemo' \
             && ok "面板 /api/users 解析 access.conf" || bad "面板 users API"
-        wget -qO- http://127.0.0.1:18099/api/users 2>/dev/null | grep -q 'KEY_BASE64.*[A-Za-z0-9+/=]\{8\}' \
+        wget -qO- --header="$TK" http://127.0.0.1:18099/api/users 2>/dev/null | grep -q 'KEY_BASE64.*[A-Za-z0-9+/=]\{8\}' \
             && bad "面板 /api/users 泄露密钥" || ok "面板 /api/users 掩码密钥"
-        wget -qO- http://127.0.0.1:18099/api/config 2>/dev/null | grep -q 'PCAP_PORT_RANGE' \
+        wget -qO- --header="$TK" http://127.0.0.1:18099/api/config 2>/dev/null | grep -q 'PCAP_PORT_RANGE' \
             && ok "面板 /api/config 解析 fwknopd.conf" || bad "面板 config API"
-        wget -qO- http://127.0.0.1:18099/api/tofu 2>/dev/null | grep -q '"stanza_key":"ANY|alice|tcp/22"' \
+        wget -qO- --header="$TK" http://127.0.0.1:18099/api/tofu 2>/dev/null | grep -q '"stanza_key":"ANY|alice|tcp/22"' \
             && ok "面板 /api/tofu 结构化输出" || bad "面板 tofu API"
         # 写路径：要求令牌，然后经 admin CLI 包装执行解绑
         wget -qO- --post-data 'stanza_key=x&device_id=y' http://127.0.0.1:18099/api/admin/tofu/unbind 2>/dev/null \
@@ -334,9 +339,9 @@ if [ -x "$GOBIN" ]; then
         wget -qO- --post-data '{"name":"p1","note":"t"}' --header="$HDR" --header="$J" \
             http://127.0.0.1:18099/api/profiles/save 2>/dev/null | grep -q '已保存' \
             && ok "方案保存" || bad "方案保存"
-        wget -qO- http://127.0.0.1:18099/api/profiles 2>/dev/null | grep -q '"name":"p1"' \
+        wget -qO- --header="$TK" http://127.0.0.1:18099/api/profiles 2>/dev/null | grep -q '"name":"p1"' \
             && ok "方案列表" || bad "方案列表"
-        wget -qO- 'http://127.0.0.1:18099/api/profiles/view?name=p1' 2>/dev/null | grep -q '已掩码' \
+        wget -qO- --header="$TK" 'http://127.0.0.1:18099/api/profiles/view?name=p1' 2>/dev/null | grep -q '已掩码' \
             && ok "方案预览掩码密钥" || bad "方案预览"
         wget -qO- --post-data '{"name":"p1"}' --header="$HDR" --header="$J" \
             http://127.0.0.1:18099/api/profiles/apply 2>/dev/null | grep -q '已切换到方案' \
@@ -350,13 +355,67 @@ if [ -x "$GOBIN" ]; then
 
         # 经 WebUI 端点完成 rm（禁用）再 enable（恢复）的往返
         wget -qO- --post-data 'name=dashdemo' --header="$HDR" http://127.0.0.1:18099/api/admin/rm >/dev/null 2>&1
-        wget -qO- http://127.0.0.1:18099/api/users 2>/dev/null | grep -q '"disabled".*dashdemo' \
+        wget -qO- --header="$TK" http://127.0.0.1:18099/api/users 2>/dev/null | grep -q '"disabled".*dashdemo' \
             && ok "已禁用 stanza 在列表中可见" || bad "已禁用 stanza 缺失"
         wget -qO- --post-data '{"name":"dashdemo"}' --header="$HDR" --header="$J" \
             http://127.0.0.1:18099/api/config/stanza/enable 2>/dev/null | grep -q '已恢复' \
             && ok "stanza 恢复启用" || bad "stanza 恢复启用"
-        wget -qO- http://127.0.0.1:18099/api/users 2>/dev/null | grep -q '"name":"dashdemo"' \
+        wget -qO- --header="$TK" http://127.0.0.1:18099/api/users 2>/dev/null | grep -q '"name":"dashdemo"' \
             && ok "恢复的 stanza 重新生效" || bad "恢复验证"
+        # --- 2.4.0：首次启动初始化与登录鉴权（第二实例，无 DASHBOARD_TOKEN） ---
+        D2=$(mktemp -d); mkdir -p "$D2/run"
+        /tmp/ft_dashboard -run-dir "$D2/run" -addr 127.0.0.1:18098 \
+            -access-conf "$D/access.conf" -fwknopd-conf "$D/fwknopd.conf" \
+            -pid-file "$D2/run/fwknopd.pid" -admin "$ADMIN" -fwknopd "$FWKNOPD" \
+            -enable-write >/tmp/ft_dash2.log 2>&1 &
+        DPID2=$!; sleep 1
+        code() { wget -q -S -O /dev/null "$@" 2>&1 | awk '/^  HTTP/{c=$2} END{print c}'; }
+        JAR="$D2/cookies.txt"; CJ='Content-Type: application/json'; X='X-Fwknop-Request: 1'
+
+        # 注：wget 对 401 按认证失败处理，不输出响应体；needs_setup 标志由
+        # 下一条 /api/auth/state 用例覆盖，此处仅核对状态码。
+        [ "$(code http://127.0.0.1:18098/api/overview)" = 401 ] \
+            && ok "未初始化：API 一律 401" || bad "未初始化 401"
+        wget -qO- http://127.0.0.1:18098/api/auth/state 2>/dev/null | grep -q '"needs_setup":true' \
+            && ok "auth/state 报告需要初始化" || bad "auth/state"
+        [ "$(code --post-data '{"password":"short1x","confirm":"short1x"}' --header="$CJ" \
+            http://127.0.0.1:18098/api/setup)" = 400 ] \
+            && ok "初始化拒绝过短密码" || bad "短密码校验"
+        [ "$(code --post-data '{"password":"longenough1","confirm":"longenough2"}' --header="$CJ" \
+            http://127.0.0.1:18098/api/setup)" = 400 ] \
+            && ok "初始化拒绝两次密码不一致" || bad "密码一致性校验"
+        wget -q --content-on-error -O- --post-data '{"password":"adm1npass!","confirm":"adm1npass!"}' \
+            --header="$CJ" --save-cookies "$JAR" --keep-session-cookies \
+            http://127.0.0.1:18098/api/setup 2>/dev/null | grep -q '已自动登录' \
+            && ok "初始化成功并自动登录" || bad "初始化"
+        [ "$(code --post-data '{"password":"adm1npass!x","confirm":"adm1npass!x"}' --header="$CJ" \
+            http://127.0.0.1:18098/api/setup)" = 409 ] \
+            && ok "重复初始化返回 409" || bad "重复初始化"
+        wget -qO- --load-cookies "$JAR" http://127.0.0.1:18098/api/overview 2>/dev/null | grep -q '"daemon"' \
+            && ok "会话 Cookie 可访问 API" || bad "会话访问"
+        [ "$(code --load-cookies "$JAR" --post-data '' \
+            http://127.0.0.1:18098/api/service/validate)" = 403 ] \
+            && ok "Cookie 写操作缺 CSRF 头返回 403" || bad "CSRF 防护"
+        wget -qO- --load-cookies "$JAR" --post-data '' --header="$X" \
+            http://127.0.0.1:18098/api/service/validate 2>/dev/null | grep -q '预检通过' \
+            && ok "带 CSRF 头的写操作成功" || bad "CSRF 通过路径"
+        wget -qO- --load-cookies "$JAR" --post-data '' http://127.0.0.1:18098/api/logout 2>/dev/null \
+            | grep -q '已注销' && ok "注销" || bad "注销"
+        [ "$(code --load-cookies "$JAR" http://127.0.0.1:18098/api/overview)" = 401 ] \
+            && ok "注销后会话失效（401）" || bad "注销后仍可访问"
+        wget -q --content-on-error -O- --post-data '{"password":"adm1npass!"}' --header="$CJ" \
+            --save-cookies "$JAR" --keep-session-cookies \
+            http://127.0.0.1:18098/api/login 2>/dev/null | grep -q '登录成功' \
+            && ok "正确密码重新登录" || bad "重新登录"
+        for i in 1 2 3 4 5; do
+            wget -qO /dev/null --post-data '{"password":"wrongpw"}' --header="$CJ" \
+                http://127.0.0.1:18098/api/login 2>/dev/null
+        done
+        [ "$(code --post-data '{"password":"adm1npass!"}' --header="$CJ" \
+            http://127.0.0.1:18098/api/login)" = 429 ] \
+            && ok "连续失败触发登录限流（429）" || bad "登录限流"
+        kill "$DPID2" 2>/dev/null; wait "$DPID2" 2>/dev/null; rm -rf "$D2"
+
         kill "$DPID" 2>/dev/null; wait "$DPID" 2>/dev/null
         rm -f /tmp/ft_dashboard; rm -rf "$D"
     else
