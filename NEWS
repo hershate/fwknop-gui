@@ -1,66 +1,61 @@
 
-*** Current news is available in the ChangeLog file, or in git history ***
+*** 最新消息见 ChangeLog 文件或 git 历史 ***
+（本文件为 Zurker fork 翻译维护的中文译本；英文原文见 NEWS.en。
+  本 fork 各版本的改动见 note/release/ 目录。）
 
-Noteworthy changes in version 2.5 (2013-06-16)
+2.5 版本（2013-06-16）的重要变更
 -------------------------------------------------------
 
- * HMAC support for authenticated encryption (works for both Rijndael and GPG)
+ * HMAC 认证加密支持（对 Rijndael 和 GPG 均有效）
 
- * Update to how fwknop leverages Rijndael including the usage of the PBKDF1
-   algorithm for key derivation, truncation bug fixes, more careful handling
-   of buffers used in cryptographic operations, and more.
+ * 更新了 fwknop 使用 Rijndael 的方式，包括使用 PBKDF1 算法进行密钥
+   派生、修复截断缺陷、更谨慎地处理密码学操作中使用的缓冲区等等。
 
- * The fwknop code base is now audited with the excellent Coverity static
-   analysis product, and many bugs were fixed as a result.  Full details can be
-   found in the git log.
+ * fwknop 代码库现已通过优秀的 Coverity 静态分析产品审计，并因此修复了
+   大量缺陷。完整细节见 git 日志。
 
- * The test suite can now cross compare how fwknop encrypts and authenticates
-   SPA data with OpenSSL.  This is a powerful verification step since it
-   essentially allows fwknop to take advantage of the OpenSSL library and all
-   of the research that goes into it without having to link against OpenSSL
-   directly.  (OpenSSL does far more than fwknop would ever need.)
+ * 测试套件现在可以把 fwknop 对 SPA 数据的加密与认证同 OpenSSL 交叉比对。
+   这是一个强有力的验证手段，因为它实际上让 fwknop 得以利用 OpenSSL 库
+   及其背后的全部研究成果，而无需直接链接 OpenSSL。（OpenSSL 的功能远
+   超 fwknop 所需。）
 
- * A new work flow is made possible through the ability to save encryption
-   keys, HMAC keys, and command line arguments to the ~/.fwknoprc file.  This
-   greatly simplifies fwknop command line usage just by using the stanza name
-   for access to a remote service '$ fwknop -n <stanza name>'.
+ * 通过把加密密钥、HMAC 密钥和命令行参数保存到 ~/.fwknoprc 文件，实现
+   了新的工作流。只需使用 stanza 名称即可访问远程服务
+   （'$ fwknop -n <stanza 名称>'），大大简化了 fwknop 的命令行用法。
 
-Noteworthy changes prior to fwknop-2.5 can be found in the ChangeLog.
+fwknop-2.5 之前的重要变更见 ChangeLog。
 -------------------------------------------------------
 
-Noteworthy changes in version 0.62 (2009-07-26)
+0.62 版本（2009-07-26）的重要变更
 -------------------------------------------------------
 
- * Initial public release
+ * 首次公开发布
 
- * Support for GPG encryption (via gpgme).
+ * 支持 GPG 加密（经由 gpgme）。
 
- * In addition to UDP, send SPA data packet over TCP, TCP(raw socket),
-   and ICMP.
+ * 除 UDP 外，SPA 数据包还可经 TCP、TCP（raw socket）和 ICMP 发送。
 
- * Added the FKO Perl Module (wraps libfko).
+ * 新增 FKO Perl 模块（包装 libfko）。
 
- * Added support for the Win32 platform.
+ * 新增对 Win32 平台的支持。
 
- * Fairly complete Texinfo documentation for libfko.
+ * 较为完整的 libfko Texinfo 文档。
 
 
-Noteworthy changes in version 0.0.0-alpha (2008-12-21)
+0.0.0-alpha 版本（2008-12-21）的重要变更
 -------------------------------------------------------
 
- * Start of port form Perl to C
+ * 开始从 Perl 移植到 C
 
- * Created initial libfko.a static lib
+ * 创建了最初的 libfko.a 静态库
 
- * fwknop client program can generate a simple access
-   request that can be parsed by the Perl fwknopd server.
+ * fwknop 客户端程序已能生成可被 Perl 版 fwknopd 服务端解析的简单访问
+   请求。
 
 
- fwknop is distributed under the terms of the GNU General Public License
- (GPL v2+).
+ fwknop 按 GNU 通用公共许可证（GPL v2+）的条款分发。
 
- Copyright 2009-2013, Damien Stuart
+ 版权所有 2009-2013，Damien Stuart
 
- This file is distributed in the hope that it will be useful, but
- WITHOUT ANY WARRANTY, to the extent permitted by law; without even the
- implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ 分发本文件是希望它能有用，但在法律允许的范围内不附带任何担保；
+ 甚至没有对适销性或特定用途适用性的默示担保。

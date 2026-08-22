@@ -1,250 +1,220 @@
+（本文件为 Zurker fork 翻译维护的中文译本；英文原文见 CREDITS.en。
+  人名保留原文，贡献描述译为中文。）
+
 Jonathan Bennett
-    - Major contributor.
-    - Contributed OpenWRT support - see the extras/openwrt/ directory.
-    - Suggested the addition of the --key-gen option to fwknopd.
-    - Contributed the console-qr.sh script (in extras/console-qr/) to create
-      QR codes from fwknopd access.conf keys.
-    - Wrote a new fwknop client for Android called "Fwknop2" - see:
+    - 主要贡献者。
+    - 贡献了 OpenWRT 支持——见 extras/openwrt/ 目录。
+    - 建议为 fwknopd 增加 --key-gen 选项。
+    - 贡献了 console-qr.sh 脚本（位于 extras/console-qr/），用于从
+      fwknopd 的 access.conf 密钥生成二维码。
+    - 编写了名为 "Fwknop2" 的新 Android 版 fwknop 客户端——见：
         https://f-droid.org/repository/browse/?fdid=org.cipherdyne.fwknop2
-    - Developed the access.conf %include and %include_folder directives.
-    - Developed a cross-platform UI for the fwknop client. This UI runs on
-      Linux, Windows, and Mac OS X.
+    - 开发了 access.conf 的 %include 与 %include_folder 指令。
+    - 开发了 fwknop 客户端的跨平台界面。该界面运行于 Linux、Windows
+      和 Mac OS X。
 
 Sebastien Jeanquier
-    - Assisted with getting fwknop included in BackTrack Linux - the choice
-      distro for pentration testers.
+    - 协助将 fwknop 收录进 BackTrack Linux——渗透测试人员的首选发行版。
 
 Ozmart
-    - Suggested the idea for setting an access stanza expiration time.
-    - Suggested the abiliy to have certain incoming connections automatically
-      NAT'd through to specific internal systems.  The result was the FORCE_NAT
-      mode.
-    - Assisted with getting fwknop running under the Pentoo Linux distro.
+    - 提出了为访问 stanza 设置过期时间的想法。
+    - 提出让某些传入连接自动 NAT 到指定内部系统的能力。其成果就是
+      FORCE_NAT 模式。
+    - 协助让 fwknop 运行于 Pentoo Linux 发行版。
 
 Max Kastanas
-    - Contributed both an Android and an iPhone fwknop client port - see the
-      top level android/ and iphone/ directories.
+    - 贡献了 Android 和 iPhone 两个 fwknop 客户端移植——见顶层的
+      android/ 与 iphone/ 目录。
 
 Ted Wynnychenko
-    - Helped test fwknop PF support on OpenBSD.
+    - 帮助在 OpenBSD 上测试 fwknop 的 PF 支持。
 
 Andy Rowland
-    - Reported a bug where the same encryption key used for two stanzas in the
-      access.conf file would result in access requests that matched the second
-      stanza to always be treated as a replay attack.  This has been fixed for
-      the fwknop-2.0.1 release.
+    - 报告了一个缺陷：access.conf 文件中两个 stanza 使用相同加密密钥
+      时，匹配第二个 stanza 的访问请求总会被当作重放攻击处理。该问题
+      已在 fwknop-2.0.1 版本中修复。
 
 C Anthony Risinger
-    - Caught a bug where the default PCAP_LOOP_SLEEP value was 1/100th of a
-      second instead of the intended default of 1/10th of a second.
+    - 发现一个缺陷：PCAP_LOOP_SLEEP 默认值成了 1/100 秒，而非预期的
+      1/10 秒。
 
 Franck Joncourt
-    - fwknop Debian package maintainer.
-    - Contributed a new Debian init script.
-    - Contributed a patch to have the perl FKO module link against libfko in
-      the local directory (if it exists) so that it doesn't have to have libfko
-      completely installed in /usr/lib/.  This allows the test suite to run FKO
-      tests without installing libfko.
-    - Contributed a patch to remove unnecessary chmod() call when creating
-      client rc file and server replay cache file.  The permissions are now set
-      appropriately via open(), and at the same time this patch fixes a
-      potential race condition since the previous code used fopen() followed by
-      chmod().
-    - Contributed a patch to allow the fwknop client to be stopped with Ctrl-C
-      before sending an SPA packet on the wire.
-    - Contributed a patch to ensure that duplicate iptables rules are not
-      created even for different SPA packets that arrive at the same time and
-      request the same access.
-    - Added support for resolving hostnames in various NAT modes (fixes issue
-      #43 in github).
-    - Bug fix in the client for resolving hostnames in '-P icmp' mode (fixes
-      issue #64).
-    - Added support for saving fwknop client command line arguments via a new
-      option --save-rc-stanza.
-    - Added log module support for the client.
-    - Added the ability to read a passphrase from STDIN and also from a file
-      descriptor via --fd (closes #74).
-    - Added libfko unit tests via the CUnit framework.
+    - fwknop Debian 软件包维护者。
+    - 贡献了新的 Debian init 脚本。
+    - 贡献了一个补丁，让 perl FKO 模块链接本地目录中的 libfko（若存
+      在），从而不必把 libfko 完整安装到 /usr/lib/。这使测试套件无需
+      安装 libfko 即可运行 FKO 测试。
+    - 贡献了一个补丁，移除创建客户端 rc 文件和服务端重放缓存文件时
+      不必要的 chmod() 调用。权限现在通过 open() 正确设置；同时该补丁
+      修复了一个潜在的竞态条件——旧代码先 fopen() 再 chmod()。
+    - 贡献了一个补丁，允许 fwknop 客户端在把 SPA 包发到网络上之前用
+      Ctrl-C 中止。
+    - 贡献了一个补丁，确保即使不同的 SPA 包同时到达并请求相同访问，
+      也不会创建重复的 iptables 规则。
+    - 新增在各种 NAT 模式下解析主机名的支持（修复 github 第 43 号
+      issue）。
+    - 修复客户端在 '-P icmp' 模式下解析主机名的缺陷（修复第 64 号
+      issue）。
+    - 新增通过 --save-rc-stanza 选项保存 fwknop 客户端命令行参数的
+      支持。
+    - 为客户端新增日志模块支持。
+    - 新增从 STDIN 以及经 --fd 从文件描述符读取口令的能力（关闭
+      第 74 号 issue）。
+    - 通过 CUnit 框架新增 libfko 单元测试。
 
 Jonathan Schulz
-    - Submitted patches to change HTTP connection type to 'close' for -R mode
-      in the client and fix a bug for recv() calls against returned HTTP data.
+    - 提交补丁：把客户端 -R 模式的 HTTP 连接类型改为 'close'，并修复
+      对返回 HTTP 数据调用 recv() 的一个缺陷。
 
 Aldan Beaubien
-    - Reported an issue with the Morpheus client sending SPA packets with NULL
-      IP addresses, and code was added to fwknopd to better validate incoming
-      SPA data as a result of this report.
+    - 报告了 Morpheus 客户端发送 NULL IP 地址 SPA 包的问题；fwknopd
+      因此新增了更好地校验入站 SPA 数据的代码。
 
 Geoff Carstairs
-    - Suggested a way to redirect valid connection requests to a specific
-      internal service via NAT, configurable by each stanza in access.conf.
-      This allows for better access control for multple users requiring access
-      to multiple internal systems, in a manner that is transparent to the
-      user.  The result was the FORCE_NAT mode.
+    - 提出一种经由 NAT 把合法连接请求重定向到指定内部服务的方法，可在
+      access.conf 中按 stanza 配置。这使多用户访问多个内部系统时能有
+      更好的访问控制，且对用户透明。其成果就是 FORCE_NAT 模式。
 
 Hank Leininger
-    - Contributed a patch to greatly extend libfko error code descriptions at
-      various places in order to give much better information on what certain
-      error conditions mean.  Closes #98.
-    - Suggested the ability to read a passphrase from STDIN and via a new --fd
-      command line argument (github #74) to allow things like:
+    - 贡献补丁，大幅扩充了多处 libfko 错误码描述，以便更清楚地说明
+      某些错误情形的含义。关闭第 98 号 issue。
+    - 提出从 STDIN 以及经新的 --fd 命令行参数（github 第 74 号 issue）
+      读取口令的能力，从而支持如下用法：
             $ gpg -d passphrasefile.pgp | fwknop -R -n myserver
-    - For iptables firewalls, suggested a check for the 'comment' match to
-      ensure the local environment will properly support fwknopd operations.
-      The result is the new ENABLE_IPT_COMMENT_CHECK functionality.
+    - 针对 iptables 防火墙，提出检查 'comment' 匹配模块，以确保本地
+      环境能正常支持 fwknopd 的运行。其成果就是新的
+      ENABLE_IPT_COMMENT_CHECK 功能。
 
-Fernando Arnaboldi (IOActive)
-    - Found important buffer overflow conditions for authenticated SPA clients
-      in the fwknopd server (pre-2.0.3).  These findings enabled fixes to be
-      developed along with a new fuzzing capability in the test suite.
-    - Found a condition in which an overly long IP from malicious authenticated
-      clients is not properly validated by the fwknopd server (pre-2.0.3).
-    - Found a local buffer overflow in --last processing with a maliciously
-      constructed ~/.fwknop.run file.  This has been fixed with proper
-      validation of .fwknop.run arguments.
-    - Found several conditions in which the server did not properly throw out
-      maliciously constructed variables in the access.conf file.  This has been
-      fixed along with new fuzzing tests in the test suite.
+Fernando Arnaboldi（IOActive）
+    - 发现 fwknopd 服务端对已认证 SPA 客户端存在的重要缓冲区溢出问题
+      （2.0.3 之前）。这些发现促成了修复，并在测试套件中新增了 fuzzing
+      能力。
+    - 发现恶意已认证客户端发送的过长 IP 未被 fwknopd 服务端正确校验的
+      情形（2.0.3 之前）。
+    - 发现 --last 处理中对恶意构造的 ~/.fwknop.run 文件存在本地缓冲区
+      溢出。已通过对 .fwknop.run 参数的适当校验修复。
+    - 发现服务端未能正确丢弃 access.conf 文件中恶意构造变量的若干情
+      形。已修复，并在测试套件中新增了 fuzzing 测试。
 
 Vlad Glagolev
-    - Submitted a patch to fix ndbm/gdbm usage when --disable-file-cache is
-      used for the autoconf configure script.  This functionality was broken in
-      be4193d734850fe60f14a26b547525ea0b9ce1e9 through improper handling of
-      #define macros from --disable-file-cache.
-    - Submitted a patch to fix command exec mode under SPA message type
-      validity test.  Support for command exec mode was also added to the test
-      suite.
-    - Submitted an OpenBSD port for fwknop-2.0.3, and this has been checked in
-      under extras/openbsd/.
-    - Added client timeouts for open/close command cycles for fwknop-2.6.8.
+    - 提交补丁，修复 autoconf configure 脚本使用 --disable-file-cache
+      时的 ndbm/gdbm 使用问题。该功能在
+      be4193d734850fe60f14a26b547525ea0b9ce1e9 中因对
+      --disable-file-cache 的 #define 宏处理不当而损坏。
+    - 提交补丁，修复 SPA 消息类型有效性测试下的命令执行模式。测试套件
+      中也新增了对命令执行模式的支持。
+    - 提交了 fwknop-2.0.3 的 OpenBSD 移植，已检入 extras/openbsd/。
+    - 为 fwknop-2.6.8 新增了开门/关门命令周期的客户端超时。
 
 Sean Greven
-    - Created a port of fwknop for FreeBSD:
+    - 创建了 fwknop 的 FreeBSD 移植：
       http://portsmon.freebsd.org/portoverview.py?category=security&portname=fwknop
 
 Michael T. Dean
-    - Reported the Rijndael key truncation issue for user-supplied keys
-      (passphrases) greater than 16 bytes long.
+    - 报告了用户提供的密钥（口令）超过 16 字节时 Rijndael 密钥被截断
+      的问题。
 
 George Herlin
-    - Proposed a verification approach to test suite operations, and the result
-      was implemented in a61939c005e2b09d6800e2171f607c9d1948f022.  This makes
-      test suite operate equivalently regardless of whether valgrind is used or
-      whether fwknop is being tested on an embedded system with very limited
-      resources.
+    - 提出一种测试套件运行的验证方法，成果实现于
+      a61939c005e2b09d6800e2171f607c9d1948f022。这使测试套件无论是否
+      使用 valgrind、也无论 fwknop 是否在资源极其有限的嵌入式系统上测
+      试，都以等价的方式运行。
 
 Ruhsam Bernhard
-    - Reported an issue where the message size test would result in long
-      command mode SPA packets not decrypting properly because only GPG decrypt
-      attempts were made.  This issue was fixed in
-      7e784df3870373f055a2f0f8d818829501bcb1c0.
+    - 报告了一个问题：消息大小测试会导致长命令模式 SPA 包因仅尝试了
+      GPG 解密而无法正常解密。该问题已在
+      7e784df3870373f055a2f0f8d818829501bcb1c0 中修复。
 
 Shawn Wilson
-    - Added better SPA source IP logging for various fwknopd logging messages.
-      This helps to make it more clear why certain SPA packets are rejected
-      from some systems.
+    - 为 fwknopd 的各类日志消息改进了 SPA 源 IP 的记录。这有助于更清
+      楚地说明某些 SPA 包为何被某些系统拒绝。
 
 Dan Lauber
-    - Suggested a check for fwknopd to ensure that the jump rule on systems
-      running iptables is not duplicated if it already exists.
+    - 建议为 fwknopd 增加一项检查，确保运行 iptables 的系统上 jump 规
+      则在已存在时不会被重复创建。
 
 Ryman
-    - Reported a timing attack bug in the HMAC comparison operation (#85) and
-      suggested a fix derived from yaSSL:
+    - 报告了 HMAC 比对操作中的计时攻击缺陷（第 85 号 issue），并提出
+      了源自 yaSSL 的修复方法：
       http://www.mail-archive.com/debian-bugs-rc@lists.debian.org/msg320402.html
 
 Blair Zajac
-    - MacPorts fwknop package maintainer for Mac OS X systems.
-    - Contributed patches to handle endian issues on PPC systems.
-    - Reported an issue where strndup() is not available on some PPC systems
-      and the fix is to use the local lib/fko_util.c implementation similarly
-      to Windows builds.
-    - Suggested throwing an error in '-M legacy' mode to warn users about the
-      inability of older fwknopd daemons to handle Rijndael keys > 16 bytes.
-      Any release after and including 2.5 does not have this limitation.
+    - Mac OS X 系统上 MacPorts fwknop 软件包维护者。
+    - 贡献了处理 PPC 系统字节序问题的补丁。
+    - 报告了某些 PPC 系统上没有 strndup() 的问题，修复方法是像 Windows
+      构建一样使用本地的 lib/fko_util.c 实现。
+    - 建议在 '-M legacy' 模式下抛出错误，提醒用户旧版 fwknopd 守护进
+      程无法处理超过 16 字节的 Rijndael 密钥。2.5 及之后的版本没有此
+      限制。
 
 Radostan Riedel
-    - Contributed an AppArmor policy that is known to work on Debian and Ubuntu
-      systems.  The policy file is available in extras/apparmor.
+    - 贡献了一个已知可在 Debian 和 Ubuntu 系统上工作的 AppArmor 策略。
+      策略文件位于 extras/apparmor。
 
 Les Aker
-    - Reported an issue with Arch Linux that resulted in fwknopd hanging for a
-      pcap_dispatch() packet count of zero when using libpcap-1.5.1.  This
-      issue was tracked on github as issue #110, and the default packet count
-      is now set at 100 as a result.
+    - 报告了 Arch Linux 上的问题：使用 libpcap-1.5.1 时
+      pcap_dispatch() 的报文计数为 0 会导致 fwknopd 挂起。该问题在
+      github 上以第 110 号 issue 跟踪，默认报文计数因此设为 100。
 
 Marek Wrzosek
-    - Suggested doc update to fwknop man pages to accurately describe the usage
-      of digits instead of bytes for SPA random data.  About 53 bits of entropy
-      are actually used, although this is in addition to the 64-bit random salt
-      in for key derivation used by PBKDF1 in Rjindael CBC mode.
-    - Various excellent feedback on crypto design, including the need to remove
-      the GPG_IGNORE_SIG_VERIFY_ERROR mode.
+    - 建议更新 fwknop 手册页文档，准确说明 SPA 随机数据使用的是「数
+      字」而非「字节」。实际使用的熵约为 53 位——这还不包括 Rijndael
+      CBC 模式下 PBKDF1 密钥派生所用的 64 位随机盐。
+    - 在密码学设计上提供了多项出色的反馈，包括需要移除
+      GPG_IGNORE_SIG_VERIFY_ERROR 模式。
 
 Gerry Reno
-    - Updated the Android client to be compatible with Android-4.4.
-    - Provided guidance on Android client issues along with testing candidate
-      patches to update various things - this work is being tracked in the
-      android4.4_support branch.
-    - Implemented support for firewalld in the fwknopd daemon running on RHEL 7
-      and CentOS 7 systems. This is a major addition to handle yet another
-      firewall architecture.
+    - 更新了 Android 客户端以兼容 Android-4.4。
+    - 就 Android 客户端问题提供指导，并测试了更新各项内容的候选补丁
+      ——这项工作在 android4.4_support 分支上跟踪。
+    - 在 RHEL 7 和 CentOS 7 系统上运行的 fwknopd 守护进程中实现了对
+      firewalld 的支持。这是为应对又一种防火墙架构而做的重要补充。
 
 Tim Heckman
-    - Homebrew fwknop package maintainer for Mac OS X systems.
-    - Suggested that fwknop support nftables when it is integrated into the
-      mainline Linux kernel.
+    - Mac OS X 系统上 Homebrew fwknop 软件包维护者。
+    - 建议在 nftables 被集成进主线 Linux 内核后为其提供支持。
 
 Barry Allard
-    - Reported bug in PF support on FreeBSD systems where ALTQ is not available
-      would cause new PF rules to not be added (github issue #121).
-    - Suggested the abiliy to specify the HTTP User-Agent when wget is used to
-      resolve the external IP via SSL (github issue #134).
+    - 报告了 FreeBSD 系统上 PF 支持的一个缺陷：在没有 ALTQ 的情况下
+      新的 PF 规则不会被添加（github 第 121 号 issue）。
+    - 建议在用 wget 经 SSL 解析外部 IP 时允许指定 HTTP User-Agent
+      （github 第 134 号 issue）。
 
 Bill Stubbs
-    - Submitted a patch to fix a bug where fwknopd could not handle Ethernet
-      frames that include the Frame Check Sequence (FCS) header. This header is
-      four bytes long, and is placed at the end of each Ethernet frame.
-      Normally the FCS header is not visible to libpcap, but some card/driver
-      combinations result in it being included. Bill noticed this on the
-      following platform:
-          BeagleBone Black rev C running 3.8.13-bone50 #1 SMP Tue May 13
-          13:24:52 UTC 2014 armv7l GNU/Linux
+    - 提交补丁，修复 fwknopd 无法处理包含帧校验序列（FCS）头部的以太
+      网帧的缺陷。该头部长 4 字节，位于每个以太网帧的末尾。正常情况下
+      libpcap 看不到 FCS 头部，但某些网卡/驱动组合会将其包含在内。
+      Bill 在以下平台上注意到了这一点：
+          运行 3.8.13-bone50 #1 SMP Tue May 13 13:24:52 UTC 2014
+          armv7l GNU/Linux 的 BeagleBone Black rev C
 
 Grant Pannell
-    - Submitted a patch to add a new access.conf variable "DESTINATION" in
-      order to define the destination address for which an SPA packet will be
-      accepted. The string "ANY" is also accepted if a valid SPA packet should
-      be honored to any destination IP. Similarly to the "SOURCE" variable,
-      networks should be specified in CIDR notation (e.g. "192.168.10.0/24"),
-      and individual IP addresses can be specified as well. Also, multiple IP's
-      and/or networks can be defined as a comma separated list (e.g.
-      "192.168.10.0/24,10.1.1.123").
+    - 提交补丁，新增 access.conf 变量 "DESTINATION"，用于定义接受 SPA
+      数据包的目的地址。字符串 "ANY" 亦可接受，表示对任何目的 IP 的合
+      法 SPA 包都予以放行。与 "SOURCE" 变量类似，网络应以 CIDR 记法指
+      定（如 "192.168.10.0/24"），也可以指定单个 IP 地址。多个 IP 和/
+      或网络可以定义为逗号分隔的列表（如
+      "192.168.10.0/24,10.1.1.123"）。
 
 Alexander Kozhevnikov
-    - Reported a bug when fwknop is compiled with --enable-udp-server where
-      the server was including pcap.h
+    - 报告了 fwknop 以 --enable-udp-server 编译时服务端仍然包含
+      pcap.h 的缺陷。
 
 Dan Brooks
-    - Contributed a patch for the Android client app to add the definition of
-      custom server udp port. This is similar to the --server-port argument
-      offered by the main fwknop client.
+    - 为 Android 客户端应用贡献了补丁，新增自定义服务端 udp 端口的设
+      置。这与 fwknop 主客户端提供的 --server-port 参数类似。
 
-Github user 'sgh7':
-    - Contributed a patch to have fwknopd exit if the interface it is sniffing
-      on goes down. If this happens, it is expected that the native process
-      monitoring feature in things like systemd or upstart will restart
-      fwknopd.
+Github 用户 'sgh7'：
+    - 贡献补丁，让 fwknopd 在其嗅探的网卡宕掉时退出。发生这种情况时，
+      预期由 systemd 或 upstart 之类的原生进程监控功能重启 fwknopd。
 
-Jérémie Courrèges-Anglas and Ingo Feinerer
-    - Contributed a patch to fix endian detection on OpenBSD systems based on
-      information contained here:
+Jérémie Courrèges-Anglas 和 Ingo Feinerer
+    - 贡献补丁，依据以下文档中的信息修复 OpenBSD 系统上的字节序检测：
             https://www.opengroup.org/austin/docs/austin_514.txt
 
 Francois Marier
-    - Various fixes to the AppArmor profile to support recent versions of
-      Debian and Ubuntu.
+    - 对 AppArmor 配置做了多项修复，以支持较新版本的 Debian 和
+      Ubuntu。
 
 Barnabé BALP
-    - Contributed a patch to fix snprintf buffer length in
-      lib/fko_encryption.c.
+    - 贡献补丁，修复 lib/fko_encryption.c 中 snprintf 缓冲区长度的问题。

@@ -1,233 +1,202 @@
-Installation Instructions
-*************************
+安装说明
+*********
 
-Copyright (C) 1994, 1995, 1996, 1999, 2000, 2001, 2002, 2004, 2005,
-2006 Free Software Foundation, Inc.
+版权所有 (C) 1994, 1995, 1996, 1999, 2000, 2001, 2002, 2004, 2005,
+2006 自由软件基金会（Free Software Foundation, Inc.）
 
-This file is free documentation; the Free Software Foundation gives
-unlimited permission to copy, distribute and modify it.
+本文件是自由文档；自由软件基金会授予复制、分发和修改它的无限许可。
 
-Basic Installation
+（本文件为 Zurker fork 翻译维护的中文译本；英文原文见 INSTALL.en。）
+
+基本安装
 ==================
 
-Briefly, the shell commands `./configure; make; make install' should
-configure, build, and install this package.  The following
-more-detailed instructions are generic; see the `README' file for
-instructions specific to this package.
+简而言之，shell 命令 `./configure; make; make install' 即可配置、
+构建并安装本软件包。以下更详细的说明是通用性的；本软件包特有的说明
+见 `README' 文件。
 
-   The `configure' shell script attempts to guess correct values for
-various system-dependent variables used during compilation.  It uses
-those values to create a `Makefile' in each directory of the package.
-It may also create one or more `.h' files containing system-dependent
-definitions.  Finally, it creates a shell script `config.status' that
-you can run in the future to recreate the current configuration, and a
-file `config.log' containing compiler output (useful mainly for
-debugging `configure').
+   `configure' shell 脚本会尝试猜测编译过程中使用的各种系统相关变量
+的正确值。它用这些值在软件包的每个目录中创建 `Makefile'。它还可能
+创建一个或多个包含系统相关定义的 `.h' 文件。最后，它创建一个
+shell 脚本 `config.status'，供你日后重新生成当前配置；以及一个
+`config.log' 文件，内含编译器输出（主要用于调试 `configure'）。
 
-   It can also use an optional file (typically called `config.cache'
-and enabled with `--cache-file=config.cache' or simply `-C') that saves
-the results of its tests to speed up reconfiguring.  Caching is
-disabled by default to prevent problems with accidental use of stale
-cache files.
+   它还可以使用一个可选文件（通常叫 `config.cache'，用
+`--cache-file=config.cache' 或简单地用 `-C' 启用），保存测试结果
+以加快重新配置的速度。缓存默认是禁用的，以防止意外使用过期缓存文件
+带来的问题。
 
-   If you need to do unusual things to compile the package, please try
-to figure out how `configure' could check whether to do them, and mail
-diffs or instructions to the address given in the `README' so they can
-be considered for the next release.  If you are using the cache, and at
-some point `config.cache' contains results you don't want to keep, you
-may remove or edit it.
+   如果你在编译本软件包时需要做一些不寻常的事，请尝试设想
+`configure' 可以怎样检查这些事，并把补丁或说明寄到 `README' 中给出
+的地址，以便在下一个版本中加以考虑。如果你正在使用缓存，而某时
+`config.cache' 中包含了你不想保留的结果，你可以删除或编辑它。
 
-   The file `configure.ac' (or `configure.in') is used to create
-`configure' by a program called `autoconf'.  You need `configure.ac' if
-you want to change it or regenerate `configure' using a newer version
-of `autoconf'.
+   文件 `configure.ac'（或 `configure.in'）被名为 `autoconf' 的程序
+用来生成 `configure'。只有当你想修改它或用更新版本的 `autoconf'
+重新生成 `configure' 时，你才需要 `configure.ac'。
 
-The simplest way to compile this package is:
+编译本软件包最简单的方法是：
 
-  1. `cd' to the directory containing the package's source code and type
-     `./configure' to configure the package for your system.
+  1. 用 `cd' 进入包含软件包源代码的目录，然后键入 `./configure'
+     为你的系统配置本软件包。
 
-     Running `configure' might take a while.  While running, it prints
-     some messages telling which features it is checking for.
+     运行 `configure' 可能需要一段时间。运行时它会打印一些消息，
+     说明正在检查哪些特性。
 
-  2. Type `make' to compile the package.
+  2. 键入 `make' 编译软件包。
 
-  3. Optionally, type `make check' to run any self-tests that come with
-     the package.
+  3. 可选地，键入 `make check' 运行软件包自带的任何自测试。
 
-  4. Type `make install' to install the programs and any data files and
-     documentation.
+  4. 键入 `make install' 安装程序以及任何数据文件和文档。
 
-  5. You can remove the program binaries and object files from the
-     source code directory by typing `make clean'.  To also remove the
-     files that `configure' created (so you can compile the package for
-     a different kind of computer), type `make distclean'.  There is
-     also a `make maintainer-clean' target, but that is intended mainly
-     for the package's developers.  If you use it, you may have to get
-     all sorts of other programs in order to regenerate files that came
-     with the distribution.
+  5. 你可以键入 `make clean' 从源代码目录中删除程序二进制文件和目标
+     文件。若要同时删除 `configure' 创建的文件（以便为另一种计算机
+     编译本软件包），键入 `make distclean'。还有一个
+     `make maintainer-clean' 目标，但它主要面向软件包的开发者。如果
+     使用它，你可能需要安装各种其他程序，才能重新生成发行版自带的
+     文件。
 
-Compilers and Options
+编译器与选项
 =====================
 
-Some systems require unusual options for compilation or linking that the
-`configure' script does not know about.  Run `./configure --help' for
-details on some of the pertinent environment variables.
+有些系统需要 `configure' 脚本不知道的、不寻常的编译或链接选项。
+运行 `./configure --help' 可查看相关环境变量的详细信息。
 
-   You can give `configure' initial values for configuration parameters
-by setting variables in the command line or in the environment.  Here
-is an example:
+   你可以在命令行或环境中设置变量，为 `configure' 提供配置参数的
+初始值。示例：
 
      ./configure CC=c99 CFLAGS=-g LIBS=-lposix
 
-   *Note Defining Variables::, for more details.
+   详见「定义变量」一节。
 
-Compiling For Multiple Architectures
+为多架构编译
 ====================================
 
-You can compile the package for more than one kind of computer at the
-same time, by placing the object files for each architecture in their
-own directory.  To do this, you can use GNU `make'.  `cd' to the
-directory where you want the object files and executables to go and run
-the `configure' script.  `configure' automatically checks for the
-source code in the directory that `configure' is in and in `..'.
+你可以同时为多种计算机编译本软件包，方法是为每种架构把目标文件放在
+各自的目录中。为此可以使用 GNU `make'：用 `cd' 进入你希望放置目标
+文件和可执行文件的目录，然后运行 `configure' 脚本。`configure' 会
+自动检查 `configure' 所在目录及其 `..' 上级目录中的源代码。
 
-   With a non-GNU `make', it is safer to compile the package for one
-architecture at a time in the source code directory.  After you have
-installed the package for one architecture, use `make distclean' before
-reconfiguring for another architecture.
+   使用非 GNU 的 `make' 时，更稳妥的做法是每次在源代码目录中只为
+一种架构编译。为一种架构安装完毕后，先 `make distclean' 再为另一种
+架构重新配置。
 
-Installation Names
+安装路径名称
 ==================
 
-By default, `make install' installs the package's commands under
-`/usr/local/bin', include files under `/usr/local/include', etc.  You
-can specify an installation prefix other than `/usr/local' by giving
-`configure' the option `--prefix=PREFIX'.
+默认情况下，`make install' 把软件包的命令安装到 `/usr/local/bin'
+之下，头文件安装到 `/usr/local/include' 之下，等等。你可以用
+`--prefix=PREFIX' 选项为 `configure' 指定 `/usr/local' 以外的安装
+前缀。
 
-   You can specify separate installation prefixes for
-architecture-specific files and architecture-independent files.  If you
-pass the option `--exec-prefix=PREFIX' to `configure', the package uses
-PREFIX as the prefix for installing programs and libraries.
-Documentation and other data files still use the regular prefix.
+   你可以为架构相关的文件和架构无关的文件分别指定安装前缀。如果向
+`configure' 传递 `--exec-prefix=PREFIX' 选项，软件包将使用 PREFIX
+作为安装程序和库文件的前缀。文档和其他数据文件仍使用常规前缀。
 
-   In addition, if you use an unusual directory layout you can give
-options like `--bindir=DIR' to specify different values for particular
-kinds of files.  Run `configure --help' for a list of the directories
-you can set and what kinds of files go in them.
+   此外，如果你使用不寻常的目录布局，可以提供 `--bindir=DIR' 之类的
+选项，为特定类型的文件指定不同的值。运行 `configure --help' 可查看
+可以设置的目录列表及各类文件的归属。
 
-   If the package supports it, you can cause programs to be installed
-with an extra prefix or suffix on their names by giving `configure' the
-option `--program-prefix=PREFIX' or `--program-suffix=SUFFIX'.
+   如果软件包支持，你还可以让安装的程序名带有额外的前缀或后缀，方
+法是向 `configure' 传递 `--program-prefix=PREFIX' 或
+`--program-suffix=SUFFIX' 选项。
 
-Optional Features
+可选特性
 =================
 
-Some packages pay attention to `--enable-FEATURE' options to
-`configure', where FEATURE indicates an optional part of the package.
-They may also pay attention to `--with-PACKAGE' options, where PACKAGE
-is something like `gnu-as' or `x' (for the X Window System).  The
-`README' should mention any `--enable-' and `--with-' options that the
-package recognizes.
+有些软件包会响应 `configure' 的 `--enable-FEATURE' 选项，其中
+FEATURE 表示软件包的可选部分。它们也可能响应 `--with-PACKAGE'
+选项，其中 PACKAGE 是诸如 `gnu-as' 或 `x'（X Window 系统）之类的
+东西。软件包识别的 `--enable-' 和 `--with-' 选项应当在 `README'
+中提及。
 
-   For packages that use the X Window System, `configure' can usually
-find the X include and library files automatically, but if it doesn't,
-you can use the `configure' options `--x-includes=DIR' and
-`--x-libraries=DIR' to specify their locations.
+   对于使用 X Window 系统的软件包，`configure' 通常能自动找到 X 的
+头文件和库文件；如果不能，你可以用 `--x-includes=DIR' 和
+`--x-libraries=DIR' 选项指定它们的位置。
 
-Specifying the System Type
-==========================
-
-There may be some features `configure' cannot figure out automatically,
-but needs to determine by the type of machine the package will run on.
-Usually, assuming the package is built to be run on the _same_
-architectures, `configure' can figure that out, but if it prints a
-message saying it cannot guess the machine type, give it the
-`--build=TYPE' option.  TYPE can either be a short name for the system
-type, such as `sun4', or a canonical name which has the form:
-
-     CPU-COMPANY-SYSTEM
-
-where SYSTEM can have one of these forms:
-
-     OS KERNEL-OS
-
-   See the file `config.sub' for the possible values of each field.  If
-`config.sub' isn't included in this package, then this package doesn't
-need to know the machine type.
-
-   If you are _building_ compiler tools for cross-compiling, you should
-use the option `--target=TYPE' to select the type of system they will
-produce code for.
-
-   If you want to _use_ a cross compiler, that generates code for a
-platform different from the build platform, you should specify the
-"host" platform (i.e., that on which the generated programs will
-eventually be run) with `--host=TYPE'.
-
-Sharing Defaults
-================
-
-If you want to set default values for `configure' scripts to share, you
-can create a site shell script called `config.site' that gives default
-values for variables like `CC', `cache_file', and `prefix'.
-`configure' looks for `PREFIX/share/config.site' if it exists, then
-`PREFIX/etc/config.site' if it exists.  Or, you can set the
-`CONFIG_SITE' environment variable to the location of the site script.
-A warning: not all `configure' scripts look for a site script.
-
-Defining Variables
+指定系统类型
 ==================
 
-Variables not defined in a site shell script can be set in the
-environment passed to `configure'.  However, some packages may run
-configure again during the build, and the customized values of these
-variables may be lost.  In order to avoid this problem, you should set
-them in the `configure' command line, using `VAR=value'.  For example:
+有些特性 `configure' 无法自动判断，需要根据软件包将要运行的机器
+类型来确定。通常，假设构建和运行在同一类架构上进行，`configure'
+能够自行判断；但如果它打印消息说无法猜测机器类型，请给它
+`--build=TYPE' 选项。TYPE 可以是系统类型的短名称（如 `sun4'），
+也可以是具有如下形式的规范名称：
+
+     CPU-厂商-系统
+
+其中「系统」部分可以是如下形式之一：
+
+     操作系统 内核-操作系统
+
+   各字段的可能取值见 `config.sub' 文件。如果本软件包未包含
+`config.sub'，那么本软件包不需要知道机器类型。
+
+   如果你是在_构建_用于交叉编译的编译器工具，应使用
+`--target=TYPE' 选项来选择它们将为之生成代码的系统类型。
+
+   如果你要_使用_交叉编译器（即为与构建平台不同的平台生成代码），
+请用 `--host=TYPE' 指定「宿主」平台（即生成的程序最终将在其上运行
+的平台）。
+
+共享默认值
+================
+
+如果你想为各个 `configure' 脚本设置共享的默认值，可以创建一个名为
+`config.site' 的站点 shell 脚本，在其中为 `CC'、`cache_file' 和
+`prefix' 等变量给出默认值。`configure' 会先查找
+`PREFIX/share/config.site'（若存在），再查找
+`PREFIX/etc/config.site'（若存在）。你也可以把 `CONFIG_SITE'
+环境变量设为站点脚本的位置。警告：并非所有 `configure' 脚本都会
+查找站点脚本。
+
+定义变量
+==================
+
+未在站点 shell 脚本中定义的变量，可以在传递给 `configure' 的环境中
+设置。不过，有些软件包在构建期间可能再次运行 configure，这些定制的
+变量值可能会丢失。为避免此问题，应当在 `configure' 命令行中用
+`VAR=value' 的形式设置。例如：
 
      ./configure CC=/usr/local2/bin/gcc
 
-causes the specified `gcc' to be used as the C compiler (unless it is
-overridden in the site shell script).
+会将指定的 `gcc' 用作 C 编译器（除非被站点 shell 脚本覆盖）。
 
-Unfortunately, this technique does not work for `CONFIG_SHELL' due to
-an Autoconf bug.  Until the bug is fixed you can use this workaround:
+遗憾的是，由于 Autoconf 的一个缺陷，这一技巧对 `CONFIG_SHELL' 不起
+作用。在该缺陷修复之前，可以使用如下变通方法：
 
      CONFIG_SHELL=/bin/bash /bin/bash ./configure CONFIG_SHELL=/bin/bash
 
-`configure' Invocation
+`configure' 的调用
 ======================
 
-`configure' recognizes the following options to control how it operates.
+`configure' 识别以下用于控制其行为的选项。
 
 `--help'
 `-h'
-     Print a summary of the options to `configure', and exit.
+     打印 `configure' 各选项的摘要，然后退出。
 
 `--version'
 `-V'
-     Print the version of Autoconf used to generate the `configure'
-     script, and exit.
+     打印用于生成 `configure' 脚本的 Autoconf 版本，然后退出。
 
 `--cache-file=FILE'
-     Enable the cache: use and save the results of the tests in FILE,
-     traditionally `config.cache'.  FILE defaults to `/dev/null' to
-     disable caching.
+     启用缓存：把测试结果使用并保存到 FILE，传统上为
+     `config.cache'。FILE 默认为 `/dev/null'，即禁用缓存。
 
 `--config-cache'
 `-C'
-     Alias for `--cache-file=config.cache'.
+     `--cache-file=config.cache' 的别名。
 
 `--quiet'
 `--silent'
 `-q'
-     Do not print messages saying which checks are being made.  To
-     suppress all normal output, redirect it to `/dev/null' (any error
-     messages will still be shown).
+     不打印正在做哪些检查的消息。要抑制所有正常输出，将其重定向到
+     `/dev/null'（错误消息仍会显示）。
 
 `--srcdir=DIR'
-     Look for the package's source code in directory DIR.  Usually
-     `configure' can determine that directory automatically.
+     在目录 DIR 中查找软件包的源代码。通常 `configure' 能自动确定
+     该目录。
 
-`configure' also accepts some other, not widely useful, options.  Run
-`configure --help' for more details.
+`configure' 还接受其他一些不太常用的选项。运行 `configure --help'
+可了解更多细节。

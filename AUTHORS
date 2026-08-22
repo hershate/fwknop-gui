@@ -1,40 +1,42 @@
-Package: fwknop
-Maintainer: Damien Stuart <dstuart@dstuart.org>, Michael Rash <mbr@cipherdyne.org>
-Bug reports: dstuart@dstuart.org, mbr@cipherdyne.org
-License: GPLv2, See the COPYING file
+软件包：fwknop
+维护者：Damien Stuart <dstuart@dstuart.org>、Michael Rash <mbr@cipherdyne.org>
+缺陷报告：dstuart@dstuart.org、mbr@cipherdyne.org
+许可证：GPLv2，见 COPYING 文件
 
-Primary authors:
+（本文件为 Zurker fork 翻译维护的中文译本；英文原文见 AUTHORS.en。
+  本 fork 的二次开发由 Zurker 进行——本 fork 是非官方版本，上游作者
+  与本 fork 的改动无关，亦不对其负责。）
+
+主要作者：
 
     Michael Rash <mbr@cipherdyne.org>
-     - Creator of the fwknop project and wrote the original fwknop Perl
-       implementation with contributions from open source developers.
-     - Continued authorship and maintenance of fwknop code.
+     - fwknop 项目的创建者，在众多开源开发者的贡献下写出了最初的
+       fwknop Perl 实现。
+     - 持续创作并维护 fwknop 代码。
 
     Damien Stuart <dstuart@dstuart.org>
-     - Ported fwknop to C.
-     - libfko, fwknop (client), fwknopd (server)
-     - Continued authorship and maintenance of fwknop code.
+     - 将 fwknop 移植到 C。
+     - libfko、fwknop（客户端）、fwknopd（服务端）
+     - 持续创作并维护 fwknop 代码。
 
-Significant contributions from individuals are listed in the CREDITS file, and
-a special thanks is due to:
+个人的重要贡献列于 CREDITS 文件，并特别感谢：
 
-    Jonathan Bennett (Major contributor, OpenWRT support, new Android client)
-    Franck Joncourt (Major contributor and Debian package maintainer)
-    Sebastien Jeanquier (Masters thesis analysis of Port Knocking and SPA)
-    Hank Leininger (libfko error code patch, various architecture ideas)
-    Max Kastanas (iPhone and Android clients)
-    Gerry Reno (Android client development)
-    Ozmart (various architecture ideas)
-    Geoff Carstairs (various architecture ideas)
-    Fernando Arnaboldi (vulnerability discovery and responsible disclosure)
-    Sean Greven (FreeBSD port)
-    Vlad Glagolev (OpenBSD port)
-    Blair Zajac (PPC architecture fixes, various architecture ideas)
-    Radostan Riedel (AppArmor policy)
+    Jonathan Bennett（主要贡献者，OpenWRT 支持，新的 Android 客户端）
+    Franck Joncourt（主要贡献者，Debian 软件包维护者）
+    Sebastien Jeanquier（针对端口敲门与 SPA 的硕士论文分析）
+    Hank Leininger（libfko 错误码补丁，多项架构思路）
+    Max Kastanas（iPhone 与 Android 客户端）
+    Gerry Reno（Android 客户端开发）
+    Ozmart（多项架构思路）
+    Geoff Carstairs（多项架构思路）
+    Fernando Arnaboldi（漏洞发现与负责任的披露）
+    Sean Greven（FreeBSD 移植）
+    Vlad Glagolev（OpenBSD 移植）
+    Blair Zajac（PPC 架构修复，多项架构思路）
+    Radostan Riedel（AppArmor 策略）
 
-Copyright (C) 2009-2015 fwknop developers and contributors. For a full
-list of contributors, see the file 'CREDITS'.
+版权所有 (C) 2009-2015 fwknop 开发者与贡献者。完整的贡献者名单见
+「CREDITS」文件。
 
- This file is distributed in the hope that it will be useful, but
- WITHOUT ANY WARRANTY, to the extent permitted by law; without even the
- implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ 分发本文件是希望它能有用，但在法律允许的范围内不附带任何担保；
+ 甚至没有对适销性或特定用途适用性的默示担保。
