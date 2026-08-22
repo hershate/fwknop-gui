@@ -1975,7 +1975,11 @@ function renderUsers() {
 $('#show-add').onclick = () => {
   const c = $('#add-card');
   c.style.display = c.style.display === 'none' ? '' : 'none';
-  if (c.style.display !== 'none') { renderServerHistory(); loadAddDraft(); c.scrollIntoView({ behavior:'smooth', block:'start' }); }
+  if (c.style.display !== 'none') {
+    renderServerHistory(); loadAddDraft();
+    c.scrollIntoView({ behavior:'smooth', block:'start' });
+    setTimeout(() => $('#add-form').name.focus(), 250);  /* 展开后聚焦第一必填项（等滚动落定） */
+  }
 };
 $('#add-cancel').onclick = () => { $('#add-card').style.display = 'none'; };
 
