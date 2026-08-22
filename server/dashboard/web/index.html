@@ -235,7 +235,7 @@ select.ctl, input.ctl {
 .ce-new { box-shadow:inset 3px 0 0 var(--green); padding-left:8px; border-radius:4px; }
 .ce-bad { border-color:var(--red) !important; box-shadow:0 0 0 2px var(--red-soft); }
 .sum-link { cursor:pointer; border-radius:var(--radius-sm); padding:4px 6px; margin:-4px -6px; transition:background .15s; }
-.sum-link:hover { background:var(--accent-soft); }
+.sum-link:hover, .sum-link:focus-visible { background:var(--accent-soft); outline:none; }
 .flash-prefill { animation:prefillFlash 1.6s ease; }
 @keyframes numBump { 0% { transform:scale(1.18); filter:brightness(1.5); } 100% { transform:scale(1); filter:none; } }
 .num-bump { animation:numBump .6s ease; display:inline-block; }
