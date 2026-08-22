@@ -643,6 +643,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="body" style="padding-bottom:6px">
             <div class="chips" id="event-chips"></div>
             <div id="event-ratio" style="margin-top:8px"></div>
+            <div id="ev-active" style="display:none;margin-top:8px;flex-wrap:wrap;gap:6px;align-items:center"></div>
             <button class="btn small" id="ev-new-pill" style="display:none;margin-top:8px;width:100%"></button>
           </div>
           <div class="tb-wrap">
@@ -1835,6 +1836,44 @@ function timeFilteredEvents() {
   return evs;
 }
 
+/* 一键重置全部事件筛选（空态按钮与「激活筛选」标签条共用） */
+function resetEvFilters() {
+  S.evFilter = 'all'; S.evQuery = ''; S.evTime = 'all'; S.evPage = 0;
+  S.evFrom = ''; S.evTo = '';
+  $('#event-search').value = ''; $('#ev-time').value = 'all';
+  $('#ev-custom').style.display = 'none';
+  renderEvents();
+}
+
+/* 激活筛选标签条：当前生效的筛选逐项可见、逐项可拆，避免「看不到结果
+   却忘了有筛选」的困惑 */
+function updateEvActiveStrip() {
+  const el = $('#ev-active');
+  const parts = [];
+  if (S.evFilter && S.evFilter !== 'all')
+    parts.push(['filter', '类型：' + (S.evFilter === 'bad' ? '仅看异常' : evMeta(S.evFilter).label)]);
+  if (S.evQuery) parts.push(['q', '搜索：' + S.evQuery]);
+  if (S.evTime && S.evTime !== 'all')
+    parts.push(['time', '时间：' + ({ '5m':'最近 5 分钟', '1h':'最近 1 小时', today:'今日', custom:'自定义区间' }[S.evTime] || S.evTime)]);
+  if (!parts.length) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  el.innerHTML = '<span class="hint" style="font-size:11.5px">筛选中：</span>' +
+    parts.map(([k, label]) => `<span class="tag hl" style="cursor:pointer" data-rmf="${k}" title="点击移除此筛选">${esc(label)} ✕</span>`).join('') +
+    '<button class="btn ghost small" id="ev-clear-all" style="padding:2px 8px;font-size:11.5px">全部清除</button>';
+  $$('#ev-active [data-rmf]').forEach(t => t.onclick = () => {
+    const k = t.dataset.rmf;
+    if (k === 'filter') S.evFilter = 'all';
+    else if (k === 'q') { S.evQuery = ''; $('#event-search').value = ''; }
+    else if (k === 'time') {
+      S.evTime = 'all'; S.evFrom = ''; S.evTo = '';
+      $('#ev-time').value = 'all'; $('#ev-custom').style.display = 'none';
+    }
+    S.evPage = 0;
+    renderEvents();
+  });
+  $('#ev-clear-all').onclick = resetEvFilters;
+}
+
 function filteredEvents() {
   let evs = timeFilteredEvents();
   if (S.evFilter === 'bad') evs = evs.filter(e => BAD_EVTS.includes(e.event));
@@ -1887,6 +1926,7 @@ function renderEventChips() {
 
 function renderEvents() {
   /* 筛选状态持久化：刷新/重开页面后恢复（所有变更路径都会经过本函数） */
+  updateEvActiveStrip();
   try {
     localStorage.setItem('fwknop-ev-filters', JSON.stringify({
       q: S.evQuery || '', filter: S.evFilter || 'all', time: S.evTime || 'all',
@@ -1911,13 +1951,7 @@ function renderEvents() {
       ${(S.events||[]).length && hasFilter ? '<button class="btn ghost small" id="ev-reset" style="margin-top:12px">清空筛选与搜索，查看全部</button>' : ''}
     </div></td></tr>`;
     const rst = $('#ev-reset');
-    if (rst) rst.onclick = () => {
-      S.evFilter = 'all'; S.evQuery = ''; S.evTime = 'all'; S.evPage = 0;
-      S.evFrom = ''; S.evTo = '';
-      $('#event-search').value = ''; $('#ev-time').value = 'all';
-      $('#ev-custom').style.display = 'none';
-      renderEvents();
-    };
+    if (rst) rst.onclick = resetEvFilters;
   } else {
     $('#events-body').innerHTML = slice.map(e => {
       const m = evMeta(e.event);
