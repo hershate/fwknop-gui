@@ -194,6 +194,12 @@ select.ctl, input.ctl {
 
 /* 点击复制单元格 */
 .cp-cell { cursor:pointer; border-bottom:1px dashed var(--line); }
+.ev-click { cursor:pointer; }
+.ev-click:hover td { background:var(--panel-2); }
+.ev-detail td { background:var(--panel-2); padding:10px 16px; border-top:1px dashed var(--line); }
+.ev-kv { display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:6px 18px; font-size:12.5px; }
+.ev-kv .k { color:var(--faint); font-size:11.5px; margin-bottom:1px; }
+.ev-kv .v { font-family:var(--mono); word-break:break-all; }
 .cp-cell:hover { color:var(--accent); border-bottom-color:var(--accent); }
 
 .grid-status { display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:14px; margin-bottom:20px; }
@@ -1427,7 +1433,22 @@ function renderEvents() {
   } else {
     $('#events-body').innerHTML = slice.map(e => {
       const m = evMeta(e.event);
-      return `<tr>
+      const key = `${e.time}|${e.event}|${e.src_ip||''}|${e.device_id||''}`;
+      const open = S.evExpanded && S.evExpanded.has(key);
+      const detail = `<tr class="ev-detail" style="display:${open?'table-row':'none'}" data-detail="${esc(key)}">
+        <td colspan="8"><div class="ev-kv">
+          <div><div class="k">时间</div><div class="v">${fmtAbs(e.time)}（${fmtAgo(e.time)}）</div></div>
+          <div><div class="k">事件类型</div><div class="v">${esc(e.event||'—')}（${m.label}）</div></div>
+          <div><div class="k">授权索引（stanza）</div><div class="v">${e.stanza ?? '—'}</div></div>
+          <div><div class="k">用户</div><div class="v">${e.user?`<span class="cp-cell" data-cp="${esc(e.user)}">${esc(e.user)}</span>`:'—'}</div></div>
+          <div><div class="k">设备指纹（完整）</div><div class="v">${e.device_id?`<span class="cp-cell" data-cp="${esc(e.device_id)}">${esc(e.device_id)}</span>`:'—'}</div></div>
+          <div><div class="k">来源 IP</div><div class="v">${e.src_ip?`<span class="cp-cell" data-cp="${esc(e.src_ip)}">${esc(e.src_ip)}</span>`:'—'}</div></div>
+          <div><div class="k">SPA 端口</div><div class="v">${e.spa_port||'—'}</div></div>
+          <div><div class="k">目标端口</div><div class="v">${e.target_port||'—'}</div></div>
+          <div><div class="k">原因（原始）</div><div class="v">${e.reason?`<span class="cp-cell" data-cp="${esc(e.reason)}">${esc(e.reason)}</span>`:'—'}</div></div>
+          <div><div class="k">原因（中文）</div><div class="v">${esc(reasonZh(e.reason))}</div></div>
+        </div></td></tr>`;
+      return `<tr class="ev-click" data-key="${esc(key)}" title="点击展开/收起完整详情">
         <td class="mono" title="${fmtAbs(e.time)}" style="white-space:nowrap;color:var(--muted)">${fmtAgo(e.time)}</td>
         <td><span class="badge ${m.cls}">${m.label}</span></td>
         <td>${e.user ? `<span class="cp-cell" data-cp="${esc(e.user)}" title="点击复制用户名">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" title="查看该用户的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
@@ -1436,8 +1457,16 @@ function renderEvents() {
         <td class="mono">${e.spa_port || '—'}</td>
         <td class="mono">${e.target_port || '—'}</td>
         <td class="hint" title="${e.reason ? '原始原因：' + esc(e.reason) : ''}">${esc(reasonZh(e.reason))}</td>
-      </tr>`;
+      </tr>${detail}`;
     }).join('');
+    /* 行点击展开/收起完整详情；复制/反查控件不触发 */
+    if (!S.evExpanded) S.evExpanded = new Set();
+    $$('#events-body tr.ev-click').forEach(tr => tr.onclick = ev => {
+      if (ev.target.closest('.cp-cell,.icon-btn,[data-lookup]')) return;
+      const k = tr.dataset.key;
+      if (S.evExpanded.has(k)) S.evExpanded.delete(k); else S.evExpanded.add(k);
+      renderEvents();
+    });
     $$('#events-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, ''));
     /* 来源 IP 一键反查：搜索框填入该 IP 并重置到第一页 */
     $$('#events-body [data-lookup]').forEach(b => b.onclick = () => {
