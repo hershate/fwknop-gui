@@ -192,6 +192,10 @@ select.ctl, input.ctl {
 .tpl-desc { font-size:12.5px; color:var(--muted); margin:4px 0 14px; min-height:0; }
 .tpl-desc:empty { display:none; }
 
+/* 点击复制单元格 */
+.cp-cell { cursor:pointer; border-bottom:1px dashed var(--line); }
+.cp-cell:hover { color:var(--accent); border-bottom-color:var(--accent); }
+
 .grid-status { display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:14px; margin-bottom:20px; }
 .stat-card {
   display:flex; gap:13px; align-items:center;
@@ -1125,9 +1129,13 @@ async function loadEvents() {
   } catch (e) { setConn(false); }
 }
 
+/* 异常事件集合：「仅看异常」快捷筛选用 */
+const BAD_EVTS = ['reject','replay','unknown_fingerprint','port_mismatch','aged'];
+
 function filteredEvents() {
   let evs = S.events || [];
-  if (S.evFilter !== 'all') evs = evs.filter(e => e.event === S.evFilter);
+  if (S.evFilter === 'bad') evs = evs.filter(e => BAD_EVTS.includes(e.event));
+  else if (S.evFilter !== 'all') evs = evs.filter(e => e.event === S.evFilter);
   if (S.evQuery) {
     const q = S.evQuery.toLowerCase();
     evs = evs.filter(e =>
@@ -1143,9 +1151,11 @@ function renderEventChips() {
   const evs = S.events || [];
   const counts = { all: evs.length };
   for (const e of evs) counts[e.event] = (counts[e.event] || 0) + 1;
+  counts.bad = BAD_EVTS.reduce((s, k) => s + (counts[k] || 0), 0);
   const mk = (k, label) =>
     `<button class="chip ${S.evFilter===k?'active':''}" data-ev="${k}">${label}<span class="n">${counts[k]||0}</span></button>`;
   $('#event-chips').innerHTML = mk('all','全部') +
+    (counts.bad ? mk('bad','⚠ 仅看异常') : '') +
     EVT_ORDER.filter(e => counts[e]).map(e => mk(e, evMeta(e).label)).join('');
   $$('#event-chips .chip').forEach(b => b.onclick = () => { S.evFilter = b.dataset.ev; S.evPage = 0; renderEvents(); });
 }
@@ -1170,14 +1180,15 @@ function renderEvents() {
       return `<tr>
         <td class="mono" title="${fmtAbs(e.time)}" style="white-space:nowrap;color:var(--muted)">${fmtAgo(e.time)}</td>
         <td><span class="badge ${m.cls}">${m.label}</span></td>
-        <td>${esc(e.user) || '<span class="hint">—</span>'}</td>
-        <td class="mono" title="${esc(e.device_id||'')}">${e.device_id ? esc(e.device_id.slice(0,14)) + '…' : '<span class="hint">—</span>'}</td>
-        <td class="mono">${esc(e.src_ip) || '—'}</td>
+        <td>${e.user ? `<span class="cp-cell" data-cp="${esc(e.user)}" title="点击复制用户名">${esc(e.user)}</span>` : '<span class="hint">—</span>'}</td>
+        <td class="mono">${e.device_id ? `<span class="cp-cell" data-cp="${esc(e.device_id)}" title="点击复制完整指纹：${esc(e.device_id)}">${esc(e.device_id.slice(0,14))}…</span>` : '<span class="hint">—</span>'}</td>
+        <td class="mono">${e.src_ip ? `<span class="cp-cell" data-cp="${esc(e.src_ip)}" title="点击复制来源 IP">${esc(e.src_ip)}</span>` : '—'}</td>
         <td class="mono">${e.spa_port || '—'}</td>
         <td class="mono">${e.target_port || '—'}</td>
         <td class="hint">${esc(e.reason) || ''}</td>
       </tr>`;
     }).join('');
+    $$('#events-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, ''));
   }
 
   $('#events-pager').innerHTML = `
