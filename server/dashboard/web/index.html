@@ -523,6 +523,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
     <div class="spacer"></div>
     <div class="side-foot">
       <div class="conn"><span class="dot" id="conn-dot"></span><span id="conn-text">正在连接…</span></div>
+      <div class="hint" id="sess-ttl" style="display:none;font-size:11px;margin-top:2px"></div>
       <div class="side-actions">
         <button class="icon-btn" id="notif-btn" title="通知历史"><svg><use href="#i-bell"/></svg>通知<span class="nb-badge" id="notif-badge" style="display:none"></span></button>
         <button class="icon-btn" id="theme-btn" title="切换明暗主题"><svg><use href="#i-sun"/></svg><span id="theme-lab">浅色</span></button>
@@ -1011,6 +1012,7 @@ function enterApp() {
 async function bootAuth() {
   try {
     const st = await fetch('/api/auth/state').then(r => r.json());
+    if (st.session_exp) S.sessionExp = st.session_exp;
     S.writeEnabled = !!st.write_enabled;
     if (st.needs_setup) showAuthView('auth-setup');
     else if (st.authenticated) enterApp();
@@ -1070,6 +1072,8 @@ async function submitLogin() {
       return;
     }
     $('#login-pw').value = '';
+    S.sessionExp = Date.now() / 1000 + 12 * 3600;  /* 与服务端 sessionTTL（12h）一致 */
+    tickSessTtl();
     toast(d.msg || '登录成功', 'ok');
     enterApp();
   } catch (e) { errEl.textContent = '网络错误，请重试'; }
@@ -1358,6 +1362,20 @@ function tickUptime() {
     `已运行 ${fmtDur(Date.now()/1000 - S.daemonStarted)} · 启动于 ${fmtAbs(S.daemonStarted)}`;
 }
 setInterval(tickUptime, 1000);
+
+/* 会话剩余时间：每 30 秒刷新；不足 30 分钟时琥珀色预警 */
+function tickSessTtl() {
+  const el = $('#sess-ttl');
+  if (!el) return;
+  if (!S.sessionExp) { el.style.display = 'none'; return; }
+  const left = S.sessionExp - Date.now() / 1000;
+  if (left <= 0) { el.style.display = ''; el.textContent = '会话已过期，请重新登录'; el.style.color = 'var(--red)'; return; }
+  el.style.display = '';
+  el.style.color = left < 1800 ? 'var(--amber)' : '';
+  el.textContent = `会话剩余 ${left >= 3600 ? Math.floor(left/3600) + ' 小时 ' : ''}${Math.ceil(left % 3600 / 60)} 分钟`;
+}
+setInterval(tickSessTtl, 30000);
+tickSessTtl();
 
 /* ==================== 概览 ==================== */
 async function loadOverview() {

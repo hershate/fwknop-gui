@@ -345,6 +345,13 @@ func clearLoginFail(ip string) {
 func handleAuthState(w http.ResponseWriter, r *http.Request) {
 	auth.mu.Lock()
 	init := auth.initialized
+	// Cookie 会话附带剩余有效期，供前端展示「会话剩余时间」（Bearer 无会话不过期）
+	var sessionExp int64
+	if tok := sessionFrom(r); tok != "" {
+		if exp, ok := auth.sessions[tok]; ok && time.Now().Before(exp) {
+			sessionExp = exp.Unix()
+		}
+	}
 	auth.mu.Unlock()
 	writeJSON(w, map[string]interface{}{
 		"initialized":   init || cfg.Token != "",
@@ -353,6 +360,7 @@ func handleAuthState(w http.ResponseWriter, r *http.Request) {
 		"authenticated": authenticated(r),
 		"write_enabled": cfg.EnableWrite,
 		"version":       version,
+		"session_exp":   sessionExp,
 	})
 }
 

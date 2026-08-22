@@ -403,6 +403,8 @@ if [ -x "$GOBIN" ]; then
             && ok "重复初始化返回 409" || bad "重复初始化"
         wget -qO- --load-cookies "$JAR" http://127.0.0.1:18098/api/overview 2>/dev/null | grep -q '"daemon"' \
             && ok "会话 Cookie 可访问 API" || bad "会话访问"
+        wget -qO- --load-cookies "$JAR" http://127.0.0.1:18098/api/auth/state 2>/dev/null | grep -q '"session_exp":[1-9]' \
+            && ok "auth/state 返回会话过期时刻" || bad "session_exp"
         [ "$(code --load-cookies "$JAR" --post-data '' \
             http://127.0.0.1:18098/api/service/validate)" = 403 ] \
             && ok "Cookie 写操作缺 CSRF 头返回 403" || bad "CSRF 防护"
