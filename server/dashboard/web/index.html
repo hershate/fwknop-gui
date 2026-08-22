@@ -558,6 +558,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <option value="10000">10 秒</option>
             <option value="30000">30 秒</option>
           </select>
+          <span class="hint" id="auto-ttl" title="距下次自动刷新" style="min-width:26px;text-align:right"></span>
         </div>
         <button class="btn ghost small" id="refresh-btn"><svg width="14" height="14"><use href="#i-refresh"/></svg>刷新</button>
       </div>
@@ -1434,6 +1435,15 @@ function setConn(ok) {
     $('#conn-text').textContent = `连接异常 · ${left}s 后重试`;
   }, 1000);
 }
+
+/* 自动刷新倒计时：显示距下次刷新的秒数；断连/后台标签页/关闭自动刷新时不显示 */
+setInterval(() => {
+  const el = $('#auto-ttl');
+  if (!el) return;
+  if (!S.auto || document.hidden || connFail >= 2) { el.textContent = ''; return; }
+  const left = Math.max(0, Math.round(((S.nextTry || Date.now()) - Date.now()) / 1000));
+  el.textContent = left + 's';
+}, 1000);
 
 /* 运行时长实时显示：每秒跳动（已运行 X天X时X分X秒 · 启动于 …） */
 function fmtDur(sec) {
