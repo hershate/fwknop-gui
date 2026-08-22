@@ -1683,7 +1683,7 @@ function renderEvents() {
           <div style="align-self:end"><button class="btn ghost small" data-evjson="${esc(key)}" title="复制该事件的完整 JSON（排障/上报用）">${icon('i-copy',12)} 复制原始 JSON</button></div>
         </div></td></tr>`;
       return `<tr class="ev-click${BAD_EVTS.includes(e.event) ? ' ev-bad' : ''}" data-key="${esc(key)}" tabindex="0" role="button" aria-expanded="${open?'true':'false'}" title="点击或 Enter 展开/收起完整详情">
-        <td class="mono" title="${fmtAbs(e.time)}" style="white-space:nowrap;color:var(--muted)">${fmtAgo(e.time)}</td>
+        <td class="mono tmtoggle" title="点击切换相对/绝对时间" style="white-space:nowrap;color:var(--muted);cursor:pointer">${S.evTimeAbs ? fmtAbs(e.time) : fmtAgo(e.time)}</td>
         <td><span class="badge ${m.cls}">${m.label}</span></td>
         <td>${e.user ? `<span class="cp-cell" data-cp="${esc(e.user)}" title="点击复制用户名">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" title="查看该用户的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
         <td class="mono">${e.device_id ? `<span class="cp-cell" data-cp="${esc(e.device_id)}" title="点击复制完整指纹：${esc(e.device_id)}">${esc(e.device_id.slice(0,14))}…</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" title="查看该设备的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
@@ -1693,6 +1693,12 @@ function renderEvents() {
         <td class="hint" title="${e.reason ? '原始原因：' + esc(e.reason) : ''}">${esc(reasonZh(e.reason))}</td>
       </tr>${detail}`;
     }).join('');
+    $$('#events-body .tmtoggle').forEach(c => c.onclick = ev => {
+      ev.stopPropagation();
+      S.evTimeAbs = !S.evTimeAbs;
+      localStorage.setItem('fwknop-ev-timeabs', S.evTimeAbs ? '1' : '');
+      renderEvents();
+    });
     $$('#events-body [data-evjson]').forEach(b => b.onclick = () => {
       const ev2 = slice.find(x => `${x.time}|${x.event}|${x.src_ip||''}|${x.device_id||''}` === b.dataset.evjson);
       if (ev2) copyText(JSON.stringify(ev2), '事件 JSON ');
@@ -2309,6 +2315,7 @@ $('#tofu-batch-unbind').onclick = () => {
 $('#tofu-search').oninput = e => { S.tofuQuery = e.target.value.trim(); renderTOFU(); };
 $('#users-search').oninput = e => { S.usersQuery = e.target.value.trim(); renderUsers(); };
 S.usersSort = localStorage.getItem('fwknop-users-sort') || 'conf';
+S.evTimeAbs = !!localStorage.getItem('fwknop-ev-timeabs');
 $('#users-sort').value = S.usersSort;
 $('#users-sort').onchange = e => {
   S.usersSort = e.target.value;
