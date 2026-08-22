@@ -176,6 +176,22 @@ select.ctl, input.ctl {
 }
 .warn-strip svg { flex:0 0 auto; margin-top:2px; }
 
+/* 快速模板（签发凭证） */
+.tpl-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:6px; }
+.tpl-label { font-size:12.5px; color:var(--muted); }
+.tpl-chip {
+  font-size:12.5px; padding:6px 13px; border-radius:999px; cursor:pointer;
+  border:1px solid var(--line); background:var(--panel-2); color:var(--ink);
+  transition:all .15s;
+}
+.tpl-chip:hover { border-color:var(--accent); color:var(--accent); }
+.tpl-chip.active {
+  border-color:var(--accent); background:var(--accent-soft); color:var(--accent);
+  font-weight:600;
+}
+.tpl-desc { font-size:12.5px; color:var(--muted); margin:4px 0 14px; min-height:0; }
+.tpl-desc:empty { display:none; }
+
 .grid-status { display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:14px; margin-bottom:20px; }
 .stat-card {
   display:flex; gap:13px; align-items:center;
@@ -563,6 +579,15 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
               <div>凭证是<b>持票凭证</b>：密钥与授权 URI 仅在签发结果中展示一次，请立即复制并安全分发给用户。泄露后请在该用户卡片上「撤销」并重新签发。</div>
             </div>
             <form id="add-form">
+              <div class="form-sec">快速模板（一键填充安全选项，名称/地址仍需自填）</div>
+              <div class="tpl-row">
+                <span class="tpl-label">选择场景：</span>
+                <button type="button" class="tpl-chip" data-tpl="std">标准 SSH（推荐）</button>
+                <button type="button" class="tpl-chip" data-tpl="hardened">高安全 SSH（零信任）</button>
+                <button type="button" class="tpl-chip" data-tpl="multi">多服务网关</button>
+                <button type="button" class="tpl-chip" data-tpl="legacy">兼容 v3 旧客户端</button>
+              </div>
+              <div class="tpl-desc" id="tpl-desc"></div>
               <div class="form-sec">基本信息</div>
               <div class="form-grid">
                 <div class="field">
@@ -1265,6 +1290,44 @@ $('#show-add').onclick = () => {
   if (c.style.display !== 'none') c.scrollIntoView({ behavior:'smooth', block:'start' });
 };
 $('#add-cancel').onclick = () => { $('#add-card').style.display = 'none'; };
+
+/* 签发快速模板：一键填充安全选项（不动名称/地址/用户名等部署相关字段） */
+const ADD_TEMPLATES = {
+  std: {
+    desc: '日常 SSH 保护：TOTP 端口跳变 + 设备指纹绑定，首台设备敲门后 24h 内自动完成 TOFU 绑定。',
+    access: 'tcp/22', totp: true, portRange: '30000-60000',
+    fingerprint: true, tofuTimeout: '86400', portMatch: false,
+  },
+  hardened: {
+    desc: '零信任：端口本身作为一次性因子（强制 TOTP 端口匹配），设备指纹仅绑定当前设备（不留宽限期）。',
+    access: 'tcp/22', totp: true, portRange: '30000-60000',
+    fingerprint: true, tofuTimeout: '', portMatch: true,
+  },
+  multi: {
+    desc: '多服务网关：一次敲门同时开放 SSH / HTTPS / DNS，TOTP 跳变 + 指纹 + 首用自动绑定。',
+    access: 'tcp/22,tcp/443,udp/53', totp: true, portRange: '30000-60000',
+    fingerprint: true, tofuTimeout: '86400', portMatch: false,
+  },
+  legacy: {
+    desc: '兼容 SPA v3 旧客户端：关闭 TOTP 跳变与设备指纹（v3 不支持）。安全性最低，仅作过渡，建议尽快升级客户端。',
+    access: 'tcp/22', totp: false, portRange: '',
+    fingerprint: false, tofuTimeout: '', portMatch: false,
+  },
+};
+$$('.tpl-chip').forEach(chip => chip.onclick = () => {
+  const t = ADD_TEMPLATES[chip.dataset.tpl];
+  if (!t) return;
+  const f = $('#add-form');
+  f.access.value = t.access;
+  f.totp.checked = t.totp;
+  f['port-range'].value = t.portRange;
+  f['require-fingerprint'].checked = t.fingerprint;
+  f['tofu-timeout'].value = t.tofuTimeout;
+  f['require-totp-port-match'].checked = t.portMatch;
+  $$('.tpl-chip').forEach(c => c.classList.toggle('active', c === chip));
+  $('#tpl-desc').textContent = t.desc;
+  toast(`已应用模板「${chip.textContent}」，请补全名称与服务器地址`, 'ok');
+});
 
 $('#add-form').addEventListener('submit', async ev => {
   ev.preventDefault();
