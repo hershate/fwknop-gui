@@ -1142,7 +1142,7 @@ function refreshNow() {
   loadOverview();
   if (S.page === 'overview') { loadMetrics(); loadEvents(); }
   if (S.page === 'events') loadEvents();
-  if (S.page === 'users') loadUsers();
+  if (S.page === 'users') { loadUsers(); loadEvents(); }
   if (S.page === 'tofu') loadTOFU();
   if (S.page === 'config') loadConfig();
   if (S.page === 'profiles') loadProfiles();
@@ -1435,6 +1435,17 @@ async function loadUsers() {
   } catch (e) { setConn(false); }
 }
 
+/* 该授权对应用户的最近一条事件（点击直达事件页该用户筛选） */
+function lastEventForUser(s) {
+  const u = s.require_username;
+  if (!u) return '';
+  const last = (S.events || []).find(e => e.user === u);
+  if (!last) return '<div class="hint" style="margin-top:8px">该用户近期无事件</div>';
+  const m = evMeta(last.event);
+  return `<div style="margin-top:8px"><button class="btn ghost small" data-uev="${esc(u)}"
+    title="查看该用户的全部事件">最近：${m.label} · ${fmtAgo(last.time)} · ${esc(last.src_ip || '')}</button></div>`;
+}
+
 function stanzaBadges(s) {
   const b = [];
   if (s.has_key) b.push('<span class="tag">密钥已配置</span>');
@@ -1503,11 +1514,18 @@ function renderUsers() {
           <div><div class="hint">访问超时</div><div class="mono">${esc(s.fw_access_timeout)||'默认 30'} 秒</div></div>
         </div>
         <div>${stanzaBadges(s)}</div>
+        ${lastEventForUser(s)}
       </div>
     </div>`;
   }).join('') + disHtml;
   }
   $$('#users-body [data-edit]').forEach(b => b.onclick = () => openStanzaEditor(+b.dataset.edit));
+  /* 最近事件按钮：直达事件页该用户筛选 */
+  $$('#users-body [data-uev]').forEach(b => b.onclick = () => {
+    S.evQuery = b.dataset.uev; S.evPage = 0; S.evFilter = 'all';
+    $('#event-search').value = S.evQuery;
+    showPage('events');
+  });
   $$('#users-body [data-enable]').forEach(b => b.onclick = () => {
     const name = b.dataset.enable;
     confirmDialog('恢复授权', `确定恢复「<b>${esc(name)}</b>」吗？<br>被注释的 stanza 将还原为生效状态，预检通过后热加载。`,
