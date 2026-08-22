@@ -236,6 +236,8 @@ select.ctl, input.ctl {
 .sum-link { cursor:pointer; border-radius:var(--radius-sm); padding:4px 6px; margin:-4px -6px; transition:background .15s; }
 .sum-link:hover { background:var(--accent-soft); }
 .flash-prefill { animation:prefillFlash 1.6s ease; }
+@keyframes numBump { 0% { transform:scale(1.18); filter:brightness(1.5); } 100% { transform:scale(1); filter:none; } }
+.num-bump { animation:numBump .6s ease; display:inline-block; }
 @keyframes prefillFlash { 0% { box-shadow:0 0 0 2px var(--accent); } 100% { box-shadow:none; } }
 .tile .lab { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); font-weight:500; }
 .tile .lab svg { width:14px; height:14px; }
@@ -1364,11 +1366,15 @@ function sparkline(key) {
 
 function renderTiles() {
   if (!S.metrics) return;
+  if (!S.tilePrev) S.tilePrev = {};
   $('#tiles').innerHTML = EVT_ORDER.map(e => {
     const m = evMeta(e), v = counterVal(S.metrics.counters, e);
+    /* 与上一轮数值比对：增长时脉冲提示（首次渲染不闪） */
+    const bump = e in S.tilePrev && v > S.tilePrev[e] ? ' num-bump' : '';
+    S.tilePrev[e] = v;
     return `<div class="tile ${m.tile} tile-link" data-ev="${e}" title="点击查看「${m.label}」事件列表">
       <div class="lab">${icon(m.icon, 14)}${m.label}</div>
-      <div class="num">${fmtNum(v)}</div>${sparkline(e)}
+      <div class="num${bump}">${fmtNum(v)}</div>${sparkline(e)}
     </div>`;
   }).join('');
   /* 点击计数卡直达事件页对应筛选 */
