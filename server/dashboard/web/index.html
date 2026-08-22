@@ -881,16 +881,9 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="body" id="about-body"><div class="skel" style="height:100px"></div></div>
         </div>
         <div class="card">
-          <div class="head"><h2>快捷键</h2></div>
+          <div class="head"><h2>快捷键</h2><span class="sub">与按 ? 打开的帮助一致（同源渲染）</span></div>
           <div class="body">
-            <table class="tb"><tbody>
-              <tr><td style="width:130px"><code>1</code> – <code>7</code></td><td class="hint">切换页面（概览 / SPA 事件 / 用户与授权 / TOFU / 服务配置 / 配置方案 / 关于）</td></tr>
-              <tr><td><code>/</code></td><td class="hint">聚焦当前页搜索框（SPA 事件 / 用户与授权 / TOFU 页可用）</td></tr>
-              <tr><td><code>r</code></td><td class="hint">立即刷新当前页数据</td></tr>
-              <tr><td><code>←</code> / <code>→</code></td><td class="hint">事件页上/下一页</td></tr>
-              <tr><td><code>Ctrl/⌘+S</code></td><td class="hint">配置编辑器打开时保存 fwknopd.conf（走预检→备份→热加载流程）</td></tr>
-              <tr><td><code>Esc</code></td><td class="hint">关闭弹窗 / 退出输入框焦点</td></tr>
-            </tbody></table>
+            <table class="tb"><tbody id="about-kbd"></tbody></table>
           </div>
         </div>
         <div class="card">
@@ -1385,6 +1378,10 @@ const KBD_HELP = [
   ['Esc', '关闭弹窗；在输入框中则取消焦点'],
   ['?', '打开本帮助'],
 ];
+/* 关于页快捷键表与 ? 帮助同源渲染，杜绝两份清单漂移 */
+$('#about-kbd').innerHTML = KBD_HELP.map(([k, d]) =>
+  `<tr><td style="width:150px">${k.split(' / ').map(x => `<kbd>${esc(x)}</kbd>`).join(' / ')}</td><td class="hint">${d}</td></tr>`).join('');
+
 function showKbdHelp() {
   openModal(`<h3>键盘快捷键</h3>
     <div>${KBD_HELP.map(([k, d]) => `
