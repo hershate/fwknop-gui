@@ -1639,10 +1639,18 @@ function renderEvents() {
   const slice = evs.slice(S.evPage * S.evPer, (S.evPage + 1) * S.evPer);
 
   if (!slice.length) {
+    const hasFilter = S.evFilter !== 'all' || !!S.evQuery || (S.evTime && S.evTime !== 'all');
     $('#events-body').innerHTML = `<tr><td colspan="8"><div class="empty">
       ${icon('i-list', 40)}<div class="t">暂无匹配事件</div>
-      <div class="d">${(S.events||[]).length ? '试试更换筛选条件或清空搜索' : 'fwknopd 收到 SPA 包后，事件会显示在这里'}</div>
+      <div class="d">${(S.events||[]).length ? '当前筛选/搜索条件下无匹配' : 'fwknopd 收到 SPA 包后，事件会显示在这里'}</div>
+      ${(S.events||[]).length && hasFilter ? '<button class="btn ghost small" id="ev-reset" style="margin-top:12px">清空筛选与搜索，查看全部</button>' : ''}
     </div></td></tr>`;
+    const rst = $('#ev-reset');
+    if (rst) rst.onclick = () => {
+      S.evFilter = 'all'; S.evQuery = ''; S.evTime = 'all'; S.evPage = 0;
+      $('#event-search').value = ''; $('#ev-time').value = 'all';
+      renderEvents();
+    };
   } else {
     $('#events-body').innerHTML = slice.map(e => {
       const m = evMeta(e.event);
