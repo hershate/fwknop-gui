@@ -291,6 +291,9 @@ if [ -x "$GOBIN" ]; then
             && ok "面板提供内嵌 UI（zh-CN）" || bad "面板 UI"
         wget -qO- http://127.0.0.1:18099/ 2>/dev/null | grep -q '首次启动初始化' \
             && ok "面板内嵌初始化向导界面" || bad "面板初始化界面"
+        wget -qO- http://127.0.0.1:18099/ 2>/dev/null | grep -q 'ADD_TEMPLATES' \
+            && grep -q 'data-tpl' <(wget -qO- http://127.0.0.1:18099/ 2>/dev/null) \
+            && ok "签发表单含快速模板（一键填充）" || bad "签发模板界面"
         wget -qO- --header="$TK" http://127.0.0.1:18099/api/overview 2>/dev/null | grep -q '"daemon"' \
             && ok "面板 /api/overview" || bad "面板 overview API"
         wget -qO- --header="$TK" http://127.0.0.1:18099/api/users 2>/dev/null | grep -q 'dashdemo' \
