@@ -687,6 +687,8 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <button type="button" class="tpl-chip" data-tpl="hardened">高安全 SSH（零信任）</button>
                 <button type="button" class="tpl-chip" data-tpl="multi">多服务网关</button>
                 <button type="button" class="tpl-chip" data-tpl="legacy">兼容 v3 旧客户端</button>
+                <span id="custom-tpls" style="display:inline-flex;gap:8px;flex-wrap:wrap"></span>
+                <button type="button" class="tpl-chip" id="tpl-save" title="把当前表单的安全选项保存为可复用模板">＋ 存为模板</button>
               </div>
               <div class="tpl-desc" id="tpl-desc"></div>
               <div class="form-sec">基本信息</div>
@@ -2150,7 +2152,7 @@ $('#show-add').onclick = () => {
   const c = $('#add-card');
   c.style.display = c.style.display === 'none' ? '' : 'none';
   if (c.style.display !== 'none') {
-    renderServerHistory(); loadAddDraft();
+    renderServerHistory(); renderCustomTpls(); loadAddDraft();
     c.scrollIntoView({ behavior:'smooth', block:'start' });
     setTimeout(() => $('#add-form').name.focus(), 250);  /* 展开后聚焦第一必填项（等滚动落定） */
   }
@@ -2180,37 +2182,110 @@ const ADD_TEMPLATES = {
     fingerprint: false, tofuTimeout: '', portMatch: false,
   },
 };
-$$('.tpl-chip').forEach(chip => {
-  const t = ADD_TEMPLATES[chip.dataset.tpl];
+/* 自定义签发模板：localStorage 持久化 {名: 模板}，与预制模板同一交互 */
+const CUSTOM_TPL_KEY = 'fwknop-add-custom-tpls';
+function loadCustomTpls() {
+  try { return JSON.parse(localStorage.getItem(CUSTOM_TPL_KEY) || '{}'); } catch (e) { return {}; }
+}
+function allTpl(key) { return ADD_TEMPLATES[key] || loadCustomTpls()[key]; }
+
+function applyAddTemplate(key, chip) {
+  const t = allTpl(key);
   if (!t) return;
+  const f = $('#add-form');
+  f.access.value = t.access;
+  f.totp.checked = t.totp;
+  f['port-range'].value = t.portRange;
+  f['require-fingerprint'].checked = t.fingerprint;
+  f['tofu-timeout'].value = t.tofuTimeout;
+  f['require-totp-port-match'].checked = t.portMatch;
+  syncTotpFields();
+  $$('.tpl-chip').forEach(c => c.classList.toggle('active', c === chip));
+  $('#tpl-desc').textContent = t.desc;
+  /* 程序化赋值不触发 input：手动派发让即时校验提示同步刷新 */
+  ['access', 'port-range', 'tofu-timeout'].forEach(n =>
+    f[n].dispatchEvent(new Event('input')));
+  toast(`已应用模板「${chip.dataset.label || chip.textContent}」，请补全名称与服务器地址`, 'ok');
+  saveAddDraft();
+}
+function bindTplChip(chip) {
+  const key = chip.dataset.tpl;
+  if (!allTpl(key)) return;
   /* hover/聚焦即预览描述（不填充），便于比较模板；离开后恢复已选模板的描述 */
-  const preview = () => { $('#tpl-desc').textContent = '预览 · ' + t.desc; };
+  const preview = () => { const t = allTpl(key); if (t) $('#tpl-desc').textContent = '预览 · ' + t.desc; };
   const restore = () => {
     const act = $('.tpl-chip.active');
-    $('#tpl-desc').textContent = act ? ADD_TEMPLATES[act.dataset.tpl].desc : '';
+    const t = act && allTpl(act.dataset.tpl);
+    $('#tpl-desc').textContent = t ? t.desc : '';
   };
   chip.addEventListener('mouseenter', preview);
   chip.addEventListener('focus', preview);
   chip.addEventListener('mouseleave', restore);
   chip.addEventListener('blur', restore);
-  chip.onclick = () => {
+  chip.onclick = () => applyAddTemplate(key, chip);
+}
+$$('.tpl-chip[data-tpl]').forEach(bindTplChip);
+
+/* 渲染自定义模板芯片（带 × 删除），在草稿恢复前调用 */
+function renderCustomTpls() {
+  const box = $('#custom-tpls');
+  const cur = loadCustomTpls();
+  box.innerHTML = '';
+  Object.keys(cur).forEach(name => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'tpl-chip';
+    chip.dataset.tpl = name;
+    chip.dataset.label = name;
+    chip.innerHTML = `${esc(name)} <span class="tpl-del" title="删除该自定义模板" style="opacity:.6">✕</span>`;
+    bindTplChip(chip);
+    chip.querySelector('.tpl-del').onclick = ev => {
+      ev.stopPropagation();
+      confirmDialog('删除自定义模板', `确定删除模板「<b>${esc(name)}</b>」吗？已签发的授权不受影响。`, '删除', () => {
+        const m = loadCustomTpls();
+        delete m[name];
+        localStorage.setItem(CUSTOM_TPL_KEY, JSON.stringify(m));
+        renderCustomTpls();
+        toast(`模板「${name}」已删除`, 'ok', 1500);
+      });
+    };
+    box.appendChild(chip);
+  });
+}
+
+/* 存为模板：名称 + 可选描述，抓取当前表单安全选项 */
+$('#tpl-save').onclick = () => {
+  openModal(`<h3>保存为签发模板</h3>
+    <div class="field"><label>模板名称</label><input id="ct-name" maxlength="20" placeholder="例如 边缘节点标准"><div class="auth-hint" id="ct-hint"></div></div>
+    <div class="field" style="margin-top:10px"><label>描述（可选）</label><input id="ct-desc" maxlength="60" placeholder="一句话说明适用场景"></div>
+    <div class="mf"><button class="btn ghost" id="ct-cancel">取消</button><button class="btn" id="ct-ok">保存模板</button></div>`);
+  $('#ct-name').focus();
+  $('#ct-cancel').onclick = () => closeModal();
+  const doSave = () => {
+    const name = $('#ct-name').value.trim();
+    if (!name || name.length > 20 || /[\s#"'`]/.test(name)) {
+      $('#ct-hint').textContent = '✗ 名称不能为空，≤20 字符且不含空白/#/引号'; $('#ct-hint').className = 'auth-hint no'; return;
+    }
+    if (ADD_TEMPLATES[name]) {
+      $('#ct-hint').textContent = '✗ 与预制模板键冲突，请换名'; $('#ct-hint').className = 'auth-hint no'; return;
+    }
     const f = $('#add-form');
-    f.access.value = t.access;
-    f.totp.checked = t.totp;
-    f['port-range'].value = t.portRange;
-    f['require-fingerprint'].checked = t.fingerprint;
-    f['tofu-timeout'].value = t.tofuTimeout;
-    f['require-totp-port-match'].checked = t.portMatch;
-    syncTotpFields();
-    $$('.tpl-chip').forEach(c => c.classList.toggle('active', c === chip));
-    $('#tpl-desc').textContent = t.desc;
-    /* 程序化赋值不触发 input：手动派发让即时校验提示同步刷新 */
-    ['access', 'port-range', 'tofu-timeout'].forEach(n =>
-      f[n].dispatchEvent(new Event('input')));
-    toast(`已应用模板「${chip.textContent}」，请补全名称与服务器地址`, 'ok');
-    saveAddDraft();
+    const m = loadCustomTpls();
+    const overwrite = !!m[name];
+    m[name] = {
+      desc: $('#ct-desc').value.trim() || '自定义模板',
+      access: f.access.value.trim(), totp: f.totp.checked,
+      portRange: f['port-range'].value.trim(), fingerprint: f['require-fingerprint'].checked,
+      tofuTimeout: f['tofu-timeout'].value.trim(), portMatch: f['require-totp-port-match'].checked,
+    };
+    localStorage.setItem(CUSTOM_TPL_KEY, JSON.stringify(m));
+    closeModal();
+    renderCustomTpls();
+    toast(overwrite ? `模板「${name}」已覆盖更新` : `模板「${name}」已保存，点击芯片即可一键填充`, 'ok');
   };
-});
+  $('#ct-ok').onclick = doSave;
+  $('#ct-name').addEventListener('keydown', e => { if (e.key === 'Enter') doSave(); });
+};
 
 /* 常用端口快捷芯片：点击在 OPEN_PORTS 列表中切换该项，已含则移除 */
 function syncAccessChips() {
@@ -2274,9 +2349,10 @@ function loadAddDraft() {
   ADD_FIELDS.forEach(k => { if (typeof d[k] === 'string') f[k].value = d[k]; });
   ADD_CHECKS.forEach(k => { if (typeof d[k] === 'boolean') f[k].checked = d[k]; });
   /* 还原模板选择状态（高亮 + 描述），保持「当前基于哪个模板」的上下文 */
-  if (d._tpl && ADD_TEMPLATES[d._tpl]) {
+  const rtpl = d._tpl && allTpl(d._tpl);
+  if (rtpl) {
     $$('.tpl-chip').forEach(c => c.classList.toggle('active', c.dataset.tpl === d._tpl));
-    $('#tpl-desc').textContent = ADD_TEMPLATES[d._tpl].desc;
+    $('#tpl-desc').textContent = rtpl.desc;
   }
   if (ADD_FIELDS.some(k => d[k])) {
     const strip = $('#add-draft-strip');
