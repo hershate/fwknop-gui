@@ -811,7 +811,8 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
           <div class="body">
             <div class="form-grid">
               <div class="field"><label>方案名 <span class="req">*</span></label>
-                <input id="pf-name" placeholder="例如：办公网-仅SSH"></div>
+                <input id="pf-name" placeholder="例如：办公网-仅SSH">
+                <div class="auth-hint" id="pf-name-hint"></div></div>
               <div class="field"><label>备注</label>
                 <input id="pf-note" placeholder="用途说明（可选）"></div>
               <div class="field" style="align-self:end"><button class="btn" id="pf-save"><svg width="15" height="15"><use href="#i-save"/></svg>保存方案</button></div>
@@ -2801,10 +2802,20 @@ function renderProfiles() {
   });
 }
 
+/* 方案名查重：同名方案会被静默覆盖（saveProfile 直接 MkdirAll+copyFile），保存前预警 */
+$('#pf-name').addEventListener('input', () => {
+  const v = $('#pf-name').value.trim(), el = $('#pf-name-hint');
+  if (!v) { el.textContent = ''; el.className = 'auth-hint'; return; }
+  const dup = ((S.profiles && S.profiles.profiles) || []).find(x => x.name === v);
+  if (dup) fmtHint(el, false, '', `⚠ 将覆盖现有方案「${v}」${dup.created ? '（保存于 ' + fmtAbs(dup.created) + '）' : ''}`);
+  else fmtHint(el, true, '✓ 新方案名', '');
+});
+
 $('#pf-save').onclick = () => {
   const name = $('#pf-name').value.trim(), note = $('#pf-note').value.trim();
   if (!name) { toast('请填写方案名', 'err'); return; }
-  confirmDialog('保存配置方案', `把当前 fwknopd.conf + access.conf 快照保存为方案「<b>${esc(name)}</b>」？`, '保存',
+  const dup = ((S.profiles && S.profiles.profiles) || []).some(x => x.name === name);
+  confirmDialog('保存配置方案', `把当前 fwknopd.conf + access.conf 快照保存为方案「<b>${esc(name)}</b>」？${dup ? '<br><b style="color:var(--red)">同名方案已存在，其快照将被覆盖！</b>' : ''}`, '保存',
     async () => {
       try {
         const r = await api('/api/profiles/save', { method:'POST',
