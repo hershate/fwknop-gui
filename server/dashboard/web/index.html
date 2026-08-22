@@ -1742,6 +1742,13 @@ function renderEventChips() {
 }
 
 function renderEvents() {
+  /* 筛选状态持久化：刷新/重开页面后恢复（所有变更路径都会经过本函数） */
+  try {
+    localStorage.setItem('fwknop-ev-filters', JSON.stringify({
+      q: S.evQuery || '', filter: S.evFilter || 'all', time: S.evTime || 'all',
+      from: S.evFrom || '', to: S.evTo || '',
+    }));
+  } catch (e) {}
   syncSearchClear();
   if (S.evPage === 0 && S.evFilter === 'all' && !S.evQuery) $('#ev-new-pill').style.display = 'none';
   renderEventChips();
@@ -2526,6 +2533,18 @@ $('#tofu-search').oninput = e => { S.tofuQuery = e.target.value.trim(); renderTO
 $('#users-search').oninput = e => { S.usersQuery = e.target.value.trim(); renderUsers(); };
 S.usersSort = localStorage.getItem('fwknop-users-sort') || 'conf';
 S.evTimeAbs = !!localStorage.getItem('fwknop-ev-timeabs');
+/* 恢复上次的事件筛选（搜索词 / 类型芯片 / 时间范围），保持排查上下文 */
+try {
+  const ef = JSON.parse(localStorage.getItem('fwknop-ev-filters') || '{}');
+  if (ef.q) { S.evQuery = ef.q; $('#event-search').value = ef.q; }
+  if (ef.filter && ef.filter !== 'all') S.evFilter = ef.filter;
+  if (ef.time && ef.time !== 'all') {
+    S.evTime = ef.time; $('#ev-time').value = ef.time;
+    $('#ev-custom').style.display = ef.time === 'custom' ? 'inline-flex' : 'none';
+    if (ef.from) { S.evFrom = ef.from; $('#ev-from').value = ef.from; }
+    if (ef.to) { S.evTo = ef.to; $('#ev-to').value = ef.to; }
+  }
+} catch (e) {}
 $('#users-sort').value = S.usersSort;
 $('#users-sort').onchange = e => {
   S.usersSort = e.target.value;
