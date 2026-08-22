@@ -1444,11 +1444,19 @@ function renderSummary() {
     .reduce((s,e) => s + counterVal(c,e), 0);
   const last = (S.events && S.events[0]) ? `${esc(evMeta(S.events[0].event).label)} · ${fmtAgo(S.events[0].time)}` : '暂无事件';
   const pct = n => total ? (n/total*100).toFixed(1) + '%' : '—';
+  /* 比率语义着色：放行率高=绿，拦截率高=红，中间琥珀 */
+  const pctC = (n, goodHigh) => {
+    if (!total) return '—';
+    const r = n / total * 100;
+    const cls = goodHigh ? (r >= 50 ? 'var(--green)' : r >= 20 ? 'var(--amber)' : 'var(--red)')
+                         : (r <= 10 ? 'var(--green)' : r <= 30 ? 'var(--amber)' : 'var(--red)');
+    return `<span style="color:${cls}">${r.toFixed(1)}%</span>`;
+  };
   /* [标签, 值, 点击跳转动作（可选）]——可下钻的项悬停高亮 */
   const rows = [
     ['累计 SPA 包', fmtNum(total), () => { S.evFilter='all'; S.evQuery=''; S.evPage=0; $('#event-search').value=''; showPage('events'); }],
-    ['放行率', pct(open), () => { S.evFilter='open'; S.evPage=0; showPage('events'); }],
-    ['拦截 / 异常率', pct(blocked), () => { S.evFilter='bad'; S.evPage=0; showPage('events'); }],
+    ['放行率', pctC(open, true), () => { S.evFilter='open'; S.evPage=0; showPage('events'); }],
+    ['拦截 / 异常率', pctC(blocked, false), () => { S.evFilter='bad'; S.evPage=0; showPage('events'); }],
     ['TOFU 绑定数', fmtNum(counterVal(c,'tofu_bind')), () => showPage('tofu')],
     ['最近事件', last, () => showPage('events')],
     ['指标生成时间', S.metrics.generated_at ? new Date(S.metrics.generated_at).toLocaleTimeString('zh-CN',{hour12:false}) : '—', null],
