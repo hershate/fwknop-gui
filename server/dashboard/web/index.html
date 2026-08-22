@@ -1917,12 +1917,18 @@ function infoModal(title, text, isErr) {
 
 /* ==================== 服务控制 ==================== */
 async function svcAction(action, label, done) {
+  /* 执行期间禁用全部服务按钮并显示进度，防重复点击 */
+  const btns = ['svc-start','svc-stop','svc-restart','svc-reload','svc-validate','svc-fwlist'].map(id => $('#'+id));
+  btns.forEach(b => b.disabled = true);
+  $('#svc-hint').textContent = label + '执行中，请稍候…';
   try {
     const r = await api('/api/service/' + action, { method:'POST' });
     const out = (r.output || '') + (r.error ? '\n错误：' + r.error : '');
     if (r.error) { toast(label + '失败', 'err'); infoModal(label + ' — 失败', out, true); }
     else { toast(label + '成功', 'ok'); if (out.trim()) infoModal(label, out); }
   } catch (e) {}
+  btns.forEach(b => b.disabled = !S.writeEnabled);
+  $('#svc-hint').textContent = '';
   loadOverview(); if (done) done();
 }
 $('#svc-start').onclick = () =>
