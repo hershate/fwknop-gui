@@ -1935,7 +1935,9 @@ function renderEvents() {
           <div><div class="k">目标端口</div><div class="v">${e.target_port?`<span class="cp-cell" data-portq="${e.target_port}" title="点击按目标端口 ${e.target_port} 筛选">${e.target_port}</span>`:'—'}</div></div>
           <div><div class="k">原因（原始）</div><div class="v">${e.reason?`<span class="cp-cell" data-cp="${esc(e.reason)}">${esc(e.reason)}</span>`:'—'}</div></div>
           <div><div class="k">原因（中文）</div><div class="v">${esc(reasonZh(e.reason))}</div></div>
-          <div style="align-self:end"><button class="btn ghost small" data-evjson="${esc(key)}" title="复制该事件的完整 JSON（排障/上报用）">${icon('i-copy',12)} 复制原始 JSON</button></div>
+          <div style="align-self:end"><button class="btn ghost small" data-evjson="${esc(key)}" title="复制该事件的完整 JSON（排障/上报用）">${icon('i-copy',12)} 复制原始 JSON</button>
+          ${(() => { const bd = e.device_id && ((S.tofu && S.tofu.bindings) || []).find(x => x.device_id === e.device_id);
+            return bd && S.writeEnabled ? ` <button class="btn ghost small" data-evub="${esc(bd.stanza_key)}" data-dev="${esc(e.device_id)}" title="该设备当前已绑定 TOFU，点击直接解绑">${icon('i-trash',12)} 解绑该设备</button>` : ''; })()}</div>
         </div></td></tr>`;
       return `<tr class="ev-click${BAD_EVTS.includes(e.event) ? ' ev-bad' : ''}" data-key="${esc(key)}" tabindex="0" role="button" aria-expanded="${open?'true':'false'}" title="点击或 Enter 展开/收起完整详情">
         <td class="mono tmtoggle" title="点击切换相对/绝对时间" style="white-space:nowrap;color:var(--muted);cursor:pointer">${S.evTimeAbs ? fmtAbs(e.time) : fmtAgo(e.time)}</td>
@@ -1976,6 +1978,10 @@ function renderEvents() {
       $('#users-search').value = S.usersQuery;
       showPage('users');
       toast(tgt ? `已定位授权「${tgt.name || ('#' + b.dataset.evstanza)}」` : '该 stanza 已不存在于当前配置', tgt ? 'ok' : 'err', 2000);
+    });
+    $$('#events-body [data-evub]').forEach(b => b.onclick = ev => {
+      ev.stopPropagation();
+      unbindDevice(b.dataset.evub, b.dataset.dev);
     });
     $$('#events-body [data-devtofu]').forEach(b => b.onclick = ev => {
       ev.stopPropagation();
@@ -2775,24 +2781,26 @@ function renderTOFU() {
     $('#event-search').value = S.evQuery;
     showPage('events');
   });
-  $$('#tofu-body [data-ub]').forEach(b => b.onclick = () => {
-    /* 确认框附该设备最近敲门摘要，辅助判断是否误删活跃设备 */
-    const last = (S.events || []).find(e => e.device_id === b.dataset.dev);
-    const lastHtml = last ? `<br><span class="hint">最近敲门：${evMeta(last.event).label} · ${fmtAgo(last.time)} · ${esc(last.src_ip || '')}</span>`
-      : '<br><span class="hint">该设备近期无敲门记录</span>';
-    confirmDialog('解除设备绑定', `确定解绑设备<br><code>${esc(b.dataset.dev)}</code> 吗？${lastHtml}<br>
-      解绑后该设备需重新完成 TOFU 首用绑定（或加入指纹白名单）才能继续敲门。`,
-      '解绑', async () => {
-        try {
-          const fd = new FormData();
-          fd.append('stanza_key', b.dataset.ub); fd.append('device_id', b.dataset.dev);
-          const r = await api('/api/admin/tofu/unbind', { method:'POST', body: fd });
-          if (r.error) toast('解绑失败：' + esc(r.error), 'err');
-          else { toast('设备已解绑：若授权启用了 TOFU 宽限期，该设备下次敲门会自动重新绑定；否则需加入指纹白名单', 'ok', 8000); loadTOFU(); }
-        } catch (e) {}
-      });
-  });
+  $$('#tofu-body [data-ub]').forEach(b => b.onclick = () => unbindDevice(b.dataset.ub, b.dataset.dev));
 }
+/* 单台解绑（TOFU 表与事件详情共用）：确认框附最近敲门摘要，防误删活跃设备 */
+function unbindDevice(sk, dev) {
+  const last = (S.events || []).find(e => e.device_id === dev);
+  const lastHtml = last ? `<br><span class="hint">最近敲门：${evMeta(last.event).label} · ${fmtAgo(last.time)} · ${esc(last.src_ip || '')}</span>`
+    : '<br><span class="hint">该设备近期无敲门记录</span>';
+  confirmDialog('解除设备绑定', `确定解绑设备<br><code>${esc(dev)}</code> 吗？${lastHtml}<br>
+    解绑后该设备需重新完成 TOFU 首用绑定（或加入指纹白名单）才能继续敲门。`,
+    '解绑', async () => {
+      try {
+        const fd = new FormData();
+        fd.append('stanza_key', sk); fd.append('device_id', dev);
+        const r = await api('/api/admin/tofu/unbind', { method:'POST', body: fd });
+        if (r.error) toast('解绑失败：' + esc(r.error), 'err');
+        else { toast('设备已解绑：若授权启用了 TOFU 宽限期，该设备下次敲门会自动重新绑定；否则需加入指纹白名单', 'ok', 8000); loadTOFU(); }
+      } catch (e) {}
+    });
+}
+
 /* 批量解绑：勾选多台设备后一次性解绑 */
 function updateTofuBatchBar() {
   const n = S.tofuSel ? S.tofuSel.size : 0;
