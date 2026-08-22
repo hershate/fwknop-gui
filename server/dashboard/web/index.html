@@ -2061,15 +2061,21 @@ function renderUsers() {
     (q ? `匹配 ${st.length} / ${all.length} 个授权 · ` : `${all.length} 个授权 · `) +
     (d.file.exists ? '更新于 ' + fmtAbs(d.file.mtime) : '文件不存在');
   const dis = d.disabled || [];
+  /* 禁用区可折叠：>5 条默认收起，减少长页干扰；折叠状态跟随会话 */
+  if (S.disCollapsed === undefined) S.disCollapsed = dis.length > 5;
   const disHtml = dis.length ? `
     <div style="margin-top:6px">
-      <div class="form-sec">已禁用的授权（${dis.length}）</div>
+      <div class="form-sec" id="dis-toggle" style="cursor:pointer;user-select:none" title="点击折叠/展开">
+        <span style="display:inline-block;transition:transform .15s;transform:rotate(${S.disCollapsed ? 0 : 90}deg)">▸</span>
+        已禁用的授权（${dis.length}）</div>
+      <div id="dis-list" style="display:${S.disCollapsed ? 'none' : ''}">
       ${dis.map(x => `<div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border-soft)">
         <span style="color:var(--muted)">${icon('i-lock',15)}</span>
         <b>${esc(x.name || '（未知）')}</b>
         <span class="hint">第 ${x.start_line}–${x.end_line} 行 · 已注释禁用</span>
         ${S.writeEnabled ? `<button class="btn ghost small" style="margin-left:auto" data-enable="${esc(x.name)}">${icon('i-play',13)}恢复</button>` : ''}
       </div>`).join('')}
+      </div>
     </div>` : '';
   if (!st.length) {
     $('#users-body').innerHTML = `<div class="empty">${icon('i-users',40)}
@@ -2116,6 +2122,8 @@ function renderUsers() {
     S.tofuQuery = b.dataset.tofuQ; const ts = $('#tofu-search'); if (ts) ts.value = S.tofuQuery;
     showPage('tofu');
   });
+  const dt = $('#dis-toggle');
+  if (dt) dt.onclick = () => { S.disCollapsed = !S.disCollapsed; renderUsers(); };
   $$('#users-body [data-uev]').forEach(b => b.onclick = () => {
     S.evQuery = b.dataset.uev; S.evPage = 0; S.evFilter = 'all';
     $('#event-search').value = S.evQuery;
