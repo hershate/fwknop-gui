@@ -204,7 +204,7 @@ select.ctl, input.ctl {
 .ev-kv { display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:6px 18px; font-size:12.5px; }
 .ev-kv .k { color:var(--faint); font-size:11.5px; margin-bottom:1px; }
 .ev-kv .v { font-family:var(--mono); word-break:break-all; }
-.cp-cell:hover { color:var(--accent); border-bottom-color:var(--accent); }
+.cp-cell:hover, .cp-cell:focus-visible { color:var(--accent); border-bottom-color:var(--accent); outline:none; }
 
 .grid-status { display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:14px; margin-bottom:20px; }
 .stat-card {
@@ -1333,6 +1333,21 @@ document.addEventListener('touchend', e => {
     sb.classList.remove('open'); $('#scrim').classList.remove('show');
   }
 }, { passive: true });
+
+/* .cp-cell 点击复制全局键盘可达：模板生成点多，用 MutationObserver 统一
+   补 tabindex，Enter/空格经事件委托触发其 click（复制/筛选均生效） */
+new MutationObserver(muts => {
+  for (const m of muts) m.addedNodes.forEach(n => {
+    if (n.nodeType !== 1) return;
+    if (n.matches && n.matches('.cp-cell:not([tabindex])')) n.tabIndex = 0;
+    if (n.querySelectorAll) n.querySelectorAll('.cp-cell:not([tabindex])').forEach(el => { el.tabIndex = 0; });
+  });
+}).observe(document.body, { childList: true, subtree: true });
+document.addEventListener('keydown', ev => {
+  if (ev.key !== 'Enter' && ev.key !== ' ') return;
+  const el = ev.target && ev.target.closest ? ev.target.closest('.cp-cell') : null;
+  if (el) { ev.preventDefault(); el.click(); }
+});
 
 /* 全局快捷键：1-7 切页，/ 聚焦当前页搜索，r 手动刷新，Esc 关闭弹窗。
    输入框/下拉聚焦时或弹窗打开（除 Esc 外）不触发。 */
