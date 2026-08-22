@@ -3021,7 +3021,7 @@ function renderProfiles() {
         const r = await api('/api/profiles/apply', { method:'POST',
           headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
         if (r.error) { toast('切换失败（配置未变）', 'err'); infoModal('方案切换 — 失败', r.output + '\n' + r.error, true); }
-        else { toast(`已切换到方案「${esc(name)}」`, 'ok'); infoModal('方案切换 — 完成', r.output); loadConfig(); loadUsers(); }
+        else { toast(`已切换到方案「${esc(name)}」`, 'ok'); infoModal('方案切换 — 完成', r.output); loadConfig(); loadUsers(); loadProfiles(); }
       } catch (e) {}
     };
   });
