@@ -2451,12 +2451,20 @@ function renderConfig() {
     const g = (CONF_META[e.key] || ['其他'])[0];
     (groups[g] = groups[g] || []).push(e);
   }
+  /* 分组可折叠，折叠状态持久化 */
+  if (!S.confCollapsed) {
+    try { S.confCollapsed = new Set(JSON.parse(localStorage.getItem('fwknop-conf-groups') || '[]')); }
+    catch (e) { S.confCollapsed = new Set(); }
+  }
   let html = '';
   for (const g of CONF_GROUP_ORDER) {
     const list = groups[g];
     if (!list) continue;
-    html += `<div class="form-sec">${g}</div>
-      <table class="tb"><thead><tr><th style="width:250px">指令</th><th style="width:280px">当前值</th><th>说明</th></tr></thead><tbody>` +
+    const collapsed = S.confCollapsed.has(g);
+    html += `<div class="form-sec conf-grp" data-grp="${esc(g)}" style="cursor:pointer;user-select:none" title="点击折叠/展开">
+        <span style="display:inline-block;transition:transform .15s;${collapsed?'':'transform:rotate(90deg)'}">▸</span> ${esc(g)}
+        <span class="hint" style="font-weight:400">${list.length} 项</span></div>
+      <table class="tb" style="${collapsed?'display:none':''}"><thead><tr><th style="width:250px">指令</th><th style="width:280px">当前值</th><th>说明</th></tr></thead><tbody>` +
       list.map(e => `<tr>
         <td class="mono" style="color:var(--accent);font-weight:600">${esc(e.key)}</td>
         <td class="mono">${esc(e.value)}</td>
@@ -2464,6 +2472,13 @@ function renderConfig() {
       </tr>`).join('') + `</tbody></table>`;
   }
   $('#config-body').innerHTML = html || `<div class="empty"><div class="t">配置为空</div></div>`;
+  /* 分组折叠切换 + 持久化 */
+  $$('#config-body .conf-grp').forEach(h => h.onclick = () => {
+    const g = h.dataset.grp;
+    if (S.confCollapsed.has(g)) S.confCollapsed.delete(g); else S.confCollapsed.add(g);
+    localStorage.setItem('fwknop-conf-groups', JSON.stringify([...S.confCollapsed]));
+    renderConfig();
+  });
 }
 $('#raw-toggle').onclick = () => {
   S.rawMode = !S.rawMode;
