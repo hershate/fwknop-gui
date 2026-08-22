@@ -57,6 +57,42 @@ fwknop 使用 Rijndael 分组密码或 GnuPG 及其非对称密码来加密 SPA 
 PBKDF1 密钥派生算法生成，并使用 CBC 模式。如果选择 GnuPG 方式，加密密钥
 则来自 GnuPG 密钥环。
 
+## 本 fork（Zurker）的功能特性
+
+在上游 2.6.11 功能之上，本 fork 新增了以下能力（全部有测试覆盖，
+`./test/run_fork_tests.sh` 当前 **61/61 PASS**）：
+
+ * **TOTP 动态端口跳变**：SPA 包的目的端口由当前 TOTP 值（RFC 6238，
+   HMAC-SHA256，30 秒步长）映射到配置端口段。客户端用 `--totp-port`
+   `--totp-seed` `--port-range`（或 rc 指令 `USE_TOTP_PORT`/
+   `TOTP_SEED_BASE64`/`PORT_RANGE`）；服务端用 `PCAP_PORT_RANGE`
+   （pcap 模式下自动生成 `udp dst portrange` BPF 过滤器）和
+   access.conf 的 `TOTP_SEED_BASE64`/`TOTP_PORT_RANGE`/
+   `TOTP_PORT_DIGITS`/`REQUIRE_TOTP_PORT_MATCH`。
+ * **SPA 协议 4.0.0 + 设备身份**：SPA 包可携带可选的 device_id 末字段
+   （`--device-id` / rc 指令 `DEVICE_ID`），完整向后兼容 v3 客户端。
+ * **设备指纹 + TOFU 绑定**：access.conf 支持 `FINGERPRINT`（多行白名单）、
+   `REQUIRE_FINGERPRINT`、`FINGERPRINT_TOFU_TIMEOUT`（TOFU 首用绑定宽
+   限期）；绑定持久化在 `<run_dir>/fwknop_tofu.state`。
+ * **结构化审计与指标**：fwknopd 输出 JSON 行审计日志
+   （`<run_dir>/fwknopd_audit.log`，8 类事件）与 Prometheus 指标
+   （`<run_dir>/fwknopd.metrics`），由 `ENABLE_AUDIT`/`AUDIT_FILE`/
+   `METRICS_FILE` 控制。
+ * **服务端管理工具 `fwknopd-admin`**：签发授权（密钥 + TOTP 种子 +
+   指纹 + QR + 加密凭证文件）、`user list`（密钥掩码）/`user rm`
+   （可逆禁用+备份+热加载）/`user qr`、`tofu list/unbind`、`lint`、
+   `status`。
+ * **客户端易用性子命令**：`fwknop setup`（交互向导）、`fwknop knock
+   <配置名>`、`fwknop lint`、`fwknop import <fwknop://URI|cred.json|qr.png>`、
+   `fwknop profile list`。
+ * **全中文 WebUI 运维面板**（`server/dashboard/`，单二进制零依赖）：
+   服务启停/重启/热加载（强制配置预检）、fwknopd.conf 与 access.conf
+   stanza 可视化编辑（预检→备份→原子替换→SIGHUP）、配置方案一键切换、
+   审计导出、TOFU 解绑。
+ * **Windows 便携版托盘客户端**（`client/tray/`）与 **TUI 管理外壳**
+   （`extras/tui/`）。
+ * **一键演示**：`./scripts/quickstart.sh` 构建并拉起完整自包含演示。
+
 ## 使用场景
 使用单包授权（SPA）或其安全性堪忧的「表亲」端口敲门（PK）的人，通常是要
 访问与 SPA/PK 软件部署在同一系统上的 SSHD。也就是说，主机上的防火墙对所有
@@ -181,12 +217,15 @@ fwknop 项目以 **GNU 通用公共许可证（GPL v2）**或（由你选择的�
 [`note/release/2.1.0.md`](note/release/2.1.0.md)。
 
 ## 当前状态
-本 README 描述的是 fwknop 项目截至 2013 年 7 月发布的 2.5 版本时的状态
-（上游原文如此——本 fork 的基线为 2.6.11，fork 的演进见 `note/` 目录）。
-目前项目包含防火墙敲门操作符库 `libfko` 的实现，以及 fwknop 客户端与服务
-端应用程序。该库为其他 fwknop 组件所使用的单包授权（SPA）数据提供 API 与
-后端功能。它也可以被其他需要 SPA 功能的程序使用（示例见 `perl` 目录中的
-FKO perl 模块，`python` 目录中也有 python 绑定）。
+本仓库是上游 2.6.11 基线 + Zurker fork 二次开发的当前状态（fork 各版本
+演进见 [`note/release/`](note/release/)：2.1.0 零信任硬化与服务端管理工具、
+2.2.0 WebUI 重设计汉化、2.3.0 WebUI 全功能化）。
+
+上游原文对「当前状态」的描述（截至 2013 年 7 月的 2.5 版本）：项目包含
+防火墙敲门操作符库 `libfko` 的实现，以及 fwknop 客户端与服务端应用程序。
+该库为其他 fwknop 组件所使用的单包授权（SPA）数据提供 API 与后端功能。
+它也可以被其他需要 SPA 功能的程序使用（示例见 `perl` 目录中的 FKO perl
+模块，`python` 目录中也有 python 绑定）。
 
 
 ## 升级
