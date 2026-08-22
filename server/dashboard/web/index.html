@@ -675,6 +675,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
                   <input name="server" list="server-history" placeholder="例如 203.0.113.10 或 vpn.example.com">
                   <datalist id="server-history"></datalist>
                   <div class="tip">写入客户端配置，客户端向该地址发 SPA 包</div>
+                  <div class="auth-hint" id="add-server-hint"></div>
                 </div>
                 <div class="field">
                   <label>允许访问端口</label>
@@ -1918,6 +1919,19 @@ $('#add-form')['port-range'].addEventListener('input', ev => {
   const m = v.match(/^(\d{1,5})-(\d{1,5})$/);
   const ok = m && +m[1] >= 1024 && +m[2] <= 65535 && +m[1] < +m[2];
   fmtHint(el, ok, '✓ 范围有效', '✗ 格式应为 30000-60000（1024-65535，起 < 止）');
+});
+
+$('#add-form').server.addEventListener('input', ev => {
+  const v = ev.target.value.trim(), el = $('#add-server-hint');
+  if (!v) { el.textContent = ''; el.className = 'auth-hint'; return; }
+  if (/^https?:\/\//i.test(v) || /\s/.test(v)) {
+    fmtHint(el, false, '', '✗ 只填地址本身（不含 http://、端口或空白）'); return;
+  }
+  const isV4 = /^(\d{1,3}\.){3}\d{1,3}$/.test(v) && v.split('.').every(x => +x <= 255);
+  const isHost = /^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$/.test(v) && v.length <= 253;
+  const isV6 = /^[0-9a-fA-F:]+$/.test(v) && v.includes(':');
+  fmtHint(el, isV4 || isHost || isV6, '✓ 地址格式有效',
+    '✗ 应为 IPv4 / IPv6 / 主机名（如 203.0.113.10 或 vpn.example.com）');
 });
 
 $('#add-form')['tofu-timeout'].addEventListener('input', ev => {
