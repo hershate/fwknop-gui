@@ -218,6 +218,8 @@ select.ctl, input.ctl {
   position:relative; overflow:hidden; transition:transform var(--trans), border-color var(--trans);
 }
 .tile:hover { transform:translateY(-2px); border-color:var(--border); }
+.tile-link { cursor:pointer; }
+.tile-link:hover { border-color:var(--accent); }
 .tile .lab { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); font-weight:500; }
 .tile .lab svg { width:14px; height:14px; }
 .tile .num { font-size:27px; font-weight:750; margin-top:5px; font-variant-numeric:tabular-nums; letter-spacing:-.5px; }
@@ -1100,11 +1102,15 @@ function renderTiles() {
   if (!S.metrics) return;
   $('#tiles').innerHTML = EVT_ORDER.map(e => {
     const m = evMeta(e), v = counterVal(S.metrics.counters, e);
-    return `<div class="tile ${m.tile}">
+    return `<div class="tile ${m.tile} tile-link" data-ev="${e}" title="点击查看「${m.label}」事件列表">
       <div class="lab">${icon(m.icon, 14)}${m.label}</div>
       <div class="num">${fmtNum(v)}</div>${sparkline(e)}
     </div>`;
   }).join('');
+  /* 点击计数卡直达事件页对应筛选 */
+  $$('#tiles .tile-link').forEach(t => t.onclick = () => {
+    S.evFilter = t.dataset.ev; S.evPage = 0; showPage('events');
+  });
 }
 
 function renderSummary() {
