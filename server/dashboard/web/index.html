@@ -823,6 +823,8 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="head">
             <h2>fwknopd 配置</h2><span class="sub" id="config-sub"></span>
             <div class="tools">
+              <button class="btn ghost small" id="conf-expand-all" title="展开全部分组">展开全部</button>
+              <button class="btn ghost small" id="conf-collapse-all" title="收起全部分组">收起全部</button>
               <button class="btn ghost small" id="conf-edit-btn" style="display:none"><svg width="14" height="14"><use href="#i-pencil"/></svg>编辑</button>
               <button class="btn ghost small" id="raw-toggle">查看原文</button>
             </div>
@@ -3051,6 +3053,17 @@ function renderConfig() {
     renderConfig();
   });
 }
+/* 分组批量展开/收起（选择持久化与单组切换共用同一存储） */
+$('#conf-expand-all').onclick = () => {
+  S.confCollapsed = new Set();
+  localStorage.setItem('fwknop-conf-groups', '[]');
+  renderConfig();
+};
+$('#conf-collapse-all').onclick = () => {
+  S.confCollapsed = new Set(CONF_GROUP_ORDER.filter(g => $('[data-grp="' + g + '"]')));
+  localStorage.setItem('fwknop-conf-groups', JSON.stringify([...S.confCollapsed]));
+  renderConfig();
+};
 $('#raw-toggle').onclick = () => {
   S.rawMode = !S.rawMode;
   $('#raw-toggle').textContent = S.rawMode ? '查看分组说明' : '查看原文';
