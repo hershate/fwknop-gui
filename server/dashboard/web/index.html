@@ -1827,7 +1827,7 @@ function renderEvents() {
         <td colspan="8"><div class="ev-kv">
           <div><div class="k">时间</div><div class="v"><span class="cp-cell" data-cp="${fmtAbs(e.time)}" title="点击复制绝对时间">${fmtAbs(e.time)}</span>（${fmtAgo(e.time)}）</div></div>
           <div><div class="k">事件类型</div><div class="v">${esc(e.event||'—')}（${m.label}）</div></div>
-          <div><div class="k">授权索引（stanza）</div><div class="v">${e.stanza ?? '—'}</div></div>
+          <div><div class="k">授权索引（stanza）</div><div class="v">${e.stanza ?? '—'}${e.stanza != null ? `<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-evstanza="${e.stanza}" title="在用户与授权页查看该 stanza">${icon('i-users',12)}</button>` : ''}</div></div>
           <div><div class="k">用户</div><div class="v">${e.user?`<span class="cp-cell" data-cp="${esc(e.user)}">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" title="查看该用户的全部事件">${icon('i-search',12)}</button>`:'—'}</div></div>
           <div><div class="k">设备指纹（完整）</div><div class="v">${e.device_id?`<span class="cp-cell" data-cp="${esc(e.device_id)}">${esc(e.device_id)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" title="查看该设备的全部事件">${icon('i-search',12)}</button><button class="icon-btn" style="padding:2px 5px;margin-left:2px" data-devtofu="${esc(e.device_id)}" title="查该设备的 TOFU 绑定状态">${icon('i-fp',12)}</button>`:'—'}</div></div>
           <div><div class="k">来源 IP</div><div class="v">${e.src_ip?`<span class="cp-cell" data-cp="${esc(e.src_ip)}">${esc(e.src_ip)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.src_ip)}" title="查看该 IP 的全部事件">${icon('i-search',12)}</button>`:'—'}</div></div>
@@ -1867,6 +1867,15 @@ function renderEvents() {
       S.evTimeAbs = !S.evTimeAbs;
       localStorage.setItem('fwknop-ev-timeabs', S.evTimeAbs ? '1' : '');
       renderEvents();
+    });
+    $$('#events-body [data-evstanza]').forEach(b => b.onclick = ev => {
+      ev.stopPropagation();
+      const st = (S.users && S.users.stanzas) || [];
+      const tgt = st[+b.dataset.evstanza - 1];
+      S.usersQuery = tgt ? (tgt.name || '') : '';
+      $('#users-search').value = S.usersQuery;
+      showPage('users');
+      toast(tgt ? `已定位授权「${tgt.name || ('#' + b.dataset.evstanza)}」` : '该 stanza 已不存在于当前配置', tgt ? 'ok' : 'err', 2000);
     });
     $$('#events-body [data-devtofu]').forEach(b => b.onclick = ev => {
       ev.stopPropagation();
