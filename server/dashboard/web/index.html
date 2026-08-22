@@ -537,7 +537,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
     <header id="topbar">
       <button class="icon-btn" id="burger" title="菜单"><svg><use href="#i-menu"/></svg></button>
       <h1 id="page-title">概览</h1>
-      <span class="pill dim" id="daemon-pill"><span class="dot"></span>检测中…</span>
+      <span class="pill dim" id="daemon-pill" style="cursor:pointer" title="点击查看服务控制"><span class="dot"></span>检测中…</span>
       <div class="right">
         <div class="refresh-ctl">
           <label class="switch" title="自动刷新">
@@ -559,7 +559,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
 
       <!-- ======== 概览 ======== -->
       <section class="page active" id="page-overview">
-        <div class="card">
+        <div class="card" id="svc-card">
           <div class="head">
             <h2>服务控制</h2><span class="sub" id="svc-sub">fwknopd 进程管理</span>
             <div class="tools"><span class="hint" id="svc-uptime"></span></div>
@@ -1285,6 +1285,10 @@ function restartTimer() {
 }
 $('#auto-sw').onchange = e => { S.auto = e.target.checked; restartTimer(); };
 $('#ivl-sel').onchange = e => { S.ivl = +e.target.value; restartTimer(); };
+$('#daemon-pill').onclick = () => {
+  const go = () => $('#svc-card').scrollIntoView({ behavior:'smooth', block:'start' });
+  if (S.page === 'overview') go(); else { showPage('overview'); setTimeout(go, 60); }
+};
 $('#refresh-btn').onclick = () => {
   const b = $('#refresh-btn');
   if (b.classList.contains('spinning')) return;  /* 防连点 */
