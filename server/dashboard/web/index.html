@@ -1683,14 +1683,20 @@ function renderAbout() {
 }
 
 /* ==================== 通用模态 ==================== */
+let modalGuard = null;  /* 弹窗关闭守卫（如未保存修改确认），null 表示无 */
 function openModal(html, wide) {
   const root = $('#modal-root');
+  modalGuard = null;
   root.innerHTML = `<div class="modal" role="dialog" aria-modal="true" ${wide ? 'style="width:min(760px,94vw)"' : ''}>${html}</div>`;
   root.classList.add('show');
-  root.onclick = e => { if (e.target === root) root.classList.remove('show'); };
+  root.onclick = e => { if (e.target === root) closeModal(); };
   return root;
 }
-function closeModal() { $('#modal-root').classList.remove('show'); }
+function closeModal() {
+  if (modalGuard && !modalGuard()) return;
+  modalGuard = null;
+  $('#modal-root').classList.remove('show');
+}
 function infoModal(title, text, isErr) {
   openModal(`<h3>${title}</h3>
     <pre class="out-pre" style="max-height:50vh;${isErr?'border-color:var(--red)':''}">${esc(text || '（无输出）')}</pre>
@@ -1769,6 +1775,9 @@ function openStanzaEditor(index) {
       <button class="btn ghost" id="se-cancel">取消</button>
       <button class="btn" id="se-save">${icon('i-save',14)}保存并生效</button>
     </div>`, true);
+  let seDirty = false;
+  $('#modal-root').oninput = () => { seDirty = true; };  /* oninput 赋值覆盖，重复打开不累积监听器 */
+  modalGuard = () => !seDirty || confirm('授权编辑有未保存的修改，确定丢弃吗？');
   $('#se-cancel').onclick = closeModal;
   $('#se-save').onclick = async () => {
     const fields = {};
@@ -1779,6 +1788,7 @@ function openStanzaEditor(index) {
     try {
       const r = await api('/api/config/stanza', { method:'POST',
         headers:{'Content-Type':'application/json'}, body: JSON.stringify({ index, fields }) });
+      modalGuard = null;
       closeModal();
       if (r.error) { toast('保存失败', 'err'); infoModal('编辑授权 — 失败', r.output + '\n' + r.error, true); }
       else { toast('授权已更新', 'ok'); loadUsers(); }
