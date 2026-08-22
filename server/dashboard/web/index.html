@@ -229,7 +229,7 @@ select.ctl, input.ctl {
 }
 .tile:hover { transform:translateY(-2px); border-color:var(--border); }
 .tile-link { cursor:pointer; }
-.tile-link:hover { border-color:var(--accent); }
+.tile-link:hover, .tile-link:focus-visible { border-color:var(--accent); outline:none; }
 .btn.dirty { box-shadow:0 0 0 2px var(--amber); }
 .ce-mod { box-shadow:inset 3px 0 0 var(--amber); padding-left:8px; border-radius:4px; }
 .ce-new { box-shadow:inset 3px 0 0 var(--green); padding-left:8px; border-radius:4px; }
@@ -1655,14 +1655,18 @@ function renderTiles() {
     /* 与上一轮数值比对：增长时脉冲提示（首次渲染不闪） */
     const bump = e in S.tilePrev && v > S.tilePrev[e] ? ' num-bump' : '';
     S.tilePrev[e] = v;
-    return `<div class="tile ${m.tile} tile-link" data-ev="${e}" title="点击查看「${m.label}」事件列表">
+    return `<div class="tile ${m.tile} tile-link" data-ev="${e}" tabindex="0" role="button" title="点击查看「${m.label}」事件列表">
       <div class="lab">${icon(m.icon, 14)}${m.label}</div>
       <div class="num${bump}">${fmtNum(v)}</div>${sparkline(e)}
     </div>`;
   }).join('');
-  /* 点击计数卡直达事件页对应筛选 */
-  $$('#tiles .tile-link').forEach(t => t.onclick = () => {
-    S.evFilter = t.dataset.ev; S.evPage = 0; showPage('events');
+  /* 点击/键盘（Enter/空格）计数卡直达事件页对应筛选 */
+  $$('#tiles .tile-link').forEach(t => {
+    const go = () => { S.evFilter = t.dataset.ev; S.evPage = 0; showPage('events'); };
+    t.onclick = go;
+    t.onkeydown = ev => {
+      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); go(); }
+    };
   });
 }
 
