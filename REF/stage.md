@@ -199,8 +199,8 @@ v4 往返/v3 兼容/timeout+device_id 单测 **33/33 PASS**（`REF/build/test_de
 ### 阶段 5+ —— 透明代理 / GUI / 运维面板（大型 greenfield / 混合）
 - 透明代理（`client/proxy/`，新目录）：Linux 用 iptables/nftables REDIRECT 或 LD_PRELOAD；Windows 用 SOCKS5 或 WFP callout。
 - GUI：greenfield（Qt 等）。
-- 运维 Web 面板：依赖阶段 4 的服务端审计/指标（`<run_dir>/fwknopd_audit.log` + `fwknopd.metrics` 已就绪），可用 Go/Python 读这两个文件。
-- TUI/WebUI 管理壳：包装 `fwknopd-admin`（写操作复用 CLI）。
+- ✅ 运维 Web 面板（2.2.0）：Go 单二进制、完全汉化六页面板（概览/事件/用户/TOFU/配置/关于），管理闭环（签发→列表→撤销→解绑）可用。
+- ✅ TUI/WebUI 管理壳：包装 `fwknopd-admin`（2.2.0 起 CLI 命令集完整：user add/list/rm/qr、tofu list/unbind、lint、status）。
 - 其余 CLI：`fwknop profile {add|list|use|remove}`、`fwknop status`（时钟偏移）、错误码人话翻译。
 
 ---
@@ -224,6 +224,7 @@ v4 往返/v3 兼容/timeout+device_id 单测 **33/33 PASS**（`REF/build/test_de
 ---
 
 ## 变更日志
+- 2026-08-23（2.2.0）：**WebUI 全面重设计 + 服务端管理闭环**。`fwknopd-admin` 占位命令全部落地：`user list`（密钥掩码）/`user rm`（注释禁用+备份+SIGHUP）/`user qr`（URI 重建+QR）/`lint`（一致性检查）/`tofu unbind`（备份+SIGHUP）；`user add` 输出带 `### fwknopd-admin user:` 名称标记（`d83423c4`）。dashboard 后端扩展：`/api/overview|users|config`、结构化 `/api/tofu`、全选项 add/rm/unbind 包装、安全响应头（`6fb9234f`）；前端重设计为完全汉化六页面板（侧边栏：概览/事件/用户/TOFU/配置/关于；明暗主题、自动刷新可暂停、筛选/搜索/分页、迷你趋势、骨架屏/空状态/toast/二次确认）（`e2f1ea99`）。回归 **44/44 PASS**。
 - 2026-08-13（续）：**完整上游测试套件验证**。`test/test-fwknop.pl` 全套 **692/34/726** 通过（103 分钟，fuzzing 9/0/9）。真实端到端 SPA 交换（[client+server] 类）全通过——`fw_rule_created=1`、iptables 实际安装 `ACCEPT tcp dpt:22 /* _exp_<ts> */` 并到期移除。34 项失败分类：11 项 pcap 测试因初次 `--enable-udp-server` 构建排除 pcap（pcap 构建重跑 17/4/21 通过，含 portrange filter 验证 PCAP_PORT_RANGE 无回归）；其余环境相关（hardening/interface/raw-socket/NAT/fko-wrapper）。**test 28 绑定修复**（`d368f761`）：device_id 错误码 + 多处漂移，从 libfko 重建 perl/python 绑定 143 个权威值。Fork 回归 27/27（系统工具链）。**结论：Stage 2/4/5+ 零回归**。
 - 2026-08-13：**阶段 2/4/6/5+ 在 Linux 实现并验证**。基线构建修复（`lib/Makefile.am` fko_utests LDADD 同目录相对引用）。阶段 2 `PCAP_PORT_RANGE`→`udp dst portrange` BPF（commit `6ade35dd`）。阶段 4a 指纹白名单+TOFU+`REQUIRE_TOTP_PORT_MATCH`（`46c683e2`）。阶段 4b 结构化 JSON 审计+Prometheus 指标（`ec205b82`）。阶段 4c `fwknopd-admin` CLI + 凭证/QR 发放 + `fko_encrypt_buf`（`4cf4386a`）。阶段 4d 客户端 `fwknop import`（`83d93479`）。阶段 6 无 root 回归脚本 `test/run_fork_tests.sh`（`7440971f`）。阶段 5+：WebUI 运维面板 Go（`8b5b62a8`）、TUI 管理壳（`2b692138`）、`fwknop profile list`（`395d4d48`）。回归 27/27 PASS。凭证加密改为复用 rij_encrypt 的 AES-256-CBC（非新原语，比方案 v2.1 的 scrypt+AES-GCM 更务实）。
 - 2026-08-13：细化服务端管理易用性方案（用户决策：CLI 先行 / 凭证默认加密 / TOFU 默认启用）——`fwknopd-admin` CLI、授权 QR（`fwknop://`）、凭证文件（JSON v1，scrypt+AES-GCM）、TOFU 首次使用绑定；方案文档 v2.0 → v2.1（§7.6/附录 E）；阶段 4 升级为「零信任硬化 + 审计/指标 + 服务端管理工具」。
