@@ -613,7 +613,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
                 <option value="1h">最近 1 小时</option>
                 <option value="today">今日</option>
               </select>
-              <span class="srch-wrap"><input class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因…" style="width:230px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+              <span class="srch-wrap"><input class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口…" style="width:230px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
               <button class="btn ghost small" id="ev-csv" title="把当前筛选结果导出为 CSV（可用表格软件打开）"><svg width="14" height="14"><use href="#i-download"/></svg>导出筛选 CSV</button>
               <a class="btn ghost small" href="/api/audit/download" download title="下载完整审计日志（JSONL）"><svg width="14" height="14"><use href="#i-download"/></svg>导出原始</a>
             </div>
@@ -1623,7 +1623,9 @@ function filteredEvents() {
       (e.user||'').toLowerCase().includes(q) ||
       (e.src_ip||'').toLowerCase().includes(q) ||
       (e.device_id||'').toLowerCase().includes(q) ||
-      (e.reason||'').toLowerCase().includes(q));
+      (e.reason||'').toLowerCase().includes(q) ||
+      String(e.spa_port||'').includes(q) ||
+      String(e.target_port||'').includes(q));
   }
   return evs;
 }
@@ -1701,11 +1703,18 @@ function renderEvents() {
         <td>${e.user ? `<span class="cp-cell" data-cp="${esc(e.user)}" title="点击复制用户名">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" title="查看该用户的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
         <td class="mono">${e.device_id ? `<span class="cp-cell" data-cp="${esc(e.device_id)}" title="点击复制完整指纹：${esc(e.device_id)}">${esc(e.device_id.slice(0,14))}…</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" title="查看该设备的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
         <td class="mono">${e.src_ip ? `<span class="cp-cell" data-cp="${esc(e.src_ip)}" title="点击复制来源 IP">${esc(e.src_ip)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.src_ip)}" title="查看该 IP 的全部事件">${icon('i-search',12)}</button>` : '—'}</td>
-        <td class="mono">${e.spa_port || '—'}</td>
-        <td class="mono">${e.target_port || '—'}</td>
+        <td class="mono">${e.spa_port ? `<span class="cp-cell" data-portq="${e.spa_port}" title="点击按 SPA 端口 ${e.spa_port} 筛选">${e.spa_port}</span>` : '—'}</td>
+        <td class="mono">${e.target_port ? `<span class="cp-cell" data-portq="${e.target_port}" title="点击按目标端口 ${e.target_port} 筛选">${e.target_port}</span>` : '—'}</td>
         <td class="hint" title="${e.reason ? '原始原因：' + esc(e.reason) : ''}">${esc(reasonZh(e.reason))}</td>
       </tr>${detail}`;
     }).join('');
+    $$('#events-body [data-portq]').forEach(c => c.onclick = ev => {
+      ev.stopPropagation();
+      S.evQuery = c.dataset.portq; S.evPage = 0;
+      $('#event-search').value = S.evQuery;
+      renderEvents();
+      toast(`已按端口 ${c.dataset.portq} 筛选`, 'ok', 1500);
+    });
     $$('#events-body .tmtoggle').forEach(c => c.onclick = ev => {
       ev.stopPropagation();
       S.evTimeAbs = !S.evTimeAbs;
