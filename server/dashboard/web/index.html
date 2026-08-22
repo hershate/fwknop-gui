@@ -2000,6 +2000,7 @@ function renderEvents() {
           <div><div class="k">原因（原始）</div><div class="v">${e.reason?`<span class="cp-cell" data-cp="${esc(e.reason)}">${esc(e.reason)}</span>`:'—'}</div></div>
           <div><div class="k">原因（中文）</div><div class="v">${esc(reasonZh(e.reason))}</div></div>
           <div style="align-self:end"><button class="btn ghost small" data-evjson="${esc(key)}" title="复制该事件的完整 JSON（排障/上报用）">${icon('i-copy',12)} 复制原始 JSON</button>
+          <button class="btn ghost small" data-evsum="${esc(key)}" title="复制一行中文摘要（聊天/工单用）">${icon('i-copy',12)} 复制摘要</button>
           ${(() => { const bd = e.device_id && ((S.tofu && S.tofu.bindings) || []).find(x => x.device_id === e.device_id);
             return bd && S.writeEnabled ? ` <button class="btn ghost small" data-evub="${esc(bd.stanza_key)}" data-dev="${esc(e.device_id)}" title="该设备当前已绑定 TOFU，点击直接解绑">${icon('i-trash',12)} 解绑该设备</button>` : ''; })()}</div>
         </div></td></tr>`;
@@ -2053,6 +2054,11 @@ function renderEvents() {
       $('#tofu-search').value = b.dataset.devtofu;
       showPage('tofu');
       toast('已在 TOFU 绑定中筛选该设备', 'ok', 1500);
+    });
+    $$('#events-body [data-evsum]').forEach(b => b.onclick = () => {
+      const ev2 = slice.find(x => `${x.time}|${x.event}|${x.src_ip||''}|${x.device_id||''}` === b.dataset.evsum);
+      if (!ev2) return;
+      copyText(`[${fmtAbs(ev2.time)}] ${evMeta(ev2.event).label}${ev2.user ? ' · 用户 ' + ev2.user : ''}${ev2.src_ip ? ' · 来自 ' + ev2.src_ip : ''}${ev2.target_port ? ' · 目标端口 ' + ev2.target_port : ''}${ev2.reason ? ' · ' + reasonZh(ev2.reason) : ''}`, '事件摘要 ');
     });
     $$('#events-body [data-evjson]').forEach(b => b.onclick = () => {
       const ev2 = slice.find(x => `${x.time}|${x.event}|${x.src_ip||''}|${x.device_id||''}` === b.dataset.evjson);
