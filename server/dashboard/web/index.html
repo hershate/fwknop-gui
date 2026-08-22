@@ -1052,16 +1052,20 @@ const fmtAbs = t => new Date(t*1000).toLocaleString('zh-CN', { hour12:false });
 const fmtNum = n => Number(n||0).toLocaleString('zh-CN');
 
 /* ==================== 主题 ==================== */
-function applyTheme(t) {
+function applyTheme(t, persist) {
   document.documentElement.setAttribute('data-theme', t);
   $('#theme-lab').textContent = t === 'dark' ? '浅色' : '深色';
   $('#theme-btn use').setAttribute('href', t === 'dark' ? '#i-sun' : '#i-moon');
-  localStorage.setItem('dash_theme', t);
+  if (persist !== false) localStorage.setItem('dash_theme', t);
 }
 $('#theme-btn').onclick = () =>
   applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
-applyTheme(localStorage.getItem('dash_theme') ||
-  (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
+/* 未手动选择过时实时跟随系统深浅色；手动选择后以用户偏好为准 */
+const sysThemeMQ = matchMedia('(prefers-color-scheme: light)');
+sysThemeMQ.addEventListener('change', e => {
+  if (!localStorage.getItem('dash_theme')) applyTheme(e.matches ? 'light' : 'dark', false);
+});
+applyTheme(localStorage.getItem('dash_theme') || (sysThemeMQ.matches ? 'light' : 'dark'), !!localStorage.getItem('dash_theme'));
 
 /* ==================== 导航 ==================== */
 function showPage(p) {
