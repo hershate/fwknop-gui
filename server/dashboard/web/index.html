@@ -534,7 +534,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
     <button class="nav-item" data-page="about"><svg><use href="#i-info"/></svg>关于</button>
     <div class="spacer"></div>
     <div class="side-foot">
-      <div class="conn"><span class="dot" id="conn-dot"></span><span id="conn-text">正在连接…</span>
+      <div class="conn" id="conn-box" title="点击立即重连刷新" style="cursor:pointer"><span class="dot" id="conn-dot"></span><span id="conn-text">正在连接…</span>
         <span class="hint" id="side-ver" style="margin-left:auto;font-size:11px" title="面板版本">v2.4.3</span></div>
       <div class="hint" id="sess-ttl" style="display:none;font-size:11px;margin-top:2px"></div>
       <div class="side-actions">
@@ -1471,6 +1471,8 @@ $('#refresh-btn').onclick = () => {
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) clearInterval(S.timer); else restartTimer(), refreshNow();
 });
+/* 连接状态区点击 = 立即重连/刷新（断连时不必等下一个周期） */
+$('#conn-box').onclick = () => { refreshNow(); toast('正在刷新…', 'ok', 1200); };
 
 /* 按当前页面决定拉取哪些数据 */
 function refreshNow() {
