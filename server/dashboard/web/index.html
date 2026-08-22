@@ -647,7 +647,8 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
                 </div>
                 <div class="field">
                   <label>SPA 服务器地址</label>
-                  <input name="server" placeholder="例如 203.0.113.10 或 vpn.example.com">
+                  <input name="server" list="server-history" placeholder="例如 203.0.113.10 或 vpn.example.com">
+                  <datalist id="server-history"></datalist>
                   <div class="tip">写入客户端配置，客户端向该地址发 SPA 包</div>
                 </div>
                 <div class="field">
@@ -1595,7 +1596,7 @@ function renderUsers() {
 $('#show-add').onclick = () => {
   const c = $('#add-card');
   c.style.display = c.style.display === 'none' ? '' : 'none';
-  if (c.style.display !== 'none') { loadAddDraft(); c.scrollIntoView({ behavior:'smooth', block:'start' }); }
+  if (c.style.display !== 'none') { renderServerHistory(); loadAddDraft(); c.scrollIntoView({ behavior:'smooth', block:'start' }); }
 };
 $('#add-cancel').onclick = () => { $('#add-card').style.display = 'none'; };
 
@@ -1637,6 +1638,22 @@ $$('.tpl-chip').forEach(chip => chip.onclick = () => {
   toast(`已应用模板「${chip.textContent}」，请补全名称与服务器地址`, 'ok');
   saveAddDraft();
 });
+
+/* 服务器地址历史（最近 5 个，datalist 下拉补全） */
+const SRV_HIST_KEY = 'fwknop-server-history';
+function pushServerHistory(v) {
+  if (!v) return;
+  let arr = [];
+  try { arr = JSON.parse(localStorage.getItem(SRV_HIST_KEY) || '[]'); } catch (e) {}
+  arr = [v, ...arr.filter(x => x !== v)].slice(0, 5);
+  localStorage.setItem(SRV_HIST_KEY, JSON.stringify(arr));
+  renderServerHistory();
+}
+function renderServerHistory() {
+  let arr = [];
+  try { arr = JSON.parse(localStorage.getItem(SRV_HIST_KEY) || '[]'); } catch (e) {}
+  $('#server-history').innerHTML = arr.map(x => `<option value="${esc(x)}">`).join('');
+}
 
 /* 签发表单草稿：实时记忆到 localStorage，刷新/误关不丢；签发成功后清除 */
 const ADD_DRAFT_KEY = 'fwknop-add-draft';
@@ -1712,7 +1729,7 @@ $('#add-form').addEventListener('submit', async ev => {
     else {
       toast('凭证已签发，请立即复制授权 URI 分发给用户', 'ok', 6000);
       clearAddDraft();
-      if (f.server.value.trim()) localStorage.setItem('fwknop-last-server', f.server.value.trim());
+      if (f.server.value.trim()) { localStorage.setItem('fwknop-last-server', f.server.value.trim()); pushServerHistory(f.server.value.trim()); }
       f.reset();  /* 清空表单便于连续签发下一位用户（结果区不受影响） */
       $$('.tpl-chip').forEach(c => c.classList.remove('active'));
       $('#tpl-desc').textContent = '';
