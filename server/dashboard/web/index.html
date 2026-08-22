@@ -928,7 +928,7 @@ const S = {
   auto: true, ivl: 5000, timer: null,
   overview: null, metrics: null, events: null, users: null, tofu: null, config: null,
   writeEnabled: false,
-  evFilter: 'all', evQuery: '', evPage: 0, evPer: 20,
+  evFilter: 'all', evQuery: '', evPage: 0, evPer: +(localStorage.getItem('fwknop-ev-per') || 20),
   tofuQuery: '', usersQuery: '',
   hist: {},            // key -> [{t, v}] 计数器历史（前端采样，用于迷你趋势）
   rawMode: false,
@@ -1249,11 +1249,19 @@ function renderEvents() {
 
   $('#events-pager').innerHTML = `
     <span>第 ${S.evPage+1} / ${pages} 页 · 共 ${fmtNum(evs.length)} 条</span>
+    <select class="ctl" id="ev-per" title="每页条数" style="padding:3px 6px;font-size:12px">
+      ${[20,50,100].map(n => `<option value="${n}" ${S.evPer===n?'selected':''}>${n} 条/页</option>`).join('')}
+    </select>
     <button class="btn ghost small" id="pg-prev" ${S.evPage<=0?'disabled':''}>上一页</button>
     <button class="btn ghost small" id="pg-next" ${S.evPage>=pages-1?'disabled':''}>下一页</button>`;
   const pv = $('#pg-prev'), nx = $('#pg-next');
   if (pv) pv.onclick = () => { S.evPage--; renderEvents(); };
   if (nx) nx.onclick = () => { S.evPage++; renderEvents(); };
+  $('#ev-per').onchange = e => {
+    S.evPer = +e.target.value; S.evPage = 0;
+    localStorage.setItem('fwknop-ev-per', String(S.evPer));
+    renderEvents();
+  };
 }
 $('#event-search').oninput = e => { S.evQuery = e.target.value.trim(); S.evPage = 0; renderEvents(); };
 
