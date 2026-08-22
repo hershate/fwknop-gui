@@ -965,6 +965,15 @@ function toast(msg, kind, ms) {
   el.dataset.msg = msg;
   el.innerHTML = `<div>${msg}</div><button class="x" aria-label="关闭">✕</button>`;
   el.querySelector('.x').onclick = () => el.remove();
+  /* 悬停暂停消失倒计时，移开后 2s 兜底关闭；驻留型错误 toast 不受影响 */
+  const sticky = kind === 'err' && !ms;
+  if (!sticky) {
+    el.addEventListener('mouseenter', () => {
+      clearTimeout(+el.dataset.t1); clearTimeout(+el.dataset.t2);
+      el.style.opacity = '1';
+    });
+    el.addEventListener('mouseleave', () => scheduleToastDismiss(el, 2000));
+  }
   box.appendChild(el);
   /* 最多同时显示 5 条，多余的移除最旧 */
   while (box.children.length > 5) box.firstElementChild.remove();
