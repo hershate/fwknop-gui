@@ -849,6 +849,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <div class="tpl-desc" id="conf-tpl-desc"></div>
             <div id="conf-edit-rows"></div>
             <textarea class="ctl" id="conf-raw-area" style="display:none;width:100%;min-height:380px;font-family:var(--mono);font-size:12px;line-height:1.7"></textarea>
+            <div class="hint" id="conf-raw-stat" style="display:none;margin-top:4px;text-align:right"></div>
             <pre class="out-pre" id="conf-save-out" style="display:none;margin-top:12px"></pre>
           </div>
         </div>
@@ -3291,6 +3292,12 @@ function markConfRows() {
 function renderConfEditor() {
   $('#conf-edit-rows').style.display = confRawEdit ? 'none' : '';
   $('#conf-raw-area').style.display = confRawEdit ? '' : 'none';
+  const st = $('#conf-raw-stat');
+  st.style.display = confRawEdit ? '' : 'none';
+  if (confRawEdit) {
+    const v = $('#conf-raw-area').value;
+    st.textContent = `${v ? v.split('\n').length : 0} 行 · ${v.length} 字符`;
+  }
   $('#conf-raw-edit').textContent = confRawEdit ? '返回结构化编辑' : '原文编辑';
   if (!confRawEdit) {
     $('#conf-edit-rows').innerHTML = confRows.map(([k,v]) => confEntryRow(k,v)).join('') ||
@@ -3332,7 +3339,12 @@ $('#conf-filter').oninput = e => {
 };
 /* 任何键/值输入都标记为未保存（容器上委托，重渲染不失效） */
 $('#conf-edit-rows').addEventListener('input', () => { markConfDirty(); markConfRows(); });
-$('#conf-raw-area').addEventListener('input', markConfDirty);
+$('#conf-raw-area').addEventListener('input', () => {
+  markConfDirty();
+  const v = $('#conf-raw-area').value;
+  const lines = v ? v.split('\n').length : 0;
+  $('#conf-raw-stat').textContent = `${lines} 行 · ${v.length} 字符`;
+});
 
 /* fwknopd.conf 快速模板：合并式填充（同键覆盖、新键追加），仍需手动「保存」落盘 */
 const CONF_TEMPLATES = {
