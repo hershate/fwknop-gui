@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -132,7 +133,10 @@ func handleAuditDownload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer f.Close()
 	w.Header().Set("Content-Type", "application/jsonl; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="fwknopd_audit.log"`)
+	/* 文件名带服务器时间戳：多次导出互不覆盖，便于归档排查 */
+	w.Header().Set("Content-Disposition",
+		fmt.Sprintf(`attachment; filename="fwknopd_audit_%s.jsonl"`,
+			time.Now().Format("20060102-150405")))
 	io.Copy(w, f)
 }
 
