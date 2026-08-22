@@ -708,6 +708,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
                   <label>要求客户端用户名</label>
                   <input name="user" placeholder="可选，如 alice">
                   <div class="tip">REQUIRE_USERNAME，留空则不校验</div>
+                  <div class="auth-hint" id="add-user-hint"></div>
                 </div>
               </div>
               <div class="form-sec">安全选项</div>
@@ -2197,6 +2198,15 @@ $('#add-form')['port-range'].addEventListener('input', ev => {
   fmtHint(el, V.range(v), '✓ 范围有效', '✗ 格式应为 30000-60000（1024-65535，起 < 止）');
 });
 
+$('#add-form').user.addEventListener('input', ev => {
+  const v = ev.target.value.trim(), el = $('#add-user-hint');
+  if (!v) { el.textContent = ''; el.className = 'auth-hint'; return; }
+  /* 写入配置行，空白会破坏解析；建议遵守 Unix 用户名惯例（小写开头 ≤32） */
+  if (/\s/.test(v) || v.length > 32) { fmtHint(el, false, '', '✗ 不能含空白且 ≤32 字符'); return; }
+  if (!/^[a-z_][a-z0-9_-]*$/.test(v)) fmtHint(el, false, '', '⚠ 建议 Unix 惯例：小写字母/下划线开头，仅含小写数字 - _');
+  else fmtHint(el, true, '✓ 用户名有效', '');
+});
+
 $('#add-form').server.addEventListener('input', ev => {
   const v = ev.target.value.trim(), el = $('#add-server-hint');
   if (!v) { el.textContent = ''; el.className = 'auth-hint'; return; }
@@ -2244,6 +2254,7 @@ $('#add-form').addEventListener('submit', async ev => {
   const fieldChecks = [
     ['server', '服务器地址', V.server], ['access', 'OPEN_PORTS', V.access],
     ['port-range', 'TOTP 端口范围', V.range], ['tofu-timeout', 'TOFU 宽限期', V.tofuto],
+    ['user', '要求用户名', v => !/\s/.test(v) && v.length <= 32],  /* 硬约束仅空白/长度 */
   ];
   for (const [name, label, chk] of fieldChecks) {
     const v = f[name].value.trim();
