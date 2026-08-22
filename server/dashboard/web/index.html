@@ -2669,9 +2669,11 @@ function renderAbout() {
 
 /* ==================== 通用模态 ==================== */
 let modalGuard = null;  /* 弹窗关闭守卫（如未保存修改确认），null 表示无 */
+let modalPrevFocus = null;  /* 打开前的焦点元素，关闭后返还（键盘/读屏上下文不丢） */
 function openModal(html, wide) {
   const root = $('#modal-root');
   modalGuard = null;
+  modalPrevFocus = document.activeElement;
   root.innerHTML = `<div class="modal" role="dialog" aria-modal="true" ${wide ? 'style="width:min(760px,94vw)"' : ''}>${html}</div>`;
   root.classList.add('show');
   root.onclick = e => { if (e.target === root) closeModal(); };
@@ -2699,6 +2701,9 @@ function closeModal() {
   if (modalGuard && !modalGuard()) return;
   modalGuard = null;
   $('#modal-root').classList.remove('show');
+  /* 焦点返还：元素可能已随页面重绘移除，需确认仍在 DOM 中 */
+  if (modalPrevFocus && modalPrevFocus.isConnected) modalPrevFocus.focus();
+  modalPrevFocus = null;
 }
 function infoModal(title, text, isErr) {
   openModal(`<h3>${title}</h3>
