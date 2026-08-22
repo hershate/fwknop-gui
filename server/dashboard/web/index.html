@@ -644,6 +644,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <input type="datetime-local" class="ctl" id="ev-to" title="截止时间" style="padding:4px 6px;font-size:12px">
               </span>
               <span class="srch-wrap"><input class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口…" style="width:230px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+              <button class="btn ghost small" id="ev-notify" title="后台标签页收到异常事件时弹桌面通知（需浏览器授权）"><svg width="14" height="14"><use href="#i-bell"/></svg>异常桌面通知</button>
               <button class="btn ghost small" id="ev-csv" title="把当前筛选结果导出为 CSV（可用表格软件打开）"><svg width="14" height="14"><use href="#i-download"/></svg>导出筛选 CSV</button>
               <a class="btn ghost small" href="/api/audit/download" download title="下载完整审计日志（JSONL）"><svg width="14" height="14"><use href="#i-download"/></svg>导出原始</a>
             </div>
@@ -1802,10 +1803,48 @@ async function loadEvents() {
       }
     }
     S.evNewest = newest;
+    /* 桌面通知（可选开启）：标签页在后台时出现新的异常事件则提醒 */
+    if (S.evNotify && document.hidden && S.evPrevNewest) {
+      const freshBad = S.events.filter(e => BAD_EVTS.includes(e.event) && (e.time || 0) > S.evPrevNewest);
+      if (freshBad.length && 'Notification' in window && Notification.permission === 'granted') {
+        const e0 = freshBad[0];
+        new Notification(`fwknop 异常事件 ×${freshBad.length}`, {
+          body: `${evMeta(e0.event).label}${e0.src_ip ? ' · 来自 ' + e0.src_ip : ''} · ${fmtAgo(e0.time)}`,
+          tag: 'fwknop-bad',  /* 同 tag 覆盖，避免连发刷屏 */
+        });
+      }
+    }
+    S.evPrevNewest = newest;
     updateDocTitle();
     if (S.page === 'events') renderEvents();
   } catch (e) { setConn(false); }
 }
+/* 异常桌面通知开关：状态持久化；未授权时先请求浏览器权限 */
+S.evNotify = localStorage.getItem('fwknop-ev-notify') === '1';
+function syncEvNotifyBtn() {
+  const b = $('#ev-notify');
+  b.classList.toggle('active', !!S.evNotify);
+  b.innerHTML = `<svg width="14" height="14"><use href="#i-bell"/></svg>异常桌面通知${S.evNotify ? '·开' : ''}`;
+}
+$('#ev-notify').onclick = async () => {
+  if (!S.evNotify) {
+    if (!('Notification' in window)) { toast('当前浏览器不支持桌面通知', 'err'); return; }
+    if (Notification.permission !== 'granted') {
+      const p = await Notification.requestPermission();
+      if (p !== 'granted') { toast('未获得通知权限，可在浏览器站点设置中开启', 'err', 5000); return; }
+    }
+    S.evNotify = true;
+    localStorage.setItem('fwknop-ev-notify', '1');
+    toast('已开启：标签页在后台时，新异常事件将弹桌面通知', 'ok', 4000);
+  } else {
+    S.evNotify = false;
+    localStorage.removeItem('fwknop-ev-notify');
+    toast('已关闭异常桌面通知', 'ok', 1500);
+  }
+  syncEvNotifyBtn();
+};
+syncEvNotifyBtn();
+
 $('#ev-new-pill').onclick = () => {
   S.evPage = 0; S.evFilter = 'all'; S.evQuery = ''; $('#event-search').value = '';
   $('#ev-new-pill').style.display = 'none';
