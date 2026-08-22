@@ -756,6 +756,11 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <div class="field">
                   <label>TOTP 端口范围</label>
                   <input name="port-range" placeholder="默认 30000-60000">
+                  <div id="range-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+                    <button type="button" class="tpl-chip" data-pr="30000-60000">30000-60000</button>
+                    <button type="button" class="tpl-chip" data-pr="40000-50000">40000-50000</button>
+                    <button type="button" class="tpl-chip" data-pr="10000-65000">10000-65000（宽）</button>
+                  </div>
                   <div class="auth-hint" id="add-range-hint"></div>
                 </div>
                 <div class="field">
@@ -2438,6 +2443,20 @@ $('#tpl-save').onclick = () => {
   $('#ct-ok').onclick = doSave;
   $('#ct-name').addEventListener('keydown', e => { if (e.key === 'Enter') doSave(); });
 };
+
+/* TOTP 端口范围常用值芯片：点击填充，再点同一枚清除恢复默认 */
+function syncRangeChips() {
+  const cur = $('#add-form')['port-range'].value.trim();
+  $$('#range-chips [data-pr]').forEach(c =>
+    c.classList.toggle('active', cur === c.dataset.pr));
+}
+$$('#range-chips [data-pr]').forEach(c => c.onclick = () => {
+  const f = $('#add-form');
+  f['port-range'].value = (f['port-range'].value.trim() === c.dataset.pr) ? '' : c.dataset.pr;
+  f['port-range'].dispatchEvent(new Event('input'));
+  syncRangeChips();
+});
+$('#add-form')['port-range'].addEventListener('input', syncRangeChips);
 
 /* TOFU 宽限常用值芯片：点击填充，再点同一枚清除；「仅本机」直接清空 */
 function syncTofutoChips() {
