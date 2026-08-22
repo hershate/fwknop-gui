@@ -2205,10 +2205,18 @@ function renderTOFU() {
   $('#tofu-sub').textContent = q ? `匹配 ${bs.length} / ${all.length} 台已绑定设备` : `${all.length} 台已绑定设备`;
   $('#tofu-file').textContent = d.file.exists ? `状态文件更新于 ${fmtAgo(d.file.mtime)}` : '状态文件不存在';
   if (!bs.length) {
+    /* 无绑定但近期有指纹未知拒绝：提示可能 TOFU 未启用/宽限已过，并给反查入口 */
+    const now = Date.now() / 1000;
+    const uf = (S.events || []).filter(e => e.event === 'unknown_fingerprint' && now - (e.time || 0) < 3600).length;
     $('#tofu-body').innerHTML = `<tr><td colspan="6"><div class="empty">
       ${icon('i-fp',40)}<div class="t">${q ? '无匹配绑定' : '暂无 TOFU 绑定'}</div>
       <div class="d">${q ? '试试更换搜索关键词' : '当授权的指纹白名单为空且启用「要求设备指纹」时，第一台通过校验的设备会自动绑定并显示在这里'}</div>
+      ${!q && uf ? `<div class="warn-strip" style="margin-top:12px;text-align:left">${icon('i-warn',15)}<div>
+        最近 1 小时有 <b>${uf}</b> 次「指纹未知」拒绝——可能设备尚未完成 TOFU 绑定（授权未设宽限期或已过期）。
+        <button class="btn ghost small" id="tofu-uf-lookup" style="margin-left:6px">查看这些事件</button></div></div>` : ''}
     </div></td></tr>`;
+    const lk = $('#tofu-uf-lookup');
+    if (lk) lk.onclick = () => { S.evFilter = 'unknown_fingerprint'; S.evPage = 0; showPage('events'); };
     return;
   }
   if (!S.tofuSel) S.tofuSel = new Set();
