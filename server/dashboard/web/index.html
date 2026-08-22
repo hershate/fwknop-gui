@@ -902,6 +902,10 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             </ul>
           </div>
         </div>
+        <div class="card">
+          <div class="head"><h2>常用命令速查</h2><span class="sub">点击右侧按钮复制</span></div>
+          <div class="body" id="cli-cheatsheet"></div>
+        </div>
       </section>
 
       <footer class="foot">fwknop 运维面板 · fwknop fork 2.4.2 · 协议 4.0.0 · 数据每 <span id="foot-ivl">5</span> 秒自动刷新</footer>
@@ -1378,6 +1382,35 @@ const KBD_HELP = [
   ['Esc', '关闭弹窗；在输入框中则取消焦点'],
   ['?', '打开本帮助'],
 ];
+/* 常用命令速查：语法与 fwknopd-admin usage()、fwknop import 实际行为一致 */
+const CLI_CHEATSHEET = [
+  ['客户端', [
+    ["fwknop import '<URI>'", '导入授权 URI（面板签发结果可复制）'],
+    ['fwknop import cred.json', '从凭证 JSON 文件导入'],
+    ['fwknop import qr.png', '从二维码图片导入'],
+  ]],
+  ['服务端管理（fwknopd-admin）', [
+    ['fwknopd-admin user list', '列出全部授权（密钥掩码）'],
+    ['fwknopd-admin user add <名称> --server <地址>', '签发新凭证（面板内操作等价）'],
+    ["fwknopd-admin user rm <名称>", '禁用授权（注释 stanza，可恢复）'],
+    ['fwknopd-admin tofu list', '查看 TOFU 设备绑定'],
+    ['fwknopd-admin tofu unbind <stanza_key> <设备指纹>', '解除设备绑定'],
+    ['fwknopd-admin lint', '检查 access.conf 一致性'],
+    ['fwknopd-admin status', '查看 fwknopd 运行状态'],
+  ]],
+  ['服务（fwknopd）', [
+    ['fwknopd --exit-parse-config -f', '配置预检（不启动服务）'],
+  ]],
+];
+$('#cli-cheatsheet').innerHTML = CLI_CHEATSHEET.map(([grp, rows]) => `
+  <div class="form-sec">${grp}</div>
+  ${rows.map(([c, d]) => `<div style="display:flex;align-items:center;gap:10px;padding:6px 2px;border-bottom:1px solid var(--border-soft)">
+    <code style="flex:1;font-size:12.5px;word-break:break-all">${esc(c)}</code>
+    <span class="hint" style="flex:1.2;font-size:12px">${d}</span>
+    <button class="icon-btn" style="padding:2px 6px" data-cp="${esc(c)}" data-lab="命令 ">${icon('i-copy',12)}</button>
+  </div>`).join('')}`).join('');
+$$('#cli-cheatsheet [data-cp]').forEach(b => b.onclick = () => copyText(b.dataset.cp, b.dataset.lab));
+
 /* 关于页快捷键表与 ? 帮助同源渲染，杜绝两份清单漂移 */
 $('#about-kbd').innerHTML = KBD_HELP.map(([k, d]) =>
   `<tr><td style="width:150px">${k.split(' / ').map(x => `<kbd>${esc(x)}</kbd>`).join(' / ')}</td><td class="hint">${d}</td></tr>`).join('');
