@@ -1119,6 +1119,24 @@ $('#login-btn').onclick = submitLogin;
 $('#setup-pw2').addEventListener('keydown', e => { if (e.key === 'Enter') submitSetup(); });
 $('#login-pw').addEventListener('keydown', e => { if (e.key === 'Enter') submitLogin(); });
 
+/* Caps Lock 警示：密码框内大写锁定开启时提示（登录失败最常见诱因之一）。
+   显隐切换会把 type 改成 text，故按元素 id 绑定而非 type 选择器。 */
+['setup-pw1', 'setup-pw2', 'login-pw'].forEach(id => {
+  const inp = document.getElementById(id);
+  if (!inp) return;
+  const h = document.createElement('div');
+  h.className = 'auth-hint no';
+  h.style.display = 'none';
+  h.textContent = '⚠ 大写锁定（Caps Lock）已开启，密码区分大小写';
+  inp.closest('.pw-wrap').after(h);
+  const sync = ev => {
+    h.style.display = (ev.getModifierState && ev.getModifierState('CapsLock')) ? '' : 'none';
+  };
+  inp.addEventListener('keydown', sync);
+  inp.addEventListener('keyup', sync);
+  inp.addEventListener('blur', () => { h.style.display = 'none'; });
+});
+
 /* 密码可见性切换 */
 $$('.pw-eye').forEach(b => b.onclick = () => {
   const i = $('#' + b.dataset.eye);
