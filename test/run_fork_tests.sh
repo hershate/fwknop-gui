@@ -221,6 +221,41 @@ grep -q "prod-ssh" /tmp/ft_prof.log && ok "profile list shows imported stanza" |
 rm -rf "$WORK"
 
 # -------------------------------------------------------------------
+section "Phase 4c: fwknopd-admin management commands"
+# -------------------------------------------------------------------
+D=$(mktemp -d)
+OUT=$("$ADMIN" user add webdemo --server 203.0.113.10 --user alice --no-qr 2>&1)
+echo "$OUT" | grep -q "### fwknopd-admin user: webdemo" \
+    && ok "user add emits name marker" || { bad "user add marker"; echo "$OUT"; }
+sed -n '/### fwknopd-admin user/,/^$/p' <<<"$OUT" > "$D/access.conf"
+printf 'SOURCE 10.0.0.0/24\nKEY_BASE64 YWJjZA==\nHMAC_KEY_BASE64 MTIzNA==\n' >> "$D/access.conf"
+chmod 0600 "$D/access.conf"
+
+OUT=$("$ADMIN" user list --access-conf "$D/access.conf" 2>&1)
+grep -q "webdemo" <<<"$OUT" && ok "user list shows stanza" || { bad "user list"; echo "$OUT"; }
+grep -q "YWJjZA" <<<"$OUT" && bad "user list leaks key material" || ok "user list masks keys"
+
+OUT=$("$ADMIN" lint "$D/access.conf" 2>&1)
+grep -q "0 error(s)" <<<"$OUT" && ok "lint clean" || { bad "lint"; echo "$OUT"; }
+
+OUT=$("$ADMIN" user qr webdemo --access-conf "$D/access.conf" --server 203.0.113.10 2>&1)
+grep -q "fwknop://203.0.113.10" <<<"$OUT" && ok "user qr re-renders URI" || { bad "user qr"; echo "$OUT"; }
+
+printf 'ANY|alice|tcp/22 ZGV2MQ==\nANY||tcp/22 ZGV2Mg==\n' > "$D/tofu.state"
+OUT=$("$ADMIN" tofu unbind 'ANY|alice|tcp/22' 'ZGV2MQ==' --state-file "$D/tofu.state" --pid-file "$D/no.pid" 2>&1)
+grep -q "Removed 1" <<<"$OUT" && [ "$(wc -l < "$D/tofu.state")" = "1" ] \
+    && ok "tofu unbind removes binding" || { bad "tofu unbind"; echo "$OUT"; cat "$D/tofu.state"; }
+
+OUT=$("$ADMIN" user rm webdemo --access-conf "$D/access.conf" --pid-file "$D/no.pid" 2>&1)
+grep -q "Disabled stanza" <<<"$OUT" && ok "user rm disables stanza" || { bad "user rm"; echo "$OUT"; }
+OUT=$("$ADMIN" user list --access-conf "$D/access.conf" 2>&1)
+grep -q "webdemo" <<<"$OUT" && bad "rm: stanza still listed" || ok "rm: stanza gone from list"
+grep -q "^# \[disabled by fwknopd-admin rm" "$D/access.conf" \
+    && ok "rm comments stanza (reversible)" || bad "rm comment format"
+ls "$D"/access.conf.bak-* >/dev/null 2>&1 && ok "rm creates backup" || bad "rm backup"
+rm -rf "$D"
+
+# -------------------------------------------------------------------
 section "Phase 5+: WebUI dashboard (Go)"
 # -------------------------------------------------------------------
 GOBIN="$(command -v go || echo "${HOME}/.local/usr/lib/go-1.26/bin/go")"
@@ -232,7 +267,13 @@ if [ -x "$GOBIN" ]; then
         D=$(mktemp -d); mkdir -p "$D/run"
         echo '{"time":1723520000,"event":"open","user":"alice","device_id":"ZGV2MQ==","src_ip":"198.51.100.7","spa_port":46364,"target_port":22,"stanza":1,"reason":"accepted"}' > "$D/run/fwknopd_audit.log"
         printf '# TYPE fwknop_spa_packets_total counter\nfwknop_spa_packets_total{result="open"} 1\n' > "$D/run/fwknopd.metrics"
-        /tmp/ft_dashboard -run-dir "$D/run" -addr 127.0.0.1:18099 >/tmp/ft_dash.log 2>&1 &
+        printf 'ANY|alice|tcp/22 ZGV2MQ==\n' > "$D/run/fwknop_tofu.state"
+        "$ADMIN" user add dashdemo --server 203.0.113.10 --user alice --no-qr 2>/dev/null \
+            | sed -n '/### fwknopd-admin user/,/^$/p' > "$D/access.conf"
+        printf 'FWKNOP_RUN_DIR %s/run\nPCAP_INTF eth0\nPCAP_PORT_RANGE 30000-60000\n' "$D" > "$D/fwknopd.conf"
+        DASHBOARD_TOKEN=fttok /tmp/ft_dashboard -run-dir "$D/run" -addr 127.0.0.1:18099 \
+            -access-conf "$D/access.conf" -fwknopd-conf "$D/fwknopd.conf" \
+            -pid-file "$D/run/fwknopd.pid" -admin "$ADMIN" -enable-write >/tmp/ft_dash.log 2>&1 &
         DPID=$!; sleep 1
         if wget -qO- http://127.0.0.1:18099/api/metrics 2>/dev/null | grep -q 'counters' | grep -q 'open'; then
             ok "dashboard /api/metrics reads prometheus file"
@@ -243,8 +284,24 @@ if [ -x "$GOBIN" ]; then
         fi
         wget -qO- http://127.0.0.1:18099/api/events 2>/dev/null | grep -q '"event":"open"' \
             && ok "dashboard /api/events reads audit log" || bad "dashboard events API"
-        wget -qO- http://127.0.0.1:18099/ 2>/dev/null | grep -q '<title>fwknop dashboard</title>' \
-            && ok "dashboard serves embedded UI" || bad "dashboard UI"
+        wget -qO- http://127.0.0.1:18099/ 2>/dev/null | grep -q '<title>fwknop 运维面板</title>' \
+            && ok "dashboard serves embedded UI (zh-CN)" || bad "dashboard UI"
+        wget -qO- http://127.0.0.1:18099/api/overview 2>/dev/null | grep -q '"daemon"' \
+            && ok "dashboard /api/overview" || bad "dashboard overview API"
+        wget -qO- http://127.0.0.1:18099/api/users 2>/dev/null | grep -q 'dashdemo' \
+            && ok "dashboard /api/users parses access.conf" || bad "dashboard users API"
+        wget -qO- http://127.0.0.1:18099/api/users 2>/dev/null | grep -q 'KEY_BASE64.*[A-Za-z0-9+/=]\{8\}' \
+            && bad "dashboard /api/users leaks keys" || ok "dashboard /api/users masks keys"
+        wget -qO- http://127.0.0.1:18099/api/config 2>/dev/null | grep -q 'PCAP_PORT_RANGE' \
+            && ok "dashboard /api/config parses fwknopd.conf" || bad "dashboard config API"
+        wget -qO- http://127.0.0.1:18099/api/tofu 2>/dev/null | grep -q '"stanza_key":"ANY|alice|tcp/22"' \
+            && ok "dashboard /api/tofu structured" || bad "dashboard tofu API"
+        # write path: token required, then unbind via admin CLI wrapper
+        wget -qO- --post-data 'stanza_key=x&device_id=y' http://127.0.0.1:18099/api/admin/tofu/unbind 2>/dev/null \
+            && bad "unbind without token should fail" || ok "write endpoint requires token"
+        wget -qO- --post-data 'stanza_key=ANY|alice|tcp/22&device_id=ZGV2MQ==' \
+            --header='Authorization: Bearer fttok' http://127.0.0.1:18099/api/admin/tofu/unbind 2>/dev/null \
+            | grep -q 'Removed 1' && ok "dashboard tofu unbind (write path)" || bad "dashboard tofu unbind"
         kill "$DPID" 2>/dev/null; wait "$DPID" 2>/dev/null
         rm -f /tmp/ft_dashboard; rm -rf "$D"
     else

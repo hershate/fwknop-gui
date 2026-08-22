@@ -665,7 +665,9 @@ cmd_tofu_unbind(const char *key, const char *dev, const char *sf,
     }
     while(fgets(line, sizeof(line), in) != NULL)
     {
-        if(strcmp(trim(line), expect) == 0)
+        char cmp[MAX_LINE];
+        strlcpy(cmp, line, sizeof(cmp));
+        if(strcmp(trim(cmp), expect) == 0)
         { removed++; continue; }
         fputs(line, out);
     }

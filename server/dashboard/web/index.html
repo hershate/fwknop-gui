@@ -1,157 +1,1232 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>fwknop dashboard</title>
+<meta name="color-scheme" content="dark light">
+<title>fwknop 运维面板</title>
 <style>
-  :root {
-    --bg:#0d1117; --panel:#161b22; --border:#30363d; --text:#c9d1d9;
-    --muted:#8b949e; --accent:#58a6ff; --green:#3fb950; --red:#f85149;
-    --yellow:#d29922; --purple:#bc8cff;
+/* ================= 设计基座 ================= */
+:root {
+  --radius: 14px;
+  --radius-sm: 9px;
+  --font: "PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",
+          system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono: "SF Mono","Cascadia Code",Consolas,"JetBrains Mono",ui-monospace,monospace;
+  --shadow: 0 1px 2px rgba(8,12,28,.25), 0 8px 28px -12px rgba(8,12,28,.45);
+  --trans: .18s cubic-bezier(.4,0,.2,1);
+}
+[data-theme="dark"] {
+  --bg:#0d1220; --bg-soft:#111832; --panel:#151d33; --panel-2:#1b2440;
+  --border:#27325a; --border-soft:#202a49;
+  --text:#e8ecf8; --muted:#8f9ac0; --faint:#5f6a92;
+  --accent:#7b97ff; --accent-soft:rgba(123,151,255,.14);
+  --green:#43d68e; --green-soft:rgba(67,214,142,.13);
+  --red:#ff6f6f;   --red-soft:rgba(255,111,111,.13);
+  --amber:#ffb454; --amber-soft:rgba(255,180,84,.13);
+  --purple:#b79cff;--purple-soft:rgba(183,156,255,.13);
+  --blue:#5fb4ff;  --blue-soft:rgba(95,180,255,.13);
+  --teal:#3fd4c0;  --teal-soft:rgba(63,212,192,.13);
+  color-scheme: dark;
+}
+[data-theme="light"] {
+  --bg:#f3f5fb; --bg-soft:#eceffb; --panel:#ffffff; --panel-2:#f7f9ff;
+  --border:#dfe5f3; --border-soft:#e9edf9;
+  --text:#1d2542; --muted:#5d688c; --faint:#9aa3c4;
+  --accent:#4f6df5; --accent-soft:rgba(79,109,245,.10);
+  --green:#12945f; --green-soft:rgba(18,148,95,.10);
+  --red:#d94a4a;   --red-soft:rgba(217,74,74,.09);
+  --amber:#b97908; --amber-soft:rgba(224,150,20,.12);
+  --purple:#7a5af5;--purple-soft:rgba(122,90,245,.10);
+  --blue:#1d7fd6;  --blue-soft:rgba(29,127,214,.10);
+  --teal:#0b9d8b;  --teal-soft:rgba(11,157,139,.10);
+  --shadow: 0 1px 2px rgba(29,37,66,.06), 0 10px 30px -14px rgba(29,37,66,.18);
+  color-scheme: light;
+}
+* { box-sizing:border-box; }
+html,body { height:100%; }
+body {
+  margin:0; font-family:var(--font); background:var(--bg); color:var(--text);
+  font-size:14px; line-height:1.6; -webkit-font-smoothing:antialiased;
+  transition:background var(--trans), color var(--trans);
+}
+::selection { background:var(--accent); color:#fff; }
+button { font-family:inherit; }
+a { color:var(--accent); text-decoration:none; }
+code, pre, .mono { font-family:var(--mono); }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:4px; }
+
+/* ================= 布局骨架 ================= */
+#app { display:flex; min-height:100vh; }
+#sidebar {
+  width:236px; flex:0 0 236px; position:sticky; top:0; height:100vh;
+  display:flex; flex-direction:column; gap:4px;
+  background:var(--bg-soft); border-right:1px solid var(--border-soft);
+  padding:18px 14px; z-index:30;
+}
+.brand { display:flex; align-items:center; gap:10px; padding:4px 8px 16px; }
+.brand svg { flex:0 0 auto; }
+.brand .t1 { font-size:15px; font-weight:700; letter-spacing:.2px; }
+.brand .t2 { font-size:11px; color:var(--muted); }
+.brand .ver {
+  margin-left:auto; font-size:10px; color:var(--accent);
+  background:var(--accent-soft); padding:2px 7px; border-radius:20px; font-weight:600;
+}
+.nav-item {
+  display:flex; align-items:center; gap:11px; width:100%;
+  padding:9px 12px; border:0; border-radius:var(--radius-sm); cursor:pointer;
+  background:transparent; color:var(--muted); font-size:13.5px; font-weight:500;
+  transition:background var(--trans), color var(--trans); text-align:left;
+}
+.nav-item svg { width:17px; height:17px; flex:0 0 auto; }
+.nav-item:hover { background:var(--panel); color:var(--text); }
+.nav-item.active { background:var(--accent-soft); color:var(--accent); font-weight:600; }
+#sidebar .spacer { flex:1; }
+.side-foot { padding:10px 8px 2px; border-top:1px solid var(--border-soft); }
+.conn { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); }
+.dot { width:8px; height:8px; border-radius:50%; background:var(--faint); flex:0 0 auto; transition:background var(--trans); }
+.dot.ok { background:var(--green); box-shadow:0 0 0 3px var(--green-soft); }
+.dot.err { background:var(--red); box-shadow:0 0 0 3px var(--red-soft); }
+.side-actions { display:flex; gap:8px; margin-top:10px; }
+.icon-btn {
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  border:1px solid var(--border); background:var(--panel); color:var(--muted);
+  border-radius:var(--radius-sm); padding:6px 10px; cursor:pointer; font-size:12px;
+  transition:all var(--trans);
+}
+.icon-btn:hover { color:var(--text); border-color:var(--accent); }
+.icon-btn svg { width:15px; height:15px; }
+
+#main { flex:1; min-width:0; display:flex; flex-direction:column; }
+#topbar {
+  position:sticky; top:0; z-index:20;
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  padding:14px 28px; background:color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter:blur(10px); border-bottom:1px solid var(--border-soft);
+}
+#topbar h1 { font-size:17px; margin:0; font-weight:700; }
+.pill {
+  display:inline-flex; align-items:center; gap:7px; font-size:12px; font-weight:600;
+  padding:4px 12px; border-radius:20px; border:1px solid transparent;
+}
+.pill.on  { color:var(--green); background:var(--green-soft); border-color:color-mix(in srgb,var(--green) 30%,transparent); }
+.pill.off { color:var(--red);   background:var(--red-soft);   border-color:color-mix(in srgb,var(--red) 30%,transparent); }
+.pill.dim { color:var(--muted); background:var(--panel-2);    border-color:var(--border); }
+#topbar .right { margin-left:auto; display:flex; align-items:center; gap:10px; }
+.refresh-ctl { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); }
+.switch { position:relative; width:36px; height:20px; flex:0 0 auto; cursor:pointer; }
+.switch input { opacity:0; width:0; height:0; position:absolute; }
+.switch i {
+  position:absolute; inset:0; border-radius:20px; background:var(--border);
+  transition:background var(--trans);
+}
+.switch i::after {
+  content:""; position:absolute; top:2px; left:2px; width:16px; height:16px;
+  border-radius:50%; background:#fff; transition:transform var(--trans);
+  box-shadow:0 1px 3px rgba(0,0,0,.3);
+}
+.switch input:checked + i { background:var(--accent); }
+.switch input:checked + i::after { transform:translateX(16px); }
+select.ctl, input.ctl {
+  background:var(--panel); border:1px solid var(--border); color:var(--text);
+  border-radius:var(--radius-sm); padding:5px 9px; font-size:12.5px; font-family:inherit;
+}
+.btn {
+  display:inline-flex; align-items:center; gap:7px; border:0; cursor:pointer;
+  border-radius:var(--radius-sm); padding:8px 16px; font-size:13px; font-weight:600;
+  background:var(--accent); color:#fff; transition:filter var(--trans), transform var(--trans);
+}
+.btn:hover { filter:brightness(1.1); }
+.btn:active { transform:scale(.97); }
+.btn.ghost { background:var(--panel); color:var(--text); border:1px solid var(--border); }
+.btn.ghost:hover { border-color:var(--accent); color:var(--accent); }
+.btn.danger { background:var(--red); }
+.btn.small { padding:5px 11px; font-size:12px; }
+.btn[disabled] { opacity:.55; cursor:not-allowed; }
+#burger { display:none; }
+
+#content { padding:26px 28px 60px; max-width:1360px; width:100%; margin:0 auto; }
+.page { display:none; animation:fadeup .28s cubic-bezier(.3,.7,.4,1); }
+.page.active { display:block; }
+@keyframes fadeup { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce) {
+  * { animation:none !important; transition:none !important; }
+}
+
+/* ================= 通用组件 ================= */
+.card {
+  background:var(--panel); border:1px solid var(--border-soft);
+  border-radius:var(--radius); box-shadow:var(--shadow); margin-bottom:20px;
+  transition:border-color var(--trans);
+}
+.card > .head {
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  padding:15px 20px; border-bottom:1px solid var(--border-soft);
+}
+.card > .head h2 { margin:0; font-size:14.5px; font-weight:700; }
+.card > .head .sub { font-size:12px; color:var(--muted); }
+.card > .head .tools { margin-left:auto; display:flex; gap:8px; align-items:center; }
+.card > .body { padding:18px 20px; }
+.hint { font-size:12px; color:var(--muted); }
+.warn-strip {
+  display:flex; gap:10px; align-items:flex-start; font-size:12.5px;
+  background:var(--amber-soft); color:var(--amber);
+  border:1px solid color-mix(in srgb,var(--amber) 28%,transparent);
+  border-radius:var(--radius-sm); padding:10px 14px; margin-bottom:14px;
+}
+.warn-strip svg { flex:0 0 auto; margin-top:2px; }
+
+.grid-status { display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:14px; margin-bottom:20px; }
+.stat-card {
+  display:flex; gap:13px; align-items:center;
+  background:var(--panel); border:1px solid var(--border-soft);
+  border-radius:var(--radius); padding:15px 17px; box-shadow:var(--shadow);
+}
+.stat-card .ic {
+  width:38px; height:38px; border-radius:11px; flex:0 0 auto;
+  display:flex; align-items:center; justify-content:center;
+}
+.stat-card .ic svg { width:19px; height:19px; }
+.stat-card .k { font-size:12px; color:var(--muted); }
+.stat-card .v { font-size:14.5px; font-weight:700; margin-top:1px; word-break:break-all; }
+.stat-card .v small { font-weight:500; color:var(--muted); font-size:11.5px; }
+
+.grid-tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:20px; }
+.tile {
+  background:var(--panel); border:1px solid var(--border-soft);
+  border-radius:var(--radius); padding:15px 17px 12px; box-shadow:var(--shadow);
+  position:relative; overflow:hidden; transition:transform var(--trans), border-color var(--trans);
+}
+.tile:hover { transform:translateY(-2px); border-color:var(--border); }
+.tile .lab { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); font-weight:500; }
+.tile .lab svg { width:14px; height:14px; }
+.tile .num { font-size:27px; font-weight:750; margin-top:5px; font-variant-numeric:tabular-nums; letter-spacing:-.5px; }
+.tile .spark { position:absolute; right:10px; bottom:8px; opacity:.85; }
+.tile.c-green .num, .tile.c-green .lab svg, .tile.c-green .spark { color:var(--green); }
+.tile.c-red .num, .tile.c-red .lab svg, .tile.c-red .spark { color:var(--red); }
+.tile.c-amber .num, .tile.c-amber .lab svg, .tile.c-amber .spark { color:var(--amber); }
+.tile.c-purple .num, .tile.c-purple .lab svg, .tile.c-purple .spark { color:var(--purple); }
+.tile.c-blue .num, .tile.c-blue .lab svg, .tile.c-blue .spark { color:var(--blue); }
+.tile.c-teal .num, .tile.c-teal .lab svg, .tile.c-teal .spark { color:var(--teal); }
+.tile.c-gray .num, .tile.c-gray .lab svg, .tile.c-gray .spark { color:var(--muted); }
+
+.chips { display:flex; gap:8px; flex-wrap:wrap; }
+.chip {
+  border:1px solid var(--border); background:var(--panel); color:var(--muted);
+  border-radius:20px; padding:4px 13px; font-size:12px; cursor:pointer; font-weight:500;
+  transition:all var(--trans);
+}
+.chip:hover { color:var(--text); border-color:var(--accent); }
+.chip.active { background:var(--accent-soft); color:var(--accent); border-color:color-mix(in srgb,var(--accent) 45%,transparent); font-weight:600; }
+.chip .n { opacity:.75; font-size:11px; margin-left:3px; }
+
+table.tb { width:100%; border-collapse:collapse; font-size:13px; }
+.tb th {
+  text-align:left; padding:10px 16px; font-size:11.5px; font-weight:600;
+  color:var(--muted); letter-spacing:.4px; border-bottom:1px solid var(--border);
+  white-space:nowrap; position:sticky; top:0; background:var(--panel); z-index:1;
+}
+.tb td { padding:9px 16px; border-bottom:1px solid var(--border-soft); vertical-align:middle; }
+.tb tbody tr { transition:background var(--trans); }
+.tb tbody tr:hover { background:var(--panel-2); }
+.tb .mono { font-size:12px; }
+.tb-wrap { overflow-x:auto; }
+
+.badge {
+  display:inline-flex; align-items:center; gap:5px; white-space:nowrap;
+  padding:2.5px 10px; border-radius:20px; font-size:11.5px; font-weight:600;
+}
+.badge::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
+.bd-green { background:var(--green-soft); color:var(--green); }
+.bd-red { background:var(--red-soft); color:var(--red); }
+.bd-amber { background:var(--amber-soft); color:var(--amber); }
+.bd-purple { background:var(--purple-soft); color:var(--purple); }
+.bd-blue { background:var(--blue-soft); color:var(--blue); }
+.bd-gray { background:var(--panel-2); color:var(--muted); }
+.bd-teal { background:var(--teal-soft); color:var(--teal); }
+
+.tag {
+  display:inline-block; padding:1.5px 8px; border-radius:6px; font-size:11px;
+  font-weight:600; background:var(--panel-2); color:var(--muted); margin:1px 2px;
+}
+.tag.hl { background:var(--accent-soft); color:var(--accent); }
+
+.empty { text-align:center; padding:44px 20px; color:var(--muted); }
+.empty svg { width:40px; height:40px; opacity:.4; margin-bottom:10px; }
+.empty .t { font-size:14px; font-weight:600; color:var(--text); margin-bottom:4px; }
+.empty .d { font-size:12.5px; }
+
+.pager { display:flex; align-items:center; gap:12px; justify-content:flex-end; padding:12px 18px; font-size:12.5px; color:var(--muted); }
+
+/* 表单 */
+.form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px 18px; }
+.field label { display:block; font-size:12px; color:var(--muted); font-weight:600; margin-bottom:5px; }
+.field label .req { color:var(--red); }
+.field input, .field select {
+  width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text);
+  border-radius:var(--radius-sm); padding:8px 11px; font-size:13px; font-family:inherit;
+  transition:border-color var(--trans), box-shadow var(--trans);
+}
+.field input:focus, .field select:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); outline:none; }
+.field .tip { font-size:11.5px; color:var(--faint); margin-top:4px; }
+.check-row { display:flex; align-items:center; gap:9px; padding:7px 0; font-size:13px; cursor:pointer; }
+.form-sec { font-size:12px; font-weight:700; color:var(--faint); letter-spacing:1px; margin:18px 0 10px; text-transform:uppercase; }
+
+.out-pre {
+  background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-sm);
+  padding:14px 16px; font-size:12px; line-height:1.7; overflow-x:auto;
+  white-space:pre-wrap; word-break:break-all; max-height:340px; overflow-y:auto;
+}
+.uri-box {
+  display:flex; gap:8px; align-items:center; background:var(--accent-soft);
+  border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);
+  border-radius:var(--radius-sm); padding:9px 12px; margin-bottom:12px;
+}
+.uri-box code { flex:1; font-size:12px; word-break:break-all; color:var(--accent); }
+
+/* toast */
+#toasts { position:fixed; top:18px; right:18px; z-index:100; display:flex; flex-direction:column; gap:10px; max-width:min(420px,90vw); }
+.toast {
+  display:flex; gap:10px; align-items:flex-start;
+  background:var(--panel); border:1px solid var(--border); border-left:3px solid var(--accent);
+  border-radius:var(--radius-sm); padding:11px 15px; box-shadow:var(--shadow);
+  font-size:13px; animation:slidein .25s cubic-bezier(.3,.7,.4,1);
+}
+.toast.ok { border-left-color:var(--green); }
+.toast.err { border-left-color:var(--red); }
+@keyframes slidein { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:none; } }
+.toast .x { margin-left:auto; cursor:pointer; color:var(--faint); border:0; background:none; font-size:15px; padding:0; }
+
+/* modal */
+#modal-root { position:fixed; inset:0; z-index:90; display:none; align-items:center; justify-content:center; background:rgba(8,10,20,.55); backdrop-filter:blur(3px); }
+#modal-root.show { display:flex; }
+.modal {
+  background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+  box-shadow:var(--shadow); width:min(460px,92vw); padding:22px 24px;
+  animation:fadeup .22s cubic-bezier(.3,.7,.4,1);
+}
+.modal h3 { margin:0 0 8px; font-size:15.5px; }
+.modal .mb { font-size:13px; color:var(--muted); margin-bottom:18px; word-break:break-all; }
+.modal .mf { display:flex; justify-content:flex-end; gap:10px; }
+
+.skel { position:relative; overflow:hidden; background:var(--panel-2); border-radius:6px; min-height:14px; }
+.skel::after {
+  content:""; position:absolute; inset:0;
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--text) 7%,transparent),transparent);
+  animation:shimmer 1.4s infinite;
+}
+@keyframes shimmer { from { transform:translateX(-100%); } to { transform:translateX(100%); } }
+
+footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:26px 0 8px; }
+
+/* 移动端 */
+@media (max-width: 920px) {
+  #sidebar {
+    position:fixed; left:0; top:0; bottom:0; height:100vh;
+    transform:translateX(-100%); transition:transform .25s cubic-bezier(.3,.7,.4,1);
+    box-shadow:var(--shadow);
   }
-  * { box-sizing: border-box; }
-  body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-         background:var(--bg); color:var(--text); }
-  header { padding:16px 24px; border-bottom:1px solid var(--border);
-           display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
-  header h1 { font-size:18px; margin:0; font-weight:600; }
-  header .meta { color:var(--muted); font-size:13px; }
-  main { padding:24px; max-width:1400px; margin:0 auto; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:24px; }
-  .tile { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:14px 16px; }
-  .tile .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:0.5px; }
-  .tile .value { font-size:26px; font-weight:600; margin-top:4px; }
-  .tile.open .value { color:var(--green); }
-  .tile.reject .value { color:var(--red); }
-  .tile.replay .value { color:var(--yellow); }
-  .tile.fingerprint .value { color:var(--purple); }
-  .tile.port .value { color:var(--red); }
-  .tile.aged .value { color:var(--yellow); }
-  .tile.tofu .value { color:var(--accent); }
-  section { background:var(--panel); border:1px solid var(--border); border-radius:8px; margin-bottom:24px; }
-  section h2 { margin:0; padding:14px 18px; font-size:14px; border-bottom:1px solid var(--border);
-               display:flex; justify-content:space-between; align-items:center; }
-  section h2 button { font-size:12px; padding:4px 10px; background:var(--border); color:var(--text);
-                      border:1px solid var(--border); border-radius:5px; cursor:pointer; }
-  table { width:100%; border-collapse:collapse; font-size:13px; }
-  th, td { padding:8px 18px; text-align:left; border-bottom:1px solid var(--border); }
-  th { color:var(--muted); font-weight:500; font-size:12px; text-transform:uppercase; }
-  td.time { color:var(--muted); white-space:nowrap; }
-  .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
-  .b-open{background:rgba(63,185,80,.15);color:var(--green);}
-  .b-close{background:rgba(139,148,158,.15);color:var(--muted);}
-  .b-reject{background:rgba(248,81,73,.15);color:var(--red);}
-  .b-replay{background:rgba(210,153,34,.15);color:var(--yellow);}
-  .b-unknown_fingerprint{background:rgba(188,140,255,.15);color:var(--purple);}
-  .b-port_mismatch{background:rgba(248,81,73,.15);color:var(--red);}
-  .b-aged{background:rgba(210,153,34,.15);color:var(--yellow);}
-  .b-tofu_bind{background:rgba(88,166,255,.15);color:var(--accent);}
-  #tofu, #admin-out { font-family:ui-monospace,monospace; font-size:12px; padding:14px 18px; color:var(--muted); }
-  details { padding:14px 18px; }
-  summary { cursor:pointer; color:var(--accent); font-size:13px; }
-  form { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-top:10px; }
-  label { font-size:12px; color:var(--muted); }
-  input { background:var(--bg); border:1px solid var(--border); color:var(--text);
-          padding:6px 8px; border-radius:5px; font-size:13px; }
-  button.add { background:var(--green); color:#000; border:none; padding:8px 14px; border-radius:5px;
-               font-weight:600; cursor:pointer; }
-  .err { color:var(--red); }
+  #sidebar.open { transform:none; }
+  #burger { display:inline-flex; }
+  #content { padding:18px 16px 50px; }
+  #topbar { padding:12px 16px; }
+  #scrim { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:25; }
+}
+#scrim { display:none; }
+#scrim.show { display:block; }
 </style>
 </head>
 <body>
-<header>
-  <h1>fwknop dashboard</h1>
-  <span class="meta" id="status">connecting…</span>
-</header>
-<main>
-  <div class="grid" id="tiles"></div>
 
-  <section>
-    <h2>Recent SPA events <button onclick="loadEvents()">refresh</button></h2>
-    <table>
-      <thead><tr><th>Time</th><th>Event</th><th>User</th><th>Device</th><th>Source IP</th><th>SPA port</th><th>Target</th><th>Reason</th></tr></thead>
-      <tbody id="events"></tbody>
-    </table>
-  </section>
+<!-- 内联 SVG 图标库（lucide 风格，stroke 图标） -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+    <symbol id="i-dash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-fp" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11c0 3.5-1.5 6.5-3 8"/><path d="M12 3a8 8 0 0 1 8 8c0 2.5-.5 5-1.5 7"/><path d="M4.6 19c.8-1.6 1.9-4.4 1.9-8a5.5 5.5 0 0 1 11 0c0 1.5-.2 3-.5 4.5"/><path d="M4 11a8 8 0 0 1 .5-2.8"/></symbol>
+    <symbol id="i-cfg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+    <symbol id="i-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+    <symbol id="i-server" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></symbol>
+  </defs>
+</svg>
 
-  <section>
-    <h2>TOFU device bindings <button onclick="loadTOFU()">refresh</button></h2>
-    <div id="tofu">loading…</div>
-  </section>
+<div id="app">
+  <!-- ============ 侧边栏 ============ -->
+  <aside id="sidebar">
+    <div class="brand">
+      <svg width="30" height="30" style="color:var(--accent)"><use href="#i-shield"/></svg>
+      <div>
+        <div class="t1">fwknop 运维面板</div>
+        <div class="t2">单包授权 · 零信任访问</div>
+      </div>
+      <span class="ver" id="brand-ver">v2.2.0</span>
+    </div>
+    <button class="nav-item active" data-page="overview"><svg><use href="#i-dash"/></svg>概览</button>
+    <button class="nav-item" data-page="events"><svg><use href="#i-list"/></svg>SPA 事件</button>
+    <button class="nav-item" data-page="users"><svg><use href="#i-users"/></svg>用户与授权</button>
+    <button class="nav-item" data-page="tofu"><svg><use href="#i-fp"/></svg>TOFU 设备绑定</button>
+    <button class="nav-item" data-page="config"><svg><use href="#i-cfg"/></svg>服务配置</button>
+    <button class="nav-item" data-page="about"><svg><use href="#i-info"/></svg>关于</button>
+    <div class="spacer"></div>
+    <div class="side-foot">
+      <div class="conn"><span class="dot" id="conn-dot"></span><span id="conn-text">正在连接…</span></div>
+      <div class="side-actions">
+        <button class="icon-btn" id="theme-btn" title="切换明暗主题"><svg><use href="#i-sun"/></svg><span id="theme-lab">浅色</span></button>
+        <button class="icon-btn" id="token-btn" title="管理令牌" style="display:none"><svg><use href="#i-key"/></svg>令牌</button>
+      </div>
+    </div>
+  </aside>
+  <div id="scrim"></div>
 
-  <section>
-    <h2>Management (fwknopd-admin)</h2>
-    <details>
-      <summary>Issue a new credential (calls <code>fwknopd-admin user add</code>)</summary>
-      <form id="add-form">
-        <div><label>Name</label><input name="name" placeholder="alice" required></div>
-        <div><label>SPA server</label><input name="server" placeholder="203.0.113.10"></div>
-        <div><label>Access</label><input name="access" placeholder="tcp/22"></div>
-        <div><label>User</label><input name="user" placeholder="alice"></div>
-        <div><label>Port range</label><input name="port-range" placeholder="30000-60000"></div>
-        <div style="align-self:end"><button class="add" type="submit">Issue credential</button></div>
-      </form>
-      <pre id="admin-out"></pre>
-    </details>
-  </section>
-</main>
+  <!-- ============ 主区 ============ -->
+  <div id="main">
+    <header id="topbar">
+      <button class="icon-btn" id="burger" title="菜单"><svg><use href="#i-menu"/></svg></button>
+      <h1 id="page-title">概览</h1>
+      <span class="pill dim" id="daemon-pill"><span class="dot"></span>检测中…</span>
+      <div class="right">
+        <div class="refresh-ctl">
+          <label class="switch" title="自动刷新">
+            <input type="checkbox" id="auto-sw" checked><i></i>
+          </label>
+          <span>自动刷新</span>
+          <select class="ctl" id="ivl-sel">
+            <option value="3000">3 秒</option>
+            <option value="5000" selected>5 秒</option>
+            <option value="10000">10 秒</option>
+            <option value="30000">30 秒</option>
+          </select>
+        </div>
+        <button class="btn ghost small" id="refresh-btn"><svg width="14" height="14"><use href="#i-refresh"/></svg>刷新</button>
+      </div>
+    </header>
+
+    <div id="content">
+
+      <!-- ======== 概览 ======== -->
+      <section class="page active" id="page-overview">
+        <div class="grid-status" id="status-cards"></div>
+        <div class="grid-tiles" id="tiles"></div>
+        <div class="card">
+          <div class="head"><h2>汇总</h2><span class="sub">基于当前计数器快照</span></div>
+          <div class="body" id="summary-body"><div class="skel" style="height:60px"></div></div>
+        </div>
+      </section>
+
+      <!-- ======== SPA 事件 ======== -->
+      <section class="page" id="page-events">
+        <div class="card">
+          <div class="head">
+            <h2>SPA 事件</h2><span class="sub" id="events-sub"></span>
+            <div class="tools">
+              <input class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因…" style="width:230px">
+            </div>
+          </div>
+          <div class="body" style="padding-bottom:6px">
+            <div class="chips" id="event-chips"></div>
+          </div>
+          <div class="tb-wrap">
+            <table class="tb">
+              <thead><tr>
+                <th>时间</th><th>事件</th><th>用户</th><th>设备指纹</th>
+                <th>来源 IP</th><th>SPA 端口</th><th>目标端口</th><th>说明</th>
+              </tr></thead>
+              <tbody id="events-body"></tbody>
+            </table>
+          </div>
+          <div class="pager" id="events-pager"></div>
+        </div>
+      </section>
+
+      <!-- ======== 用户与授权 ======== -->
+      <section class="page" id="page-users">
+        <div id="users-list-wrap">
+          <div class="card">
+            <div class="head">
+              <h2>访问授权（access.conf）</h2><span class="sub" id="users-sub"></span>
+              <div class="tools">
+                <button class="btn small" id="show-add"><svg width="14" height="14"><use href="#i-plus"/></svg>签发新凭证</button>
+              </div>
+            </div>
+            <div class="body" id="users-body"><div class="skel" style="height:80px"></div></div>
+          </div>
+        </div>
+
+        <div class="card" id="add-card" style="display:none">
+          <div class="head"><h2>签发新凭证</h2><span class="sub">调用 fwknopd-admin user add，密钥由服务端生成</span></div>
+          <div class="body">
+            <div class="warn-strip">
+              <svg width="15" height="15"><use href="#i-warn"/></svg>
+              <div>凭证是<b>持票凭证</b>：密钥与授权 URI 仅在签发结果中展示一次，请立即复制并安全分发给用户。泄露后请在该用户卡片上「撤销」并重新签发。</div>
+            </div>
+            <form id="add-form">
+              <div class="form-sec">基本信息</div>
+              <div class="form-grid">
+                <div class="field">
+                  <label>凭证名称 <span class="req">*</span></label>
+                  <input name="name" placeholder="例如 prod-ssh" required>
+                  <div class="tip">作为 access.conf stanza 的标识</div>
+                </div>
+                <div class="field">
+                  <label>SPA 服务器地址</label>
+                  <input name="server" placeholder="例如 203.0.113.10 或 vpn.example.com">
+                  <div class="tip">写入客户端配置，客户端向该地址发 SPA 包</div>
+                </div>
+                <div class="field">
+                  <label>允许访问端口</label>
+                  <input name="access" placeholder="默认 tcp/22">
+                  <div class="tip">OPEN_PORTS，如 tcp/22,udp/53</div>
+                </div>
+                <div class="field">
+                  <label>要求客户端用户名</label>
+                  <input name="user" placeholder="可选，如 alice">
+                  <div class="tip">REQUIRE_USERNAME，留空则不校验</div>
+                </div>
+              </div>
+              <div class="form-sec">安全选项</div>
+              <div class="form-grid">
+                <div class="field">
+                  <label class="check-row"><input type="checkbox" name="totp" checked style="width:auto"> 启用 TOTP 端口跳变</label>
+                  <div class="tip">目的端口随时间一次性变化，扫描器无法发现稳定端口</div>
+                </div>
+                <div class="field">
+                  <label>TOTP 端口范围</label>
+                  <input name="port-range" placeholder="默认 30000-60000">
+                </div>
+                <div class="field">
+                  <label class="check-row"><input type="checkbox" name="require-fingerprint" checked style="width:auto"> 要求设备指纹绑定</label>
+                  <div class="tip">SPA v4 每包携带设备指纹，敲门即身份认证</div>
+                </div>
+                <div class="field">
+                  <label>TOFU 宽限期（秒）</label>
+                  <input name="tofu-timeout" placeholder="留空 = 绑定本机指纹；86400 = 首用自动绑定">
+                  <div class="tip">设值后首个敲门的设备自动绑定；留空则绑定当前设备</div>
+                </div>
+                <div class="field">
+                  <label class="check-row"><input type="checkbox" name="require-totp-port-match" style="width:auto"> 强制 TOTP 端口匹配</label>
+                  <div class="tip">端口本身作为一次性因子，重放到其他端口也会被拒绝</div>
+                </div>
+              </div>
+              <div style="margin-top:18px; display:flex; gap:10px;">
+                <button class="btn" type="submit" id="add-submit"><svg width="15" height="15"><use href="#i-key"/></svg>签发凭证</button>
+                <button class="btn ghost" type="button" id="add-cancel">收起</button>
+              </div>
+            </form>
+            <div id="add-result" style="display:none; margin-top:18px">
+              <div class="form-sec">签发结果（仅显示一次）</div>
+              <div class="uri-box" id="add-uri-box" style="display:none">
+                <code id="add-uri"></code>
+                <button class="btn ghost small" id="copy-uri"><svg width="13" height="13"><use href="#i-copy"/></svg>复制 URI</button>
+              </div>
+              <pre class="out-pre" id="add-output"></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======== TOFU 设备绑定 ======== -->
+      <section class="page" id="page-tofu">
+        <div class="card">
+          <div class="head">
+            <h2>TOFU 设备绑定</h2><span class="sub" id="tofu-sub">首次使用自动绑定的设备指纹</span>
+            <div class="tools"><span class="hint" id="tofu-file"></span></div>
+          </div>
+          <div class="tb-wrap">
+            <table class="tb">
+              <thead><tr><th>设备指纹</th><th>来源</th><th>用户</th><th>开放端口</th><th style="width:150px">操作</th></tr></thead>
+              <tbody id="tofu-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======== 服务配置 ======== -->
+      <section class="page" id="page-config">
+        <div class="card">
+          <div class="head">
+            <h2>fwknopd 配置</h2><span class="sub" id="config-sub"></span>
+            <div class="tools">
+              <button class="btn ghost small" id="raw-toggle">查看原文</button>
+            </div>
+          </div>
+          <div class="body" id="config-body"><div class="skel" style="height:120px"></div></div>
+        </div>
+      </section>
+
+      <!-- ======== 关于 ======== -->
+      <section class="page" id="page-about">
+        <div class="card">
+          <div class="head"><h2>关于本面板</h2></div>
+          <div class="body" id="about-body"><div class="skel" style="height:100px"></div></div>
+        </div>
+        <div class="card">
+          <div class="head"><h2>安全说明</h2></div>
+          <div class="body">
+            <ul style="margin:0; padding-left:20px; font-size:13px; color:var(--muted); line-height:2">
+              <li>面板默认仅监听 <code>127.0.0.1</code>，请勿直接暴露到不受信网络；如需远程访问请置于反向代理 + 认证之后。</li>
+              <li>写操作（签发 / 撤销 / 解绑）需启动时加 <code>-enable-write</code>，并建议设置 <code>DASHBOARD_TOKEN</code>。</li>
+              <li>面板本身不接触密钥原文：密钥由 <code>fwknopd-admin</code> 生成，access.conf 中的密钥在界面中一律以「已配置」掩码显示。</li>
+              <li>撤销用户会将对应 stanza 注释禁用（自动生成备份），并向 fwknopd 发送 SIGHUP 使其重新加载。</li>
+              <li>SPA 协议版本 <code>4.0.0</code>，与 v3 客户端向后兼容。</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <footer class="foot">fwknop 运维面板 · fwknop fork 2.2.0 · 协议 4.0.0 · 数据每 <span id="foot-ivl">5</span> 秒自动刷新</footer>
+    </div>
+  </div>
+</div>
+
+<div id="toasts" role="status" aria-live="polite"></div>
+<div id="modal-root"></div>
 
 <script>
-const EVT_LABELS = {open:'Open',close:'Close',reject:'Reject',replay:'Replay',
-  unknown_fingerprint:'Unknown FP',port_mismatch:'Port mismatch',aged:'Aged',tofu_bind:'TOFU bind'};
-function fmtTime(t){ return new Date(t*1000).toLocaleString(); }
-function badge(ev){ const c='b-'+ev; return `<span class="badge ${c}">${EVT_LABELS[ev]||ev}</span>`; }
+'use strict';
+/* ==================== 基础工具 ==================== */
+const $  = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const icon = (n, sz) => `<svg width="${sz||16}" height="${sz||16}"><use href="#i-${n}"/></svg>`;
 
-async function loadMetrics(){
-  try{
-    const r = await fetch('/api/metrics'); const d = await r.json();
-    const get = lbl => {
-      for(const k in d.counters){ if(k.includes('result="'+lbl+'"')) return d.counters[k]; }
-      return 0;
-    };
-    const order = ['open','close','reject','replay','unknown_fingerprint','port_mismatch','aged','tofu_bind'];
-    document.getElementById('tiles').innerHTML = order.map(e =>
-      `<div class="tile ${e}"><div class="label">${EVT_LABELS[e]||e}</div><div class="value">${get(e)}</div></div>`
-    ).join('');
-    document.getElementById('status').textContent =
-      'metrics refreshed ' + new Date().toLocaleTimeString();
-  }catch(e){ document.getElementById('status').textContent = 'metrics error: '+e; }
+function toast(msg, kind, ms) {
+  const box = $('#toasts');
+  const el = document.createElement('div');
+  el.className = 'toast ' + (kind || '');
+  el.innerHTML = `<div>${msg}</div><button class="x" aria-label="关闭">✕</button>`;
+  el.querySelector('.x').onclick = () => el.remove();
+  box.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 320); }, ms || 4200);
 }
 
-async function loadEvents(){
-  try{
-    const r = await fetch('/api/events'); const evs = await r.json();
-    document.getElementById('events').innerHTML = (evs||[]).map(e =>
-      `<tr><td class="time">${fmtTime(e.time)}</td><td>${badge(e.event)}</td>
-       <td>${e.user||''}</td><td>${(e.device_id||'').slice(0,16)}</td>
-       <td>${e.src_ip||''}</td><td>${e.spa_port||''}</td><td>${e.target_port||''}</td>
-       <td>${e.reason||''}</td></tr>`
-    ).join('') || '<tr><td colspan="8" style="color:var(--muted)">no events</td></tr>';
-  }catch(e){ document.getElementById('events').innerHTML = '<tr><td>error</td></tr>'; }
+function confirmDialog(title, body, okLabel, onOk) {
+  const root = $('#modal-root');
+  root.innerHTML = `<div class="modal" role="dialog" aria-modal="true">
+    <h3>${title}</h3><div class="mb">${body}</div>
+    <div class="mf"><button class="btn ghost" id="m-cancel">取消</button>
+    <button class="btn danger" id="m-ok">${okLabel}</button></div></div>`;
+  root.classList.add('show');
+  $('#m-cancel').onclick = () => root.classList.remove('show');
+  root.onclick = e => { if (e.target === root) root.classList.remove('show'); };
+  $('#m-ok').onclick = () => { root.classList.remove('show'); onOk(); };
 }
 
-async function loadTOFU(){
-  try{
-    const r = await fetch('/api/tofu'); const lines = await r.json();
-    document.getElementById('tofu').textContent =
-      (lines&&lines.length)? lines.join('\n') : '(no TOFU bindings)';
-  }catch(e){ document.getElementById('tofu').textContent = 'error'; }
+async function copyText(t, label) {
+  try {
+    await navigator.clipboard.writeText(t);
+    toast((label || '内容') + '已复制到剪贴板', 'ok');
+  } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = t; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); toast((label || '内容') + '已复制到剪贴板', 'ok'); }
+    catch (_) { toast('复制失败，请手动选择复制', 'err'); }
+    ta.remove();
+  }
 }
 
-document.getElementById('add-form').addEventListener('submit', async (ev)=>{
-  ev.preventDefault();
-  const fd = new FormData(ev.target);
-  const r = await fetch('/api/admin/add', {method:'POST', body:fd});
-  const out = await r.json();
-  const el = document.getElementById('admin-out');
-  if(out.error){ el.innerHTML = '<span class="err">'+out.error+'</span>\n'; }
-  el.textContent += (out.output||'');
+/* 令牌（写操作时附加 Authorization 头） */
+let authToken = sessionStorage.getItem('dash_token') || '';
+function api(path, opts) {
+  opts = opts || {};
+  opts.headers = Object.assign({}, opts.headers);
+  if (authToken) opts.headers['Authorization'] = 'Bearer ' + authToken;
+  return fetch(path, opts).then(async r => {
+    if (r.status === 401) { toast('令牌无效或未设置，请点击左下角「令牌」配置', 'err'); throw new Error('unauthorized'); }
+    if (r.status === 403) { toast('面板未启用写操作（-enable-write）', 'err'); throw new Error('forbidden'); }
+    if (!r.ok) throw new Error('HTTP ' + r.status + '：' + (await r.text()).slice(0, 200));
+    return r.json();
+  });
+}
+
+/* ==================== 状态 ==================== */
+const S = {
+  page: 'overview',
+  auto: true, ivl: 5000, timer: null,
+  overview: null, metrics: null, events: null, users: null, tofu: null, config: null,
+  writeEnabled: false,
+  evFilter: 'all', evQuery: '', evPage: 0, evPer: 20,
+  hist: {},            // key -> [{t, v}] 计数器历史（前端采样，用于迷你趋势）
+  rawMode: false,
+};
+const HIST_MAX = 72;   // 5s 间隔约 6 分钟
+
+const PAGE_TITLES = { overview:'概览', events:'SPA 事件', users:'用户与授权', tofu:'TOFU 设备绑定', config:'服务配置', about:'关于' };
+
+/* ==================== 事件元数据（全中文） ==================== */
+const EVT = {
+  open:                { label:'放行',       cls:'bd-green',  tile:'c-green',  icon:'i-check' },
+  close:               { label:'关闭',       cls:'bd-gray',   tile:'c-gray',   icon:'i-lock' },
+  reject:              { label:'拒绝',       cls:'bd-red',    tile:'c-red',    icon:'i-x' },
+  replay:              { label:'重放拦截',   cls:'bd-amber',  tile:'c-amber',  icon:'i-warn' },
+  unknown_fingerprint: { label:'未知指纹',   cls:'bd-purple', tile:'c-purple', icon:'i-fp' },
+  port_mismatch:       { label:'端口不匹配', cls:'bd-red',    tile:'c-red',    icon:'i-bolt' },
+  aged:                { label:'过期包',     cls:'bd-amber',  tile:'c-amber',  icon:'i-clock' },
+  tofu_bind:           { label:'TOFU 绑定',  cls:'bd-blue',   tile:'c-blue',   icon:'i-key' },
+};
+const EVT_ORDER = ['open','close','reject','replay','unknown_fingerprint','port_mismatch','aged','tofu_bind'];
+const evMeta = k => EVT[k] || { label:k, cls:'bd-gray', tile:'c-gray', icon:'i-info' };
+
+/* ==================== 时间格式化 ==================== */
+function fmtAgo(t) {
+  const d = Math.max(0, Date.now()/1000 - t);
+  if (d < 5) return '刚刚';
+  if (d < 60) return Math.floor(d) + ' 秒前';
+  if (d < 3600) return Math.floor(d/60) + ' 分钟前';
+  if (d < 86400) return Math.floor(d/3600) + ' 小时前';
+  return Math.floor(d/86400) + ' 天前';
+}
+const fmtAbs = t => new Date(t*1000).toLocaleString('zh-CN', { hour12:false });
+const fmtNum = n => Number(n||0).toLocaleString('zh-CN');
+
+/* ==================== 主题 ==================== */
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  $('#theme-lab').textContent = t === 'dark' ? '浅色' : '深色';
+  $('#theme-btn use').setAttribute('href', t === 'dark' ? '#i-sun' : '#i-moon');
+  localStorage.setItem('dash_theme', t);
+}
+$('#theme-btn').onclick = () =>
+  applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+applyTheme(localStorage.getItem('dash_theme') ||
+  (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
+
+/* ==================== 导航 ==================== */
+function showPage(p) {
+  S.page = p;
+  $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.page === p));
+  $$('.page').forEach(s => s.classList.toggle('active', s.id === 'page-' + p));
+  $('#page-title').textContent = PAGE_TITLES[p] || p;
+  $('#sidebar').classList.remove('open'); $('#scrim').classList.remove('show');
+  refreshNow();
+}
+$$('.nav-item').forEach(b => b.onclick = () => showPage(b.dataset.page));
+$('#burger').onclick = () => { $('#sidebar').classList.add('open'); $('#scrim').classList.add('show'); };
+$('#scrim').onclick = () => { $('#sidebar').classList.remove('open'); $('#scrim').classList.remove('show'); };
+
+/* ==================== 令牌 ==================== */
+$('#token-btn').onclick = () => {
+  const t = prompt('请输入管理令牌（DASHBOARD_TOKEN）。仅保存在当前会话（sessionStorage），关闭标签页即失效。', authToken);
+  if (t !== null) { authToken = t.trim(); sessionStorage.setItem('dash_token', authToken); toast(authToken ? '令牌已保存到会话' : '令牌已清除', 'ok'); }
+};
+
+/* ==================== 自动刷新 ==================== */
+function restartTimer() {
+  clearInterval(S.timer);
+  if (S.auto) S.timer = setInterval(refreshNow, S.ivl);
+  $('#foot-ivl').textContent = S.ivl / 1000;
+}
+$('#auto-sw').onchange = e => { S.auto = e.target.checked; restartTimer(); };
+$('#ivl-sel').onchange = e => { S.ivl = +e.target.value; restartTimer(); };
+$('#refresh-btn').onclick = refreshNow;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) clearInterval(S.timer); else restartTimer(), refreshNow();
 });
 
-loadMetrics(); loadEvents(); loadTOFU();
-setInterval(loadMetrics, 5000);
-setInterval(loadEvents, 5000);
+/* 按当前页面决定拉取哪些数据 */
+function refreshNow() {
+  setConn(true);
+  loadOverview();
+  if (S.page === 'overview') { loadMetrics(); loadEvents(); }
+  if (S.page === 'events') loadEvents();
+  if (S.page === 'users') loadUsers();
+  if (S.page === 'tofu') loadTOFU();
+  if (S.page === 'config') loadConfig();
+  if (S.page === 'about') renderAbout();
+}
+
+let connFail = 0;
+function setConn(ok) {
+  if (!ok) connFail++; else connFail = 0;
+  const bad = connFail >= 2;
+  $('#conn-dot').className = 'dot ' + (bad ? 'err' : 'ok');
+  $('#conn-text').textContent = bad ? '连接异常（自动重试中）' : '已连接';
+}
+
+/* ==================== 概览 ==================== */
+async function loadOverview() {
+  try {
+    const d = await api('/api/overview');
+    S.overview = d;
+    S.writeEnabled = !!d.write_enabled;
+    $('#token-btn').style.display = d.write_enabled ? '' : 'none';
+    const pill = $('#daemon-pill');
+    if (d.daemon && d.daemon.alive) {
+      pill.className = 'pill on'; pill.innerHTML = '<span class="dot ok"></span>fwknopd 运行中 · PID ' + d.daemon.pid;
+    } else {
+      pill.className = 'pill off'; pill.innerHTML = '<span class="dot err"></span>fwknopd 未运行（或 PID 文件不可读）';
+    }
+    if (S.page === 'overview') renderStatusCards();
+    if (S.page === 'about') renderAbout();
+  } catch (e) { setConn(false); }
+}
+
+function renderStatusCards() {
+  const d = S.overview; if (!d) return;
+  const F = d.files || {};
+  const cards = [
+    { ic:'server', c: d.daemon.alive ? 'var(--green)' : 'var(--red)',
+      bg: d.daemon.alive ? 'var(--green-soft)' : 'var(--red-soft)',
+      k:'服务进程', v: d.daemon.alive ? `运行中 <small>PID ${d.daemon.pid}</small>` : '未运行' },
+    { ic:'activity', c:'var(--blue)', bg:'var(--blue-soft)', k:'审计日志',
+      v: F.audit && F.audit.exists ? `正常 <small>${fmtNum(F.audit.size)} 字节 · ${fmtAgo(F.audit.mtime)}更新</small>` : '缺失' },
+    { ic:'bolt', c:'var(--amber)', bg:'var(--amber-soft)', k:'指标文件',
+      v: F.metrics && F.metrics.exists ? `正常 <small>${fmtAgo(F.metrics.mtime)}更新</small>` : '缺失' },
+    { ic:'key', c: d.write_enabled ? 'var(--amber)' : 'var(--muted)',
+      bg: d.write_enabled ? 'var(--amber-soft)' : 'var(--panel-2)', k:'写操作模式',
+      v: d.write_enabled ? '已启用 <small>可签发 / 撤销</small>' : '只读 <small>安全默认</small>' },
+    { ic:'cfg', c: d.admin_tool && d.admin_tool.available ? 'var(--teal)' : 'var(--red)',
+      bg: d.admin_tool && d.admin_tool.available ? 'var(--teal-soft)' : 'var(--red-soft)', k:'管理工具',
+      v: d.admin_tool && d.admin_tool.available ? 'fwknopd-admin 可用' : 'fwknopd-admin 不可用' },
+  ];
+  $('#status-cards').innerHTML = cards.map(c => `
+    <div class="stat-card">
+      <div class="ic" style="color:${c.c};background:${c.bg}">${icon(c.ic, 19)}</div>
+      <div><div class="k">${c.k}</div><div class="v">${c.v}</div></div>
+    </div>`).join('');
+}
+
+/* ==================== 指标（计数器 + 迷你趋势） ==================== */
+function counterVal(counters, label) {
+  for (const k in counters) if (k.includes('result="' + label + '"')) return counters[k];
+  return 0;
+}
+
+async function loadMetrics() {
+  try {
+    const d = await api('/api/metrics');
+    S.metrics = d;
+    const now = Date.now() / 1000;
+    for (const e of EVT_ORDER) {
+      const v = counterVal(d.counters, e);
+      (S.hist[e] = S.hist[e] || []).push({ t: now, v });
+      if (S.hist[e].length > HIST_MAX) S.hist[e].shift();
+    }
+    if (S.page === 'overview') renderTiles(), renderSummary();
+  } catch (e) { setConn(false); }
+}
+
+/* 用采样差分绘制 SVG 迷你趋势 */
+function sparkline(key) {
+  const h = S.hist[key] || [];
+  if (h.length < 2) return '';
+  const deltas = [];
+  for (let i = 1; i < h.length; i++) deltas.push(Math.max(0, h[i].v - h[i-1].v));
+  const max = Math.max(...deltas, 1);
+  const w = 66, hh = 22, n = deltas.length;
+  const pts = deltas.map((v, i) =>
+    `${(i/(n-1)*w).toFixed(1)},${(hh - v/max*(hh-2)).toFixed(1)}`).join(' ');
+  return `<svg class="spark" width="${w}" height="${hh}" viewBox="0 0 ${w} ${hh}">
+    <polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="1.6"
+      stroke-linecap="round" stroke-linejoin="round" opacity=".7"/></svg>`;
+}
+
+function renderTiles() {
+  if (!S.metrics) return;
+  $('#tiles').innerHTML = EVT_ORDER.map(e => {
+    const m = evMeta(e), v = counterVal(S.metrics.counters, e);
+    return `<div class="tile ${m.tile}">
+      <div class="lab">${icon(m.icon, 14)}${m.label}</div>
+      <div class="num">${fmtNum(v)}</div>${sparkline(e)}
+    </div>`;
+  }).join('');
+}
+
+function renderSummary() {
+  if (!S.metrics) return;
+  const c = S.metrics.counters;
+  const open = counterVal(c,'open'), total = EVT_ORDER.reduce((s,e) => s + counterVal(c,e), 0);
+  const blocked = ['reject','replay','unknown_fingerprint','port_mismatch','aged']
+    .reduce((s,e) => s + counterVal(c,e), 0);
+  const last = (S.events && S.events[0]) ? `${esc(evMeta(S.events[0].event).label)} · ${fmtAgo(S.events[0].time)}` : '暂无事件';
+  const pct = n => total ? (n/total*100).toFixed(1) + '%' : '—';
+  const rows = [
+    ['累计 SPA 包', fmtNum(total)], ['放行率', pct(open)], ['拦截 / 异常率', pct(blocked)],
+    ['TOFU 绑定数', fmtNum(counterVal(c,'tofu_bind'))], ['最近事件', last],
+    ['指标生成时间', S.metrics.generated_at ? new Date(S.metrics.generated_at).toLocaleTimeString('zh-CN',{hour12:false}) : '—'],
+  ];
+  $('#summary-body').innerHTML = `<div class="form-grid">` + rows.map(([k,v]) =>
+    `<div><div class="hint">${k}</div><div style="font-size:16px;font-weight:700">${v}</div></div>`).join('') + `</div>`;
+}
+
+/* ==================== 事件页 ==================== */
+async function loadEvents() {
+  try {
+    const d = await api('/api/events');
+    S.events = d || [];
+    if (S.page === 'events') renderEvents();
+  } catch (e) { setConn(false); }
+}
+
+function filteredEvents() {
+  let evs = S.events || [];
+  if (S.evFilter !== 'all') evs = evs.filter(e => e.event === S.evFilter);
+  if (S.evQuery) {
+    const q = S.evQuery.toLowerCase();
+    evs = evs.filter(e =>
+      (e.user||'').toLowerCase().includes(q) ||
+      (e.src_ip||'').toLowerCase().includes(q) ||
+      (e.device_id||'').toLowerCase().includes(q) ||
+      (e.reason||'').toLowerCase().includes(q));
+  }
+  return evs;
+}
+
+function renderEventChips() {
+  const evs = S.events || [];
+  const counts = { all: evs.length };
+  for (const e of evs) counts[e.event] = (counts[e.event] || 0) + 1;
+  const mk = (k, label) =>
+    `<button class="chip ${S.evFilter===k?'active':''}" data-ev="${k}">${label}<span class="n">${counts[k]||0}</span></button>`;
+  $('#event-chips').innerHTML = mk('all','全部') +
+    EVT_ORDER.filter(e => counts[e]).map(e => mk(e, evMeta(e).label)).join('');
+  $$('#event-chips .chip').forEach(b => b.onclick = () => { S.evFilter = b.dataset.ev; S.evPage = 0; renderEvents(); });
+}
+
+function renderEvents() {
+  renderEventChips();
+  const evs = filteredEvents();
+  $('#events-sub').textContent = `最近 ${fmtNum((S.events||[]).length)} 条（服务端保留 500 条）· ${fmtAgo(Date.now()/1000)}刷新`;
+
+  const pages = Math.max(1, Math.ceil(evs.length / S.evPer));
+  S.evPage = Math.min(S.evPage, pages - 1);
+  const slice = evs.slice(S.evPage * S.evPer, (S.evPage + 1) * S.evPer);
+
+  if (!slice.length) {
+    $('#events-body').innerHTML = `<tr><td colspan="8"><div class="empty">
+      ${icon('i-list', 40)}<div class="t">暂无匹配事件</div>
+      <div class="d">${(S.events||[]).length ? '试试更换筛选条件或清空搜索' : 'fwknopd 收到 SPA 包后，事件会显示在这里'}</div>
+    </div></td></tr>`;
+  } else {
+    $('#events-body').innerHTML = slice.map(e => {
+      const m = evMeta(e.event);
+      return `<tr>
+        <td class="mono" title="${fmtAbs(e.time)}" style="white-space:nowrap;color:var(--muted)">${fmtAgo(e.time)}</td>
+        <td><span class="badge ${m.cls}">${m.label}</span></td>
+        <td>${esc(e.user) || '<span class="hint">—</span>'}</td>
+        <td class="mono" title="${esc(e.device_id||'')}">${e.device_id ? esc(e.device_id.slice(0,14)) + '…' : '<span class="hint">—</span>'}</td>
+        <td class="mono">${esc(e.src_ip) || '—'}</td>
+        <td class="mono">${e.spa_port || '—'}</td>
+        <td class="mono">${e.target_port || '—'}</td>
+        <td class="hint">${esc(e.reason) || ''}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  $('#events-pager').innerHTML = `
+    <span>第 ${S.evPage+1} / ${pages} 页 · 共 ${fmtNum(evs.length)} 条</span>
+    <button class="btn ghost small" id="pg-prev" ${S.evPage<=0?'disabled':''}>上一页</button>
+    <button class="btn ghost small" id="pg-next" ${S.evPage>=pages-1?'disabled':''}>下一页</button>`;
+  const pv = $('#pg-prev'), nx = $('#pg-next');
+  if (pv) pv.onclick = () => { S.evPage--; renderEvents(); };
+  if (nx) nx.onclick = () => { S.evPage++; renderEvents(); };
+}
+$('#event-search').oninput = e => { S.evQuery = e.target.value.trim(); S.evPage = 0; renderEvents(); };
+
+/* ==================== 用户与授权 ==================== */
+async function loadUsers() {
+  try {
+    const d = await api('/api/users');
+    S.users = d;
+    if (S.page === 'users') renderUsers();
+  } catch (e) { setConn(false); }
+}
+
+function stanzaBadges(s) {
+  const b = [];
+  if (s.has_key) b.push('<span class="tag">密钥已配置</span>');
+  if (s.has_gpg) b.push('<span class="tag">GnuPG</span>');
+  if (s.has_hmac) b.push('<span class="tag hl">HMAC</span>');
+  if (s.has_totp) b.push(`<span class="tag hl">TOTP 跳变 ${esc(s.port_range||'')}</span>`);
+  if (s.require_fingerprint && s.fingerprint_count > 0) b.push(`<span class="tag hl">指纹白名单 ×${s.fingerprint_count}</span>`);
+  else if (s.require_fingerprint) b.push(`<span class="tag hl">TOFU 首用绑定（${s.tofu_timeout > 0 ? s.tofu_timeout + 's' : '默认 86400s'}）</span>`);
+  if (s.require_totp_port_match) b.push('<span class="tag hl">端口因子校验</span>');
+  return b.join('');
+}
+
+function renderUsers() {
+  const d = S.users; if (!d) return;
+  if (d.error) {
+    $('#users-body').innerHTML = `<div class="empty">${icon('i-warn',40)}
+      <div class="t">无法读取 access.conf</div><div class="d">${esc(d.error)}<br>路径：${esc(d.file && d.file.path)}</div></div>`;
+    $('#users-sub').textContent = '';
+    return;
+  }
+  const st = d.stanzas || [];
+  $('#users-sub').textContent = `${st.length} 个授权 · ${d.file.exists ? '更新于 ' + fmtAbs(d.file.mtime) : '文件不存在'}`;
+  if (!st.length) {
+    $('#users-body').innerHTML = `<div class="empty">${icon('i-users',40)}
+      <div class="t">还没有任何授权</div><div class="d">点击右上角「签发新凭证」为第一位用户创建访问授权</div></div>`;
+    return;
+  }
+  $('#users-body').innerHTML = st.map(s => {
+    const name = s.name || ('授权 #' + s.index);
+    return `<div class="card" style="margin-bottom:14px;${s.changeme?'border-color:var(--red)':''}">
+      <div class="head" style="border-bottom:0;padding-bottom:8px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="ic" style="width:34px;height:34px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center">${icon('i-users',17)}</div>
+          <div><div style="font-weight:700">${esc(name)}</div>
+          <div class="hint">stanza 第 ${s.index} 个 · 第 ${s.start_line}–${s.end_line} 行</div></div>
+        </div>
+        <div class="tools">${S.writeEnabled ?
+          `<button class="btn ghost small" data-rm="${esc(name)}">${icon('i-trash',13)}撤销</button>` : ''}</div>
+      </div>
+      <div class="body" style="padding-top:6px">
+        ${s.changeme ? `<div class="warn-strip">${icon('i-warn',15)}<div>该授权仍包含 <code>__CHANGEME__</code> 占位密钥，<b>无法正常工作</b>，请撤销后重新签发。</div></div>` : ''}
+        <div class="form-grid" style="margin-bottom:10px">
+          <div><div class="hint">来源限制（SOURCE）</div><div class="mono">${esc(s.source)||'—'}</div></div>
+          <div><div class="hint">要求用户名</div><div class="mono">${esc(s.require_username)||'不校验'}</div></div>
+          <div><div class="hint">开放端口</div><div class="mono">${esc(s.open_ports)||'按包内请求'}</div></div>
+          <div><div class="hint">访问超时</div><div class="mono">${esc(s.fw_access_timeout)||'默认 30'} 秒</div></div>
+        </div>
+        <div>${stanzaBadges(s)}</div>
+      </div>
+    </div>`;
+  }).join('');
+  $$('#users-body [data-rm]').forEach(b => b.onclick = () => {
+    const name = b.dataset.rm;
+    confirmDialog('撤销授权', `确定撤销「<b>${esc(name)}</b>」吗？<br>
+      对应 stanza 会被注释禁用（自动备份并可恢复），fwknopd 将收到 SIGHUP 重新加载，该凭证<b>立即失效</b>。`,
+      '撤销并立即生效', async () => {
+        try {
+          const fd = new FormData(); fd.append('name', name);
+          const r = await api('/api/admin/rm', { method:'POST', body: fd });
+          if (r.error) toast('撤销失败：' + esc(r.error), 'err');
+          else { toast(`授权「${esc(name)}」已撤销`, 'ok'); loadUsers(); }
+        } catch (e) {}
+      });
+  });
+}
+
+/* 签发凭证 */
+$('#show-add').onclick = () => {
+  const c = $('#add-card');
+  c.style.display = c.style.display === 'none' ? '' : 'none';
+  if (c.style.display !== 'none') c.scrollIntoView({ behavior:'smooth', block:'start' });
+};
+$('#add-cancel').onclick = () => { $('#add-card').style.display = 'none'; };
+
+$('#add-form').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const f = ev.target;
+  const fd = new FormData();
+  fd.append('name', f.name.value.trim());
+  if (f.server.value.trim()) fd.append('server', f.server.value.trim());
+  if (f.access.value.trim()) fd.append('access', f.access.value.trim());
+  if (f.user.value.trim()) fd.append('user', f.user.value.trim());
+  if (!f.totp.checked) fd.append('totp', 'off');
+  if (f['port-range'].value.trim()) fd.append('port-range', f['port-range'].value.trim());
+  if (!f['require-fingerprint'].checked) fd.append('require-fingerprint', 'off');
+  if (f['tofu-timeout'].value.trim()) fd.append('tofu-timeout', f['tofu-timeout'].value.trim());
+  if (f['require-totp-port-match'].checked) fd.append('require-totp-port-match', '1');
+
+  const btn = $('#add-submit');
+  btn.disabled = true; btn.textContent = '签发中…';
+  try {
+    const r = await api('/api/admin/add', { method:'POST', body: fd });
+    $('#add-result').style.display = '';
+    $('#add-output').textContent = r.output || '(无输出)';
+    const m = (r.output || '').match(/fwknop:\/\/\S+/);
+    if (m) {
+      $('#add-uri').textContent = m[0];
+      $('#add-uri-box').style.display = '';
+      $('#copy-uri').onclick = () => copyText(m[0], '授权 URI ');
+    } else $('#add-uri-box').style.display = 'none';
+    if (r.error) toast('签发失败：' + esc(r.error), 'err', 6000);
+    else { toast('凭证已签发，请立即复制授权 URI 分发给用户', 'ok', 6000); loadUsers(); }
+  } catch (e) {} finally {
+    btn.disabled = false; btn.innerHTML = `${icon('i-key',15)}签发凭证`;
+  }
+});
+
+/* ==================== TOFU 绑定 ==================== */
+async function loadTOFU() {
+  try {
+    const d = await api('/api/tofu');
+    S.tofu = d;
+    if (S.page === 'tofu') renderTOFU();
+  } catch (e) { setConn(false); }
+}
+
+function renderTOFU() {
+  const d = S.tofu; if (!d) return;
+  const bs = d.bindings || [];
+  $('#tofu-sub').textContent = `${bs.length} 台已绑定设备`;
+  $('#tofu-file').textContent = d.file.exists ? `状态文件更新于 ${fmtAgo(d.file.mtime)}` : '状态文件不存在';
+  if (!bs.length) {
+    $('#tofu-body').innerHTML = `<tr><td colspan="5"><div class="empty">
+      ${icon('i-fp',40)}<div class="t">暂无 TOFU 绑定</div>
+      <div class="d">当授权的指纹白名单为空且启用「要求设备指纹」时，第一台通过校验的设备会自动绑定并显示在这里</div>
+    </div></td></tr>`;
+    return;
+  }
+  $('#tofu-body').innerHTML = bs.map(b => `<tr>
+    <td class="mono" title="${esc(b.device_id)}">${esc(b.device_id)}
+      <button class="icon-btn" style="padding:2px 6px;margin-left:6px" data-cp="${esc(b.device_id)}" title="复制指纹">${icon('i-copy',12)}</button></td>
+    <td class="mono">${esc(b.source)||'—'}</td>
+    <td>${esc(b.username)||'<span class="hint">—</span>'}</td>
+    <td class="mono">${esc(b.open_ports)||'—'}</td>
+    <td>${S.writeEnabled ?
+      `<button class="btn ghost small" data-ub="${esc(b.stanza_key)}" data-dev="${esc(b.device_id)}">${icon('i-trash',13)}解绑</button>` :
+      '<span class="hint">只读模式</span>'}</td>
+  </tr>`).join('');
+  $$('#tofu-body [data-cp]').forEach(b => b.onclick = () => copyText(b.dataset.cp, '设备指纹 '));
+  $$('#tofu-body [data-ub]').forEach(b => b.onclick = () => {
+    confirmDialog('解除设备绑定', `确定解绑设备<br><code>${esc(b.dataset.dev)}</code> 吗？<br>
+      解绑后该设备需重新完成 TOFU 首用绑定（或加入指纹白名单）才能继续敲门。`,
+      '解绑', async () => {
+        try {
+          const fd = new FormData();
+          fd.append('stanza_key', b.dataset.ub); fd.append('device_id', b.dataset.dev);
+          const r = await api('/api/admin/tofu/unbind', { method:'POST', body: fd });
+          if (r.error) toast('解绑失败：' + esc(r.error), 'err');
+          else { toast('设备已解绑', 'ok'); loadTOFU(); }
+        } catch (e) {}
+      });
+  });
+}
+
+/* ==================== 服务配置 ==================== */
+/* 常见配置项中文说明（未收录的显示原值，归入「其他」） */
+const CONF_META = {
+  PCAP_INTF:                 ['网络抓包', 'libpcap 抓包网卡（如 eth0 / any）'],
+  PCAP_FILTER:               ['网络抓包', 'BPF 抓包过滤器（显式设置时优先于端口范围）'],
+  PCAP_PORT_RANGE:           ['网络抓包', 'SPA 监听端口范围（如 30000-60000），自动生成 portrange BPF，配合 TOTP 端口跳变'],
+  ENABLE_PCAP_PROMISC:       ['网络抓包', '抓包是否启用混杂模式'],
+  PCAP_DISPATCH_COUNT:       ['网络抓包', '每轮 pcap 分发的最大包数'],
+  ENABLE_UDP_SERVER:         ['网络抓包', '改用 UDP socket 直接监听（无需 libpcap）'],
+  UDP_SERVER_PORT:           ['网络抓包', 'UDP 监听端口'],
+  ENABLE_TCP_SERVER:         ['网络抓包', '启用 TCP 监听模式'],
+  TCP_SERVER_PORT:           ['网络抓包', 'TCP 监听端口'],
+  ENABLE_NFQ_CAPTURE:        ['网络抓包', '使用 Netfilter Queue 抓包（端口范围监听的最佳载体）'],
+  NFQ_QUEUE_NUMBER:          ['网络抓包', 'NFQ 队列号（与 iptables NFQUEUE 规则对应）'],
+  ENABLE_SPA_OVER_HTTP:      ['网络抓包', '允许 SPA 包封装在 HTTP 请求中'],
+  ALLOW_ANY_USER_AGENT:      ['网络抓包', 'SPA-over-HTTP 不校验 User-Agent'],
+  ENABLE_X_FORWARDED_FOR:    ['网络抓包', 'SPA-over-HTTP 从 X-Forwarded-For 取真实来源 IP'],
+  ENABLE_SPA_PACKET_AGING:   ['安全策略', '启用 SPA 包时效校验（防重放窗口）'],
+  MAX_SPA_PACKET_AGE:        ['安全策略', 'SPA 包允许的最大时间偏差（秒）'],
+  ENABLE_DIGEST_PERSISTENCE: ['安全策略', '重放摘要缓存持久化到磁盘'],
+  DIGEST_FILE:               ['安全策略', '重放摘要缓存文件（gdbm 等）'],
+  DIGEST_DB_FILE:            ['安全策略', '重放摘要缓存数据库文件'],
+  FIREWALL_TYPE:             ['防火墙', '防火墙后端类型（iptables / firewalld / pf / ipfw）'],
+  FIREWALL_EXE:              ['防火墙', '防火墙命令路径覆盖'],
+  FLUSH_IPT_AT_INIT:         ['防火墙', '启动时清空并重建 FWKNOP 自定义链'],
+  FLUSH_IPT_AT_EXIT:         ['防火墙', '退出时清空 FWKNOP 自定义链'],
+  ENABLE_IPT_COMMENT_CHECK:  ['防火墙', '校验 iptables 支持 comment 模块'],
+  ENABLE_RULE_PREPEND:       ['防火墙', '规则用 -I 插入而非 -A 追加'],
+  IPT_INPUT_ACCESS:          ['防火墙', 'INPUT 链访问控制参数'],
+  IPT_FORWARD_ACCESS:        ['防火墙', 'FORWARD 链访问控制参数'],
+  IPT_OUTPUT_ACCESS:         ['防火墙', 'OUTPUT 链访问控制参数'],
+  IPT_DNAT_ACCESS:           ['防火墙', 'DNAT 访问控制参数'],
+  ENABLE_IPT_FORWARDING:     ['NAT / 转发', '允许 SPA 请求 FORWARD 转发规则'],
+  ENABLE_IPT_LOCAL_NAT:      ['NAT / 转发', '允许本机 NAT 访问'],
+  ENABLE_IPT_SNAT:           ['NAT / 转发', '允许 SNAT 规则'],
+  ENABLE_IPT_OUTPUT:         ['NAT / 转发', '允许 OUTPUT 链规则'],
+  ENABLE_NAT_DNS:            ['NAT / 转发', 'NAT 目标允许使用域名（启动时解析）'],
+  ENABLE_AUDIT:              ['审计与指标', '启用结构化 JSON 审计日志（本面板数据源）'],
+  AUDIT_FILE:                ['审计与指标', '审计日志文件路径'],
+  METRICS_FILE:              ['审计与指标', 'Prometheus 指标文件路径（原子重写）'],
+  SYSLOG_IDENTITY:           ['审计与指标', 'syslog 身份标识'],
+  FWKNOP_RUN_DIR:            ['路径与运行', '运行目录（PID / 摘要 / 审计 / TOFU 状态文件所在）'],
+  FWKNOP_CONF_DIR:           ['路径与运行', '配置目录'],
+  FWKNOP_PID_FILE:           ['路径与运行', 'PID 文件路径'],
+  GPG_EXE:                   ['GnuPG', 'gpg 可执行文件路径'],
+  GPG_HOME_DIR:              ['GnuPG', 'GnuPG 主目录'],
+  EXIT_AT_INTF_DOWN:         ['高级', '网卡断开时退出服务'],
+  ENABLE_DESTINATION_RULE:   ['高级', '强制 SPA 包目的地址匹配 DESTINATION 规则'],
+  RULES_CHECK_THRESHOLD:     ['高级', '防火墙规则一致性检查阈值'],
+  ENABLE_CRON:               ['高级', '允许 fwknopd 管理 cron 作业'],
+};
+const CONF_GROUP_ORDER = ['网络抓包', '安全策略', '防火墙', 'NAT / 转发', '审计与指标', '路径与运行', 'GnuPG', '高级', '其他'];
+
+async function loadConfig() {
+  try {
+    const d = await api('/api/config');
+    S.config = d;
+    if (S.page === 'config') renderConfig();
+  } catch (e) { setConn(false); }
+}
+
+function renderConfig() {
+  const d = S.config; if (!d) return;
+  if (!d.exists) {
+    $('#config-sub').textContent = '';
+    $('#config-body').innerHTML = `<div class="empty">${icon('i-warn',40)}
+      <div class="t">配置文件不存在</div><div class="d">${esc(d.path)}</div></div>`;
+    return;
+  }
+  $('#config-sub').textContent = `${esc(d.path)} · ${d.entries.length} 项生效指令 · 修改于 ${fmtAbs(d.mtime)}`;
+
+  if (S.rawMode) {
+    const raw = esc(d.raw).replace(/^([A-Z_]+)(\s)/gm, '<span style="color:var(--accent);font-weight:600">$1</span>$2');
+    $('#config-body').innerHTML = `<pre class="out-pre" style="max-height:none">${raw}</pre>`;
+    return;
+  }
+
+  const groups = {};
+  for (const e of d.entries) {
+    const g = (CONF_META[e.key] || ['其他'])[0];
+    (groups[g] = groups[g] || []).push(e);
+  }
+  let html = '';
+  for (const g of CONF_GROUP_ORDER) {
+    const list = groups[g];
+    if (!list) continue;
+    html += `<div class="form-sec">${g}</div>
+      <table class="tb"><thead><tr><th style="width:250px">指令</th><th style="width:280px">当前值</th><th>说明</th></tr></thead><tbody>` +
+      list.map(e => `<tr>
+        <td class="mono" style="color:var(--accent);font-weight:600">${esc(e.key)}</td>
+        <td class="mono">${esc(e.value)}</td>
+        <td class="hint">${esc((CONF_META[e.key] || [,''])[1] || '（未收录说明，请参考 fwknopd.conf 注释）')}</td>
+      </tr>`).join('') + `</tbody></table>`;
+  }
+  $('#config-body').innerHTML = html || `<div class="empty"><div class="t">配置为空</div></div>`;
+}
+$('#raw-toggle').onclick = () => {
+  S.rawMode = !S.rawMode;
+  $('#raw-toggle').textContent = S.rawMode ? '查看分组说明' : '查看原文';
+  renderConfig();
+};
+
+/* ==================== 关于 ==================== */
+function renderAbout() {
+  const d = S.overview;
+  const F = (d && d.files) || {};
+  const rows = [
+    ['面板版本', 'v' + (d ? d.version : '…')],
+    ['SPA 协议版本', '4.0.0'],
+    ['管理工具状态', d && d.admin_tool && d.admin_tool.status ? esc(d.admin_tool.status).replace(/\n/g, '<br>') : '—'],
+    ['审计日志', F.audit ? esc(F.audit.path) : '—'],
+    ['指标文件', F.metrics ? esc(F.metrics.path) : '—'],
+    ['TOFU 状态', F.tofu ? esc(F.tofu.path) : '—'],
+    ['授权配置', F.access_conf ? esc(F.access_conf.path) : '—'],
+    ['服务配置', F.fwknopd_conf ? esc(F.fwknopd_conf.path) : '—'],
+  ];
+  $('#about-body').innerHTML = `<table class="tb"><tbody>` + rows.map(([k,v]) =>
+    `<tr><td style="width:150px;color:var(--muted)">${k}</td><td class="mono" style="font-size:12px">${v}</td></tr>`).join('') +
+    `</tbody></table>`;
+}
+
+/* ==================== 启动 ==================== */
+refreshNow();
+restartTimer();
 </script>
 </body>
 </html>
