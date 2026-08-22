@@ -1143,7 +1143,7 @@ function refreshNow() {
   if (S.page === 'overview') { loadMetrics(); loadEvents(); }
   if (S.page === 'events') loadEvents();
   if (S.page === 'users') { loadUsers(); loadEvents(); }
-  if (S.page === 'tofu') loadTOFU();
+  if (S.page === 'tofu') { loadTOFU(); loadEvents(); }
   if (S.page === 'config') loadConfig();
   if (S.page === 'profiles') loadProfiles();
   if (S.page === 'about') renderAbout();
@@ -1694,6 +1694,15 @@ async function loadTOFU() {
   } catch (e) { setConn(false); }
 }
 
+/* 该设备的最近一条敲门事件（点击直达事件页该设备筛选） */
+function lastEventForDevice(dev) {
+  const last = (S.events || []).find(e => e.device_id === dev);
+  if (!last) return '<div class="hint" style="font-size:11px">近期无敲门记录</div>';
+  const m = evMeta(last.event);
+  return `<div><button class="btn ghost small" style="font-size:11px;padding:2px 8px" data-dev-ev="${esc(dev)}"
+    title="查看该设备的全部事件">最近：${m.label} · ${fmtAgo(last.time)}</button></div>`;
+}
+
 function renderTOFU() {
   const d = S.tofu; if (!d) return;
   const all = d.bindings || [];
@@ -1714,7 +1723,8 @@ function renderTOFU() {
   }
   $('#tofu-body').innerHTML = bs.map(b => `<tr>
     <td class="mono" title="${esc(b.device_id)}">${esc(b.device_id)}
-      <button class="icon-btn" style="padding:2px 6px;margin-left:6px" data-cp="${esc(b.device_id)}" title="复制指纹">${icon('i-copy',12)}</button></td>
+      <button class="icon-btn" style="padding:2px 6px;margin-left:6px" data-cp="${esc(b.device_id)}" title="复制指纹">${icon('i-copy',12)}</button>
+      ${lastEventForDevice(b.device_id)}</td>
     <td class="mono">${esc(b.source)||'—'}</td>
     <td>${esc(b.username)||'<span class="hint">—</span>'}</td>
     <td class="mono">${esc(b.open_ports)||'—'}</td>
@@ -1723,6 +1733,11 @@ function renderTOFU() {
       '<span class="hint">只读模式</span>'}</td>
   </tr>`).join('');
   $$('#tofu-body [data-cp]').forEach(b => b.onclick = () => copyText(b.dataset.cp, '设备指纹 '));
+  $$('#tofu-body [data-dev-ev]').forEach(b => b.onclick = () => {
+    S.evQuery = b.dataset.devEv; S.evPage = 0; S.evFilter = 'all';
+    $('#event-search').value = S.evQuery;
+    showPage('events');
+  });
   $$('#tofu-body [data-ub]').forEach(b => b.onclick = () => {
     confirmDialog('解除设备绑定', `确定解绑设备<br><code>${esc(b.dataset.dev)}</code> 吗？<br>
       解绑后该设备需重新完成 TOFU 首用绑定（或加入指纹白名单）才能继续敲门。`,
