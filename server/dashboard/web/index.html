@@ -1378,7 +1378,7 @@ function renderUsers() {
 $('#show-add').onclick = () => {
   const c = $('#add-card');
   c.style.display = c.style.display === 'none' ? '' : 'none';
-  if (c.style.display !== 'none') c.scrollIntoView({ behavior:'smooth', block:'start' });
+  if (c.style.display !== 'none') { loadAddDraft(); c.scrollIntoView({ behavior:'smooth', block:'start' }); }
 };
 $('#add-cancel').onclick = () => { $('#add-card').style.display = 'none'; };
 
@@ -1418,7 +1418,32 @@ $$('.tpl-chip').forEach(chip => chip.onclick = () => {
   $$('.tpl-chip').forEach(c => c.classList.toggle('active', c === chip));
   $('#tpl-desc').textContent = t.desc;
   toast(`已应用模板「${chip.textContent}」，请补全名称与服务器地址`, 'ok');
+  saveAddDraft();
 });
+
+/* 签发表单草稿：实时记忆到 localStorage，刷新/误关不丢；签发成功后清除 */
+const ADD_DRAFT_KEY = 'fwknop-add-draft';
+const ADD_FIELDS = ['name','server','access','user','port-range','tofu-timeout'];
+const ADD_CHECKS = ['totp','require-fingerprint','require-totp-port-match'];
+function saveAddDraft() {
+  const f = $('#add-form');
+  const d = {};
+  ADD_FIELDS.forEach(k => { d[k] = f[k].value; });
+  ADD_CHECKS.forEach(k => { d[k] = f[k].checked; });
+  localStorage.setItem(ADD_DRAFT_KEY, JSON.stringify(d));
+}
+function loadAddDraft() {
+  let d;
+  try { d = JSON.parse(localStorage.getItem(ADD_DRAFT_KEY) || ''); } catch (e) { return; }
+  if (!d || typeof d !== 'object') return;
+  const f = $('#add-form');
+  ADD_FIELDS.forEach(k => { if (typeof d[k] === 'string') f[k].value = d[k]; });
+  ADD_CHECKS.forEach(k => { if (typeof d[k] === 'boolean') f[k].checked = d[k]; });
+  if (ADD_FIELDS.some(k => d[k])) toast('已恢复上次未完成的签发草稿', 'ok', 2500);
+}
+function clearAddDraft() { localStorage.removeItem(ADD_DRAFT_KEY); }
+$('#add-form').addEventListener('input', saveAddDraft);
+$('#add-form').addEventListener('change', saveAddDraft);
 
 $('#add-form').addEventListener('submit', async ev => {
   ev.preventDefault();
@@ -1449,7 +1474,14 @@ $('#add-form').addEventListener('submit', async ev => {
       $('#copy-import').onclick = () => copyText(`fwknop import '${m[0]}'`, '导入命令 ');
     } else { $('#add-uri-box').style.display = 'none'; $('#add-uri-hint').style.display = 'none'; }
     if (r.error) toast('签发失败：' + esc(r.error), 'err', 6000);
-    else { toast('凭证已签发，请立即复制授权 URI 分发给用户', 'ok', 6000); loadUsers(); }
+    else {
+      toast('凭证已签发，请立即复制授权 URI 分发给用户', 'ok', 6000);
+      clearAddDraft();
+      f.reset();  /* 清空表单便于连续签发下一位用户（结果区不受影响） */
+      $$('.tpl-chip').forEach(c => c.classList.remove('active'));
+      $('#tpl-desc').textContent = '';
+      loadUsers();
+    }
   } catch (e) {} finally {
     btn.disabled = false; btn.innerHTML = `${icon('i-key',15)}签发凭证`;
   }
