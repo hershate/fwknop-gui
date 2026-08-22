@@ -149,11 +149,9 @@ func requireWrite(w http.ResponseWriter, r *http.Request) bool {
 		http.Error(w, "未启用写操作（启动时加 -enable-write）", http.StatusForbidden)
 		return false
 	}
-	if cfg.Token != "" {
-		if r.Header.Get("Authorization") != "Bearer "+cfg.Token {
-			http.Error(w, "未授权", http.StatusUnauthorized)
-			return false
-		}
+	if !csrfOK(r) {
+		http.Error(w, "缺少防跨站请求头（X-Fwknop-Request）", http.StatusForbidden)
+		return false
 	}
 	return true
 }

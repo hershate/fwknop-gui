@@ -1,4 +1,4 @@
-// Command fwknop-dashboard is the operations web panel for fwknopd (2.2.0).
+// Command fwknop-dashboard is the operations web panel for fwknopd (2.4.0).
 //
 // It reads the structured audit log (<run_dir>/fwknopd_audit.log, JSON lines),
 // the Prometheus metrics (<run_dir>/fwknopd.metrics), the TOFU state file,
@@ -7,15 +7,18 @@
 // CLI (Phase 4c) for management. The UI is a single embedded HTML page
 // (go:embed), fully localized in Chinese.
 //
-// Security: binds localhost by default; write actions require a bearer token
-// (DASHBOARD_TOKEN env) or are disabled. The panel never reads raw keys from
-// access.conf into API responses — key material is only ever produced by
-// fwknopd-admin, which remains the single source of truth.
+// Security: the panel requires first-run initialization (admin password,
+// PBKDF2-HMAC-SHA256 stored in <run-dir>/dashboard_auth.json) before any
+// API is usable; all /api endpoints then require a session login (or the
+// DASHBOARD_TOKEN bearer for headless use); write actions additionally
+// require -enable-write; binds localhost by default. The panel never reads
+// raw keys from access.conf into API responses — key material is only ever
+// produced by fwknopd-admin, which remains the single source of truth.
 //
 // Usage:
 //
 //	fwknop-dashboard -run-dir /var/run/fwknop -addr 127.0.0.1:8088
-//	DASHBOARD_TOKEN=secret fwknop-dashboard -enable-write
+//	DASHBOARD_TOKEN=secret fwknop-dashboard -enable-write   # 无头/CI 场景
 //
 // See REF/plan/Port Knocking.md §7.4/§7.6.
 package main
@@ -30,7 +33,7 @@ import (
 	"time"
 )
 
-const version = "2.3.0"
+const version = "2.4.0"
 
 type Config struct {
 	RunDir      string
@@ -77,28 +80,46 @@ func main() {
 	if cfg.ProfileDir == "" {
 		cfg.ProfileDir = filepath.Join(cfg.RunDir, "profiles")
 	}
+	if err := loadAuth(); err != nil {
+		log.Printf("警告：%v（视为未初始化）", err)
+	}
+
+	// guard 为业务 API 包上认证门禁。
+	guard := func(h http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if !requireAuth(w, r) {
+				return
+			}
+			h(w, r)
+		}
+	}
 
 	mux := http.NewServeMux()
-	// 只读 API
-	mux.HandleFunc("/api/overview", handleOverview)
-	mux.HandleFunc("/api/events", handleEvents)
-	mux.HandleFunc("/api/metrics", handleMetrics)
-	mux.HandleFunc("/api/tofu", handleTOFU)
-	mux.HandleFunc("/api/users", handleUsers)
-	mux.HandleFunc("/api/config", handleConfig)
-	mux.HandleFunc("/api/audit/download", handleAuditDownload)
-	mux.HandleFunc("/api/service/fwrules", handleFwList)
-	mux.HandleFunc("/api/profiles", handleProfiles)
-	mux.HandleFunc("/api/profiles/view", handleProfileView)
-	// 写操作（需 -enable-write + 令牌）
-	mux.HandleFunc("/api/admin/add", handleAdminAdd)
-	mux.HandleFunc("/api/admin/rm", handleAdminRm)
-	mux.HandleFunc("/api/admin/tofu/unbind", handleAdminTofuUnbind)
-	mux.HandleFunc("/api/service/", handleService)
-	mux.HandleFunc("/api/config/fwknopd", handleSaveFwknopdConf)
-	mux.HandleFunc("/api/config/stanza", handleUpdateStanza)
-	mux.HandleFunc("/api/config/stanza/enable", handleEnableStanza)
-	mux.HandleFunc("/api/profiles/", handleProfileOp)
+	// 鉴权端点（无需登录）
+	mux.HandleFunc("/api/auth/state", handleAuthState)
+	mux.HandleFunc("/api/setup", handleSetup)
+	mux.HandleFunc("/api/login", handleLogin)
+	mux.HandleFunc("/api/logout", handleLogout)
+	// 只读 API（需登录）
+	mux.HandleFunc("/api/overview", guard(handleOverview))
+	mux.HandleFunc("/api/events", guard(handleEvents))
+	mux.HandleFunc("/api/metrics", guard(handleMetrics))
+	mux.HandleFunc("/api/tofu", guard(handleTOFU))
+	mux.HandleFunc("/api/users", guard(handleUsers))
+	mux.HandleFunc("/api/config", guard(handleConfig))
+	mux.HandleFunc("/api/audit/download", guard(handleAuditDownload))
+	mux.HandleFunc("/api/service/fwrules", guard(handleFwList))
+	mux.HandleFunc("/api/profiles", guard(handleProfiles))
+	mux.HandleFunc("/api/profiles/view", guard(handleProfileView))
+	// 写操作（需登录 + -enable-write + CSRF 头）
+	mux.HandleFunc("/api/admin/add", guard(handleAdminAdd))
+	mux.HandleFunc("/api/admin/rm", guard(handleAdminRm))
+	mux.HandleFunc("/api/admin/tofu/unbind", guard(handleAdminTofuUnbind))
+	mux.HandleFunc("/api/service/", guard(handleService))
+	mux.HandleFunc("/api/config/fwknopd", guard(handleSaveFwknopdConf))
+	mux.HandleFunc("/api/config/stanza", guard(handleUpdateStanza))
+	mux.HandleFunc("/api/config/stanza/enable", guard(handleEnableStanza))
+	mux.HandleFunc("/api/profiles/", guard(handleProfileOp))
 	// UI (embedded static)
 	webFS, err := fs.Sub(webContent, "web")
 	if err != nil {
