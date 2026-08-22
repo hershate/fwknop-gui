@@ -1746,6 +1746,9 @@ function filteredEvents() {
       (e.src_ip||'').toLowerCase().includes(q) ||
       (e.device_id||'').toLowerCase().includes(q) ||
       (e.reason||'').toLowerCase().includes(q) ||
+      /* 中文可读文案同样可搜：用户按界面所见的词（如「重放」）检索 */
+      (reasonZh(e.reason)||'').toLowerCase().includes(q) ||
+      (evMeta(e.event).label||'').toLowerCase().includes(q) ||
       String(e.spa_port||'').includes(q) ||
       String(e.target_port||'').includes(q));
   }
