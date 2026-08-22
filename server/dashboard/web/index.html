@@ -2232,7 +2232,7 @@ function renderTOFU() {
           fd.append('stanza_key', b.dataset.ub); fd.append('device_id', b.dataset.dev);
           const r = await api('/api/admin/tofu/unbind', { method:'POST', body: fd });
           if (r.error) toast('解绑失败：' + esc(r.error), 'err');
-          else { toast('设备已解绑', 'ok'); loadTOFU(); }
+          else { toast('设备已解绑：若授权启用了 TOFU 宽限期，该设备下次敲门会自动重新绑定；否则需加入指纹白名单', 'ok', 8000); loadTOFU(); }
         } catch (e) {}
       });
   });
@@ -2274,7 +2274,7 @@ $('#tofu-batch-unbind').onclick = () => {
         } catch (e) { fail++; }
       }
       S.tofuSel = new Set();
-      toast(`批量解绑完成：成功 ${ok} 台${fail ? `，失败 ${fail} 台` : ''}`, fail ? 'err' : 'ok', 6000);
+      toast(`批量解绑完成：成功 ${ok} 台${fail ? `，失败 ${fail} 台` : ''}。设备将在 TOFU 宽限期内下次敲门时自动重新绑定`, fail ? 'err' : 'ok', 8000);
       loadTOFU();
     });
 };
