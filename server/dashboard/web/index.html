@@ -597,6 +597,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
           </div>
           <div class="body" style="padding-bottom:6px">
             <div class="chips" id="event-chips"></div>
+            <div id="event-ratio" style="margin-top:8px"></div>
           </div>
           <div class="tb-wrap">
             <table class="tb">
@@ -1431,6 +1432,17 @@ function renderEventChips() {
     (counts.bad ? mk('bad','⚠ 仅看异常') : '') +
     EVT_ORDER.filter(e => counts[e]).map(e => mk(e, evMeta(e).label)).join('');
   $$('#event-chips .chip').forEach(b => b.onclick = () => { S.evFilter = b.dataset.ev; S.evPage = 0; renderEvents(); });
+  /* 异常占比条：当前时间窗内 正常 vs 异常 的直观比例 */
+  const total = counts.all, bad = counts.bad || 0, ok = total - bad;
+  const pct = total ? Math.round(bad * 1000 / total) / 10 : 0;
+  $('#event-ratio').innerHTML = total ? `
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="flex:1;height:8px;border-radius:5px;overflow:hidden;display:flex;background:var(--panel-2)">
+        ${ok ? `<div style="width:${ok*100/total}%;background:var(--green)" title="正常 ${ok} 条"></div>` : ''}
+        ${bad ? `<div style="width:${bad*100/total}%;background:var(--red)" title="异常 ${bad} 条"></div>` : ''}
+      </div>
+      <span class="hint" style="white-space:nowrap;font-size:11.5px">异常 <b style="color:${bad?'var(--red)':'var(--green)'}">${pct}%</b>（${bad}/${total}）</span>
+    </div>` : '';
 }
 
 function renderEvents() {
