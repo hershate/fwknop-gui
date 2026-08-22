@@ -683,6 +683,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                   <option value="conf">按配置顺序</option>
                   <option value="name">按名称</option>
                   <option value="active">按最近活跃</option>
+                  <option value="bound">按绑定设备数</option>
                 </select>
                 <button class="btn small" id="show-add"><svg width="14" height="14"><use href="#i-plus"/></svg>签发新凭证</button>
               </div>
@@ -1536,7 +1537,7 @@ function refreshNow() {
   const jobs = [loadOverview()];
   if (S.page === 'overview') jobs.push(loadMetrics(), loadEvents());
   if (S.page === 'events') jobs.push(loadEvents());
-  if (S.page === 'users') jobs.push(loadUsers(), loadEvents());
+  if (S.page === 'users') jobs.push(loadUsers(), loadEvents(), loadTOFU());
   if (S.page === 'tofu') jobs.push(loadTOFU(), loadEvents());
   if (S.page === 'config') jobs.push(loadConfig());
   if (S.page === 'profiles') jobs.push(loadProfiles());
@@ -2278,6 +2279,12 @@ function lastEventForUser(s) {
     title="查看该用户的全部事件">最近：${m.label} · ${fmtAgo(last.time)} · ${esc(last.src_ip || '')}</button></div>`;
 }
 
+/* TOFU 绑定计数：stanza_key = SOURCE|用户名|开放端口（同 server/access.c tofu_stanza_key） */
+function tofuBindCount(s) {
+  const key = `${s.source||''}|${s.require_username||''}|${s.open_ports||''}`;
+  return ((S.tofu && S.tofu.bindings) || []).filter(x => x.stanza_key === key).length;
+}
+
 function stanzaBadges(s) {
   const b = [];
   if (s.has_key) b.push('<span class="tag">密钥已配置</span>');
@@ -2288,8 +2295,7 @@ function stanzaBadges(s) {
   else if (s.require_fingerprint) b.push(`<span class="tag hl">TOFU 首用绑定（${s.tofu_timeout > 0 ? s.tofu_timeout + 's' : '默认 86400s'}）</span>`);
   if (s.require_totp_port_match) b.push('<span class="tag hl">端口因子校验</span>');
   /* TOFU 绑定计数：stanza_key = SOURCE|用户名|开放端口（同 server/access.c tofu_stanza_key） */
-  const key = `${s.source||''}|${s.require_username||''}|${s.open_ports||''}`;
-  const n = ((S.tofu && S.tofu.bindings) || []).filter(x => x.stanza_key === key).length;
+  const n = tofuBindCount(s);
   if (n > 0) b.push(`<button class="tag hl" style="cursor:pointer;border:0" data-tofu-q="${esc(s.require_username||s.source||'')}"
     title="该授权已自动绑定 ${n} 台设备，点击查看 TOFU 绑定">${icon('i-fp',11)} 已绑定 ${n} 台设备</button>`);
   return b.join('');
@@ -2312,13 +2318,14 @@ function renderUsers() {
     (s.require_username||'').toLowerCase().includes(q) ||
     (s.open_ports||'').toLowerCase().includes(q) ||
     (s.source||'').toLowerCase().includes(q)) : all;
-  /* 排序：配置顺序（默认）/ 名称 / 最近活跃（按该用户最近事件时间倒序） */
+  /* 排序：配置顺序（默认）/ 名称 / 最近活跃（按该用户最近事件时间倒序）/ 绑定设备数（倒序） */
   const lastEv = {};
   (S.events || []).forEach(e => { if (e.user && !(e.user in lastEv)) lastEv[e.user] = e.time || 0; });
   const sortMode = S.usersSort || 'conf';
   if (sortMode === 'name') st.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN'));
   else if (sortMode === 'active') st.sort((a, b) =>
     (lastEv[b.require_username] || 0) - (lastEv[a.require_username] || 0));
+  else if (sortMode === 'bound') st.sort((a, b) => tofuBindCount(b) - tofuBindCount(a));
   $('#users-sub').textContent =
     (q ? `匹配 ${st.length} / ${all.length} 个授权 · ` : `${all.length} 个授权 · `) +
     (d.file.exists ? '更新于 ' + fmtAbs(d.file.mtime) : '文件不存在');
