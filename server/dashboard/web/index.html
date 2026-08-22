@@ -1960,6 +1960,7 @@ function stanzaBadges(s) {
 
 function renderUsers() {
   syncSearchClear();
+  try { localStorage.setItem('fwknop-users-query', S.usersQuery || ''); } catch (e) {}
   const d = S.users; if (!d) return;
   if (d.error) {
     $('#users-body').innerHTML = `<div class="empty">${icon('i-warn',40)}
@@ -2417,6 +2418,7 @@ function lastEventForDevice(dev) {
 
 function renderTOFU() {
   syncSearchClear();
+  try { localStorage.setItem('fwknop-tofu-query', S.tofuQuery || ''); } catch (e) {}
   const d = S.tofu; if (!d) return;
   const all = d.bindings || [];
   const q = (S.tofuQuery || '').toLowerCase();
@@ -2560,6 +2562,11 @@ $$('.th-sort').forEach(th => th.onclick = () => {
 });
 $('#users-search').oninput = e => { S.usersQuery = e.target.value.trim(); renderUsers(); };
 S.usersSort = localStorage.getItem('fwknop-users-sort') || 'conf';
+/* 恢复用户/TOFU 页搜索词（与事件筛选持久化一致的体验） */
+S.usersQuery = localStorage.getItem('fwknop-users-query') || '';
+if (S.usersQuery) $('#users-search').value = S.usersQuery;
+S.tofuQuery = localStorage.getItem('fwknop-tofu-query') || '';
+if (S.tofuQuery) $('#tofu-search').value = S.tofuQuery;
 S.evTimeAbs = !!localStorage.getItem('fwknop-ev-timeabs');
 /* 恢复上次的事件筛选（搜索词 / 类型芯片 / 时间范围），保持排查上下文 */
 try {
