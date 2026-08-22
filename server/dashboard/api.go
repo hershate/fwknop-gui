@@ -254,6 +254,36 @@ func handleAdminTofuUnbind(w http.ResponseWriter, r *http.Request) {
 	adminResult(w, out, err)
 }
 
+// handleAdminAuditClear 备份并清空审计日志。fwknopd 每次写入都是
+// open(O_APPEND)/write/close（server/audit.c），不持有文件描述符，
+// 因此直接重命名安全，新事件会写入重建的空文件。
+func handleAdminAuditClear(w http.ResponseWriter, r *http.Request) {
+	if !requireWrite(w, r) {
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "需要 POST", http.StatusMethodNotAllowed)
+		return
+	}
+	p := auditPath()
+	st, err := os.Stat(p)
+	if err != nil || st.Size() == 0 {
+		writeJSON(w, map[string]interface{}{"ok": false, "msg": "审计日志为空或不存在，无需清理"})
+		return
+	}
+	bak := fmt.Sprintf("%s.bak-%s", p, time.Now().Format("20060102-150405"))
+	if err := os.Rename(p, bak); err != nil {
+		http.Error(w, "备份失败："+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, map[string]interface{}{
+		"ok":     true,
+		"size":   st.Size(),
+		"backup": bak,
+		"msg":    fmt.Sprintf("已清空审计日志（原 %d 字节备份为 %s）", st.Size(), bak),
+	})
+}
+
 // ------------------------------------------------------------------
 // 服务控制（写操作）
 // ------------------------------------------------------------------

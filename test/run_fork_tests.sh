@@ -318,6 +318,14 @@ if [ -x "$GOBIN" ]; then
             --header='Authorization: Bearer fttok' http://127.0.0.1:18099/api/admin/tofu/unbind 2>/dev/null \
             | grep -q 'Removed 1' && ok "面板 tofu 解绑（写路径）" || bad "面板 tofu 解绑"
 
+        # 审计日志清理：备份 .bak-时间戳 后清空；无令牌拒绝
+        wget -qO- --post-data '' http://127.0.0.1:18099/api/admin/audit/clear 2>/dev/null \
+            && bad "无令牌清理审计" || ok "审计清理要求令牌"
+        wget -qO- --post-data '' --header='Authorization: Bearer fttok' http://127.0.0.1:18099/api/admin/audit/clear 2>/dev/null \
+            | grep -q '已清空审计日志' && ok "面板审计清理（备份+清空）" || bad "面板审计清理"
+        [ ! -s "$D/run/fwknopd_audit.log" ] && grep -q '"event":"open"' "$D/run"/fwknopd_audit.log.bak-* \
+            && ok "审计清理后原文件清空、备份保留内容" || bad "审计清理落盘"
+
         # 一键签发：apply=1 自动写入 access.conf（预检+备份），同名查重拒绝
         wget -qO- --post-data 'name=autoadd1&server=203.0.113.10&user=bob&apply=1' \
             --header='Authorization: Bearer fttok' http://127.0.0.1:18099/api/admin/add 2>/dev/null \
