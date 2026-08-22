@@ -2166,7 +2166,7 @@ $('#add-form').addEventListener('submit', async ev => {
     } else { $('#add-uri-box').style.display = 'none'; $('#add-uri-hint').style.display = 'none'; }
     if (r.error) toast('签发失败：' + esc(r.error), 'err', 6000);
     else {
-      toast('凭证已签发，请立即复制授权 URI 分发给用户', 'ok', 6000);
+      toast(`凭证「${nm}」已签发，请立即复制授权 URI 分发给用户`, 'ok', 6000);
       clearAddDraft();
       if (f.server.value.trim()) { localStorage.setItem('fwknop-last-server', f.server.value.trim()); pushServerHistory(f.server.value.trim()); }
       f.reset();  /* 清空表单便于连续签发下一位用户（结果区不受影响） */
