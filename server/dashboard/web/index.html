@@ -1369,6 +1369,11 @@ function tickSessTtl() {
   if (!el) return;
   if (!S.sessionExp) { el.style.display = 'none'; return; }
   const left = S.sessionExp - Date.now() / 1000;
+  /* 临期主动提醒一次（<5 分钟），避免专注操作时无预兆被登出 */
+  if (left > 0 && left < 300 && !S.sessWarned) {
+    S.sessWarned = true;
+    toast('会话将在 5 分钟内过期，请完成当前操作后重新登录', 'err');
+  }
   if (left <= 0) { el.style.display = ''; el.textContent = '会话已过期，请重新登录'; el.style.color = 'var(--red)'; return; }
   el.style.display = '';
   el.style.color = left < 1800 ? 'var(--amber)' : '';
