@@ -319,6 +319,7 @@ table.tb { width:100%; border-collapse:collapse; font-size:13px; }
 .toast.err { border-left-color:var(--red); }
 @keyframes slidein { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:none; } }
 .toast .x { margin-left:auto; cursor:pointer; color:var(--faint); border:0; background:none; font-size:15px; padding:0; }
+.toast .tn { font-size:11px; color:var(--accent); font-weight:700; margin-left:4px; }
 
 /* modal */
 #modal-root { position:fixed; inset:0; z-index:90; display:none; align-items:center; justify-content:center; background:rgba(8,10,20,.55); backdrop-filter:blur(3px); }
@@ -799,12 +800,38 @@ const icon = (n, sz) => `<svg width="${sz||16}" height="${sz||16}"><use href="#i
 
 function toast(msg, kind, ms) {
   const box = $('#toasts');
+  const cls = 'toast ' + (kind || '');
+  const last = box.lastElementChild;
+  /* 相同消息连发时合并为一条并累计 ×N，重置倒计时，避免刷屏 */
+  if (last && last.dataset.msg === msg && last.className === cls) {
+    const n = (+last.dataset.n || 1) + 1;
+    last.dataset.n = n;
+    let badge = last.querySelector('.tn');
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'tn';
+      last.querySelector('div').appendChild(badge);
+    }
+    badge.textContent = ' ×' + n;
+    clearTimeout(+last.dataset.t1); clearTimeout(+last.dataset.t2);
+    scheduleToastDismiss(last, ms || 4200);
+    return;
+  }
   const el = document.createElement('div');
-  el.className = 'toast ' + (kind || '');
+  el.className = cls;
+  el.dataset.msg = msg;
   el.innerHTML = `<div>${msg}</div><button class="x" aria-label="关闭">✕</button>`;
   el.querySelector('.x').onclick = () => el.remove();
   box.appendChild(el);
-  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 320); }, ms || 4200);
+  /* 最多同时显示 5 条，多余的移除最旧 */
+  while (box.children.length > 5) box.firstElementChild.remove();
+  scheduleToastDismiss(el, ms || 4200);
+}
+function scheduleToastDismiss(el, ms) {
+  el.dataset.t1 = setTimeout(() => {
+    el.style.opacity = '0'; el.style.transition = 'opacity .3s';
+    el.dataset.t2 = setTimeout(() => el.remove(), 320);
+  }, ms);
 }
 
 function confirmDialog(title, body, okLabel, onOk) {
