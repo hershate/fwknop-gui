@@ -1660,6 +1660,7 @@ function renderEvents() {
           <div><div class="k">目标端口</div><div class="v">${e.target_port||'—'}</div></div>
           <div><div class="k">原因（原始）</div><div class="v">${e.reason?`<span class="cp-cell" data-cp="${esc(e.reason)}">${esc(e.reason)}</span>`:'—'}</div></div>
           <div><div class="k">原因（中文）</div><div class="v">${esc(reasonZh(e.reason))}</div></div>
+          <div style="align-self:end"><button class="btn ghost small" data-evjson="${esc(key)}" title="复制该事件的完整 JSON（排障/上报用）">${icon('i-copy',12)} 复制原始 JSON</button></div>
         </div></td></tr>`;
       return `<tr class="ev-click" data-key="${esc(key)}" title="点击展开/收起完整详情">
         <td class="mono" title="${fmtAbs(e.time)}" style="white-space:nowrap;color:var(--muted)">${fmtAgo(e.time)}</td>
@@ -1672,6 +1673,10 @@ function renderEvents() {
         <td class="hint" title="${e.reason ? '原始原因：' + esc(e.reason) : ''}">${esc(reasonZh(e.reason))}</td>
       </tr>${detail}`;
     }).join('');
+    $$('#events-body [data-evjson]').forEach(b => b.onclick = () => {
+      const ev2 = slice.find(x => `${x.time}|${x.event}|${x.src_ip||''}|${x.device_id||''}` === b.dataset.evjson);
+      if (ev2) copyText(JSON.stringify(ev2), '事件 JSON ');
+    });
     /* 行点击展开/收起完整详情；复制/反查控件不触发 */
     if (!S.evExpanded) S.evExpanded = new Set();
     $$('#events-body tr.ev-click').forEach(tr => tr.onclick = ev => {
