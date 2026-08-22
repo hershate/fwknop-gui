@@ -1242,6 +1242,7 @@ function showPage(p) {
   $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.page === p));
   $$('.page').forEach(s => s.classList.toggle('active', s.id === 'page-' + p));
   $('#page-title').textContent = PAGE_TITLES[p] || p;
+  if (typeof updateDocTitle === 'function') updateDocTitle();
   $('#sidebar').classList.remove('open'); $('#scrim').classList.remove('show');
   refreshNow();
 }
@@ -1655,7 +1656,8 @@ $('#ev-new-pill').onclick = () => {
 function updateDocTitle() {
   const now = Date.now() / 1000;
   const bad = (S.events || []).filter(e => BAD_EVTS.includes(e.event) && now - (e.time || 0) < 900).length;
-  document.title = (bad ? `(${bad} 异常) ` : '') + 'fwknop 运维面板';
+  const pg = (typeof PAGE_TITLES !== 'undefined' && PAGE_TITLES[S.page]) || '';
+  document.title = (bad ? `(${bad} 异常) ` : '') + (pg ? pg + ' · ' : '') + 'fwknop 运维面板';
 }
 
 /* 异常事件集合：「仅看异常」快捷筛选用 */
