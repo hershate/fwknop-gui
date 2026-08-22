@@ -903,7 +903,10 @@ function showAuthView(which) {
 function enterApp() {
   $('#auth-gate').style.display = 'none';
   $('#app').style.display = '';
-  refreshNow();
+  /* URL hash 深链接：刷新/分享链接回到原页面 */
+  const h = location.hash.replace('#', '');
+  if (PAGE_KEYS.includes(h)) S.page = h;
+  showPage(S.page);
   restartTimer();
 }
 
@@ -1083,6 +1086,7 @@ applyTheme(localStorage.getItem('dash_theme') || (sysThemeMQ.matches ? 'light' :
 function showPage(p) {
   if (S.page === 'config' && p !== 'config' && !confGuardLeave()) return;
   S.page = p;
+  if (('#' + p) !== location.hash) history.replaceState(null, '', '#' + p);
   $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.page === p));
   $$('.page').forEach(s => s.classList.toggle('active', s.id === 'page-' + p));
   $('#page-title').textContent = PAGE_TITLES[p] || p;
