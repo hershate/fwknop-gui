@@ -1813,6 +1813,11 @@ $('#add-form').addEventListener('submit', async ev => {
   try {
     const r = await api('/api/admin/add', { method:'POST', body: fd });
     $('#add-result').style.display = '';
+    /* 长表单下结果区可能在视口外：平滑滚动定位 + 闪烁提示 */
+    $('#add-result').scrollIntoView({ behavior:'smooth', block:'nearest' });
+    $('#add-result').classList.remove('flash-prefill');
+    void $('#add-result').offsetWidth;
+    $('#add-result').classList.add('flash-prefill');
     $('#add-output').textContent = r.output || '(无输出)';
     const m = (r.output || '').match(/fwknop:\/\/\S+/);
     if (m) {
