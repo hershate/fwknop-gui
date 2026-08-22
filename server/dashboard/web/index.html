@@ -2573,6 +2573,18 @@ $$('[data-ctpl]').forEach(chip => chip.onclick = () => {
   toast(`模板已合并（更新 ${upd} 项、新增 ${add} 项），点击右上角「保存」生效`, 'ok', 5000);
 });
 $('#conf-save').onclick = () => {
+  /* 保存前拦截：结构化模式下存在类型校验红框（ce-bad）时拒绝并聚焦 */
+  if (!confRawEdit) {
+    markConfRows();
+    const bad = $('#conf-edit-rows .ce-bad');
+    if (bad) {
+      const row = bad.closest('div');
+      const k = row ? row.querySelector('.ce-key').value.trim() : '';
+      toast(`指令 ${k || '(未命名)'} 的值不合法：${bad.title || '请修正'}`, 'err', 6000);
+      bad.focus();
+      return;
+    }
+  }
   let payload;
   if (confRawEdit) {
     payload = { mode:'raw', raw: $('#conf-raw-area').value };
