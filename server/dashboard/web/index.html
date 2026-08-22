@@ -279,6 +279,9 @@ table.tb { width:100%; border-collapse:collapse; font-size:13px; }
 #events-body tr:nth-child(4n+1), #events-body tr:nth-child(4n+2) { background:transparent; }
 #events-body tr:nth-child(4n+3), #events-body tr:nth-child(4n) { background:color-mix(in srgb, var(--panel-2) 40%, transparent); }
 .tb tbody tr.ev-detail:hover { background:var(--panel-2); }
+/* 异常事件行淡红底色，成对覆盖详情行；压过斑马纹 */
+#events-body tr.ev-bad, #events-body tr.ev-bad + tr.ev-detail { background:color-mix(in srgb, var(--red-soft) 55%, transparent); }
+#events-body tr.ev-bad:hover { background:var(--red-soft); }
 .tb .mono { font-size:12px; }
 .tb-wrap { overflow-x:auto; }
 
@@ -1670,7 +1673,7 @@ function renderEvents() {
           <div><div class="k">原因（中文）</div><div class="v">${esc(reasonZh(e.reason))}</div></div>
           <div style="align-self:end"><button class="btn ghost small" data-evjson="${esc(key)}" title="复制该事件的完整 JSON（排障/上报用）">${icon('i-copy',12)} 复制原始 JSON</button></div>
         </div></td></tr>`;
-      return `<tr class="ev-click" data-key="${esc(key)}" title="点击展开/收起完整详情">
+      return `<tr class="ev-click${BAD_EVTS.includes(e.event) ? ' ev-bad' : ''}" data-key="${esc(key)}" title="点击展开/收起完整详情">
         <td class="mono" title="${fmtAbs(e.time)}" style="white-space:nowrap;color:var(--muted)">${fmtAgo(e.time)}</td>
         <td><span class="badge ${m.cls}">${m.label}</span></td>
         <td>${e.user ? `<span class="cp-cell" data-cp="${esc(e.user)}" title="点击复制用户名">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" title="查看该用户的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
