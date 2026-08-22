@@ -435,6 +435,18 @@ if [ -x "$GOBIN" ]; then
             --save-cookies "$JAR" --keep-session-cookies \
             http://127.0.0.1:18098/api/login 2>/dev/null | grep -q '登录成功' \
             && ok "正确密码重新登录" || bad "重新登录"
+        # wget 对 401 不输出响应体，改用 python3 读取错误体核对剩余次数提示
+        python3 -c "
+import urllib.request, urllib.error, json
+req = urllib.request.Request('http://127.0.0.1:18098/api/login',
+    data=json.dumps({'password':'wrongpw'}).encode(),
+    headers={'Content-Type':'application/json'})
+try:
+    urllib.request.urlopen(req)
+except urllib.error.HTTPError as e:
+    print(e.read().decode())
+" 2>/dev/null | grep -q '再失败 4 次' \
+            && ok "登录失败提示剩余尝试次数" || bad "剩余次数提示"
         for i in 1 2 3 4 5; do
             wget -qO /dev/null --post-data '{"password":"wrongpw"}' --header="$CJ" \
                 http://127.0.0.1:18098/api/login 2>/dev/null

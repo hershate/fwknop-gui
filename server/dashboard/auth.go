@@ -318,7 +318,8 @@ func loginLocked(ip string) time.Duration {
 	return 0
 }
 
-func recordLoginFail(ip string) {
+// recordLoginFail 记录一次失败，返回距锁定剩余的尝试次数（0 = 本次已触发锁定）。
+func recordLoginFail(ip string) int {
 	auth.mu.Lock()
 	defer auth.mu.Unlock()
 	rec, ok := auth.failures[ip]
@@ -331,7 +332,9 @@ func recordLoginFail(ip string) {
 		rec.lockedTil = time.Now().Add(loginLockTime)
 		rec.count = 0
 		rec.first = time.Now()
+		return 0
 	}
+	return loginMaxFail - rec.count
 }
 
 func clearLoginFail(ip string) {
@@ -434,8 +437,15 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		okCred = subtle.ConstantTimeCompare([]byte(req.Password), []byte(cfg.Token)) == 1
 	}
 	if !okCred {
-		recordLoginFail(ip)
-		http.Error(w, "密码错误", http.StatusUnauthorized)
+		left := recordLoginFail(ip)
+		if left == 0 {
+			http.Error(w, fmt.Sprintf("失败次数过多，已锁定 %d 秒",
+				int(loginLockTime.Seconds())), http.StatusUnauthorized)
+		} else {
+			/* 告知剩余尝试次数：用户能预判锁定，不会「突然被锁」 */
+			http.Error(w, fmt.Sprintf("密码错误（再失败 %d 次将锁定 %d 秒）",
+				left, int(loginLockTime.Seconds())), http.StatusUnauthorized)
+		}
 		return
 	}
 	clearLoginFail(ip)
