@@ -2424,7 +2424,26 @@ function renderAbout() {
   ];
   $('#about-body').innerHTML = clockWarn + `<table class="tb"><tbody>` + rows.map(([k,v]) =>
     `<tr><td style="width:150px;color:var(--muted)">${k}</td><td class="mono" style="font-size:12px">${v}</td></tr>`).join('') +
-    `</tbody></table>`;
+    `</tbody></table>
+    <div style="margin-top:12px;text-align:right">
+      <button class="btn ghost small" id="about-diag">${icon('i-copy',13)} 复制诊断信息</button>
+    </div>`;
+  /* 一键打包排障所需的非敏感状态（版本/时钟/服务/文件），贴给运维即可定位 */
+  $('#about-diag').onclick = () => {
+    const drift = d && d.now ? Math.round(Date.now() / 1000 - d.now) : 0;
+    const fstat = (k, f) => `${k}: ${f ? (f.exists ? f.path + ' (' + fmtSize(f.size) + ')' : f.path + '（不存在）') : '—'}`;
+    copyText([
+      'fwknop 运维面板诊断信息',
+      '面板版本: v' + (d ? d.version : '?'),
+      'SPA 协议: 4.0.0',
+      'fwknopd: ' + (d && d.daemon && d.daemon.alive ? `运行中 PID ${d.daemon.pid}` : '未运行'),
+      '写操作: ' + (d && d.write_enabled ? '管理模式' : '只读'),
+      '服务器时间: ' + (d && d.now ? fmtAbs(d.now) : '?') + `（浏览器偏差 ${drift}s）`,
+      '管理工具: ' + (d && d.admin_tool && d.admin_tool.available ? '可用' : '不可用'),
+      fstat('审计日志', F.audit), fstat('指标文件', F.metrics),
+      fstat('TOFU 状态', F.tofu), fstat('授权配置', F.access_conf), fstat('服务配置', F.fwknopd_conf),
+    ].join('\n'), '诊断信息 ');
+  };
 }
 
 /* ==================== 通用模态 ==================== */
