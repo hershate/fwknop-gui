@@ -239,6 +239,8 @@ select.ctl, input.ctl {
 .flash-prefill { animation:prefillFlash 1.6s ease; }
 @keyframes numBump { 0% { transform:scale(1.18); filter:brightness(1.5); } 100% { transform:scale(1); filter:none; } }
 .num-bump { animation:numBump .6s ease; display:inline-block; }
+#to-top { position:fixed; right:22px; bottom:22px; z-index:40; width:38px; height:38px; border-radius:50%;
+  display:none; align-items:center; justify-content:center; box-shadow:var(--shadow); }
 .nb-badge { background:var(--red); color:#fff; border-radius:9px; font-size:10px; line-height:1.6; padding:0 5px; margin-left:4px; vertical-align:2px; }
 @keyframes spin { to { transform:rotate(360deg); } }
 .spinning svg { animation:spin .8s linear infinite; }
@@ -880,6 +882,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
 </div>
 
 <div id="toasts" role="status" aria-live="polite"></div>
+<button class="btn ghost" id="to-top" title="回到顶部" aria-label="回到顶部"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></button>
 <div id="modal-root"></div>
 
 <script>
@@ -1287,6 +1290,12 @@ document.addEventListener('keydown', ev => {
     if (btn && !btn.disabled) { ev.preventDefault(); btn.click(); }
   }
 });
+
+/* 回到顶部：滚动超过一屏后浮现 */
+window.addEventListener('scroll', () => {
+  $('#to-top').style.display = window.scrollY > 400 ? 'inline-flex' : 'none';
+}, { passive: true });
+$('#to-top').onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
 /* ==================== 自动刷新 ==================== */
 function restartTimer() {
