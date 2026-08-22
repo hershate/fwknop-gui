@@ -828,6 +828,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <h2>TOFU 设备绑定</h2><span class="sub" id="tofu-sub">首次使用自动绑定的设备指纹</span>
             <div class="tools">
               <span class="srch-wrap"><input class="ctl" id="tofu-search" placeholder="搜索指纹 / 用户 / 端口…" style="width:200px"><button class="icon-btn srch-clear" data-for="tofu-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+              <button class="btn ghost small" id="tofu-density" title="切换表格行密度（紧凑模式一屏看更多设备）">紧凑</button>
               <span class="hint" id="tofu-file"></span>
             </div>
           </div>
@@ -1892,17 +1893,18 @@ $('#ev-notify').onclick = async () => {
 };
 syncEvNotifyBtn();
 
-/* 行密度切换：紧凑模式适合监控场景一屏多看；选择持久化 */
-if (localStorage.getItem('fwknop-ev-dense') === '1') {
-  $('#events-body').closest('table').classList.add('dense');
-  $('#ev-density').textContent = '舒适';
+/* 行密度切换（事件 / TOFU 共用）：紧凑模式适合监控场景一屏多看；选择按表持久化 */
+function initDensityToggle(btnSel, bodySel, key) {
+  const btn = $(btnSel), tb = $(bodySel).closest('table');
+  if (localStorage.getItem(key) === '1') { tb.classList.add('dense'); btn.textContent = '舒适'; }
+  btn.onclick = () => {
+    const on = tb.classList.toggle('dense');
+    btn.textContent = on ? '舒适' : '紧凑';
+    localStorage.setItem(key, on ? '1' : '');
+  };
 }
-$('#ev-density').onclick = () => {
-  const tb = $('#events-body').closest('table');
-  const on = tb.classList.toggle('dense');
-  $('#ev-density').textContent = on ? '舒适' : '紧凑';
-  localStorage.setItem('fwknop-ev-dense', on ? '1' : '');
-};
+initDensityToggle('#ev-density', '#events-body', 'fwknop-ev-dense');
+initDensityToggle('#tofu-density', '#tofu-body', 'fwknop-tofu-dense');
 
 $('#ev-new-pill').onclick = () => {
   S.evPage = 0; S.evFilter = 'all'; S.evQuery = ''; $('#event-search').value = '';
