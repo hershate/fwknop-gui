@@ -977,6 +977,41 @@ fwknop 的主配置文件。
 通过组合 \fB\-f, \-\-foreground\fR 与 \fB\-v, \-\-verbose\fR 命令行选项，可以让 \fBfwknopd\fR 以调试模式运行。这将禁用守护进程模式执行，并在收到数据包时将详细信息打印到屏幕上的 stderr。
 .sp
 获取 \fBfwknopd\fR 诊断信息最全面的方式是运行 fwknop 源码中 \fItest/\fR 目录下的测试套件脚本 \fItest\-fwknop\&.pl\fR。该测试套件让 fwknop 经历大量运行时测试，支持 \fIvalgrind\fR，针对 OpenSSL 校验 SPA 加密和 HMAC 结果，甚至还内置了自己的 SPA 通信模糊测试器。
+.SH "本 fork（Zurker）新增功能"
+.sp
+以下为本 fork 在上游 2\&.6\&.11 基础上新增的服务端能力（对应 SPA 协议 4\&.0\&.0；英文原版手册无此节）。
+.sp
+\fBfwknopd\&.conf 新增指令：\fR
+.TP
+\fBPCAP_PORT_RANGE\fR \fI<START\-END>\fR
+pcap 模式下的监听端口范围。设置了范围且未显式配置 PCAP_FILTER 时，自动生成 \fIudp dst portrange START\-END\fR 的 BPF 过滤器；显式 PCAP_FILTER 优先。配合 TOTP 端口跳变使用。
+.TP
+\fBENABLE_AUDIT\fR \fI<Y/N>\fR
+开启结构化审计与指标输出（默认 Y）。
+.TP
+\fBAUDIT_FILE\fR / \fBMETRICS_FILE\fR \fI<路径>\fR
+审计日志（JSON 行，默认 \fI<run_dir>/fwknopd_audit\&.log\fR）与 Prometheus 指标文件（默认 \fI<run_dir>/fwknopd\&.metrics\fR）的路径；设为空字符串可禁用对应文件输出。
+.sp
+\fBaccess\&.conf 新增指令：\fR
+.TP
+\fBFINGERPRINT\fR \fI<base64 指纹>\fR
+允许的设备指纹（device_id）白名单；可多行书写多个指纹。
+.TP
+\fBREQUIRE_FINGERPRINT\fR \fI<Y/N>\fR
+要求 SPA 包必须携带匹配的 device_id。
+.TP
+\fBFINGERPRINT_TOFU_TIMEOUT\fR \fI<秒>\fR
+TOFU（首用信任）绑定的宽限窗口：窗口内首次出现的 device_id 会被记录并绑定到该 stanza。
+.TP
+\fBTOTP_SEED_BASE64\fR / \fBTOTP_PORT_RANGE\fR / \fBTOTP_PORT_DIGITS\fR
+服务端用于重算 TOTP 跳变端口的种子、端口范围与位数（须与客户端一致）。
+.TP
+\fBREQUIRE_TOTP_PORT_MATCH\fR \fI<Y/N>\fR
+要求 SPA 包实际到达的目的端口与按包内时间戳重算的 TOTP 端口一致，不一致即拒绝（需配置 TOTP_SEED_BASE64）。
+.sp
+\fB运行时产物：\fR结构化审计日志（8 类事件：open/close 等）、Prometheus 指标文件、TOFU 绑定状态文件 \fI<run_dir>/fwknop_tofu\&.state\fR。
+.sp
+\fB配套管理工具 fwknopd\-admin：\fR服务端授权管理 CLI——\fIuser add\fR（生成密钥/TOTP 种子/指纹，输出 stanza + fwknop:// URI + QR + 加密凭证文件）、\fIuser list\fR（密钥掩码）、\fIuser rm\fR（注释禁用，可逆，含备份与 SIGHUP）、\fIuser qr\fR（重渲染授权 URI/QR）、\fItofu list/unbind\fR（查看/解除 TOFU 绑定）、\fIlint\fR（access\&.conf 一致性检查）、\fIstatus\fR。另有全中文 WebUI 运维面板（server/dashboard/）提供上述全部功能的图形化版本。
 .SH "另见"
 .sp
 fwknopd(8), iptables(8), pf(4), pfctl(8), ipfw(8), gpg(1), libfko 文档。

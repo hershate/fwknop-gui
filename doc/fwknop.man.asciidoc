@@ -919,6 +919,54 @@ Zalewski 的 'American Fuzzy Lop'（AFL））。如需更基础的诊断信息�
 数据包具体信息。
 
 
+本 fork（Zurker）新增功能
+--------------------------
+以下为本 fork 在上游 2.6.11 基础上新增的客户端能力（对应 SPA 协议
+4.0.0；英文原版手册无此节）。
+
+*新增命令行选项：*
+
+*--totp-port*::
+    将 SPA 包发往由当前 TOTP 值推导出的目的端口（端口跳变 SPA）。
+    需要配合 *--totp-seed* 使用。
+
+*--totp-seed*='<base64 种子>'::
+    用于计算跳变目的端口的 base64 编码 TOTP 种子（RFC 6238，
+    HMAC-SHA256，30 秒步长）。
+
+*--port-range*='<START-END>'::
+    *--totp-port* 的目的端口范围（默认 30000-60000）。
+
+*--device-id*='<设备标识>'::
+    设置 SPA v4 数据包中作为可选末字段携带的设备身份（如设备指纹）。
+    旧版（v3）数据包不含此字段，服务端向后兼容。
+
+*对应的 rc 文件指令：* 'USE_TOTP_PORT'、'TOTP_SEED_BASE64'、
+'PORT_RANGE'、'DEVICE_ID'，可写入 ``$HOME/.fwknoprc'' 的 stanza 中，
+与命令行选项一一对应。
+
+*易用性子命令：*
+
+*fwknop setup*::
+    交互式配置向导：生成 Rijndael/HMAC 密钥、TOTP 种子与设备指纹，
+    并输出服务端 access.conf stanza 与客户端 rc stanza。
+
+*fwknop knock* '<配置名>'::
+    等价于 'fwknop -n <配置名> -R'：按命名配置直接发起敲门。
+
+*fwknop lint* '[rc 文件]'::
+    检查 rc 文件各 stanza 的一致性（缺密钥、设置了 USE_HMAC 但无
+    HMAC 密钥、设置了 USE_TOTP_PORT 但缺 TOTP 种子或端口范围等）。
+
+*fwknop import* '<fwknop://uri | cred.json | qr.png>' '[--rc-file F]'
+'[--passphrase P]'::
+    把 fwknopd-admin 签发的授权凭证（fwknop:// URI、加密的凭证 JSON
+    文件或 QR 图片）解密并导入为本地 rc stanza。
+
+*fwknop profile list* '[--rc-file F]'::
+    列出 rc 文件中的全部命名配置（profile）。
+
+
 另见
 --------
 fwknopd(8)、iptables(8)、pf(4)、pfctl(8)、ipfw(8)、gpg(1)、libfko 文档。

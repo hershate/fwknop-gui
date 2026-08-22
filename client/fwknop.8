@@ -1283,6 +1283,42 @@ GPG 功能还要求正确安装和配置 GnuPG 以及 \fIlibgpgme\fR 库。
 .SH "诊断"
 .sp
 获取 \fBfwknop\fR 诊断信息最全面的方式是运行位于 fwknop 源代码 \fItest/\fR 目录中的测试套件脚本 \fItest\-fwknop\&.pl\fR。该测试套件让 fwknop 经历大量运行时测试，支持 \fIvalgrind\fR，针对 OpenSSL 校验 SPA 加密和 HMAC 结果，甚至还内置了自己的 SPA 通信模糊测试器（fwknop 2\&.6\&.4 版本还支持 Michal Zalewski 的 \fIAmerican Fuzzy Lop\fR（AFL））。如需更基础的诊断信息，可以使用 \fB\-T\fR（或 \fB\-\-test\fR）命令行选项执行 \fBfwknop\fR。这会让 \fBfwknop\fR 只是创建并打印 SPA 数据包信息，然后将其走一遍解密/解码流程并再次打印。此外，\fB\-\-verbose\fR 命令行开关也有助于查看打印到标准输出的各种 SPA 数据包具体信息。
+.SH "本 fork（Zurker）新增功能"
+.sp
+以下为本 fork 在上游 2\&.6\&.11 基础上新增的客户端能力（对应 SPA 协议 4\&.0\&.0；英文原版手册无此节）。
+.sp
+\fB新增命令行选项：\fR
+.TP
+\fB\-\-totp\-port\fR
+将 SPA 包发往由当前 TOTP 值推导出的目的端口（端口跳变 SPA）。需要配合 \fB\-\-totp\-seed\fR 使用。
+.TP
+\fB\-\-totp\-seed\fR \fI<base64 种子>\fR
+用于计算跳变目的端口的 base64 编码 TOTP 种子（RFC 6238，HMAC\-SHA256，30 秒步长）。
+.TP
+\fB\-\-port\-range\fR \fI<START\-END>\fR
+\fB\-\-totp\-port\fR 的目的端口范围（默认 30000\-60000）。
+.TP
+\fB\-\-device\-id\fR \fI<设备标识>\fR
+设置 SPA v4 数据包中作为可选末字段携带的设备身份（如设备指纹）。旧版（v3）数据包不含此字段，服务端向后兼容。
+.sp
+\fB对应的 rc 文件指令：\fRUSE_TOTP_PORT、TOTP_SEED_BASE64、PORT_RANGE、DEVICE_ID，可写入 \(lq$HOME/\&.fwknoprc\(rq 的 stanza 中，与命令行选项一一对应。
+.sp
+\fB易用性子命令：\fR
+.TP
+\fBfwknop setup\fR
+交互式配置向导：生成 Rijndael/HMAC 密钥、TOTP 种子与设备指纹，并输出服务端 access\&.conf stanza 与客户端 rc stanza。
+.TP
+\fBfwknop knock\fR \fI<配置名>\fR
+等价于 \(lqfwknop \-n <配置名> \-R\(rq：按命名配置直接发起敲门。
+.TP
+\fBfwknop lint\fR \fI[rc 文件]\fR
+检查 rc 文件各 stanza 的一致性（缺密钥、设置了 USE_HMAC 但无 HMAC 密钥、设置了 USE_TOTP_PORT 但缺 TOTP 种子或端口范围等）。
+.TP
+\fBfwknop import\fR \fI<fwknop://uri | cred\&.json | qr\&.png>\fR \fI[\-\-rc\-file F] [\-\-passphrase P]\fR
+把 fwknopd\-admin 签发的授权凭证（fwknop:// URI、加密的凭证 JSON 文件或 QR 图片）解密并导入为本地 rc stanza。
+.TP
+\fBfwknop profile list\fR \fI[\-\-rc\-file F]\fR
+列出 rc 文件中的全部命名配置（profile）。
 .SH "另见"
 .sp
 fwknopd(8)、iptables(8)、pf(4)、pfctl(8)、ipfw(8)、gpg(1)、libfko 文档。
