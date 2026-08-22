@@ -691,6 +691,13 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
             </div>
           </div>
           <div class="body">
+            <div class="tpl-row" style="margin-bottom:4px">
+              <span class="tpl-label">快速模板：</span>
+              <button type="button" class="tpl-chip" data-ctpl="totp">TOTP 端口跳变监听</button>
+              <button type="button" class="tpl-chip" data-ctpl="udp">UDP 监听模式</button>
+              <button type="button" class="tpl-chip" data-ctpl="noaudit">关闭审计输出</button>
+            </div>
+            <div class="tpl-desc" id="conf-tpl-desc"></div>
             <div id="conf-edit-rows"></div>
             <textarea class="ctl" id="conf-raw-area" style="display:none;width:100%;min-height:380px;font-family:var(--mono);font-size:12px;line-height:1.7"></textarea>
             <pre class="out-pre" id="conf-save-out" style="display:none;margin-top:12px"></pre>
@@ -1684,6 +1691,36 @@ $('#conf-edit-btn').onclick = () => {
 };
 $('#conf-raw-edit').onclick = () => { confRawEdit = !confRawEdit; renderConfEditor(); };
 $('#conf-add-row').onclick = () => { confRows.push(['', '']); renderConfEditor(); };
+
+/* fwknopd.conf 快速模板：合并式填充（同键覆盖、新键追加），仍需手动「保存」落盘 */
+const CONF_TEMPLATES = {
+  totp: {
+    desc: '监听 30000-60000 整个端口范围，配合凭证的 TOTP 端口跳变使用。需 pcap 或 NFQ 捕获模式（UDP 后端仅支持固定端口）。',
+    lines: [['PCAP_PORT_RANGE', '30000-60000']],
+  },
+  udp: {
+    desc: 'UDP 服务器模式：不依赖 libpcap，固定监听 62201/udp。注意：该模式不支持端口范围/跳变，凭证模板请选不含 TOTP 跳变的方案。',
+    lines: [['ENABLE_UDP_SERVER', 'Y'], ['UDPSERV_PORT', '62201']],
+  },
+  noaudit: {
+    desc: '关闭结构化审计与指标文件输出（syslog 不受影响）。排障或极致性能场景使用；面板的事件/统计页将不再有数据。',
+    lines: [['ENABLE_AUDIT', 'N']],
+  },
+};
+$$('[data-ctpl]').forEach(chip => chip.onclick = () => {
+  const t = CONF_TEMPLATES[chip.dataset.ctpl];
+  if (!t) return;
+  if (confRawEdit) { confRawEdit = false; toast('已切换回结构化编辑以套用模板', 'ok'); }
+  let upd = 0, add = 0;
+  t.lines.forEach(([k, v]) => {
+    const row = confRows.find(r => r[0] === k);
+    if (row) { row[1] = v; upd++; } else { confRows.push([k, v]); add++; }
+  });
+  $$('[data-ctpl]').forEach(c => c.classList.toggle('active', c === chip));
+  $('#conf-tpl-desc').textContent = t.desc;
+  renderConfEditor();
+  toast(`模板已合并（更新 ${upd} 项、新增 ${add} 项），点击右上角「保存」生效`, 'ok', 5000);
+});
 $('#conf-save').onclick = () => {
   let payload;
   if (confRawEdit) {
