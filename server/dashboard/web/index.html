@@ -1144,10 +1144,13 @@ function applyWriteGate() {
 
 let connFail = 0;
 function setConn(ok) {
+  const wasBad = connFail >= 2;
   if (!ok) connFail++; else connFail = 0;
   const bad = connFail >= 2;
   $('#conn-dot').className = 'dot ' + (bad ? 'err' : 'ok');
-  $('#conn-text').textContent = bad ? '连接异常（自动重试中）' : '已连接';
+  $('#conn-text').textContent = bad ? '连接异常（自动重试中）'
+    : '已连接 · 更新于 ' + new Date().toLocaleTimeString('zh-CN', { hour12:false });
+  if (wasBad && !bad) toast('连接已恢复', 'ok');
 }
 
 /* ==================== 概览 ==================== */
