@@ -274,6 +274,8 @@ table.tb { width:100%; border-collapse:collapse; font-size:13px; }
   white-space:nowrap; position:sticky; top:0; background:var(--panel); z-index:1;
 }
 .tb td { padding:9px 16px; border-bottom:1px solid var(--border-soft); vertical-align:middle; }
+.tb.dense td { padding:4px 10px; font-size:12px; }
+.tb.dense .badge { font-size:10.5px; }
 .tb tbody tr { transition:background var(--trans); }
 .tb tbody tr:hover { background:var(--panel-2); }
 /* 斑马纹提升长表可读性：普通表隔行淡色；事件表按「主行+详情行」成对分组 */
@@ -644,6 +646,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <input type="datetime-local" class="ctl" id="ev-to" title="截止时间" style="padding:4px 6px;font-size:12px">
               </span>
               <span class="srch-wrap"><input class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口…" style="width:230px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+              <button class="btn ghost small" id="ev-density" title="切换表格行密度（紧凑模式一屏看更多事件）">紧凑</button>
               <button class="btn ghost small" id="ev-notify" title="后台标签页收到异常事件时弹桌面通知（需浏览器授权）"><svg width="14" height="14"><use href="#i-bell"/></svg>异常桌面通知</button>
               <button class="btn ghost small" id="ev-csv" title="把当前筛选结果导出为 CSV（可用表格软件打开）"><svg width="14" height="14"><use href="#i-download"/></svg>导出筛选 CSV</button>
               <a class="btn ghost small" href="/api/audit/download" download title="下载完整审计日志（JSONL）"><svg width="14" height="14"><use href="#i-download"/></svg>导出原始</a>
@@ -1844,6 +1847,18 @@ $('#ev-notify').onclick = async () => {
   syncEvNotifyBtn();
 };
 syncEvNotifyBtn();
+
+/* 行密度切换：紧凑模式适合监控场景一屏多看；选择持久化 */
+if (localStorage.getItem('fwknop-ev-dense') === '1') {
+  $('#events-body').closest('table').classList.add('dense');
+  $('#ev-density').textContent = '舒适';
+}
+$('#ev-density').onclick = () => {
+  const tb = $('#events-body').closest('table');
+  const on = tb.classList.toggle('dense');
+  $('#ev-density').textContent = on ? '舒适' : '紧凑';
+  localStorage.setItem('fwknop-ev-dense', on ? '1' : '');
+};
 
 $('#ev-new-pill').onclick = () => {
   S.evPage = 0; S.evFilter = 'all'; S.evQuery = ''; $('#event-search').value = '';
