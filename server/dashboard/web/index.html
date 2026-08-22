@@ -1788,7 +1788,7 @@ function renderEvents() {
           <div><div class="k">事件类型</div><div class="v">${esc(e.event||'—')}（${m.label}）</div></div>
           <div><div class="k">授权索引（stanza）</div><div class="v">${e.stanza ?? '—'}</div></div>
           <div><div class="k">用户</div><div class="v">${e.user?`<span class="cp-cell" data-cp="${esc(e.user)}">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" title="查看该用户的全部事件">${icon('i-search',12)}</button>`:'—'}</div></div>
-          <div><div class="k">设备指纹（完整）</div><div class="v">${e.device_id?`<span class="cp-cell" data-cp="${esc(e.device_id)}">${esc(e.device_id)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" title="查看该设备的全部事件">${icon('i-search',12)}</button>`:'—'}</div></div>
+          <div><div class="k">设备指纹（完整）</div><div class="v">${e.device_id?`<span class="cp-cell" data-cp="${esc(e.device_id)}">${esc(e.device_id)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" title="查看该设备的全部事件">${icon('i-search',12)}</button><button class="icon-btn" style="padding:2px 5px;margin-left:2px" data-devtofu="${esc(e.device_id)}" title="查该设备的 TOFU 绑定状态">${icon('i-fp',12)}</button>`:'—'}</div></div>
           <div><div class="k">来源 IP</div><div class="v">${e.src_ip?`<span class="cp-cell" data-cp="${esc(e.src_ip)}">${esc(e.src_ip)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.src_ip)}" title="查看该 IP 的全部事件">${icon('i-search',12)}</button>`:'—'}</div></div>
           <div><div class="k">SPA 端口</div><div class="v">${e.spa_port||'—'}</div></div>
           <div><div class="k">目标端口</div><div class="v">${e.target_port||'—'}</div></div>
@@ -1819,6 +1819,13 @@ function renderEvents() {
       S.evTimeAbs = !S.evTimeAbs;
       localStorage.setItem('fwknop-ev-timeabs', S.evTimeAbs ? '1' : '');
       renderEvents();
+    });
+    $$('#events-body [data-devtofu]').forEach(b => b.onclick = ev => {
+      ev.stopPropagation();
+      S.tofuQuery = b.dataset.devtofu;
+      $('#tofu-search').value = b.dataset.devtofu;
+      showPage('tofu');
+      toast('已在 TOFU 绑定中筛选该设备', 'ok', 1500);
     });
     $$('#events-body [data-evjson]').forEach(b => b.onclick = () => {
       const ev2 = slice.find(x => `${x.time}|${x.event}|${x.src_ip||''}|${x.device_id||''}` === b.dataset.evjson);
