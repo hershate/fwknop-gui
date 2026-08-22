@@ -1187,7 +1187,15 @@ function api(path, opts) {
     }
     if (r.status === 403) { toast('写操作被拒绝：只读模式（-read-only）或缺少防跨站请求头', 'err'); throw new Error('forbidden'); }
     if (r.status === 429) { toast('失败次数过多，已被临时锁定', 'err'); throw new Error('rate-limited'); }
-    if (!r.ok) throw new Error('HTTP ' + r.status + '：' + (await r.text()).slice(0, 200));
+    if (!r.ok) {
+      const msg = (await r.text()).slice(0, 200);
+      /* 写操作失败即时可见：很多调用点 catch 后只做状态复位，服务端
+         的错误文本（如「缺少名称」「配置预检未通过」）不能静默吞掉。
+         GET 轮询失败由断连指示统一表达，不逐次弹窗。 */
+      if ((opts.method || 'GET').toUpperCase() !== 'GET')
+        toast('操作失败（HTTP ' + r.status + '）：' + msg, 'err');
+      throw new Error('HTTP ' + r.status + '：' + msg);
+    }
     return r.json();
   });
 }
