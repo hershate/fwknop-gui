@@ -564,6 +564,12 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
           <div class="head">
             <h2>SPA 事件</h2><span class="sub" id="events-sub"></span>
             <div class="tools">
+              <select class="ctl" id="ev-time" title="时间范围" style="padding:5px 8px;font-size:12.5px">
+                <option value="all">全部时间</option>
+                <option value="5m">最近 5 分钟</option>
+                <option value="1h">最近 1 小时</option>
+                <option value="today">今日</option>
+              </select>
               <input class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因…" style="width:230px">
               <a class="btn ghost small" href="/api/audit/download" download title="下载完整审计日志（JSONL）"><svg width="14" height="14"><use href="#i-download"/></svg>导出</a>
             </div>
@@ -996,6 +1002,7 @@ const S = {
   overview: null, metrics: null, events: null, users: null, tofu: null, config: null,
   writeEnabled: false,
   evFilter: 'all', evQuery: '', evPage: 0, evPer: +(localStorage.getItem('fwknop-ev-per') || 20),
+  evTime: 'all',
   tofuQuery: '', usersQuery: '',
   hist: {},            // key -> [{t, v}] 计数器历史（前端采样，用于迷你趋势）
   rawMode: false,
@@ -1253,8 +1260,20 @@ async function loadEvents() {
 /* 异常事件集合：「仅看异常」快捷筛选用 */
 const BAD_EVTS = ['reject','replay','unknown_fingerprint','port_mismatch','aged'];
 
-function filteredEvents() {
+function timeFilteredEvents() {
   let evs = S.events || [];
+  if (S.evTime && S.evTime !== 'all') {
+    const now = Date.now() / 1000;
+    const since = S.evTime === '5m' ? now - 300
+      : S.evTime === '1h' ? now - 3600
+      : new Date().setHours(0, 0, 0, 0) / 1000;  /* today */
+    evs = evs.filter(e => (e.time || 0) >= since);
+  }
+  return evs;
+}
+
+function filteredEvents() {
+  let evs = timeFilteredEvents();
   if (S.evFilter === 'bad') evs = evs.filter(e => BAD_EVTS.includes(e.event));
   else if (S.evFilter !== 'all') evs = evs.filter(e => e.event === S.evFilter);
   if (S.evQuery) {
@@ -1269,7 +1288,7 @@ function filteredEvents() {
 }
 
 function renderEventChips() {
-  const evs = S.events || [];
+  const evs = timeFilteredEvents();  /* 芯片计数与时间筛选联动 */
   const counts = { all: evs.length };
   for (const e of evs) counts[e.event] = (counts[e.event] || 0) + 1;
   counts.bad = BAD_EVTS.reduce((s, k) => s + (counts[k] || 0), 0);
@@ -1336,6 +1355,7 @@ function renderEvents() {
   };
 }
 $('#event-search').oninput = e => { S.evQuery = e.target.value.trim(); S.evPage = 0; renderEvents(); };
+$('#ev-time').onchange = e => { S.evTime = e.target.value; S.evPage = 0; renderEvents(); };
 
 /* ==================== 用户与授权 ==================== */
 async function loadUsers() {
