@@ -226,6 +226,78 @@ func updateStanza(index int, fields map[string]string) (string, error) {
 	return msg + "\n" + sighupBestEffort(), nil
 }
 
+// extractPrintedStanza 从 `fwknopd-admin user add` 的输出中截取 access.conf
+// stanza 段落：以「### fwknopd-admin user:」标记注释行起，至首个空行止。
+func extractPrintedStanza(out string) (string, error) {
+	lines := strings.Split(out, "\n")
+	start := -1
+	for i, l := range lines {
+		if strings.HasPrefix(l, "### fwknopd-admin user:") {
+			start = i
+			break
+		}
+	}
+	if start < 0 {
+		return "", fmt.Errorf("未在签发输出中找到 stanza 段")
+	}
+	var b []string
+	for _, l := range lines[start:] {
+		t := strings.TrimRight(l, " \t")
+		if t == "" {
+			break
+		}
+		if strings.ContainsRune(t, '\r') || len(t) > 512 {
+			return "", fmt.Errorf("stanza 含非法行，已拒绝写入")
+		}
+		b = append(b, t)
+	}
+	return strings.Join(b, "\n"), nil
+}
+
+// appendStanza 将新签发的 stanza 追加到 access.conf 末尾。
+// 与 updateStanza 同一安全流程：同名查重 → 预检 → 备份 → 原子替换 → SIGHUP。
+func appendStanza(name, stanza string) (string, error) {
+	if strings.TrimSpace(stanza) == "" {
+		return "", fmt.Errorf("stanza 为空")
+	}
+	st, err := parseAccessConf(cfg.AccessConf)
+	if err != nil {
+		return "", err
+	}
+	for _, x := range st {
+		if x.Name == name {
+			return "", fmt.Errorf("access.conf 中已存在同名授权「%s」，未写入", name)
+		}
+	}
+	for _, x := range parseDisabledStanzas(cfg.AccessConf) {
+		if x.Name == name {
+			return "", fmt.Errorf("存在同名已禁用授权「%s」，请先恢复或清理，未写入", name)
+		}
+	}
+	data, err := os.ReadFile(cfg.AccessConf)
+	if err != nil {
+		return "", fmt.Errorf("access.conf 不可读：%v", err)
+	}
+	content := strings.TrimRight(string(data), "\n") + "\n\n" + stanza + "\n"
+	tmp := fmt.Sprintf("%s.check-%d", cfg.AccessConf, os.Getpid())
+	if err := os.WriteFile(tmp, []byte(content), 0600); err != nil {
+		return "", err
+	}
+	defer os.Remove(tmp)
+	if chkOut, err := validateConfig(cfg.FwknopdConf, tmp); err != nil {
+		return "", fmt.Errorf("配置预检未通过，未写入：%v\n%s", err, chkOut)
+	}
+	bak, err := atomicReplace(cfg.AccessConf, content)
+	if err != nil {
+		return "", err
+	}
+	msg := fmt.Sprintf("已写入 access.conf（授权「%s」）", name)
+	if bak != "" {
+		msg += "；备份：" + bak
+	}
+	return msg + "\n" + sighupBestEffort(), nil
+}
+
 var disabledLineRe = regexp.MustCompile(
 	`^# \[disabled by fwknopd-admin rm '[^']*' [0-9-]+ [0-9:]+\] `)
 

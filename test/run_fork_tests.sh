@@ -313,6 +313,17 @@ if [ -x "$GOBIN" ]; then
             --header='Authorization: Bearer fttok' http://127.0.0.1:18099/api/admin/tofu/unbind 2>/dev/null \
             | grep -q 'Removed 1' && ok "面板 tofu 解绑（写路径）" || bad "面板 tofu 解绑"
 
+        # 一键签发：apply=1 自动写入 access.conf（预检+备份），同名查重拒绝
+        wget -qO- --post-data 'name=autoadd1&server=203.0.113.10&user=bob&apply=1' \
+            --header='Authorization: Bearer fttok' http://127.0.0.1:18099/api/admin/add 2>/dev/null \
+            | grep -q '已写入 access.conf' && ok "面板签发自动写入 access.conf" || bad "面板签发自动写入"
+        grep -q '### fwknopd-admin user: autoadd1' "$D/access.conf" \
+            && grep -q 'REQUIRE_USERNAME *bob' "$D/access.conf" \
+            && ok "签发 stanza 已落盘" || { bad "签发落盘"; cat "$D/access.conf"; }
+        wget -qO- --post-data 'name=autoadd1&apply=1' \
+            --header='Authorization: Bearer fttok' http://127.0.0.1:18099/api/admin/add 2>/dev/null \
+            | grep -q '已存在同名授权' && ok "签发同名查重拒绝写入" || bad "签发同名查重"
+
         # --- 2.3.0：服务控制 / 配置编辑 / 配置方案 ---
         HDR='Authorization: Bearer fttok'; J='Content-Type: application/json'
         wget -qO- --post-data '' --header="$HDR" http://127.0.0.1:18099/api/service/validate 2>/dev/null \

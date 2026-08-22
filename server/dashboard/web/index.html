@@ -749,6 +749,10 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                   <label class="check-row"><input type="checkbox" name="require-totp-port-match" style="width:auto"> 强制 TOTP 端口匹配</label>
                   <div class="tip">端口本身作为一次性因子，重放到其他端口也会被拒绝</div>
                 </div>
+                <div class="field">
+                  <label class="check-row"><input type="checkbox" name="apply" checked style="width:auto"> 签发后写入 access.conf 并热加载</label>
+                  <div class="tip">推荐开启，授权即刻生效；关闭则仅生成 stanza 文本，需自行追加配置</div>
+                </div>
               </div>
               <div style="margin-top:18px; display:flex; gap:10px;">
                 <button class="btn" type="submit" id="add-submit"><svg width="15" height="15"><use href="#i-key"/></svg>签发凭证</button>
@@ -2198,7 +2202,7 @@ $('#srv-hist-clear').onclick = () => {
 /* 签发表单草稿：实时记忆到 localStorage，刷新/误关不丢；签发成功后清除 */
 const ADD_DRAFT_KEY = 'fwknop-add-draft';
 const ADD_FIELDS = ['name','server','access','user','port-range','tofu-timeout'];
-const ADD_CHECKS = ['totp','require-fingerprint','require-totp-port-match'];
+const ADD_CHECKS = ['totp','require-fingerprint','require-totp-port-match','apply'];
 function saveAddDraft() {
   const f = $('#add-form');
   const d = {};
@@ -2368,6 +2372,7 @@ $('#add-form').addEventListener('submit', async ev => {
   if (!f['require-fingerprint'].checked) fd.append('require-fingerprint', 'off');
   if (f['tofu-timeout'].value.trim()) fd.append('tofu-timeout', f['tofu-timeout'].value.trim());
   if (f.totp.checked && f['require-totp-port-match'].checked) fd.append('require-totp-port-match', '1');
+  if (f.apply.checked) fd.append('apply', '1');
 
   const btn = $('#add-submit');
   btn.disabled = true; btn.textContent = '签发中…';
@@ -2392,7 +2397,9 @@ $('#add-form').addEventListener('submit', async ev => {
     } else { $('#add-uri-box').style.display = 'none'; $('#add-uri-hint').style.display = 'none'; }
     if (r.error) toast('签发失败：' + esc(r.error), 'err', 6000);
     else {
-      toast(`凭证「${nm}」已签发，请立即复制授权 URI 分发给用户`, 'ok', 6000);
+      toast(f.apply.checked
+        ? `凭证「${nm}」已签发并写入 access.conf（已热加载），请复制授权 URI 分发给用户`
+        : `凭证「${nm}」已签发（未写入配置），请立即复制授权 URI 分发给用户`, 'ok', 6000);
       clearAddDraft();
       if (f.server.value.trim()) { localStorage.setItem('fwknop-last-server', f.server.value.trim()); pushServerHistory(f.server.value.trim()); }
       f.reset();  /* 清空表单便于连续签发下一位用户（结果区不受影响） */

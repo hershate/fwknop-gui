@@ -201,6 +201,17 @@ func handleAdminAdd(w http.ResponseWriter, r *http.Request) {
 		args = append(args, "--require-totp-port-match")
 	}
 	out, err := runAdmin(args...)
+	// apply=1：截取输出中的 stanza 段并写入 access.conf（预检+备份+热加载），
+	// 实现「一键签发即生效」；失败不视为签发失败，原始 stanza 仍在输出中可复制。
+	if err == nil && r.FormValue("apply") == "1" {
+		if stanza, serr := extractPrintedStanza(out); serr != nil {
+			out += "\n[面板] 自动写入 access.conf 失败：" + serr.Error()
+		} else if msg, aerr := appendStanza(name, stanza); aerr != nil {
+			out += "\n[面板] 自动写入 access.conf 失败：" + aerr.Error()
+		} else {
+			out += "\n[面板] " + msg
+		}
+	}
 	adminResult(w, out, err)
 }
 
