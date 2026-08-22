@@ -916,7 +916,7 @@ function toast(msg, kind, ms) {
     }
     badge.textContent = ' ×' + n;
     clearTimeout(+last.dataset.t1); clearTimeout(+last.dataset.t2);
-    scheduleToastDismiss(last, ms || 4200);
+    if (!(kind === 'err' && !ms)) scheduleToastDismiss(last, ms || 4200);
     return;
   }
   const el = document.createElement('div');
@@ -927,6 +927,8 @@ function toast(msg, kind, ms) {
   box.appendChild(el);
   /* 最多同时显示 5 条，多余的移除最旧 */
   while (box.children.length > 5) box.firstElementChild.remove();
+  /* 错误通知默认驻留（需手动关闭），关键失败不会因超时错过；显式传 ms 仍生效 */
+  if (kind === 'err' && !ms) { el.style.borderLeftWidth = '4px'; return; }
   scheduleToastDismiss(el, ms || 4200);
 }
 function scheduleToastDismiss(el, ms) {
