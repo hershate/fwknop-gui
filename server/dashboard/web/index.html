@@ -585,7 +585,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
             <pre class="out-pre" id="svc-output" style="display:none;margin-top:12px"></pre>
           </div>
         </div>
-        <div class="grid-status" id="status-cards"></div>
+        <div class="grid-status" id="status-cards"><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div></div>
         <div class="card">
           <div class="body" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:13px 20px">
             <span class="hint">快速操作：</span>
@@ -595,7 +595,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
             <a class="btn ghost small" href="/api/audit/download" download><svg width="14" height="14"><use href="#i-download"/></svg>导出审计日志</a>
           </div>
         </div>
-        <div class="grid-tiles" id="tiles"></div>
+        <div class="grid-tiles" id="tiles"><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div></div>
         <div class="card">
           <div class="head"><h2>汇总</h2><span class="sub">基于当前计数器快照</span></div>
           <div class="body" id="summary-body"><div class="skel" style="height:60px"></div></div>
@@ -636,7 +636,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
                 <th>时间</th><th>事件</th><th>用户</th><th>设备指纹</th>
                 <th>来源 IP</th><th>SPA 端口</th><th>目标端口</th><th>说明</th>
               </tr></thead>
-              <tbody id="events-body"></tbody>
+              <tbody id="events-body"><tr><td colspan="8"><div class="skel" style="height:120px"></div></td></tr></tbody>
             </table>
           </div>
           <div class="pager" id="events-pager"></div>
@@ -772,7 +772,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
             <table class="tb">
               <thead><tr><th style="width:34px"><input type="checkbox" id="tofu-sel-all" title="全选/取消全选"></th>
                 <th>设备指纹</th><th>来源</th><th>用户</th><th>开放端口</th><th style="width:150px">操作</th></tr></thead>
-              <tbody id="tofu-body"></tbody>
+              <tbody id="tofu-body"><tr><td colspan="6"><div class="skel" style="height:90px"></div></td></tr></tbody>
             </table>
           </div>
         </div>
