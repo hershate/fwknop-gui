@@ -1499,7 +1499,14 @@ function renderSummary() {
     ['拦截 / 异常率', pctC(blocked, false), () => { S.evFilter='bad'; S.evPage=0; showPage('events'); }],
     ['TOFU 绑定数', fmtNum(counterVal(c,'tofu_bind')), () => showPage('tofu')],
     ['最近事件', last, () => showPage('events')],
-    ['指标生成时间', S.metrics.generated_at ? new Date(S.metrics.generated_at).toLocaleTimeString('zh-CN',{hour12:false}) : '—', null],
+    ['指标生成时间', (() => {
+      if (!S.metrics.generated_at) return '—';
+      const t = new Date(S.metrics.generated_at);
+      /* 指标由 fwknopd 周期原子重写：超过 5 分钟未更新视为陈旧（链路/服务异常） */
+      const stale = (Date.now() - t.getTime()) > 300000;
+      return t.toLocaleTimeString('zh-CN',{hour12:false}) +
+        (stale ? ' <span style="color:var(--amber)" title="指标超过 5 分钟未更新，fwknopd 可能未在运行或审计输出被关闭">⚠ 陈旧</span>' : '');
+    })(), null],
   ];
   $('#summary-body').innerHTML = `<div class="form-grid">` + rows.map(([k,v], i) =>
     `<div class="${rows[i][2] ? 'sum-link' : ''}" data-sum="${i}" ${rows[i][2] ? 'title="点击查看明细"' : ''}>
