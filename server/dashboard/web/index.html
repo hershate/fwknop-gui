@@ -594,7 +594,8 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
                 <option value="today">今日</option>
               </select>
               <input class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因…" style="width:230px">
-              <a class="btn ghost small" href="/api/audit/download" download title="下载完整审计日志（JSONL）"><svg width="14" height="14"><use href="#i-download"/></svg>导出</a>
+              <button class="btn ghost small" id="ev-csv" title="把当前筛选结果导出为 CSV（可用表格软件打开）"><svg width="14" height="14"><use href="#i-download"/></svg>导出筛选 CSV</button>
+              <a class="btn ghost small" href="/api/audit/download" download title="下载完整审计日志（JSONL）"><svg width="14" height="14"><use href="#i-download"/></svg>导出原始</a>
             </div>
           </div>
           <div class="body" style="padding-bottom:6px">
@@ -1546,6 +1547,24 @@ function renderEvents() {
 }
 $('#event-search').oninput = e => { S.evQuery = e.target.value.trim(); S.evPage = 0; renderEvents(); };
 $('#ev-time').onchange = e => { S.evTime = e.target.value; S.evPage = 0; renderEvents(); };
+
+/* 导出当前筛选（时间窗 + 类型芯片 + 搜索词）结果为 CSV，含全部审计字段 */
+$('#ev-csv').onclick = () => {
+  const evs = filteredEvents();
+  if (!evs.length) { toast('当前筛选无事件可导出', 'err'); return; }
+  const cell = v => { v = String(v ?? ''); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  const head = ['时间', '事件', '事件中文', '用户', '设备指纹', '来源IP', 'SPA端口', '目标端口', '授权索引', '原因'];
+  const lines = evs.map(e => [fmtAbs(e.time), e.event, reasonZh(e.reason), e.user, e.device_id,
+    e.src_ip, e.spa_port || '', e.target_port || '', e.stanza ?? '', e.reason].map(cell).join(','));
+  /* 加 BOM 以便表格软件正确识别 UTF-8 中文 */
+  const blob = new Blob(['\ufeff' + head.join(',') + '\n' + lines.join('\n')], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'fwknop_events_' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast(`已导出 ${evs.length} 条事件`, 'ok');
+};
 
 /* ==================== 用户与授权 ==================== */
 async function loadUsers() {
