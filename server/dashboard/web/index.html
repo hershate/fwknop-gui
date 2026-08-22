@@ -2205,11 +2205,12 @@ function applyAddTemplate(key, chip) {
   f['require-fingerprint'].checked = t.fingerprint;
   f['tofu-timeout'].value = t.tofuTimeout;
   f['require-totp-port-match'].checked = t.portMatch;
+  f['fw-timeout'].value = t.fwTimeout || '';  /* 旧模板无此字段 → 清空回默认 30 */
   syncTotpFields();
   $$('.tpl-chip').forEach(c => c.classList.toggle('active', c === chip));
   $('#tpl-desc').textContent = t.desc;
   /* 程序化赋值不触发 input：手动派发让即时校验提示同步刷新 */
-  ['access', 'port-range', 'tofu-timeout'].forEach(n =>
+  ['access', 'port-range', 'tofu-timeout', 'fw-timeout'].forEach(n =>
     f[n].dispatchEvent(new Event('input')));
   toast(`已应用模板「${chip.dataset.label || chip.textContent}」，请补全名称与服务器地址`, 'ok');
   saveAddDraft();
@@ -2283,6 +2284,7 @@ $('#tpl-save').onclick = () => {
       access: f.access.value.trim(), totp: f.totp.checked,
       portRange: f['port-range'].value.trim(), fingerprint: f['require-fingerprint'].checked,
       tofuTimeout: f['tofu-timeout'].value.trim(), portMatch: f['require-totp-port-match'].checked,
+      fwTimeout: f['fw-timeout'].value.trim(),
     };
     localStorage.setItem(CUSTOM_TPL_KEY, JSON.stringify(m));
     closeModal();
