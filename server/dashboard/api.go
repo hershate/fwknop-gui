@@ -185,7 +185,7 @@ func handleAdminAdd(w http.ResponseWriter, r *http.Request) {
 	for _, f := range []struct{ form, flag string }{
 		{"server", "--server"}, {"access", "--access"},
 		{"user", "--user"}, {"port-range", "--port-range"},
-		{"tofu-timeout", "--tofu-timeout"},
+		{"tofu-timeout", "--tofu-timeout"}, {"fw-timeout", "--fw-timeout"},
 	} {
 		if v := strings.TrimSpace(r.FormValue(f.form)); v != "" {
 			args = append(args, f.flag, v)

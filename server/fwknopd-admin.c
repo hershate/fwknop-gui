@@ -105,7 +105,7 @@ gen_material(fwknop_credential_t *c, int gen_fingerprint, int use_totp)
 /* ------------------------------------------------------------------ */
 static void
 print_access_stanza(const fwknop_credential_t *c, int require_fp,
-        int require_port_match, int tofu_timeout)
+        int require_port_match, int tofu_timeout, int fw_timeout)
 {
     printf("----- add to /etc/fwknop/access.conf (server) -----\n");
     printf("### fwknopd-admin user: %s\n", c->stanza);
@@ -115,7 +115,7 @@ print_access_stanza(const fwknop_credential_t *c, int require_fp,
     printf("OPEN_PORTS             %s\n", c->access[0] ? c->access : "tcp/22");
     printf("KEY_BASE64             %s\n", c->key_base64);
     printf("HMAC_KEY_BASE64        %s\n", c->hmac_key_base64);
-    printf("FW_ACCESS_TIMEOUT      30\n");
+    printf("FW_ACCESS_TIMEOUT      %d\n", fw_timeout);
     if(c->totp_seed_base64[0])
     {
         printf("TOTP_SEED_BASE64       %s\n", c->totp_seed_base64);
@@ -794,7 +794,7 @@ usage(void)
         "fwknopd-admin - fwknop server administration (plan Sec.7.6)\n\n"
         "  fwknopd-admin user add <name> [--server H] [--access tcp/22]\n"
         "      [--user U] [--totp] [--port-range S-E] [--require-fingerprint]\n"
-        "      [--tofu-timeout S] [--require-totp-port-match] [--no-qr]\n"
+        "      [--tofu-timeout S] [--fw-timeout S] [--require-totp-port-match] [--no-qr]\n"
         "      [--export <file> [--plain]]\n"
         "      Generate keys/seed/fingerprint, print stanzas + QR + credential.\n"
         "  fwknopd-admin user list [--access-conf F]\n"
@@ -827,6 +827,7 @@ main(int argc, char **argv)
         const char *name = argv[3];
         int use_totp = 1, require_fp = 1, require_pm = 0;
         int tofu_timeout = 0, no_qr = 0, i;
+        int fw_timeout = DEF_FW_ACCESS_TIMEOUT;
         const char *export_path = NULL;
         int plain = 0;
 
@@ -855,6 +856,17 @@ main(int argc, char **argv)
                 require_fp = 1;
             else if(strcmp(argv[i], "--tofu-timeout") == 0 && i+1 < argc)
                 tofu_timeout = atoi(argv[++i]);
+            else if(strcmp(argv[i], "--fw-timeout") == 0 && i+1 < argc)
+            {
+                fw_timeout = atoi(argv[++i]);
+                /* 与 access.c 的 RCHK_MAX_FW_TIMEOUT 校验一致 */
+                if(fw_timeout < 1 || fw_timeout > RCHK_MAX_FW_TIMEOUT)
+                {
+                    fprintf(stderr, "[*] --fw-timeout 超出范围（1-%d 秒）\n",
+                        RCHK_MAX_FW_TIMEOUT);
+                    return EXIT_FAILURE;
+                }
+            }
             else if(strcmp(argv[i], "--require-totp-port-match") == 0)
                 require_pm = 1;
             else if(strcmp(argv[i], "--no-qr") == 0)
@@ -874,7 +886,7 @@ main(int argc, char **argv)
             return EXIT_FAILURE;
 
         printf("=== fwknopd-admin: new credential '%s' ===\n\n", name);
-        print_access_stanza(&c, require_fp, require_pm, tofu_timeout);
+        print_access_stanza(&c, require_fp, require_pm, tofu_timeout, fw_timeout);
 
         printf("----- fwknop:// authorization URI -----\n");
         {

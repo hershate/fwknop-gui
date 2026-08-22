@@ -238,6 +238,11 @@ grep -q "YWJjZA" <<<"$OUT" && bad "user list 泄露密钥材料" || ok "user lis
 OUT=$("$ADMIN" lint "$D/access.conf" 2>&1)
 grep -q "0 error(s)" <<<"$OUT" && ok "lint 无错误" || { bad "lint"; echo "$OUT"; }
 
+OUT=$("$ADMIN" user add fwto --fw-timeout 120 --no-qr 2>&1)
+grep -q 'FW_ACCESS_TIMEOUT *120' <<<"$OUT" && ok "user add --fw-timeout 自定义访问超时" || { bad "--fw-timeout"; echo "$OUT"; }
+OUT=$("$ADMIN" user add fwto2 --fw-timeout 99999999 --no-qr 2>&1)
+grep -q '超出范围' <<<"$OUT" && ok "--fw-timeout 越界拒绝" || { bad "--fw-timeout 越界"; echo "$OUT"; }
+
 OUT=$("$ADMIN" user qr webdemo --access-conf "$D/access.conf" --server 203.0.113.10 2>&1)
 grep -q "fwknop://203.0.113.10" <<<"$OUT" && ok "user qr 重新渲染 URI" || { bad "user qr"; echo "$OUT"; }
 

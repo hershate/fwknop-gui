@@ -726,6 +726,12 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                   <div class="tip">REQUIRE_USERNAME，留空则不校验</div>
                   <div class="auth-hint" id="add-user-hint"></div>
                 </div>
+                <div class="field">
+                  <label>访问超时（秒）</label>
+                  <input name="fw-timeout" placeholder="默认 30">
+                  <div class="tip">FW_ACCESS_TIMEOUT，敲门后端口保持开放的时长</div>
+                  <div class="auth-hint" id="add-fwto-hint"></div>
+                </div>
               </div>
               <div class="form-sec">安全选项</div>
               <div class="form-grid">
@@ -2330,7 +2336,7 @@ $('#srv-hist-clear').onclick = () => {
 
 /* 签发表单草稿：实时记忆到 localStorage，刷新/误关不丢；签发成功后清除 */
 const ADD_DRAFT_KEY = 'fwknop-add-draft';
-const ADD_FIELDS = ['name','server','access','user','port-range','tofu-timeout'];
+const ADD_FIELDS = ['name','server','access','user','fw-timeout','port-range','tofu-timeout'];
 const ADD_CHECKS = ['totp','require-fingerprint','require-totp-port-match','apply'];
 function saveAddDraft() {
   const f = $('#add-form');
@@ -2457,6 +2463,15 @@ $('#add-form')['tofu-timeout'].addEventListener('input', ev => {
     '✗ 应为 1-8388608 的整数秒（常用 86400 = 1 天）');
 });
 
+/* 访问超时即时校验：范围同服务端 RCHK_MAX_FW_TIMEOUT（1-8388608 秒） */
+$('#add-form')['fw-timeout'].addEventListener('input', ev => {
+  const v = ev.target.value.trim(), el = $('#add-fwto-hint');
+  if (!v) { el.textContent = ''; el.className = 'auth-hint'; return; }
+  const n = +v;
+  fmtHint(el, V.tofuto(v), `✓ 敲门后端口开放 ${n >= 3600 ? (n/3600).toFixed(n % 3600 ? 1 : 0) + ' 小时' : n >= 60 ? (n/60).toFixed(n % 60 ? 1 : 0) + ' 分钟' : n + ' 秒'}`,
+    '✗ 应为 1-8388608 的整数秒（默认 30）');
+});
+
 /* 名称唯一性前置校验：与现有授权/已禁用授权重名时即时提示 */
 $('#add-form').name.addEventListener('input', ev => {
   const v = ev.target.value.trim(), el = $('#add-name-hint');
@@ -2486,6 +2501,7 @@ $('#add-form').addEventListener('submit', async ev => {
     ['server', '服务器地址', V.server], ['access', 'OPEN_PORTS', V.access],
     ['port-range', 'TOTP 端口范围', V.range], ['tofu-timeout', 'TOFU 宽限期', V.tofuto],
     ['user', '要求用户名', v => !/\s/.test(v) && v.length <= 32],  /* 硬约束仅空白/长度 */
+    ['fw-timeout', '访问超时', V.tofuto],
   ];
   for (const [name, label, chk] of fieldChecks) {
     if (name === 'port-range' && !f.totp.checked) continue;  /* TOTP 关闭时不校验不提交 */
@@ -2501,6 +2517,7 @@ $('#add-form').addEventListener('submit', async ev => {
   if (f.totp.checked && f['port-range'].value.trim()) fd.append('port-range', f['port-range'].value.trim());
   if (!f['require-fingerprint'].checked) fd.append('require-fingerprint', 'off');
   if (f['tofu-timeout'].value.trim()) fd.append('tofu-timeout', f['tofu-timeout'].value.trim());
+  if (f['fw-timeout'].value.trim()) fd.append('fw-timeout', f['fw-timeout'].value.trim());
   if (f.totp.checked && f['require-totp-port-match'].checked) fd.append('require-totp-port-match', '1');
   if (f.apply.checked) fd.append('apply', '1');
 
