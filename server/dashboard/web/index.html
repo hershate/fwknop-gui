@@ -2080,6 +2080,7 @@ $$('.tpl-chip').forEach(chip => {
     f['require-fingerprint'].checked = t.fingerprint;
     f['tofu-timeout'].value = t.tofuTimeout;
     f['require-totp-port-match'].checked = t.portMatch;
+    syncTotpFields();
     $$('.tpl-chip').forEach(c => c.classList.toggle('active', c === chip));
     $('#tpl-desc').textContent = t.desc;
     /* 程序化赋值不触发 input：手动派发让即时校验提示同步刷新 */
@@ -2147,10 +2148,12 @@ function loadAddDraft() {
     strip.style.display = '';
     $('#add-draft-clear').onclick = () => {
       $('#add-form').reset();
+      syncTotpFields();
       clearAddDraft();
       strip.style.display = 'none';
       toast('表单已清空', 'ok', 1500);
     };
+    syncTotpFields();
     return;
   }
   /* 无草稿时预填上次使用的服务器地址（签多名用户到同一台服务器时免重输） */
@@ -2160,10 +2163,25 @@ function loadAddDraft() {
     f.server.classList.add('flash-prefill');
     setTimeout(() => f.server.classList.remove('flash-prefill'), 1600);
   }
+  syncTotpFields();  /* 恢复/新建后同步 TOTP 关联字段可用态 */
 }
 function clearAddDraft() { localStorage.removeItem(ADD_DRAFT_KEY); }
 $('#add-form').addEventListener('input', saveAddDraft);
 $('#add-form').addEventListener('change', saveAddDraft);
+
+/* TOTP 关闭时端口范围/端口匹配校验不生效：禁用并灰化提示，防止误填误解 */
+function syncTotpFields() {
+  const f = $('#add-form'), on = f.totp.checked;
+  f['port-range'].disabled = !on;
+  f['require-totp-port-match'].disabled = !on;
+  [f['port-range'], f['require-totp-port-match']].forEach(el => {
+    const fd = el.closest('.field'); if (fd) fd.style.opacity = on ? '' : '.45';
+  });
+  const h = $('#add-range-hint');
+  if (!on) { h.textContent = '⚠ TOTP 已关闭，端口范围不生效（提交时忽略）'; h.className = 'auth-hint no'; }
+  else f['port-range'].dispatchEvent(new Event('input'));  /* 恢复即时校验提示 */
+}
+$('#add-form').totp.addEventListener('change', syncTotpFields);
 
 /* 端口字段格式即时校验：OPEN_PORTS 与 TOTP 端口范围 */
 function fmtHint(el, ok, okText, badText) {
@@ -2257,6 +2275,7 @@ $('#add-form').addEventListener('submit', async ev => {
     ['user', '要求用户名', v => !/\s/.test(v) && v.length <= 32],  /* 硬约束仅空白/长度 */
   ];
   for (const [name, label, chk] of fieldChecks) {
+    if (name === 'port-range' && !f.totp.checked) continue;  /* TOTP 关闭时不校验不提交 */
     const v = f[name].value.trim();
     if (v && !chk(v)) { toast(`${label} 格式不正确，请按红色提示修正`, 'err'); f[name].focus(); return; }
   }
@@ -2266,10 +2285,10 @@ $('#add-form').addEventListener('submit', async ev => {
   if (f.access.value.trim()) fd.append('access', f.access.value.trim());
   if (f.user.value.trim()) fd.append('user', f.user.value.trim());
   if (!f.totp.checked) fd.append('totp', 'off');
-  if (f['port-range'].value.trim()) fd.append('port-range', f['port-range'].value.trim());
+  if (f.totp.checked && f['port-range'].value.trim()) fd.append('port-range', f['port-range'].value.trim());
   if (!f['require-fingerprint'].checked) fd.append('require-fingerprint', 'off');
   if (f['tofu-timeout'].value.trim()) fd.append('tofu-timeout', f['tofu-timeout'].value.trim());
-  if (f['require-totp-port-match'].checked) fd.append('require-totp-port-match', '1');
+  if (f.totp.checked && f['require-totp-port-match'].checked) fd.append('require-totp-port-match', '1');
 
   const btn = $('#add-submit');
   btn.disabled = true; btn.textContent = '签发中…';
@@ -2298,6 +2317,7 @@ $('#add-form').addEventListener('submit', async ev => {
       clearAddDraft();
       if (f.server.value.trim()) { localStorage.setItem('fwknop-last-server', f.server.value.trim()); pushServerHistory(f.server.value.trim()); }
       f.reset();  /* 清空表单便于连续签发下一位用户（结果区不受影响） */
+      syncTotpFields();
       $$('.tpl-chip').forEach(c => c.classList.remove('active'));
       $('#tpl-desc').textContent = '';
       loadUsers();
