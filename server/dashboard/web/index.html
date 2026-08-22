@@ -627,6 +627,11 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
               <h2>访问授权（access.conf）</h2><span class="sub" id="users-sub"></span>
               <div class="tools">
                 <span class="srch-wrap"><input class="ctl" id="users-search" placeholder="搜索名称 / 用户 / 端口 / 来源…" style="width:220px"><button class="icon-btn srch-clear" data-for="users-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+                <select class="ctl" id="users-sort" title="授权排序方式" style="padding:5px 8px;font-size:12.5px">
+                  <option value="conf">按配置顺序</option>
+                  <option value="name">按名称</option>
+                  <option value="active">按最近活跃</option>
+                </select>
                 <button class="btn small" id="show-add"><svg width="14" height="14"><use href="#i-plus"/></svg>签发新凭证</button>
               </div>
             </div>
@@ -1624,6 +1629,13 @@ function renderUsers() {
     (s.require_username||'').toLowerCase().includes(q) ||
     (s.open_ports||'').toLowerCase().includes(q) ||
     (s.source||'').toLowerCase().includes(q)) : all;
+  /* 排序：配置顺序（默认）/ 名称 / 最近活跃（按该用户最近事件时间倒序） */
+  const lastEv = {};
+  (S.events || []).forEach(e => { if (e.user && !(e.user in lastEv)) lastEv[e.user] = e.time || 0; });
+  const sortMode = S.usersSort || 'conf';
+  if (sortMode === 'name') st.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN'));
+  else if (sortMode === 'active') st.sort((a, b) =>
+    (lastEv[b.require_username] || 0) - (lastEv[a.require_username] || 0));
   $('#users-sub').textContent =
     (q ? `匹配 ${st.length} / ${all.length} 个授权 · ` : `${all.length} 个授权 · `) +
     (d.file.exists ? '更新于 ' + fmtAbs(d.file.mtime) : '文件不存在');
@@ -2003,6 +2015,13 @@ $('#tofu-batch-unbind').onclick = () => {
 
 $('#tofu-search').oninput = e => { S.tofuQuery = e.target.value.trim(); renderTOFU(); };
 $('#users-search').oninput = e => { S.usersQuery = e.target.value.trim(); renderUsers(); };
+S.usersSort = localStorage.getItem('fwknop-users-sort') || 'conf';
+$('#users-sort').value = S.usersSort;
+$('#users-sort').onchange = e => {
+  S.usersSort = e.target.value;
+  localStorage.setItem('fwknop-users-sort', S.usersSort);
+  renderUsers();
+};
 
 /* 搜索框清空按钮：有内容时显示 ×，点击清空并触发原搜索逻辑 */
 function syncSearchClear() {
