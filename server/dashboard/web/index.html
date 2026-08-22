@@ -1028,22 +1028,36 @@ function scheduleToastDismiss(el, ms) {
   }, ms);
 }
 
-/* 通知历史弹窗：最近 50 条，新→旧，含时间与类型色 */
+/* 通知历史弹窗：最近 50 条，新→旧，含时间与类型色；可按类型过滤 */
+let notifKindFilter = '';  /* '' = 全部，'err'/'ok' = 仅看该类 */
 $('#notif-btn').onclick = () => {
-  const log = (S.notifLog || []).slice().reverse();
   const kindDot = k => k === 'err' ? 'var(--red)' : k === 'ok' ? 'var(--green)' : 'var(--muted)';
-  openModal(`<h3>通知历史</h3>
-    ${log.length ? `<div style="max-height:50vh;overflow:auto">` + log.map(n => `
+  const renderList = () => {
+    const log = (S.notifLog || []).filter(n => !notifKindFilter || (n.kind || '') === notifKindFilter).slice().reverse();
+    const errs = (S.notifLog || []).filter(n => n.kind === 'err').length;
+    $('#notif-list').innerHTML = log.length ? log.map(n => `
       <div style="display:flex;gap:10px;align-items:baseline;padding:7px 2px;border-bottom:1px solid var(--border-soft)">
         <span style="color:${kindDot(n.kind)}">●</span>
         <div style="flex:1;font-size:13px">${n.msg}${n.n > 1 ? ` <span class="hint">×${n.n}</span>` : ''}</div>
         <span class="hint" style="white-space:nowrap;font-size:11.5px">${fmtAgo(n.t)}</span>
-      </div>`).join('') + `</div>`
-      : '<div class="hint" style="padding:20px 0;text-align:center">暂无通知</div>'}
+      </div>`).join('')
+      : '<div class="hint" style="padding:20px 0;text-align:center">暂无通知</div>';
+    $('#notif-erronly').textContent = notifKindFilter === 'err' ? '查看全部' : `仅看错误（${errs}）`;
+  };
+  openModal(`<h3>通知历史</h3>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:4px">
+      <button class="btn ghost small" id="notif-erronly" style="padding:2px 10px;font-size:12px"></button>
+    </div>
+    <div id="notif-list" style="max-height:50vh;overflow:auto"></div>
     <div class="mf">
       <button class="btn ghost" id="notif-clear">清空历史</button>
       <button class="btn" id="notif-close">关闭</button>
     </div>`, true);
+  renderList();
+  $('#notif-erronly').onclick = () => {
+    notifKindFilter = notifKindFilter === 'err' ? '' : 'err';
+    renderList();
+  };
   S.notifUnread = 0;
   $('#notif-badge').style.display = 'none';
   $('#notif-clear').onclick = () => {
