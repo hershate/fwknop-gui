@@ -1907,20 +1907,35 @@ const ADD_TEMPLATES = {
     fingerprint: false, tofuTimeout: '', portMatch: false,
   },
 };
-$$('.tpl-chip').forEach(chip => chip.onclick = () => {
+$$('.tpl-chip').forEach(chip => {
   const t = ADD_TEMPLATES[chip.dataset.tpl];
   if (!t) return;
-  const f = $('#add-form');
-  f.access.value = t.access;
-  f.totp.checked = t.totp;
-  f['port-range'].value = t.portRange;
-  f['require-fingerprint'].checked = t.fingerprint;
-  f['tofu-timeout'].value = t.tofuTimeout;
-  f['require-totp-port-match'].checked = t.portMatch;
-  $$('.tpl-chip').forEach(c => c.classList.toggle('active', c === chip));
-  $('#tpl-desc').textContent = t.desc;
-  toast(`已应用模板「${chip.textContent}」，请补全名称与服务器地址`, 'ok');
-  saveAddDraft();
+  /* hover/聚焦即预览描述（不填充），便于比较模板；离开后恢复已选模板的描述 */
+  const preview = () => { $('#tpl-desc').textContent = '预览 · ' + t.desc; };
+  const restore = () => {
+    const act = $('.tpl-chip.active');
+    $('#tpl-desc').textContent = act ? ADD_TEMPLATES[act.dataset.tpl].desc : '';
+  };
+  chip.addEventListener('mouseenter', preview);
+  chip.addEventListener('focus', preview);
+  chip.addEventListener('mouseleave', restore);
+  chip.addEventListener('blur', restore);
+  chip.onclick = () => {
+    const f = $('#add-form');
+    f.access.value = t.access;
+    f.totp.checked = t.totp;
+    f['port-range'].value = t.portRange;
+    f['require-fingerprint'].checked = t.fingerprint;
+    f['tofu-timeout'].value = t.tofuTimeout;
+    f['require-totp-port-match'].checked = t.portMatch;
+    $$('.tpl-chip').forEach(c => c.classList.toggle('active', c === chip));
+    $('#tpl-desc').textContent = t.desc;
+    /* 程序化赋值不触发 input：手动派发让即时校验提示同步刷新 */
+    ['access', 'port-range', 'tofu-timeout'].forEach(n =>
+      f[n].dispatchEvent(new Event('input')));
+    toast(`已应用模板「${chip.textContent}」，请补全名称与服务器地址`, 'ok');
+    saveAddDraft();
+  };
 });
 
 /* 服务器地址历史（最近 5 个，datalist 下拉补全） */
