@@ -738,6 +738,12 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                   <label>访问超时（秒）</label>
                   <input name="fw-timeout" placeholder="默认 30">
                   <div class="tip">FW_ACCESS_TIMEOUT，敲门后端口保持开放的时长</div>
+                  <div id="fwto-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+                    <button type="button" class="tpl-chip" data-fwto="30">30 秒</button>
+                    <button type="button" class="tpl-chip" data-fwto="300">5 分钟</button>
+                    <button type="button" class="tpl-chip" data-fwto="3600">1 小时</button>
+                    <button type="button" class="tpl-chip" data-fwto="86400">1 天</button>
+                  </div>
                   <div class="auth-hint" id="add-fwto-hint"></div>
                 </div>
               </div>
@@ -2426,6 +2432,20 @@ $('#tpl-save').onclick = () => {
   $('#ct-ok').onclick = doSave;
   $('#ct-name').addEventListener('keydown', e => { if (e.key === 'Enter') doSave(); });
 };
+
+/* 访问超时常用值芯片：点击填充，再点同一枚清除；与手动输入双向同步高亮 */
+function syncFwtoChips() {
+  const cur = $('#add-form')['fw-timeout'].value.trim();
+  $$('#fwto-chips [data-fwto]').forEach(c =>
+    c.classList.toggle('active', cur === c.dataset.fwto));
+}
+$$('#fwto-chips [data-fwto]').forEach(c => c.onclick = () => {
+  const f = $('#add-form');
+  f['fw-timeout'].value = (f['fw-timeout'].value.trim() === c.dataset.fwto) ? '' : c.dataset.fwto;
+  f['fw-timeout'].dispatchEvent(new Event('input'));  /* 联动校验 + 草稿 */
+  syncFwtoChips();
+});
+$('#add-form')['fw-timeout'].addEventListener('input', syncFwtoChips);
 
 /* 常用端口快捷芯片：点击在 OPEN_PORTS 列表中切换该项，已含则移除 */
 function syncAccessChips() {
