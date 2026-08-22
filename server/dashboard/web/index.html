@@ -1408,7 +1408,7 @@ document.addEventListener('keydown', ev => {
 /* 全局快捷键：1-7 切页，/ 聚焦当前页搜索，r 手动刷新，Esc 关闭弹窗。
    输入框/下拉聚焦时或弹窗打开（除 Esc 外）不触发。 */
 const PAGE_KEYS = ['overview','events','users','tofu','config','profiles','about'];
-const PAGE_SEARCH = { events:'#event-search', users:'#users-search', tofu:'#tofu-search' };
+const PAGE_SEARCH = { events:'#event-search', users:'#users-search', tofu:'#tofu-search', config:'#conf-view-filter' };
 document.addEventListener('keydown', ev => {
   const tag = (ev.target.tagName || '').toLowerCase();
   const typing = tag === 'input' || tag === 'textarea' || tag === 'select';
@@ -1430,7 +1430,7 @@ document.addEventListener('keydown', ev => {
   if (ev.key >= '1' && ev.key <= String(PAGE_KEYS.length)) {
     showPage(PAGE_KEYS[Number(ev.key) - 1]);
   } else if (ev.key === '/') {
-    const sel = PAGE_SEARCH[S.page];
+    const sel = (S.page === 'config' && confEditing) ? '#conf-filter' : PAGE_SEARCH[S.page];
     if (sel) { ev.preventDefault(); $(sel).focus(); }
   } else if (ev.key === 'r') {
     refreshNow(); toast('已刷新', 'ok', 1200);
@@ -1446,7 +1446,7 @@ document.addEventListener('keydown', ev => {
 /* 快捷键帮助：侧栏按钮或按 ? 打开 */
 const KBD_HELP = [
   ['1 – 7', '切换页面（概览 / 事件 / 用户 / TOFU / 配置 / 方案 / 关于）'],
-  ['/', '聚焦当前页搜索框（事件 / 用户 / TOFU）'],
+  ['/', '聚焦当前页搜索框（事件 / 用户 / TOFU / 配置）'],
   ['r', '手动刷新全部数据'],
   ['← / →', '事件页翻页'],
   ['Enter / 空格', '展开聚焦的事件行详情'],
