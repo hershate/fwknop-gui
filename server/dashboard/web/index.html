@@ -1673,7 +1673,7 @@ function renderEvents() {
           <div><div class="k">原因（中文）</div><div class="v">${esc(reasonZh(e.reason))}</div></div>
           <div style="align-self:end"><button class="btn ghost small" data-evjson="${esc(key)}" title="复制该事件的完整 JSON（排障/上报用）">${icon('i-copy',12)} 复制原始 JSON</button></div>
         </div></td></tr>`;
-      return `<tr class="ev-click${BAD_EVTS.includes(e.event) ? ' ev-bad' : ''}" data-key="${esc(key)}" title="点击展开/收起完整详情">
+      return `<tr class="ev-click${BAD_EVTS.includes(e.event) ? ' ev-bad' : ''}" data-key="${esc(key)}" tabindex="0" role="button" aria-expanded="${open?'true':'false'}" title="点击或 Enter 展开/收起完整详情">
         <td class="mono" title="${fmtAbs(e.time)}" style="white-space:nowrap;color:var(--muted)">${fmtAgo(e.time)}</td>
         <td><span class="badge ${m.cls}">${m.label}</span></td>
         <td>${e.user ? `<span class="cp-cell" data-cp="${esc(e.user)}" title="点击复制用户名">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" title="查看该用户的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
@@ -1690,11 +1690,23 @@ function renderEvents() {
     });
     /* 行点击展开/收起完整详情；复制/反查控件不触发 */
     if (!S.evExpanded) S.evExpanded = new Set();
-    $$('#events-body tr.ev-click').forEach(tr => tr.onclick = ev => {
-      if (ev.target.closest('.cp-cell,.icon-btn,[data-lookup]')) return;
-      const k = tr.dataset.key;
-      if (S.evExpanded.has(k)) S.evExpanded.delete(k); else S.evExpanded.add(k);
-      renderEvents();
+    $$('#events-body tr.ev-click').forEach(tr => {
+      const toggle = () => {
+        const k = tr.dataset.key;
+        if (S.evExpanded.has(k)) S.evExpanded.delete(k); else S.evExpanded.add(k);
+        renderEvents();
+      };
+      tr.onclick = ev => {
+        if (ev.target.closest('.cp-cell,.icon-btn,[data-lookup]')) return;
+        toggle();
+      };
+      /* 键盘可达：Tab 聚焦后 Enter/空格展开详情 */
+      tr.onkeydown = ev => {
+        if (ev.key !== 'Enter' && ev.key !== ' ') return;
+        if (ev.target !== tr) return;  /* 行内控件自身处理 */
+        ev.preventDefault();
+        toggle();
+      };
     });
     $$('#events-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, ''));
     /* 来源 IP 一键反查：搜索框填入该 IP 并重置到第一页 */
