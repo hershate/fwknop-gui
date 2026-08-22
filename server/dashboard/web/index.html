@@ -1742,6 +1742,10 @@ function renderEvents() {
     });
   }
 
+  /* 导出按钮实时标注当前筛选匹配数 */
+  const csvBtn = $('#ev-csv');
+  if (csvBtn) csvBtn.innerHTML = `<svg width="14" height="14"><use href="#i-download"/></svg>导出筛选 CSV（${fmtNum(evs.length)} 条）`;
+
   $('#events-pager').innerHTML = `
     <span>第 ${S.evPage+1} / ${pages} 页 · 共 ${fmtNum(evs.length)} 条</span>
     <select class="ctl" id="ev-per" title="每页条数" style="padding:3px 6px;font-size:12px">
