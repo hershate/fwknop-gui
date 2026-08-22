@@ -92,7 +92,21 @@ func handleOverview(w http.ResponseWriter, r *http.Request) {
 			"access_conf":  statFile(cfg.AccessConf),
 			"fwknopd_conf": statFile(cfg.FwknopdConf),
 		},
+		"audit_backups": auditBackupStat(),
 	})
+}
+
+// auditBackupStat 汇总审计清理产生的 .bak-时间戳 备份（数量与总字节），
+// 供概览页提示「备份在堆积，记得取回/删除」。
+func auditBackupStat() map[string]interface{} {
+	names, _ := filepath.Glob(auditPath() + ".bak-*")
+	var total int64
+	for _, n := range names {
+		if st, err := os.Stat(n); err == nil {
+			total += st.Size()
+		}
+	}
+	return map[string]interface{}{"count": len(names), "size": total}
 }
 
 func handleEvents(w http.ResponseWriter, r *http.Request) {

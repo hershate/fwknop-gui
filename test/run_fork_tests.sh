@@ -333,6 +333,9 @@ if [ -x "$GOBIN" ]; then
         wget -qO- --header='Authorization: Bearer fttok' \
             "http://127.0.0.1:18099/api/audit/download?bak=..%2f..%2fetc%2fpasswd" 2>/dev/null \
             && bad "备份下载路径穿越未拦截" || ok "备份下载拦截路径穿越"
+        wget -qO- --header='Authorization: Bearer fttok' http://127.0.0.1:18099/api/overview 2>/dev/null \
+            | grep -q '"audit_backups":{"count":1' \
+            && ok "面板 overview 汇总审计备份数" || bad "overview 审计备份汇总"
 
         # 一键签发：apply=1 自动写入 access.conf（预检+备份），同名查重拒绝
         wget -qO- --post-data 'name=autoadd1&server=203.0.113.10&user=bob&apply=1' \
