@@ -726,9 +726,15 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
               <span class="hint" id="tofu-file"></span>
             </div>
           </div>
+          <div id="tofu-batch-bar" style="display:none;padding:8px 16px;background:var(--accent-soft);border-top:1px solid var(--line);align-items:center;gap:10px">
+            <span id="tofu-sel-count" style="font-size:13px"></span>
+            <button class="btn small" id="tofu-batch-unbind" style="margin-left:auto"><svg width="13" height="13"><use href="#i-trash"/></svg>批量解绑</button>
+            <button class="btn ghost small" id="tofu-sel-clear">取消选择</button>
+          </div>
           <div class="tb-wrap">
             <table class="tb">
-              <thead><tr><th>设备指纹</th><th>来源</th><th>用户</th><th>开放端口</th><th style="width:150px">操作</th></tr></thead>
+              <thead><tr><th style="width:34px"><input type="checkbox" id="tofu-sel-all" title="全选/取消全选"></th>
+                <th>设备指纹</th><th>来源</th><th>用户</th><th>开放端口</th><th style="width:150px">操作</th></tr></thead>
               <tbody id="tofu-body"></tbody>
             </table>
           </div>
@@ -1862,13 +1868,16 @@ function renderTOFU() {
   $('#tofu-sub').textContent = q ? `匹配 ${bs.length} / ${all.length} 台已绑定设备` : `${all.length} 台已绑定设备`;
   $('#tofu-file').textContent = d.file.exists ? `状态文件更新于 ${fmtAgo(d.file.mtime)}` : '状态文件不存在';
   if (!bs.length) {
-    $('#tofu-body').innerHTML = `<tr><td colspan="5"><div class="empty">
+    $('#tofu-body').innerHTML = `<tr><td colspan="6"><div class="empty">
       ${icon('i-fp',40)}<div class="t">${q ? '无匹配绑定' : '暂无 TOFU 绑定'}</div>
       <div class="d">${q ? '试试更换搜索关键词' : '当授权的指纹白名单为空且启用「要求设备指纹」时，第一台通过校验的设备会自动绑定并显示在这里'}</div>
     </div></td></tr>`;
     return;
   }
+  if (!S.tofuSel) S.tofuSel = new Set();
   $('#tofu-body').innerHTML = bs.map(b => `<tr>
+    <td>${S.writeEnabled ? `<input type="checkbox" class="tofu-sel" data-sk="${esc(b.stanza_key)}" data-dev="${esc(b.device_id)}"
+      ${S.tofuSel.has(b.stanza_key + '\x01' + b.device_id) ? 'checked' : ''}>` : ''}</td>
     <td class="mono" title="${esc(b.device_id)}">${esc(b.device_id)}
       <button class="icon-btn" style="padding:2px 6px;margin-left:6px" data-cp="${esc(b.device_id)}" title="复制指纹">${icon('i-copy',12)}</button>
       ${lastEventForDevice(b.device_id)}</td>
@@ -1879,6 +1888,12 @@ function renderTOFU() {
       `<button class="btn ghost small" data-ub="${esc(b.stanza_key)}" data-dev="${esc(b.device_id)}">${icon('i-trash',13)}解绑</button>` :
       '<span class="hint">只读模式</span>'}</td>
   </tr>`).join('');
+  $$('#tofu-body .tofu-sel').forEach(c => c.onchange = () => {
+    const k = c.dataset.sk + '\x01' + c.dataset.dev;
+    if (c.checked) S.tofuSel.add(k); else S.tofuSel.delete(k);
+    updateTofuBatchBar();
+  });
+  updateTofuBatchBar();
   $$('#tofu-body [data-cp]').forEach(b => b.onclick = () => copyText(b.dataset.cp, '设备指纹 '));
   $$('#tofu-body [data-dev-ev]').forEach(b => b.onclick = () => {
     S.evQuery = b.dataset.devEv; S.evPage = 0; S.evFilter = 'all';
@@ -1899,6 +1914,48 @@ function renderTOFU() {
       });
   });
 }
+/* 批量解绑：勾选多台设备后一次性解绑 */
+function updateTofuBatchBar() {
+  const n = S.tofuSel ? S.tofuSel.size : 0;
+  const bar = $('#tofu-batch-bar');
+  bar.style.display = n && S.writeEnabled ? 'flex' : 'none';
+  $('#tofu-sel-count').textContent = n ? `已选 ${n} 台设备` : '';
+  const all = $('#tofu-sel-all');
+  const boxes = $$('#tofu-body .tofu-sel');
+  if (all) { all.checked = boxes.length > 0 && boxes.every(c => c.checked);
+    all.indeterminate = !all.checked && boxes.some(c => c.checked); }
+}
+$('#tofu-sel-all').onchange = ev => {
+  if (!S.tofuSel) S.tofuSel = new Set();
+  $$('#tofu-body .tofu-sel').forEach(c => {
+    c.checked = ev.target.checked;
+    const k = c.dataset.sk + '\x01' + c.dataset.dev;
+    if (c.checked) S.tofuSel.add(k); else S.tofuSel.delete(k);
+  });
+  updateTofuBatchBar();
+};
+$('#tofu-sel-clear').onclick = () => { S.tofuSel = new Set(); renderTOFU(); };
+$('#tofu-batch-unbind').onclick = () => {
+  const items = [...(S.tofuSel || [])].map(k => k.split('\x01'));
+  if (!items.length) return;
+  confirmDialog('批量解绑设备', `确定解绑选中的 <b>${items.length}</b> 台设备吗？<br>
+    解绑后这些设备需重新完成 TOFU 首用绑定（或加入指纹白名单）才能继续敲门。`,
+    `解绑 ${items.length} 台`, async () => {
+      let ok = 0, fail = 0;
+      for (const [sk, dev] of items) {
+        try {
+          const fd = new FormData();
+          fd.append('stanza_key', sk); fd.append('device_id', dev);
+          const r = await api('/api/admin/tofu/unbind', { method:'POST', body: fd });
+          if (r.error) fail++; else ok++;
+        } catch (e) { fail++; }
+      }
+      S.tofuSel = new Set();
+      toast(`批量解绑完成：成功 ${ok} 台${fail ? `，失败 ${fail} 台` : ''}`, fail ? 'err' : 'ok', 6000);
+      loadTOFU();
+    });
+};
+
 $('#tofu-search').oninput = e => { S.tofuQuery = e.target.value.trim(); renderTOFU(); };
 $('#users-search').oninput = e => { S.usersQuery = e.target.value.trim(); renderUsers(); };
 
