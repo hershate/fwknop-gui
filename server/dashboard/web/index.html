@@ -1582,6 +1582,23 @@ setInterval(() => {
   el.textContent = left + 's';
 }, 1000);
 
+/* 加载失败兜底：骨架屏不再无限挂着——替换为错误占位与「立即重试」入口。
+   已有真实内容时不动（由顶栏断连指示表达，保留旧数据可读） */
+function showLoadError(sel, retry) {
+  const el = $(sel);
+  if (!el || !el.querySelector('.skel')) return;
+  const box = `<div class="empty">${icon('i-warn', 36)}
+    <div class="t">加载失败</div>
+    <div class="d">与面板服务连接中断，恢复后将自动刷新</div>
+    <button class="btn sm" data-loadretry style="margin-top:10px">立即重试</button></div>`;
+  if (el.tagName === 'TBODY') {
+    const td = el.querySelector('td');
+    el.innerHTML = `<tr><td colspan="${td ? td.colSpan : 8}">${box}</td></tr>`;
+  } else el.innerHTML = box;
+  const b = el.querySelector('[data-loadretry]');
+  if (b) b.onclick = () => { b.disabled = true; Promise.resolve(retry()).finally(() => { b.disabled = false; }); };
+}
+
 /* 运行时长实时显示：每秒跳动（已运行 X天X时X分X秒 · 启动于 …） */
 function fmtDur(sec) {
   sec = Math.max(0, Math.floor(sec));
@@ -1638,7 +1655,11 @@ async function loadOverview() {
     applyWriteGate();
     if (S.page === 'overview') renderStatusCards();
     if (S.page === 'about') renderAbout();
-  } catch (e) { setConn(false); }
+  } catch (e) {
+    setConn(false);
+    showLoadError('#status-cards', loadOverview);
+    showLoadError('#about-body', loadOverview);
+  }
 }
 
 function renderStatusCards() {
@@ -1693,7 +1714,11 @@ async function loadMetrics() {
     }
     saveHist();
     if (S.page === 'overview') renderTiles(), renderSummary();
-  } catch (e) { setConn(false); }
+  } catch (e) {
+    setConn(false);
+    showLoadError('#tiles', loadMetrics);
+    showLoadError('#summary-body', loadMetrics);
+  }
 }
 
 /* 用采样差分绘制 SVG 迷你趋势 */
@@ -1836,7 +1861,10 @@ async function loadEvents() {
     S.evPrevNewest = newest;
     updateDocTitle();
     if (S.page === 'events') renderEvents();
-  } catch (e) { setConn(false); }
+  } catch (e) {
+    setConn(false);
+    showLoadError('#events-body', loadEvents);
+  }
 }
 /* 异常桌面通知开关：状态持久化；未授权时先请求浏览器权限 */
 S.evNotify = localStorage.getItem('fwknop-ev-notify') === '1';
@@ -2230,7 +2258,10 @@ async function loadUsers() {
     const d = await api('/api/users');
     S.users = d;
     if (S.page === 'users') renderUsers();
-  } catch (e) { setConn(false); }
+  } catch (e) {
+    setConn(false);
+    showLoadError('#users-body', loadUsers);
+  }
 }
 
 /* 该授权对应用户的最近一条事件（点击直达事件页该用户筛选） */
@@ -2881,7 +2912,10 @@ async function loadTOFU() {
     S.tofu = d;
     if (S.page === 'tofu') renderTOFU();
     if (S.page === 'users') renderUsers();  /* 绑定数徽章依赖 TOFU 数据 */
-  } catch (e) { setConn(false); }
+  } catch (e) {
+    setConn(false);
+    showLoadError('#tofu-body', loadTOFU);
+  }
 }
 
 /* 该设备的最近一条敲门事件（点击直达事件页该设备筛选） */
@@ -3147,7 +3181,10 @@ async function loadConfig() {
     const d = await api('/api/config');
     S.config = d;
     if (S.page === 'config') renderConfig();
-  } catch (e) { setConn(false); }
+  } catch (e) {
+    setConn(false);
+    showLoadError('#config-body', loadConfig);
+  }
 }
 
 function renderConfig() {
@@ -3671,7 +3708,10 @@ async function loadProfiles() {
     const d = await api('/api/profiles');
     S.profiles = d;
     if (S.page === 'profiles') renderProfiles();
-  } catch (e) { setConn(false); }
+  } catch (e) {
+    setConn(false);
+    showLoadError('#profiles-body', loadProfiles);
+  }
 }
 
 function renderProfiles() {
