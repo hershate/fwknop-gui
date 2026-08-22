@@ -613,7 +613,13 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
                 <option value="5m">最近 5 分钟</option>
                 <option value="1h">最近 1 小时</option>
                 <option value="today">今日</option>
+                <option value="custom">自定义区间…</option>
               </select>
+              <span id="ev-custom" style="display:none;align-items:center;gap:4px">
+                <input type="datetime-local" class="ctl" id="ev-from" title="起始时间" style="padding:4px 6px;font-size:12px">
+                <span class="hint">至</span>
+                <input type="datetime-local" class="ctl" id="ev-to" title="截止时间" style="padding:4px 6px;font-size:12px">
+              </span>
               <span class="srch-wrap"><input class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口…" style="width:230px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
               <button class="btn ghost small" id="ev-csv" title="把当前筛选结果导出为 CSV（可用表格软件打开）"><svg width="14" height="14"><use href="#i-download"/></svg>导出筛选 CSV</button>
               <a class="btn ghost small" href="/api/audit/download" download title="下载完整审计日志（JSONL）"><svg width="14" height="14"><use href="#i-download"/></svg>导出原始</a>
@@ -1627,7 +1633,12 @@ function reasonZh(r) {
 
 function timeFilteredEvents() {
   let evs = S.events || [];
-  if (S.evTime && S.evTime !== 'all') {
+  if (S.evTime === 'custom') {
+    /* 自定义区间：datetime-local 本地时间 → epoch；缺省端不限 */
+    const from = S.evFrom ? new Date(S.evFrom).getTime() / 1000 : 0;
+    const to = S.evTo ? new Date(S.evTo).getTime() / 1000 + 59 : Infinity;  /* 含截止分钟 */
+    evs = evs.filter(e => (e.time || 0) >= from && (e.time || 0) <= to);
+  } else if (S.evTime && S.evTime !== 'all') {
     const now = Date.now() / 1000;
     const since = S.evTime === '5m' ? now - 300
       : S.evTime === '1h' ? now - 3600
@@ -1705,7 +1716,9 @@ function renderEvents() {
     const rst = $('#ev-reset');
     if (rst) rst.onclick = () => {
       S.evFilter = 'all'; S.evQuery = ''; S.evTime = 'all'; S.evPage = 0;
+      S.evFrom = ''; S.evTo = '';
       $('#event-search').value = ''; $('#ev-time').value = 'all';
+      $('#ev-custom').style.display = 'none';
       renderEvents();
     };
   } else {
@@ -1806,7 +1819,13 @@ function renderEvents() {
   };
 }
 $('#event-search').oninput = e => { S.evQuery = e.target.value.trim(); S.evPage = 0; renderEvents(); };
-$('#ev-time').onchange = e => { S.evTime = e.target.value; S.evPage = 0; renderEvents(); };
+$('#ev-time').onchange = e => {
+  S.evTime = e.target.value; S.evPage = 0;
+  $('#ev-custom').style.display = S.evTime === 'custom' ? 'inline-flex' : 'none';
+  renderEvents();
+};
+$('#ev-from').onchange = e => { S.evFrom = e.target.value; S.evPage = 0; renderEvents(); };
+$('#ev-to').onchange = e => { S.evTo = e.target.value; S.evPage = 0; renderEvents(); };
 
 /* 导出当前筛选（时间窗 + 类型芯片 + 搜索词）结果为 CSV，含全部审计字段 */
 $('#ev-csv').onclick = () => {
