@@ -793,6 +793,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
               <tr><td style="width:130px"><code>1</code> – <code>7</code></td><td class="hint">切换页面（概览 / SPA 事件 / 用户与授权 / TOFU / 服务配置 / 配置方案 / 关于）</td></tr>
               <tr><td><code>/</code></td><td class="hint">聚焦当前页搜索框（SPA 事件 / 用户与授权 / TOFU 页可用）</td></tr>
               <tr><td><code>r</code></td><td class="hint">立即刷新当前页数据</td></tr>
+              <tr><td><code>Ctrl/⌘+S</code></td><td class="hint">配置编辑器打开时保存 fwknopd.conf（走预检→备份→热加载流程）</td></tr>
               <tr><td><code>Esc</code></td><td class="hint">关闭弹窗 / 退出输入框焦点</td></tr>
             </tbody></table>
           </div>
@@ -1112,6 +1113,14 @@ document.addEventListener('keydown', ev => {
   if (ev.key === 'Escape') {
     if (modalOpen) closeModal();
     else if (typing) ev.target.blur();
+    return;
+  }
+  /* Ctrl/⌘+S：配置编辑器打开时快捷保存（拦截浏览器「保存网页」） */
+  if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && (ev.key === 's' || ev.key === 'S')) {
+    if (confEditing && S.writeEnabled) {
+      ev.preventDefault();
+      $('#conf-save').click();
+    }
     return;
   }
   if (typing || modalOpen || ev.ctrlKey || ev.metaKey || ev.altKey) return;
