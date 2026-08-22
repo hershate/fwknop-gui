@@ -1210,6 +1210,26 @@ function showPage(p) {
 $$('.nav-item').forEach(b => b.onclick = () => showPage(b.dataset.page));
 $('#burger').onclick = () => { $('#sidebar').classList.add('open'); $('#scrim').classList.add('show'); };
 $('#scrim').onclick = () => { $('#sidebar').classList.remove('open'); $('#scrim').classList.remove('show'); };
+/* 移动端手势：左缘右滑开侧栏，侧栏上左滑收栏（水平位移需明显大于纵向滚动） */
+let touchX0 = null, touchY0 = null;
+document.addEventListener('touchstart', e => {
+  touchX0 = e.touches[0].clientX; touchY0 = e.touches[0].clientY;
+}, { passive: true });
+document.addEventListener('touchend', e => {
+  if (touchX0 === null) return;
+  const startX = touchX0;
+  const dx = e.changedTouches[0].clientX - touchX0;
+  const dy = e.changedTouches[0].clientY - touchY0;
+  touchX0 = null;
+  if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;  /* 非明确横向滑 */
+  const sb = $('#sidebar');
+  /* 开栏仅限从屏幕左缘（≤30px）起滑，避免劫持页面内的横向滚动 */
+  if (dx > 0 && startX <= 30 && !sb.classList.contains('open')) {
+    sb.classList.add('open'); $('#scrim').classList.add('show');
+  } else if (dx < 0 && sb.classList.contains('open')) {
+    sb.classList.remove('open'); $('#scrim').classList.remove('show');
+  }
+}, { passive: true });
 
 /* 全局快捷键：1-7 切页，/ 聚焦当前页搜索，r 手动刷新，Esc 关闭弹窗。
    输入框/下拉聚焦时或弹窗打开（除 Esc 外）不触发。 */
