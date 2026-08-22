@@ -238,6 +238,7 @@ select.ctl, input.ctl {
 .flash-prefill { animation:prefillFlash 1.6s ease; }
 @keyframes numBump { 0% { transform:scale(1.18); filter:brightness(1.5); } 100% { transform:scale(1); filter:none; } }
 .num-bump { animation:numBump .6s ease; display:inline-block; }
+.nb-badge { background:var(--red); color:#fff; border-radius:9px; font-size:10px; line-height:1.6; padding:0 5px; margin-left:4px; vertical-align:2px; }
 @keyframes prefillFlash { 0% { box-shadow:0 0 0 2px var(--accent); } 100% { box-shadow:none; } }
 .tile .lab { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); font-weight:500; }
 .tile .lab svg { width:14px; height:14px; }
@@ -398,6 +399,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
     <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
     <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></symbol>
     <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></symbol>
     <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
     <symbol id="i-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
@@ -511,6 +513,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
     <div class="side-foot">
       <div class="conn"><span class="dot" id="conn-dot"></span><span id="conn-text">正在连接…</span></div>
       <div class="side-actions">
+        <button class="icon-btn" id="notif-btn" title="通知历史"><svg><use href="#i-bell"/></svg>通知<span class="nb-badge" id="notif-badge" style="display:none"></span></button>
         <button class="icon-btn" id="theme-btn" title="切换明暗主题"><svg><use href="#i-sun"/></svg><span id="theme-lab">浅色</span></button>
         <button class="icon-btn" id="logout-btn" title="注销登录"><svg><use href="#i-lock"/></svg>注销</button>
       </div>
@@ -863,7 +866,24 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icon = (n, sz) => `<svg width="${sz||16}" height="${sz||16}"><use href="#i-${n}"/></svg>`;
 
+/* 通知历史：toast 入档（合并重发的累计计数同步到历史），侧栏铃铛可追溯 */
+function notifLog(msg, kind) {
+  S.notifLog = S.notifLog || [];
+  const last = S.notifLog[S.notifLog.length - 1];
+  if (last && last.msg === msg && last.kind === (kind || '')) {
+    last.n = (last.n || 1) + 1; last.t = Date.now() / 1000;
+  } else {
+    S.notifLog.push({ t: Date.now() / 1000, msg, kind: kind || '', n: 1 });
+    if (S.notifLog.length > 50) S.notifLog.shift();
+  }
+  S.notifUnread = (S.notifUnread || 0) + 1;
+  const badge = $('#notif-badge');
+  badge.textContent = S.notifUnread > 99 ? '99+' : S.notifUnread;
+  badge.style.display = '';
+}
+
 function toast(msg, kind, ms) {
+  notifLog(msg, kind);
   const box = $('#toasts');
   const cls = 'toast ' + (kind || '');
   const last = box.lastElementChild;
@@ -898,6 +918,28 @@ function scheduleToastDismiss(el, ms) {
     el.dataset.t2 = setTimeout(() => el.remove(), 320);
   }, ms);
 }
+
+/* 通知历史弹窗：最近 50 条，新→旧，含时间与类型色 */
+$('#notif-btn').onclick = () => {
+  const log = (S.notifLog || []).slice().reverse();
+  const kindDot = k => k === 'err' ? 'var(--red)' : k === 'ok' ? 'var(--green)' : 'var(--muted)';
+  openModal(`<h3>通知历史</h3>
+    ${log.length ? `<div style="max-height:50vh;overflow:auto">` + log.map(n => `
+      <div style="display:flex;gap:10px;align-items:baseline;padding:7px 2px;border-bottom:1px solid var(--border-soft)">
+        <span style="color:${kindDot(n.kind)}">●</span>
+        <div style="flex:1;font-size:13px">${n.msg}${n.n > 1 ? ` <span class="hint">×${n.n}</span>` : ''}</div>
+        <span class="hint" style="white-space:nowrap;font-size:11.5px">${fmtAgo(n.t)}</span>
+      </div>`).join('') + `</div>`
+      : '<div class="hint" style="padding:20px 0;text-align:center">暂无通知</div>'}
+    <div class="mf">
+      <button class="btn ghost" id="notif-clear">清空历史</button>
+      <button class="btn" id="notif-close">关闭</button>
+    </div>`, true);
+  S.notifUnread = 0;
+  $('#notif-badge').style.display = 'none';
+  $('#notif-clear').onclick = () => { S.notifLog = []; closeModal(); toast('通知历史已清空', 'ok', 1500); };
+  $('#notif-close').onclick = () => closeModal();
+};
 
 function confirmDialog(title, body, okLabel, onOk) {
   const root = $('#modal-root');
