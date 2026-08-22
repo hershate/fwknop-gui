@@ -952,6 +952,8 @@ function confirmDialog(title, body, okLabel, onOk) {
   $('#m-cancel').onclick = () => root.classList.remove('show');
   root.onclick = e => { if (e.target === root) root.classList.remove('show'); };
   $('#m-ok').onclick = () => { root.classList.remove('show'); onOk(); };
+  trapModalFocus(root);
+  $('#m-cancel').focus();  /* 破坏性确认默认聚焦「取消」，防回车误触 */
 }
 
 async function copyText(t, label) {
@@ -2266,7 +2268,25 @@ function openModal(html, wide) {
   root.innerHTML = `<div class="modal" role="dialog" aria-modal="true" ${wide ? 'style="width:min(760px,94vw)"' : ''}>${html}</div>`;
   root.classList.add('show');
   root.onclick = e => { if (e.target === root) closeModal(); };
+  trapModalFocus(root);
   return root;
+}
+
+/* 焦点捕获：打开自动聚焦首个可交互元素；Tab/Shift+Tab 在弹窗内循环 */
+function trapModalFocus(root) {
+  const focusables = () => Array.from(root.querySelectorAll(
+    'button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]'))
+    .filter(el => el.offsetParent !== null);
+  const els = focusables();
+  if (els.length) els[0].focus();
+  root.onkeydown = e => {
+    if (e.key !== 'Tab') return;
+    const list = focusables();
+    if (!list.length) return;
+    const first = list[0], last = list[list.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  };
 }
 function closeModal() {
   if (modalGuard && !modalGuard()) return;
