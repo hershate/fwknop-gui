@@ -1542,6 +1542,11 @@ function stanzaBadges(s) {
   if (s.require_fingerprint && s.fingerprint_count > 0) b.push(`<span class="tag hl">指纹白名单 ×${s.fingerprint_count}</span>`);
   else if (s.require_fingerprint) b.push(`<span class="tag hl">TOFU 首用绑定（${s.tofu_timeout > 0 ? s.tofu_timeout + 's' : '默认 86400s'}）</span>`);
   if (s.require_totp_port_match) b.push('<span class="tag hl">端口因子校验</span>');
+  /* TOFU 绑定计数：stanza_key = SOURCE|用户名|开放端口（同 server/access.c tofu_stanza_key） */
+  const key = `${s.source||''}|${s.require_username||''}|${s.open_ports||''}`;
+  const n = ((S.tofu && S.tofu.bindings) || []).filter(x => x.stanza_key === key).length;
+  if (n > 0) b.push(`<button class="tag hl" style="cursor:pointer;border:0" data-tofu-q="${esc(s.require_username||s.source||'')}"
+    title="该授权已自动绑定 ${n} 台设备，点击查看 TOFU 绑定">${icon('i-fp',11)} 已绑定 ${n} 台设备</button>`);
   return b.join('');
 }
 
@@ -1608,6 +1613,10 @@ function renderUsers() {
   }
   $$('#users-body [data-edit]').forEach(b => b.onclick = () => openStanzaEditor(+b.dataset.edit));
   /* 最近事件按钮：直达事件页该用户筛选 */
+  $$('#users-body [data-tofu-q]').forEach(b => b.onclick = () => {
+    S.tofuQuery = b.dataset.tofuQ; const ts = $('#tofu-search'); if (ts) ts.value = S.tofuQuery;
+    showPage('tofu');
+  });
   $$('#users-body [data-uev]').forEach(b => b.onclick = () => {
     S.evQuery = b.dataset.uev; S.evPage = 0; S.evFilter = 'all';
     $('#event-search').value = S.evQuery;
@@ -1814,6 +1823,7 @@ async function loadTOFU() {
     const d = await api('/api/tofu');
     S.tofu = d;
     if (S.page === 'tofu') renderTOFU();
+    if (S.page === 'users') renderUsers();  /* 绑定数徽章依赖 TOFU 数据 */
   } catch (e) { setConn(false); }
 }
 
