@@ -784,6 +784,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <button class="btn ghost small" id="add-goto-user" style="display:none"><svg width="13" height="13"><use href="#i-users"/></svg>查看该授权</button>
               </div>
               <div class="hint" id="add-uri-hint" style="display:none;margin-top:6px">客户端导入方式任选其一：<code>fwknop import '&lt;URI&gt;'</code> · <code>fwknop import qr.png</code>（QR 图片）· 手机 App 直接扫码</div>
+              <div class="warn-strip" id="add-noapply-strip" style="display:none;margin-top:10px"><svg width="15" height="15"><use href="#i-warn"/></svg><div>该授权<b>尚未写入 access.conf</b>（未勾选「签发后写入」）。请将上方 stanza 段手动追加到配置，或勾选后重新签发。</div></div>
               <pre class="out-pre" id="add-output"></pre>
             </div>
           </div>
@@ -2634,6 +2635,7 @@ $('#add-form').addEventListener('submit', async ev => {
       $('#copy-uri').focus();  /* 键盘流闭环：签发后回车即复制 URI */
     } else { $('#add-uri-box').style.display = 'none'; $('#add-uri-hint').style.display = 'none'; }
     /* 一键生效（apply）时提供直达：跳到用户页并聚焦新授权卡片 */
+    $('#add-noapply-strip').style.display = (!r.error && !f.apply.checked) ? '' : 'none';
     const gu = $('#add-goto-user');
     if (!r.error && f.apply.checked) {
       gu.style.display = '';
