@@ -1,71 +1,70 @@
 
-# Fuzzing fwknop With American Fuzzy Lop (AFL)
+# 用 American Fuzzy Lop（AFL）对 fwknop 做模糊测试
 
-## Quick Start
+（本文件为 Zurker fork 翻译维护的中文译本；英文原文见 README.en.md。）
 
-To get going with AFL fuzzing against fwknop:
+## 快速上手
+
+开始用 AFL 对 fwknop 做模糊测试：
 
     $ cd fwknop.git/test/afl/
     $ ./compile/afl-compile.sh
     $ ./fuzzing-wrappers/spa-pkts.sh
 
-Fuzzing results will be placed in fuzzing-output/server-conf.out/. For more
-information, read on.
+模糊测试结果会放在 fuzzing-output/server-conf.out/。更多信息请继续阅读。
 
-## Introduction
+## 简介
 
-The fwknop project supports various fuzzing strategies, and one of the most
-important is usage of the 'American Fuzzy Lop' (AFL) fuzzer written by Michal
-Zalewski (see: [http://lcamtuf.coredump.cx/afl/]). Because AFL is not designed to
-handle encryption schemes (see the README included in the AFL sources for more
-information on this), a special *--enable-afl-fuzzing* command line switch is
-available in the fwknop autoconf configure script. This argument allows
-encryption and base64 encoding to be bypassed when feeding SPA packet data to
-fwknopd via stdin. It is this feature that enables AFL fuzzing, and is analogous
-to the *libpng-nocrc.patch* patch included in the AFL sources. The corresponding
-commit that enables this functionality in fwknop is aaa44656bcfcb705d80768a7b9aa0d45a0e55e21
-(see: [https://github.com/mrash/fwknop/commit/aaa44656bcfcb705d80768a7b9aa0d45a0e55e21])
+fwknop 项目支持多种模糊测试策略，其中最重要的之一是使用 Michal Zalewski
+编写的「American Fuzzy Lop」（AFL）模糊器（见
+[http://lcamtuf.coredump.cx/afl/]）。由于 AFL 并非为处理加密方案而设计
+（详见 AFL 源码自带的 README），fwknop 的 autoconf configure 脚本提供了
+专门的 *--enable-afl-fuzzing* 命令行开关。该参数允许在经由 stdin 向
+fwknopd 喂入 SPA 报文数据时绕过加密与 base64 编码。正是这一特性使 AFL
+模糊测试成为可能，其作用与 AFL 源码中自带的 *libpng-nocrc.patch* 补丁
+类似。在 fwknop 中启用该功能的对应提交是
+aaa44656bcfcb705d80768a7b9aa0d45a0e55e21
+（见：[https://github.com/mrash/fwknop/commit/aaa44656bcfcb705d80768a7b9aa0d45a0e55e21]）
 
-## AFL Wrappers
+## AFL 包装脚本
 
-The top level directory contains enabling scripts in order to make it easy to
-fuzz fwknop with AFL. It is assumed that AFL is installed and in your path. The
-files are in this directory are organized as follows:
+顶层目录包含若干辅助脚本，方便用 AFL 对 fwknop 做模糊测试。这里假设 AFL
+已安装并在 PATH 中。本目录中的文件组织如下：
 
  * *fuzzing-wrappers/*
 
-  Directory that contains wrapper scripts for running AFL against fwknop. All
-  interaction with AFL should be done with these scripts, and they should be executed
-  from the test/afl/ directory, e.g. *./fuzzing-wrappers/client-rc.sh*.
+  包含对 fwknop 运行 AFL 的包装脚本的目录。与 AFL 的所有交互都应通过
+  这些脚本进行，并且应当在 test/afl/ 目录中执行，例如
+  *./fuzzing-wrappers/client-rc.sh*。
 
-  There are four areas in fwknop that are fuzzed:
-    1. SPA packet encoding/decoding (*./fuzzing-wrappers/spa-pkts.sh*)
-    2. server access.conf parsing (*./fuzzing-wrappers/server-access.sh*)
-    3. server fwknopd.conf parsing (*./fuzzing-wrappers/server-conf.sh*)
-    4. client fwknoprc file parsing. (*./fuzzing-wrappers/client-rc.sh*)
+  fwknop 中有四个区域被模糊测试：
+    1. SPA 报文编码/解码（*./fuzzing-wrappers/spa-pkts.sh*）
+    2. 服务端 access.conf 解析（*./fuzzing-wrappers/server-access.sh*）
+    3. 服务端 fwknopd.conf 解析（*./fuzzing-wrappers/server-conf.sh*）
+    4. 客户端 fwknoprc 文件解析（*./fuzzing-wrappers/client-rc.sh*）
 
  * *fuzzing-wrappers/helpers/*
 
-  Directory for helper scripts that are used by the fuzzing wrappers to ensure
-  that fwknop is compiled properly for AFL support and is ready for fuzzing cycles.
+  辅助脚本目录，供模糊测试包装脚本使用，以确保 fwknop 已为 AFL 支持正确
+  编译并就绪，可以开始模糊测试循环。
 
  * *test-cases/*
 
-  Directory for AFL test cases used by the wrapper scripts.
+  包装脚本所使用的 AFL 测试用例目录。
 
  * *compile/*
 
-  Directory for compilation scripts to ensure fwknop is compiled underneath afl-gcc.
+  编译脚本目录，用于确保 fwknop 在 afl-gcc 之下编译。
 
  * *fuzzing-output/*
 
-  Results directory that is made underneath an AFL fuzzing cycle.
+  AFL 模糊测试循环产生的结果目录。
 
-## Complete Example
+## 完整示例
 
-To fuzz the SPA packet encoding/decoding routines, the *fuzzing-wrappers/spa-pkts.sh*
-script will kick things off. This assumes that fwknop has been compiled with AFL
-support with the *compile/afl-compile.sh* script:
+要对 SPA 报文编码/解码例程做模糊测试，运行
+*fuzzing-wrappers/spa-pkts.sh* 脚本即可开始。这里假设 fwknop 已用
+*compile/afl-compile.sh* 脚本编译了 AFL 支持：
 
     $ ./fuzzing-wrappers/spa-pkts.sh
     ...
@@ -85,17 +84,17 @@ support with the *compile/afl-compile.sh* script:
     [+] All right - fork server is up.
     ...
 
-Then the familiar AFL status screen is displayed:
+随后会显示大家熟悉的 AFL 状态界面：
 
 ![alt text][AFL-status-screen]
 
 [AFL-status-screen]: https://github.com/mrash/fwknop/raw/master/test/afl/doc/AFL_status_screen.png "AFL Fuzzing SPA Packets"
 
-## SPA Packet Helper Script
+## SPA 报文辅助脚本
 
-Here is an example of what fwknopd produces when compiled for AFL support when
-a dummy SPA packet is provided in non-encoded/encrypted from via fwknopd's
-stdin. This uses the *fwknopd-stdin-test.sh* helper script:
+下面是一个示例：当 fwknopd 以 AFL 支持编译后，经由其 stdin 以未编码/
+未加密的形式提供一个伪 SPA 报文时所产生的输出。这里使用
+*fwknopd-stdin-test.sh* 辅助脚本：
 
     $ ./fuzzing-wrappers/helpers/fwknopd-stdin-test.sh
     + SPA_PKT=1716411011200157:root:1397329899:2.0.1:1:127.0.0.2,tcp/22:AAAAA

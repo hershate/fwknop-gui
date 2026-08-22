@@ -1,10 +1,9 @@
 
-（本文件为 Zurker fork 翻译维护的中文译本；英文原文见 README.en。）
+### Generating new fuzzing SPA packets:
 
-### 生成新的 fuzzing SPA 数据包：
-
-- 给 libfko 打一个或一组补丁以忽略错误条件，然后重新编译。
-- 按如下方式运行测试套件，生成新的 fuzzing SPA 数据包：
+- Apply a patch or set of patches to libfko to ignore error conditions and
+  recompile.
+- Run the test suite as follows to generate new fuzzing SPA packets:
 
     # ./test-fwknop.pl --enable-perl-module-pkt-gen
 
@@ -19,19 +18,21 @@
 
       [+] Wrote 169 fuzzing SPA packets to fuzzing/fuzzing_spa_packets.tmp...
 
-- 检查 fuzzing_spa_packets.tmp 文件中的报文数据，如果可以接受就移动到
-  fuzzing/fuzzing_spa_packets。
-- 还原上述 fuzzing 补丁并重新编译。
-- 然后按如下方式把这些报文送入 libfko：
+- Review the packet data in the fuzzing_spa_packets.tmp file, and move to
+  fuzzing/fuzzing_spa_packets if acceptable.
+- Reverse the fuzzing patch mentioned above and recompile.
+- Now send the packets through libfko as follows:
 
     # ./test-fwknop.pl --enable-perl-module-checks --include "perl FKO"
 
-- 如果要应用另一个补丁，可以加上 fuzzing 标签，使这些报文易于区分并追
-  加到正式的 "fuzzing_spa_packets" 文件中。注意：添加 --fuzzing-class
-  参数的前提是已给 lib/fko_encode.c 打过补丁，使其在各项用户提供的数据
-  就位之后对 SPA 报文数据做手脚（这些数据本身是合法的——补丁要破坏的是
-  编码本身）。如果不加 --fuzzing-class 参数，则用户字段将使用非法数据
-  构造。
+- If there is another patch to apply, then add a fuzzing tag so that the
+  packets can easily be differentiated and appended to the official
+  "fuzzing_spa_packets" file.  Note that adding the --fuzzing-class argument
+  assumes that a patch has been applied to lib/fko_encode.c to manipulate SPA
+  packet data after the various user-supplied data has been provided (and this
+  data itself is valid - it is the encoding itself that the patch is supposed
+  to mess with).  If the --fuzzing-class arg is left off, then the user fields
+  are built using invalid data.
 
     # ./test-fwknop.pl --enable-perl-module-pkt-gen  --fuzzing-test-tag "encoded_non_digit_rand_val"  --fuzzing-class encoding
 

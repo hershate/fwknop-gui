@@ -1,22 +1,19 @@
-# 构建
+# Build
 
-（本文件为 Zurker fork 翻译维护的中文译本；英文原文见 README.en.md。）
-
-使用 CUnit 库进行 C 单元测试。与这些测试相关的源代码必须以
+C unit library is used to perform c unit testing. Source code associated to those tests
+must be started with
 
 ~~~
 #ifdef HAVE_C_UNIT_TESTS
 ~~~
 
-开始，并以
+and closed with:
 
 ~~~
 #endif /* HAVE_C_UNIT_TESTS */
 ~~~
-
-结束。
-
-要构建测试套件，请使用以下命令并带上 **--enable-c-unit-tests** 开关：
+In order to build the test suite use the following commands with the **--enable-c-unit-tests**
+switch
 
 ~~~
 $ ./autogen.sh
@@ -28,12 +25,13 @@ $ make
 $ ./test-fwknop.pl --enable-profile-coverage-check --loopback lo --client-only-mode
 ~~~
 
-# 运行测试套件
-构建完成后，三个测试程序（各在相应目录中）可供用户运行测试套件：
+# Run test suites
+Once the build is complete, the three test programs (each in their respective directories)
+allow the user to run the tests suites:
 
- * fwknopd_utests：运行 fwknopd C 单元测试套件的程序（位于 server 目录）
- * fwknop_utests：运行 fwknop C 单元测试套件的程序（位于 client 目录）
- * fko_utests：运行 fko C 单元测试套件的程序（位于 lib 目录）
+ * fwknopd_utests: program to run fwknopd c unit test suites (located in the server directory)
+ * fwknop_utests: program to run fwknop c unit test suites (located in the client directory)
+ * fko_utests: program to run fko c unit test suites (located in the lib directory)
 
 ~~~
 $ ./server/fwknopd_utests
@@ -80,21 +78,21 @@ Run Summary:    Type  Total    Ran Passed Failed Inactive
 Elapsed time =    0.000 seconds
 ~~~
 
-# 管理 C 单元测试
-C 单元测试在源文件中实现，并注册到测试套件中。所有测试套件随后被加入
-fwknopd、fwknop 或 fko 测试程序。
+# Manage C unit tests
+C unit tests are implemented in source files and registered in a test suite.
+All test suites are then added to fwknopd, fwknop or fko test programs
 
-要新增测试，用户必须遵循以下步骤：
+In order to add new tests, the user must follow the below steps:
 
- * 声明一个测试套件
- * 声明一个初始化函数
- * 声明一个清理函数
- * 创建一个或多个单元测试
- * 创建一个注册新测试的函数
+ * Declare a test suite
+ * Declare an initialization function
+ * Declare a clean up function
+ * Create one or more unit tests
+ * Create a function to register new tests
+ 
+## Declare a test suite
 
-## 声明测试套件
-
-在*源*文件中：
+In *source* file:
 
 ~~~
  #ifdef HAVE_C_UNIT_TESTS
@@ -102,17 +100,18 @@ fwknopd、fwknop 或 fko 测试程序。
  #endif
 ~~~
 
-上面的示例使用 **DECLARE_TEST_SUITE** 宏创建了一个测试套件：
+In the above example, we create a test suite using the **DECLARE_TEST_SUITE** macro:
+ 
+ * the test suite is named "access".
+ * the test suite description is "Access test suite" and is displayed on the console 
+   when the test program is executed
 
- * 测试套件名为 "access"。
- * 测试套件描述为 "Access test suite"，在测试程序执行时显示在控制台上。
+## Declare an initialization function
 
-## 声明初始化函数
+Before running the test suite, an init function can be used to initialize the test suite context.
+To declare such a function use the **DECLARE_TEST_SUITE_INIT** macro.
 
-在运行测试套件之前，可以使用 init 函数初始化测试套件上下文。要声明这样
-的函数，使用 **DECLARE_TEST_SUITE_INIT** 宏。
-
-在*源*文件中：
+In *source* file:
 
 ~~~
 DECLARE_TEST_SUITE_INIT(access)
@@ -122,17 +121,17 @@ DECLARE_TEST_SUITE_INIT(access)
 }
 ~~~
 
-上面的示例把日志消息级别降为 error，只显示错误消息，因为 debug 消息太
-啰嗦。
+In the above example, the log message verbosity is decreased to error level to only display error
+messages since debug messages are too verbose.
 
-有些情况下不需要这样的函数，因此该声明不是必需的。
+In some cases, there is no need for such a function and thus this declaration is not mandatory.
 
-## 声明清理函数
+## Declare a clean-up function
 
-为了在测试套件结束时清理上下文，可以用 **DECLARE_TEST_SUITE_CLEANUP**
-宏声明一个清理函数。
+In order to clean up the context at the end of the test suite, it is possible to declare a clean up
+function with the **DECLARE_TEST_SUITE_CLEANUP** macro
 
-在*源*文件中：
+In *source* file:
 
 ~~~
 DECLARE_TEST_SUITE_CLEANUP(access)
@@ -141,13 +140,13 @@ DECLARE_TEST_SUITE_CLEANUP(access)
 }
 ~~~
 
-上面的示例中，清理函数返回 0，什么也不做。
+In the above example, the clean up function returns 0 and does strictly nothing. 
 
-有些情况下不需要这样的函数，因此该声明不是必需的。
+In some cases, there is no need for such function and thus this declaration is not mandatory.
 
-## 创建单元测试
+## Create unit tests
 
-在*源*文件中：
+In *source* file:
 
 ~~~
 #ifdef HAVE_C_UNIT_TESTS
@@ -175,17 +174,18 @@ DECLARE_UTEST(compare_port_list, "check compare_port_list function")
 #endif /* HAVE_C_UNIT_TESTS */
 ~~~
 
-上面的示例使用 **DECLARE_UTEST** 宏创建了一个 C 单元测试：
+In the above example, we create a c-unit test using the **DECLARE_UTEST** macro:
 
- * 单元测试名为 "compare_port_list"；该 id 必须唯一。
- * 单元测试描述为 "check compare_port_list function"，在测试程序执行时
-   显示在控制台上。
+ * The unit test is named "compare_port_list" ; This id must be unique
+ * The unit test description is "check compare_port_list function" and is displayed on the console 
+   when the test program is executed
 
-## 创建注册新测试的函数
+## Create a function to register new tests
 
-前面声明的单元测试必须注册到测试套件中才能执行。
+We have previously declared unit tests, but they have to be registered to a test suite
+to be executed.
 
-在*源*文件中：
+In *source* file:
 
 ~~~
 #ifdef HAVE_C_UNIT_TESTS
@@ -201,12 +201,12 @@ int register_ts_access(void)
 #endif /* HAVE_C_UNIT_TESTS */
 ~~~
 
-如果未定义 init 或 cleanup 函数，在测试套件初始化（**ts_init**）时必须
-用 NULL 指针代替。
+If no init or cleanup function is defined, they have to be replaced by a NULL pointer
+at test suite initialization : **ts_init**
 
-每个单元测试都必须用 **ts_add_utest** 函数添加。
+Each unit test must be added using **ts_add_utest** function.
 
-在*头*文件中，按如下方式添加注册函数原型：
+In *header* file, add the register function prototype as follows:
 
 ~~~
 #ifdef HAVE_C_UNIT_TESTS
@@ -214,7 +214,8 @@ int register_ts_access(void);
 #endif
 ~~~
 
-在单元测试程序中，把该测试套件加入现有测试套件的列表：
+In the unit test program, add the test suite to the current list of existing
+test suite.
 
 ~~~
 static void register_test_suites(void)
@@ -223,4 +224,4 @@ static void register_test_suites(void)
 }
 ~~~
 
-## 检查 gcov 覆盖率
+## Check gcov coverage
