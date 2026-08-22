@@ -221,6 +221,8 @@ select.ctl, input.ctl {
 .tile-link { cursor:pointer; }
 .tile-link:hover { border-color:var(--accent); }
 .btn.dirty { box-shadow:0 0 0 2px var(--amber); }
+.flash-prefill { animation:prefillFlash 1.6s ease; }
+@keyframes prefillFlash { 0% { box-shadow:0 0 0 2px var(--accent); } 100% { box-shadow:none; } }
 .tile .lab { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); font-weight:500; }
 .tile .lab svg { width:14px; height:14px; }
 .tile .num { font-size:27px; font-weight:750; margin-top:5px; font-variant-numeric:tabular-nums; letter-spacing:-.5px; }
@@ -1598,7 +1600,14 @@ function loadAddDraft() {
   const f = $('#add-form');
   ADD_FIELDS.forEach(k => { if (typeof d[k] === 'string') f[k].value = d[k]; });
   ADD_CHECKS.forEach(k => { if (typeof d[k] === 'boolean') f[k].checked = d[k]; });
-  if (ADD_FIELDS.some(k => d[k])) toast('已恢复上次未完成的签发草稿', 'ok', 2500);
+  if (ADD_FIELDS.some(k => d[k])) { toast('已恢复上次未完成的签发草稿', 'ok', 2500); return; }
+  /* 无草稿时预填上次使用的服务器地址（签多名用户到同一台服务器时免重输） */
+  const lastSrv = localStorage.getItem('fwknop-last-server') || '';
+  if (lastSrv && !f.server.value.trim()) {
+    f.server.value = lastSrv;
+    f.server.classList.add('flash-prefill');
+    setTimeout(() => f.server.classList.remove('flash-prefill'), 1600);
+  }
 }
 function clearAddDraft() { localStorage.removeItem(ADD_DRAFT_KEY); }
 $('#add-form').addEventListener('input', saveAddDraft);
@@ -1647,6 +1656,7 @@ $('#add-form').addEventListener('submit', async ev => {
     else {
       toast('凭证已签发，请立即复制授权 URI 分发给用户', 'ok', 6000);
       clearAddDraft();
+      if (f.server.value.trim()) localStorage.setItem('fwknop-last-server', f.server.value.trim());
       f.reset();  /* 清空表单便于连续签发下一位用户（结果区不受影响） */
       $$('.tpl-chip').forEach(c => c.classList.remove('active'));
       $('#tpl-desc').textContent = '';
