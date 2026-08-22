@@ -1038,7 +1038,7 @@ $('#notif-btn').onclick = () => {
     $('#notif-list').innerHTML = log.length ? log.map(n => `
       <div style="display:flex;gap:10px;align-items:baseline;padding:7px 2px;border-bottom:1px solid var(--border-soft)">
         <span style="color:${kindDot(n.kind)}">●</span>
-        <div style="flex:1;font-size:13px">${n.msg}${n.n > 1 ? ` <span class="hint">×${n.n}</span>` : ''}</div>
+        <div style="flex:1;font-size:13px" class="cp-cell" data-nmsg="${esc(n.msg)}" title="点击复制该条通知">${n.msg}${n.n > 1 ? ` <span class="hint">×${n.n}</span>` : ''}</div>
         <span class="hint" style="white-space:nowrap;font-size:11.5px">${fmtAgo(n.t)}</span>
       </div>`).join('')
       : '<div class="hint" style="padding:20px 0;text-align:center">暂无通知</div>';
@@ -1054,9 +1054,11 @@ $('#notif-btn').onclick = () => {
       <button class="btn" id="notif-close">关闭</button>
     </div>`, true);
   renderList();
+  $$('#notif-list [data-nmsg]').forEach(el => el.onclick = () => copyText(el.dataset.nmsg, '通知内容 '));
   $('#notif-erronly').onclick = () => {
     notifKindFilter = notifKindFilter === 'err' ? '' : 'err';
     renderList();
+    $$('#notif-list [data-nmsg]').forEach(el => el.onclick = () => copyText(el.dataset.nmsg, '通知内容 '));
   };
   S.notifUnread = 0;
   $('#notif-badge').style.display = 'none';
