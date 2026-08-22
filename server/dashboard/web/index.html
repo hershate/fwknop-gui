@@ -1293,6 +1293,25 @@ function updateDocTitle() {
 /* 异常事件集合：「仅看异常」快捷筛选用 */
 const BAD_EVTS = ['reject','replay','unknown_fingerprint','port_mismatch','aged'];
 
+/* 审计 reason 中文可读化（与服务端 incoming_spa.c 的文案一一对应） */
+function reasonZh(r) {
+  if (!r) return '';
+  const m = {
+    accepted: '校验通过，已放行',
+    replay_digest_hit: '重放防护：该包摘要已出现过',
+    fingerprint_required_but_missing: '要求设备指纹，但包中未携带',
+    device_id_not_in_whitelist: '设备指纹不在白名单',
+    tofu_grace_expired: 'TOFU 宽限期已过，未知设备不再自动绑定',
+    tofu_bound: 'TOFU 自动绑定新设备',
+  };
+  if (m[r]) return m[r];
+  let mm = r.match(/^aged_(\d+)s$/);
+  if (mm) return `包过旧：时间偏差 ${mm[1]} 秒`;
+  mm = r.match(/^arrived=(\d+)_expected=(\d+)$/);
+  if (mm) return `TOTP 端口不匹配：到达 ${mm[1]}，应为 ${mm[2]}`;
+  return r;
+}
+
 function timeFilteredEvents() {
   let evs = S.events || [];
   if (S.evTime && S.evTime !== 'all') {
@@ -1358,7 +1377,7 @@ function renderEvents() {
         <td class="mono">${e.src_ip ? `<span class="cp-cell" data-cp="${esc(e.src_ip)}" title="点击复制来源 IP">${esc(e.src_ip)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.src_ip)}" title="查看该 IP 的全部事件">${icon('i-search',12)}</button>` : '—'}</td>
         <td class="mono">${e.spa_port || '—'}</td>
         <td class="mono">${e.target_port || '—'}</td>
-        <td class="hint">${esc(e.reason) || ''}</td>
+        <td class="hint" title="${e.reason ? '原始原因：' + esc(e.reason) : ''}">${esc(reasonZh(e.reason))}</td>
       </tr>`;
     }).join('');
     $$('#events-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, ''));
