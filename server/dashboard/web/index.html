@@ -2211,7 +2211,8 @@ $('#add-form').addEventListener('submit', async ev => {
       $('#add-uri').textContent = m[0];
       $('#add-uri-box').style.display = '';
       $('#add-uri-hint').style.display = '';
-      $('#copy-uri').onclick = () => copyText(m[0], '授权 URI ');
+      /* 复制 URI 后焦点转到名称框：连续签发下一位不打断键盘流 */
+      $('#copy-uri').onclick = () => { copyText(m[0], '授权 URI '); f.name.focus(); };
       $('#copy-import').onclick = () => copyText(`fwknop import '${m[0]}'`, '导入命令 ');
       $('#copy-uri').focus();  /* 键盘流闭环：签发后回车即复制 URI */
     } else { $('#add-uri-box').style.display = 'none'; $('#add-uri-hint').style.display = 'none'; }
