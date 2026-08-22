@@ -2681,6 +2681,27 @@ function openStanzaEditor(index) {
   modalGuard = () => !seDirty || confirm('授权编辑有未保存的修改，确定丢弃吗？');
   $('#se-cancel').onclick = closeModal;
   $('#se-save').onclick = async () => {
+    /* 保存前校验：端口列表 / 超时秒数 / TOTP 范围，非法即聚焦中止（与签发卡片规则同源） */
+    const seChecks = {
+      OPEN_PORTS: ['开放端口', V.access],
+      RESTRICT_PORTS: ['禁止端口', V.access],
+      FW_ACCESS_TIMEOUT: ['访问超时', V.tofuto],
+      MAX_FW_TIMEOUT: ['最大访问超时', V.tofuto],
+      FINGERPRINT_TOFU_TIMEOUT: ['TOFU 宽限期', V.tofuto],
+      TOTP_PORT_RANGE: ['TOTP 端口范围', v => {
+        const m = v.match(/^(\d{1,5})-(\d{1,5})$/);
+        return !!(m && +m[1] >= 1 && +m[2] <= 65535 && +m[1] < +m[2]);
+      }],
+    };
+    for (const el of $$('#modal-root [data-sf]')) {
+      if (el.type === 'checkbox') continue;
+      const c = seChecks[el.dataset.sf];
+      if (c && el.value.trim() && !c[1](el.value.trim())) {
+        toast(`${c[0]} 格式不正确，请修正后再保存`, 'err');
+        el.focus();
+        return;
+      }
+    }
     const fields = {};
     $$('#modal-root [data-sf]').forEach(el => {
       fields[el.dataset.sf] = el.type === 'checkbox' ? (el.checked ? 'Y' : '') : el.value.trim();
