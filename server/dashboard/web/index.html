@@ -455,6 +455,9 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
 .pw-eye:hover{color:var(--accent)}
 .auth-hint{font-size:12px;min-height:16px;margin-top:6px}
 .auth-hint.ok{color:var(--green)}
+.th-sort{cursor:pointer;user-select:none;white-space:nowrap}
+.th-sort:hover{color:var(--accent)}
+.th-sort .arr{font-size:10px;margin-left:2px}
 kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-bottom-width:2px;border-radius:6px;background:var(--bg-soft,var(--panel));font:11.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--fg)}
 .auth-hint.no{color:var(--amber)}
 </style>
@@ -784,7 +787,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="tb-wrap">
             <table class="tb">
               <thead><tr><th style="width:34px"><input type="checkbox" id="tofu-sel-all" title="全选/取消全选"></th>
-                <th>设备指纹</th><th>来源</th><th>用户</th><th>开放端口</th><th style="width:150px">操作</th></tr></thead>
+                <th class="th-sort" data-tsort="device_id">设备指纹</th><th class="th-sort" data-tsort="source">来源</th><th class="th-sort" data-tsort="username">用户</th><th class="th-sort" data-tsort="open_ports">开放端口</th><th style="width:150px">操作</th></tr></thead>
               <tbody id="tofu-body"><tr><td colspan="6"><div class="skel" style="height:90px"></div></td></tr></tbody>
             </table>
           </div>
@@ -2415,6 +2418,15 @@ function renderTOFU() {
     (b.username||'').toLowerCase().includes(q) ||
     (b.open_ports||'').toLowerCase().includes(q) ||
     (b.source||'').toLowerCase().includes(q)) : all;
+  /* 列排序：点击表头切换，默认保持文件顺序；选择持久化 */
+  const ts = S.tofuSort;
+  if (ts && ts.key) {
+    bs.sort((a, b2) => (a[ts.key] || '').localeCompare(b2[ts.key] || '', 'zh-CN') * ts.dir);
+  }
+  $$('.th-sort').forEach(th => {
+    const on = ts && th.dataset.tsort === ts.key;
+    th.innerHTML = esc(th.textContent.replace(/[▲▼]$/, '')) + (on ? `<span class="arr">${ts.dir > 0 ? '▲' : '▼'}</span>` : '');
+  });
   $('#tofu-sub').textContent = q ? `匹配 ${bs.length} / ${all.length} 台已绑定设备` : `${all.length} 台已绑定设备`;
   $('#tofu-file').textContent = d.file.exists ? `状态文件更新于 ${fmtAgo(d.file.mtime)}` : '状态文件不存在';
   if (!bs.length) {
@@ -2530,6 +2542,15 @@ $('#tofu-batch-unbind').onclick = () => {
 };
 
 $('#tofu-search').oninput = e => { S.tofuQuery = e.target.value.trim(); renderTOFU(); };
+/* TOFU 列排序：同列再点切换升降序，选择持久化 */
+try { S.tofuSort = JSON.parse(localStorage.getItem('fwknop-tofu-sort') || 'null') || null; } catch (e) { S.tofuSort = null; }
+$$('.th-sort').forEach(th => th.onclick = () => {
+  const k = th.dataset.tsort;
+  if (S.tofuSort && S.tofuSort.key === k) S.tofuSort.dir = -S.tofuSort.dir;
+  else S.tofuSort = { key: k, dir: 1 };
+  localStorage.setItem('fwknop-tofu-sort', JSON.stringify(S.tofuSort));
+  renderTOFU();
+});
 $('#users-search').oninput = e => { S.usersQuery = e.target.value.trim(); renderUsers(); };
 S.usersSort = localStorage.getItem('fwknop-users-sort') || 'conf';
 S.evTimeAbs = !!localStorage.getItem('fwknop-ev-timeabs');
