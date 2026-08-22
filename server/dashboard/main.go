@@ -30,15 +30,17 @@ import (
 	"time"
 )
 
-const version = "2.2.0"
+const version = "2.3.0"
 
 type Config struct {
 	RunDir      string
 	Addr        string
 	AdminBin    string
+	FwknopdBin  string
 	AccessConf  string
 	FwknopdConf string
 	PidFile     string
+	ProfileDir  string
 	EnableWrite bool
 	Token       string
 }
@@ -64,12 +66,17 @@ func main() {
 	flag.StringVar(&cfg.RunDir, "run-dir", "/var/run/fwknop", "fwknopd 运行目录")
 	flag.StringVar(&cfg.Addr, "addr", "127.0.0.1:8088", "监听地址")
 	flag.StringVar(&cfg.AdminBin, "admin", "fwknopd-admin", "fwknopd-admin 路径")
+	flag.StringVar(&cfg.FwknopdBin, "fwknopd", "fwknopd", "fwknopd 路径（服务控制用）")
 	flag.StringVar(&cfg.AccessConf, "access-conf", "/etc/fwknop/access.conf", "access.conf 路径")
 	flag.StringVar(&cfg.FwknopdConf, "fwknopd-conf", "/etc/fwknop/fwknopd.conf", "fwknopd.conf 路径")
 	flag.StringVar(&cfg.PidFile, "pid-file", "/var/run/fwknop/fwknopd.pid", "fwknopd PID 文件路径")
-	flag.BoolVar(&cfg.EnableWrite, "enable-write", false, "启用管理写操作（签发/撤销/解绑）")
+	flag.StringVar(&cfg.ProfileDir, "profile-dir", "", "配置方案目录（默认 <run-dir>/profiles）")
+	flag.BoolVar(&cfg.EnableWrite, "enable-write", false, "启用管理写操作（签发/撤销/解绑/配置编辑/服务控制）")
 	flag.Parse()
 	cfg.Token = os.Getenv("DASHBOARD_TOKEN")
+	if cfg.ProfileDir == "" {
+		cfg.ProfileDir = filepath.Join(cfg.RunDir, "profiles")
+	}
 
 	mux := http.NewServeMux()
 	// 只读 API
@@ -79,10 +86,19 @@ func main() {
 	mux.HandleFunc("/api/tofu", handleTOFU)
 	mux.HandleFunc("/api/users", handleUsers)
 	mux.HandleFunc("/api/config", handleConfig)
+	mux.HandleFunc("/api/audit/download", handleAuditDownload)
+	mux.HandleFunc("/api/service/fwrules", handleFwList)
+	mux.HandleFunc("/api/profiles", handleProfiles)
+	mux.HandleFunc("/api/profiles/view", handleProfileView)
 	// 写操作（需 -enable-write + 令牌）
 	mux.HandleFunc("/api/admin/add", handleAdminAdd)
 	mux.HandleFunc("/api/admin/rm", handleAdminRm)
 	mux.HandleFunc("/api/admin/tofu/unbind", handleAdminTofuUnbind)
+	mux.HandleFunc("/api/service/", handleService)
+	mux.HandleFunc("/api/config/fwknopd", handleSaveFwknopdConf)
+	mux.HandleFunc("/api/config/stanza", handleUpdateStanza)
+	mux.HandleFunc("/api/config/stanza/enable", handleEnableStanza)
+	mux.HandleFunc("/api/profiles/", handleProfileOp)
 	// UI (embedded static)
 	webFS, err := fs.Sub(webContent, "web")
 	if err != nil {

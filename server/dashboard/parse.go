@@ -149,6 +149,82 @@ type Stanza struct {
 }
 
 const userMarker = "### fwknopd-admin user:"
+const disabledPrefix = "# [disabled by fwknopd-admin rm "
+
+// DisabledStanza is a stanza previously commented out by `user rm`.
+type DisabledStanza struct {
+	Name      string `json:"name"`
+	StartLine int    `json:"start_line"`
+	EndLine   int    `json:"end_line"`
+}
+
+// sensitiveDirectives never leave the backend unmasked.
+var sensitiveDirectives = map[string]bool{
+	"KEY": true, "KEY_BASE64": true, "HMAC_KEY": true, "HMAC_KEY_BASE64": true,
+	"TOTP_SEED_BASE64": true, "GPG_DECRYPT_PW": true, "GPG_SIGNING_PW": true,
+}
+
+// maskAccessConfLine replaces the value of sensitive directives with a mask.
+func maskAccessConfLine(line string) string {
+	p := strings.TrimSpace(line)
+	if p == "" || strings.HasPrefix(p, "#") || strings.HasPrefix(p, "%") {
+		return line
+	}
+	i := strings.IndexAny(p, " \t")
+	if i < 0 {
+		return line
+	}
+	if sensitiveDirectives[p[:i]] {
+		return p[:i] + "  ••••••••（已配置，已掩码）"
+	}
+	return line
+}
+
+// readLines reads a whole file as lines (no trailing newline on elements).
+func readLines(path string) ([]string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return strings.Split(strings.TrimRight(string(data), "\n"), "\n"), nil
+}
+
+// parseDisabledStanzas finds contiguous blocks commented out by `user rm`
+// (lines carrying the disabled prefix, allowing blank lines inside).
+func parseDisabledStanzas(path string) []DisabledStanza {
+	lines, err := readLines(path)
+	if err != nil {
+		return nil
+	}
+	var out []DisabledStanza
+	var cur *DisabledStanza
+	flush := func() {
+		if cur != nil {
+			out = append(out, *cur)
+			cur = nil
+		}
+	}
+	for i, line := range lines {
+		if strings.HasPrefix(line, disabledPrefix) {
+			if cur == nil {
+				cur = &DisabledStanza{StartLine: i + 1}
+				// extract name: # [disabled by fwknopd-admin rm '<name>' ...]
+				rest := strings.TrimPrefix(line, disabledPrefix)
+				if j := strings.Index(rest, "'"); j >= 0 {
+					cur.Name = rest[:j]
+				}
+			}
+			cur.EndLine = i + 1
+			continue
+		}
+		if strings.TrimSpace(line) == "" && cur != nil {
+			continue // blank lines may sit inside a disabled block
+		}
+		flush()
+	}
+	flush()
+	return out
+}
 
 func parseAccessConf(path string) ([]Stanza, error) {
 	f, err := os.Open(path)

@@ -8,7 +8,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
+	"os"
 	"os/exec"
 	"sort"
 	"strings"
@@ -59,6 +61,13 @@ func handleOverview(w http.ResponseWriter, r *http.Request) {
 	adminText := adminStatusText
 	adminStatusMu.Unlock()
 
+	var started int64
+	if alive {
+		if fi, err := os.Stat(cfg.PidFile); err == nil {
+			started = fi.ModTime().Unix()
+		}
+	}
+
 	writeJSON(w, map[string]interface{}{
 		"version":       version,
 		"write_enabled": cfg.EnableWrite,
@@ -67,6 +76,7 @@ func handleOverview(w http.ResponseWriter, r *http.Request) {
 			"pid":      pid,
 			"alive":    alive,
 			"pid_file": cfg.PidFile,
+			"started":  started,
 		},
 		"admin_tool": map[string]interface{}{
 			"available": adminOK,
@@ -106,10 +116,24 @@ func handleTOFU(w http.ResponseWriter, r *http.Request) {
 func handleUsers(w http.ResponseWriter, r *http.Request) {
 	st, err := parseAccessConf(cfg.AccessConf)
 	writeJSON(w, map[string]interface{}{
-		"file":    statFile(cfg.AccessConf),
-		"stanzas": st,
-		"error":   errStr(err),
+		"file":     statFile(cfg.AccessConf),
+		"stanzas":  st,
+		"disabled": parseDisabledStanzas(cfg.AccessConf),
+		"error":    errStr(err),
 	})
+}
+
+// handleAuditDownload streams the audit log as an attachment（不含密钥）。
+func handleAuditDownload(w http.ResponseWriter, r *http.Request) {
+	f, err := os.Open(auditPath())
+	if err != nil {
+		http.Error(w, "审计日志不存在", http.StatusNotFound)
+		return
+	}
+	defer f.Close()
+	w.Header().Set("Content-Type", "application/jsonl; charset=utf-8")
+	w.Header().Set("Content-Disposition", `attachment; filename="fwknopd_audit.log"`)
+	io.Copy(w, f)
 }
 
 func handleConfig(w http.ResponseWriter, r *http.Request) {
@@ -214,5 +238,182 @@ func handleAdminTofuUnbind(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := runAdmin("tofu", "unbind", key, dev,
 		"--state-file", tofuPath(), "--pid-file", cfg.PidFile)
+	adminResult(w, out, err)
+}
+
+// ------------------------------------------------------------------
+// 服务控制（写操作）
+// ------------------------------------------------------------------
+
+func requirePost(w http.ResponseWriter, r *http.Request) bool {
+	if !requireWrite(w, r) {
+		return false
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "需要 POST", http.StatusMethodNotAllowed)
+		return false
+	}
+	return true
+}
+
+func handleService(w http.ResponseWriter, r *http.Request) {
+	if !requirePost(w, r) {
+		return
+	}
+	action := strings.TrimPrefix(r.URL.Path, "/api/service/")
+	var out string
+	var err error
+	switch action {
+	case "validate":
+		out, err = serviceValidate()
+		if err == nil {
+			out = "配置预检通过\n" + out
+		}
+	case "start":
+		out, err = serviceStart()
+	case "stop":
+		out, err = serviceStop()
+	case "restart":
+		out, err = serviceRestart()
+	case "reload":
+		out, err = serviceReload()
+	default:
+		http.Error(w, "未知的服务操作", http.StatusNotFound)
+		return
+	}
+	adminResult(w, out, err)
+}
+
+// handleFwList shows active FWKNOP firewall rules（只读，尽力而为——
+// 无 root 时 iptables -L 可能失败，前端会展示原始输出）。
+func handleFwList(w http.ResponseWriter, r *http.Request) {
+	out, err := serviceFwList()
+	adminResult(w, out, err)
+}
+
+// ------------------------------------------------------------------
+// 配置编辑（写操作）
+// ------------------------------------------------------------------
+
+// handleSaveFwknopdConf: JSON {mode:"structured", lines:[...]} 或
+// {mode:"raw", raw:"..."}。
+func handleSaveFwknopdConf(w http.ResponseWriter, r *http.Request) {
+	if !requirePost(w, r) {
+		return
+	}
+	var req struct {
+		Mode  string   `json:"mode"`
+		Lines []string `json:"lines"`
+		Raw   string   `json:"raw"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "请求格式错误", http.StatusBadRequest)
+		return
+	}
+	var out string
+	var err error
+	if req.Mode == "raw" {
+		out, err = saveFwknopdConfRaw(req.Raw)
+	} else {
+		if len(req.Lines) == 0 {
+			http.Error(w, "配置不能为空", http.StatusBadRequest)
+			return
+		}
+		out, err = saveFwknopdConf(req.Lines)
+	}
+	adminResult(w, out, err)
+}
+
+// handleUpdateStanza: JSON {index:N, fields:{KEY:value,...}}。
+func handleUpdateStanza(w http.ResponseWriter, r *http.Request) {
+	if !requirePost(w, r) {
+		return
+	}
+	var req struct {
+		Index  int               `json:"index"`
+		Fields map[string]string `json:"fields"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "请求格式错误", http.StatusBadRequest)
+		return
+	}
+	if len(req.Fields) == 0 {
+		http.Error(w, "没有需要修改的字段", http.StatusBadRequest)
+		return
+	}
+	out, err := updateStanza(req.Index, req.Fields)
+	adminResult(w, out, err)
+}
+
+// handleEnableStanza: JSON {name:"..."} — 恢复被 user rm 禁用的授权。
+func handleEnableStanza(w http.ResponseWriter, r *http.Request) {
+	if !requirePost(w, r) {
+		return
+	}
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
+		http.Error(w, "缺少名称", http.StatusBadRequest)
+		return
+	}
+	out, err := enableStanza(req.Name)
+	adminResult(w, out, err)
+}
+
+// ------------------------------------------------------------------
+// 配置方案（profiles）
+// ------------------------------------------------------------------
+
+func handleProfiles(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, map[string]interface{}{
+		"dir":      cfg.ProfileDir,
+		"profiles": listProfiles(),
+	})
+}
+
+func handleProfileView(w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Query().Get("name")
+	v, err := viewProfile(name)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	writeJSON(w, v)
+}
+
+// handleProfileOp: JSON {name, note?}；action 取自 URL 末段。
+func handleProfileOp(w http.ResponseWriter, r *http.Request) {
+	if !requirePost(w, r) {
+		return
+	}
+	var req struct {
+		Name string `json:"name"`
+		Note string `json:"note"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
+		http.Error(w, "缺少方案名", http.StatusBadRequest)
+		return
+	}
+	action := strings.TrimPrefix(r.URL.Path, "/api/profiles/")
+	var out string
+	var err error
+	switch action {
+	case "save":
+		err = saveProfile(req.Name, req.Note)
+		if err == nil {
+			out = "已保存当前配置为方案「" + req.Name + "」"
+		}
+	case "apply":
+		out, err = applyProfile(req.Name)
+	case "delete":
+		err = deleteProfile(req.Name)
+		if err == nil {
+			out = "方案「" + req.Name + "」已删除"
+		}
+	default:
+		http.Error(w, "未知的方案操作", http.StatusNotFound)
+		return
+	}
 	adminResult(w, out, err)
 }
