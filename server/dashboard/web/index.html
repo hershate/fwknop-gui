@@ -2353,7 +2353,10 @@ $('#tofu-batch-unbind').onclick = () => {
   confirmDialog('批量解绑设备', `确定解绑选中的 <b>${items.length}</b> 台设备吗？<br>
     解绑后这些设备需重新完成 TOFU 首用绑定（或加入指纹白名单）才能继续敲门。`,
     `解绑 ${items.length} 台`, async () => {
-      let ok = 0, fail = 0;
+      /* 逐台执行期间按钮显示进度并禁用，避免误以为卡死/重复触发 */
+      const btn = $('#tofu-batch-unbind');
+      btn.disabled = true;
+      let ok = 0, fail = 0, done = 0;
       for (const [sk, dev] of items) {
         try {
           const fd = new FormData();
@@ -2361,7 +2364,10 @@ $('#tofu-batch-unbind').onclick = () => {
           const r = await api('/api/admin/tofu/unbind', { method:'POST', body: fd });
           if (r.error) fail++; else ok++;
         } catch (e) { fail++; }
+        btn.textContent = `解绑中 ${++done}/${items.length}…`;
       }
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="13" height="13"><use href="#i-trash"/></svg>批量解绑';
       S.tofuSel = new Set();
       toast(`批量解绑完成：成功 ${ok} 台${fail ? `，失败 ${fail} 台` : ''}。设备将在 TOFU 宽限期内下次敲门时自动重新绑定`, fail ? 'err' : 'ok', 8000);
       loadTOFU();
