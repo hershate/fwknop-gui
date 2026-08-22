@@ -1659,8 +1659,14 @@ function renderEventChips() {
   const counts = { all: evs.length };
   for (const e of evs) counts[e.event] = (counts[e.event] || 0) + 1;
   counts.bad = BAD_EVTS.reduce((s, k) => s + (counts[k] || 0), 0);
-  const mk = (k, label) =>
-    `<button class="chip ${S.evFilter===k?'active':''}" data-ev="${k}">${label}<span class="n">${counts[k]||0}</span></button>`;
+  /* 计数较上一轮变动时脉冲提示（首次渲染不闪） */
+  if (!S.chipPrev) S.chipPrev = {};
+  const mk = (k, label) => {
+    const n = counts[k] || 0;
+    const bump = k in S.chipPrev && S.chipPrev[k] !== n ? ' num-bump' : '';
+    S.chipPrev[k] = n;
+    return `<button class="chip ${S.evFilter===k?'active':''}" data-ev="${k}">${label}<span class="n${bump}">${n}</span></button>`;
+  };
   $('#event-chips').innerHTML = mk('all','全部') +
     (counts.bad ? mk('bad','⚠ 仅看异常') : '') +
     EVT_ORDER.filter(e => counts[e]).map(e => mk(e, evMeta(e).label)).join('');
