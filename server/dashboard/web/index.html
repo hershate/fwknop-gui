@@ -812,6 +812,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <code id="add-uri"></code>
                 <button class="btn ghost small" id="copy-uri"><svg width="13" height="13"><use href="#i-copy"/></svg>复制 URI</button>
                 <button class="btn ghost small" id="copy-import"><svg width="13" height="13"><use href="#i-copy"/></svg>复制导入命令</button>
+                <button class="btn ghost small" id="dl-cred" title="下载明文 cred.json 凭证文件（fwknop import cred.json 导入）；含全部密钥材料，请妥善保管"><svg width="13" height="13"><use href="#i-download"/></svg>下载 cred.json</button>
                 <button class="btn ghost small" id="add-goto-user" style="display:none"><svg width="13" height="13"><use href="#i-users"/></svg>查看该授权</button>
               </div>
               <div class="hint" id="add-uri-hint" style="display:none;margin-top:6px">客户端导入方式任选其一：<code>fwknop import '&lt;URI&gt;'</code> · <code>fwknop import qr.png</code>（QR 图片）· 手机 App 直接扫码</div>
@@ -2834,6 +2835,45 @@ $('#add-form').name.addEventListener('input', ev => {
   } else { el.textContent = '✓ 名称可用'; el.className = 'auth-hint ok'; }
 });
 
+/* URI → cred.json（v1）：转换规则与 server/credential.c 的
+   credential_from_uri / credential_to_json 一致（urlsafe base64 还原 +
+   按长度补 = 填充；URI 参数不做百分号编码，客户端解析同样不解码） */
+function uriToCredJson(uri) {
+  const m = uri.match(/^fwknop:\/\/([^?]*)\?(.*)$/);
+  if (!m) return null;
+  const p = {};
+  m[2].split('&').forEach(kv => {
+    const i = kv.indexOf('=');
+    if (i > 0) p[kv.slice(0, i)] = kv.slice(i + 1);
+  });
+  const b64 = s => {
+    s = (s || '').replace(/-/g, '+').replace(/_/g, '/');
+    return s + '='.repeat((4 - s.length % 4) % 4);
+  };
+  const cred = {
+    fmt: 'fwknop-credential', version: 1,
+    stanza: p.name || '', spa_server: m[1] || '', access: p.access || '',
+    key_base64: b64(p.key), hmac_key_base64: b64(p.hmac),
+    totp_seed_base64: b64(p.totp), port_range: p.range || '',
+    device_id: '', username: p.user || '',
+  };
+  if (!p.key || !p.hmac) return null;
+  return JSON.stringify(cred);
+}
+
+/* 下载明文 cred.json：文件名取授权名（非法字符替换为 _） */
+function downloadCredJson(uri) {
+  const json = uriToCredJson(uri);
+  if (!json) { toast('URI 解析失败，无法生成 cred.json', 'err'); return; }
+  const name = ((uri.match(/[?&]name=([^&]*)/) || [])[1] || 'fwknop').replace(/[^\w.-]/g, '_');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([json + '\n'], { type: 'application/json' }));
+  a.download = name + '.cred.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  toast('已下载 cred.json（明文凭证，含全部密钥材料，请妥善保管）', 'ok');
+}
+
 $('#add-form').addEventListener('submit', async ev => {
   ev.preventDefault();
   const f = ev.target;
@@ -2885,6 +2925,7 @@ $('#add-form').addEventListener('submit', async ev => {
       /* 复制 URI 后焦点转到名称框：连续签发下一位不打断键盘流 */
       $('#copy-uri').onclick = () => { copyText(m[0], '授权 URI '); f.name.focus(); };
       $('#copy-import').onclick = () => copyText(`fwknop import '${m[0]}'`, '导入命令 ');
+      $('#dl-cred').onclick = () => downloadCredJson(m[0]);
       $('#copy-uri').focus();  /* 键盘流闭环：签发后回车即复制 URI */
     } else { $('#add-uri-box').style.display = 'none'; $('#add-uri-hint').style.display = 'none'; }
     /* 一键生效（apply）时提供直达：跳到用户页并聚焦新授权卡片 */
