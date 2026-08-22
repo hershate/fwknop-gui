@@ -2212,6 +2212,7 @@ $('#add-form').addEventListener('submit', async ev => {
       $('#add-uri-hint').style.display = '';
       $('#copy-uri').onclick = () => copyText(m[0], '授权 URI ');
       $('#copy-import').onclick = () => copyText(`fwknop import '${m[0]}'`, '导入命令 ');
+      $('#copy-uri').focus();  /* 键盘流闭环：签发后回车即复制 URI */
     } else { $('#add-uri-box').style.display = 'none'; $('#add-uri-hint').style.display = 'none'; }
     if (r.error) toast('签发失败：' + esc(r.error), 'err', 6000);
     else {
