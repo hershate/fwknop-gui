@@ -2219,7 +2219,7 @@ function renderTOFU() {
       <button class="icon-btn" style="padding:2px 6px;margin-left:6px" data-cp="${esc(b.device_id)}" title="复制指纹">${icon('i-copy',12)}</button>
       ${lastEventForDevice(b.device_id)}</td>
     <td class="mono">${esc(b.source)||'—'}</td>
-    <td>${esc(b.username)||'<span class="hint">—</span>'}</td>
+    <td>${b.username ? `${esc(b.username)}<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-uev2="${esc(b.username)}" title="查看该用户的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
     <td class="mono">${esc(b.open_ports)||'—'}</td>
     <td>${S.writeEnabled ?
       `<button class="btn ghost small" data-ub="${esc(b.stanza_key)}" data-dev="${esc(b.device_id)}">${icon('i-trash',13)}解绑</button>` :
@@ -2232,6 +2232,11 @@ function renderTOFU() {
   });
   updateTofuBatchBar();
   $$('#tofu-body [data-cp]').forEach(b => b.onclick = () => copyText(b.dataset.cp, '设备指纹 '));
+  $$('#tofu-body [data-uev2]').forEach(b => b.onclick = () => {
+    S.evQuery = b.dataset.uev2; S.evPage = 0; S.evFilter = 'all';
+    $('#event-search').value = S.evQuery;
+    showPage('events');
+  });
   $$('#tofu-body [data-dev-ev]').forEach(b => b.onclick = () => {
     S.evQuery = b.dataset.devEv; S.evPage = 0; S.evFilter = 'all';
     $('#event-search').value = S.evQuery;
