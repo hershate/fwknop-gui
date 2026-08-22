@@ -455,6 +455,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
 .pw-eye:hover{color:var(--accent)}
 .auth-hint{font-size:12px;min-height:16px;margin-top:6px}
 .auth-hint.ok{color:var(--green)}
+kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-bottom-width:2px;border-radius:6px;background:var(--bg-soft,var(--panel));font:11.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--fg)}
 .auth-hint.no{color:var(--amber)}
 </style>
 
@@ -527,6 +528,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
       <div class="conn"><span class="dot" id="conn-dot"></span><span id="conn-text">正在连接…</span></div>
       <div class="hint" id="sess-ttl" style="display:none;font-size:11px;margin-top:2px"></div>
       <div class="side-actions">
+        <button class="icon-btn" id="kbd-btn" title="键盘快捷键（按 ? 随时打开）"><svg><use href="#i-key"/></svg>快捷键</button>
         <button class="icon-btn" id="notif-btn" title="通知历史"><svg><use href="#i-bell"/></svg>通知<span class="nb-badge" id="notif-badge" style="display:none"></span></button>
         <button class="icon-btn" id="theme-btn" title="切换明暗主题"><svg><use href="#i-sun"/></svg><span id="theme-lab">浅色</span></button>
         <button class="icon-btn" id="logout-btn" title="注销登录"><svg><use href="#i-lock"/></svg>注销</button>
@@ -1289,8 +1291,34 @@ document.addEventListener('keydown', ev => {
     /* 事件页 ←/→ 翻页：直接点分页器按钮，沿用其禁用边界 */
     const btn = $(ev.key === 'ArrowLeft' ? '#pg-prev' : '#pg-next');
     if (btn && !btn.disabled) { ev.preventDefault(); btn.click(); }
+  } else if (ev.key === '?') {
+    ev.preventDefault(); showKbdHelp();
   }
 });
+
+/* 快捷键帮助：侧栏按钮或按 ? 打开 */
+const KBD_HELP = [
+  ['1 – 7', '切换页面（概览 / 事件 / 用户 / TOFU / 配置 / 方案 / 关于）'],
+  ['/', '聚焦当前页搜索框（事件 / 用户 / TOFU）'],
+  ['r', '手动刷新全部数据'],
+  ['← / →', '事件页翻页'],
+  ['Enter / 空格', '展开聚焦的事件行详情'],
+  ['Ctrl/⌘ + S', '保存服务配置（编辑器有改动时）'],
+  ['Esc', '关闭弹窗；在输入框中则取消焦点'],
+  ['?', '打开本帮助'],
+];
+function showKbdHelp() {
+  openModal(`<h3>键盘快捷键</h3>
+    <div>${KBD_HELP.map(([k, d]) => `
+      <div style="display:flex;align-items:center;gap:12px;padding:7px 2px;border-bottom:1px solid var(--border-soft)">
+        <span style="min-width:110px">${k.split(' / ').map(x => `<kbd>${esc(x)}</kbd>`).join(' / ')}</span>
+        <span style="font-size:13px">${d}</span>
+      </div>`).join('')}</div>
+    <div class="hint" style="margin-top:10px">输入框聚焦时快捷键不生效（Esc 除外）。</div>
+    <div class="mf"><button class="btn" id="kbd-close">关闭</button></div>`);
+  $('#kbd-close').onclick = () => closeModal();
+}
+$('#kbd-btn').onclick = showKbdHelp;
 
 /* 回到顶部：滚动超过一屏后浮现 */
 window.addEventListener('scroll', () => {
