@@ -141,12 +141,12 @@ func handleConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 // ------------------------------------------------------------------
-// 写操作端点（需 -enable-write；设置 DASHBOARD_TOKEN 时需 Bearer 令牌）
+// 写操作端点（默认启用；-read-only 关闭；Cookie 会话需 CSRF 头）
 // ------------------------------------------------------------------
 
 func requireWrite(w http.ResponseWriter, r *http.Request) bool {
 	if !cfg.EnableWrite {
-		http.Error(w, "未启用写操作（启动时加 -enable-write）", http.StatusForbidden)
+		http.Error(w, "当前为只读模式（去掉 -read-only 重启以启用写操作）", http.StatusForbidden)
 		return false
 	}
 	if !csrfOK(r) {

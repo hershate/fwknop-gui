@@ -1,24 +1,26 @@
-// Command fwknop-dashboard is the operations web panel for fwknopd (2.4.0).
+// Command fwknop-dashboard is the operations web panel for fwknopd (2.4.1).
 //
 // It reads the structured audit log (<run_dir>/fwknopd_audit.log, JSON lines),
 // the Prometheus metrics (<run_dir>/fwknopd.metrics), the TOFU state file,
 // and the daemon configuration (fwknopd.conf / access.conf, keys masked), and
-// exposes a read-mostly dashboard plus thin wrappers around the fwknopd-admin
-// CLI (Phase 4c) for management. The UI is a single embedded HTML page
+// exposes a management dashboard plus thin wrappers around the fwknopd-admin
+// CLI (Phase 4c). The UI is a single embedded HTML page
 // (go:embed), fully localized in Chinese.
 //
 // Security: the panel requires first-run initialization (admin password,
 // PBKDF2-HMAC-SHA256 stored in <run-dir>/dashboard_auth.json) before any
 // API is usable; all /api endpoints then require a session login (or the
-// DASHBOARD_TOKEN bearer for headless use); write actions additionally
-// require -enable-write; binds localhost by default. The panel never reads
+// DASHBOARD_TOKEN bearer for headless use); management write actions are
+// enabled by default since 2.4.1 (use -read-only to opt out); binds localhost
+// by default. The panel never reads
 // raw keys from access.conf into API responses — key material is only ever
 // produced by fwknopd-admin, which remains the single source of truth.
 //
 // Usage:
 //
 //	fwknop-dashboard -run-dir /var/run/fwknop -addr 127.0.0.1:8088
-//	DASHBOARD_TOKEN=secret fwknop-dashboard -enable-write   # 无头/CI 场景
+//	fwknop-dashboard -read-only                          # 只读模式
+//	DASHBOARD_TOKEN=secret fwknop-dashboard              # 无头/CI 场景
 //
 // See REF/plan/Port Knocking.md §7.4/§7.6.
 package main
@@ -33,7 +35,7 @@ import (
 	"time"
 )
 
-const version = "2.4.0"
+const version = "2.4.1"
 
 type Config struct {
 	RunDir      string
@@ -74,8 +76,13 @@ func main() {
 	flag.StringVar(&cfg.FwknopdConf, "fwknopd-conf", "/etc/fwknop/fwknopd.conf", "fwknopd.conf 路径")
 	flag.StringVar(&cfg.PidFile, "pid-file", "/var/run/fwknop/fwknopd.pid", "fwknopd PID 文件路径")
 	flag.StringVar(&cfg.ProfileDir, "profile-dir", "", "配置方案目录（默认 <run-dir>/profiles）")
-	flag.BoolVar(&cfg.EnableWrite, "enable-write", false, "启用管理写操作（签发/撤销/解绑/配置编辑/服务控制）")
+	flag.BoolVar(&cfg.EnableWrite, "enable-write", true,
+		"启用管理写操作（默认开；2.4.1 起保留仅为兼容旧启动脚本）")
+	readOnly := flag.Bool("read-only", false, "只读模式：禁用所有管理写操作")
 	flag.Parse()
+	if *readOnly {
+		cfg.EnableWrite = false
+	}
 	cfg.Token = os.Getenv("DASHBOARD_TOKEN")
 	if cfg.ProfileDir == "" {
 		cfg.ProfileDir = filepath.Join(cfg.RunDir, "profiles")
