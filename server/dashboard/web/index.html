@@ -520,7 +520,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
       <span class="ver" id="brand-ver">v2.4.2</span>
     </div>
     <button class="nav-item active" data-page="overview"><svg><use href="#i-dash"/></svg>概览</button>
-    <button class="nav-item" data-page="events"><svg><use href="#i-list"/></svg>SPA 事件</button>
+    <button class="nav-item" data-page="events"><svg><use href="#i-list"/></svg>SPA 事件<span class="nb-badge" id="nav-ev-badge" style="display:none" title="最近 15 分钟异常事件数"></span></button>
     <button class="nav-item" data-page="users"><svg><use href="#i-users"/></svg>用户与授权</button>
     <button class="nav-item" data-page="tofu"><svg><use href="#i-fp"/></svg>TOFU 设备绑定</button>
     <button class="nav-item" data-page="config"><svg><use href="#i-cfg"/></svg>服务配置</button>
@@ -1687,6 +1687,13 @@ function updateDocTitle() {
   const bad = (S.events || []).filter(e => BAD_EVTS.includes(e.event) && now - (e.time || 0) < 900).length;
   const pg = (typeof PAGE_TITLES !== 'undefined' && PAGE_TITLES[S.page]) || '';
   document.title = (bad ? `(${bad} 异常) ` : '') + (pg ? pg + ' · ' : '') + 'fwknop 运维面板';
+  /* 侧栏导航徽标：不在事件页时也能感知异常；正在事件页则视为已知悉 */
+  const nb = $('#nav-ev-badge');
+  if (nb) {
+    const show = bad > 0 && S.page !== 'events';
+    nb.style.display = show ? '' : 'none';
+    if (show) nb.textContent = bad > 99 ? '99+' : bad;
+  }
 }
 
 /* 异常事件集合：「仅看异常」快捷筛选用 */
