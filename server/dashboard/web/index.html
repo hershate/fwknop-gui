@@ -518,6 +518,12 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
             <div class="tools"><span class="hint" id="svc-uptime"></span></div>
           </div>
           <div class="body">
+            <div class="warn-strip" id="svc-down-strip" style="display:none">
+              <svg width="15" height="15"><use href="#i-warn"/></svg>
+              <div>fwknopd <b>当前未运行</b>，面板各页将没有新数据。可直接点「启动」（启动前自动强制预检配置）；若启动失败，先点「校验配置」查看具体原因。
+                <div style="margin-top:6px"><button class="btn ghost small" id="svc-down-validate"><svg width="13" height="13"><use href="#i-check"/></svg>立即校验配置</button></div>
+              </div>
+            </div>
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
               <button class="btn" id="svc-start" style="background:var(--green)"><svg width="15" height="15"><use href="#i-play"/></svg>启动</button>
               <button class="btn danger" id="svc-stop"><svg width="15" height="15"><use href="#i-stop"/></svg>停止</button>
@@ -1073,6 +1079,10 @@ async function loadOverview() {
       pill.className = 'pill off'; pill.innerHTML = '<span class="dot err"></span>fwknopd 未运行（或 PID 文件不可读）';
       $('#svc-uptime').textContent = '';
     }
+    /* 服务未运行时的引导条（只读模式下提示但不给操作入口） */
+    const alive = !!(d.daemon && d.daemon.alive);
+    $('#svc-down-strip').style.display = (!alive && S.writeEnabled) ? '' : 'none';
+    if (!alive && !S.writeEnabled) $('#svc-hint').textContent = 'fwknopd 未运行；只读模式下请联系管理员启动服务';
     applyWriteGate();
     if (S.page === 'overview') renderStatusCards();
     if (S.page === 'about') renderAbout();
@@ -1716,6 +1726,8 @@ $('#svc-validate').onclick = async () => {
     if (r.error) infoModal('配置预检 — 未通过', out, true); else infoModal('配置预检 — 通过', out);
   } catch (e) {}
 };
+/* 引导条里的「立即校验配置」复用主按钮逻辑 */
+$('#svc-down-validate').onclick = () => $('#svc-validate').click();
 $('#svc-fwlist').onclick = async () => {
   try {
     const r = await api('/api/service/fwrules');
