@@ -523,7 +523,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
     <button class="nav-item" data-page="events"><svg><use href="#i-list"/></svg>SPA 事件<span class="nb-badge" id="nav-ev-badge" style="display:none" title="最近 15 分钟异常事件数"></span></button>
     <button class="nav-item" data-page="users"><svg><use href="#i-users"/></svg>用户与授权</button>
     <button class="nav-item" data-page="tofu"><svg><use href="#i-fp"/></svg>TOFU 设备绑定</button>
-    <button class="nav-item" data-page="config"><svg><use href="#i-cfg"/></svg>服务配置</button>
+    <button class="nav-item" data-page="config"><svg><use href="#i-cfg"/></svg>服务配置<span id="nav-conf-dot" style="display:none;color:var(--amber);font-size:16px;line-height:0;vertical-align:-1px" title="有未保存的配置修改"> ●</span></button>
     <button class="nav-item" data-page="profiles"><svg><use href="#i-archive"/></svg>配置方案</button>
     <button class="nav-item" data-page="about"><svg><use href="#i-info"/></svg>关于</button>
     <div class="spacer"></div>
@@ -3152,8 +3152,14 @@ function confGuardLeave() {
 window.addEventListener('beforeunload', ev => {
   if (confEditing && confDirty) { ev.preventDefault(); ev.returnValue = ''; }
 });
-function markConfDirty() { confDirty = true; $('#conf-save').classList.add('dirty'); }
-function clearConfDirty() { confDirty = false; $('#conf-save').classList.remove('dirty'); }
+function markConfDirty() {
+  confDirty = true; $('#conf-save').classList.add('dirty');
+  $('#nav-conf-dot').style.display = '';  /* 侧栏环境感知：不在配置页也知道有未保存修改 */
+}
+function clearConfDirty() {
+  confDirty = false; $('#conf-save').classList.remove('dirty');
+  $('#nav-conf-dot').style.display = 'none';
+}
 
 function confEntryRow(key, val) {
   const meta = CONF_META[key];
