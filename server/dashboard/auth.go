@@ -29,6 +29,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -303,12 +304,18 @@ func clientIP(r *http.Request) string {
 	return host
 }
 
-// loginLocked 报告该 IP 是否处于锁定期。
-func loginLocked(ip string) bool {
+// loginLocked 返回该 IP 锁定的剩余时长（0 表示未锁定）。
+func loginLocked(ip string) time.Duration {
 	auth.mu.Lock()
 	defer auth.mu.Unlock()
 	rec, ok := auth.failures[ip]
-	return ok && time.Now().Before(rec.lockedTil)
+	if !ok {
+		return 0
+	}
+	if d := time.Until(rec.lockedTil); d > 0 {
+		return d
+	}
+	return 0
 }
 
 func recordLoginFail(ip string) {
@@ -399,8 +406,12 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ip := clientIP(r)
-	if loginLocked(ip) {
-		http.Error(w, "失败次数过多，请稍后再试", http.StatusTooManyRequests)
+	if d := loginLocked(ip); d > 0 {
+		sec := int(d.Seconds()) + 1
+		w.Header().Set("Retry-After", strconv.Itoa(sec))
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusTooManyRequests)
+		fmt.Fprintf(w, `{"error":"失败次数过多，请 %d 秒后再试","retry_after":%d}`, sec, sec)
 		return
 	}
 	var req struct {
