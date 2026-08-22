@@ -273,7 +273,7 @@ if [ -x "$GOBIN" ]; then
         printf 'FWKNOP_RUN_DIR %s/run\nPCAP_INTF eth0\nPCAP_PORT_RANGE 30000-60000\n' "$D" > "$D/fwknopd.conf"
         DASHBOARD_TOKEN=fttok /tmp/ft_dashboard -run-dir "$D/run" -addr 127.0.0.1:18099 \
             -access-conf "$D/access.conf" -fwknopd-conf "$D/fwknopd.conf" \
-            -pid-file "$D/run/fwknopd.pid" -admin "$ADMIN" -enable-write >/tmp/ft_dash.log 2>&1 &
+            -pid-file "$D/run/fwknopd.pid" -admin "$ADMIN" -fwknopd "$FWKNOPD" -enable-write >/tmp/ft_dash.log 2>&1 &
         DPID=$!; sleep 1
         if wget -qO- http://127.0.0.1:18099/api/metrics 2>/dev/null | grep -q 'counters' | grep -q 'open'; then
             ok "dashboard /api/metrics reads prometheus file"
@@ -302,6 +302,61 @@ if [ -x "$GOBIN" ]; then
         wget -qO- --post-data 'stanza_key=ANY|alice|tcp/22&device_id=ZGV2MQ==' \
             --header='Authorization: Bearer fttok' http://127.0.0.1:18099/api/admin/tofu/unbind 2>/dev/null \
             | grep -q 'Removed 1' && ok "dashboard tofu unbind (write path)" || bad "dashboard tofu unbind"
+
+        # --- 2.3.0: service control / config editing / profiles ---
+        HDR='Authorization: Bearer fttok'; J='Content-Type: application/json'
+        wget -qO- --post-data '' --header="$HDR" http://127.0.0.1:18099/api/service/validate 2>/dev/null \
+            | grep -q '预检通过' && ok "service validate (preflight)" || bad "service validate"
+        wget -qO- --post-data '' http://127.0.0.1:18099/api/service/stop 2>/dev/null \
+            && bad "service stop without token" || ok "service endpoints require token"
+
+        # stanza edit: change OPEN_PORTS, add FW_ACCESS_TIMEOUT; keys must survive
+        wget -qO- --post-data '{"index":1,"fields":{"OPEN_PORTS":"tcp/2222","FW_ACCESS_TIMEOUT":"60"}}' \
+            --header="$HDR" --header="$J" http://127.0.0.1:18099/api/config/stanza 2>/dev/null \
+            | grep -q '已更新并通过预检' && ok "stanza edit saved+validated" || bad "stanza edit"
+        grep -q 'OPEN_PORTS tcp/2222' "$D/access.conf" && grep -q 'FW_ACCESS_TIMEOUT 60' "$D/access.conf" \
+            && ok "stanza edit wrote fields" || { bad "stanza edit content"; cat "$D/access.conf"; }
+        grep -q 'KEY_BASE64.*[A-Za-z0-9+/]\{8\}' "$D/access.conf" \
+            && ok "stanza edit preserves keys" || bad "stanza edit lost keys"
+        wget -qO- --post-data '{"index":1,"fields":{"KEY_BASE64":"xx"}}' \
+            --header="$HDR" --header="$J" http://127.0.0.1:18099/api/config/stanza 2>/dev/null \
+            | grep -q '不允许在线编辑' && ok "stanza edit rejects key fields" || bad "stanza edit key guard"
+
+        # fwknopd.conf save: structured ok, garbage refused
+        wget -qO- --post-data '{"mode":"structured","lines":["FWKNOP_RUN_DIR '"$D"'/run","PCAP_INTF lo"]}' \
+            --header="$HDR" --header="$J" http://127.0.0.1:18099/api/config/fwknopd 2>/dev/null \
+            | grep -q '已保存并通过预检' && ok "fwknopd.conf structured save" || bad "conf save"
+        wget -qO- --post-data '{"mode":"raw","raw":"PCAP_INTF"}' \
+            --header="$HDR" --header="$J" http://127.0.0.1:18099/api/config/fwknopd 2>/dev/null \
+            | grep -q '放弃保存' && ok "bad conf refused (preflight)" || bad "bad conf accepted?"
+
+        # profiles: save -> list -> apply -> delete
+        wget -qO- --post-data '{"name":"p1","note":"t"}' --header="$HDR" --header="$J" \
+            http://127.0.0.1:18099/api/profiles/save 2>/dev/null | grep -q '已保存' \
+            && ok "profile save" || bad "profile save"
+        wget -qO- http://127.0.0.1:18099/api/profiles 2>/dev/null | grep -q '"name":"p1"' \
+            && ok "profile list" || bad "profile list"
+        wget -qO- 'http://127.0.0.1:18099/api/profiles/view?name=p1' 2>/dev/null | grep -q '已掩码' \
+            && ok "profile view masks keys" || bad "profile view"
+        wget -qO- --post-data '{"name":"p1"}' --header="$HDR" --header="$J" \
+            http://127.0.0.1:18099/api/profiles/apply 2>/dev/null | grep -q '已切换到方案' \
+            && ok "profile apply" || bad "profile apply"
+        wget -qO- --post-data '{"name":"../evil"}' --header="$HDR" --header="$J" \
+            http://127.0.0.1:18099/api/profiles/save 2>/dev/null | grep -q '方案名' \
+            && ok "profile name traversal rejected" || bad "profile name guard"
+        wget -qO- --post-data '{"name":"p1"}' --header="$HDR" --header="$J" \
+            http://127.0.0.1:18099/api/profiles/delete 2>/dev/null | grep -q '已删除' \
+            && ok "profile delete" || bad "profile delete"
+
+        # rm then enable round-trip via WebUI endpoints
+        wget -qO- --post-data 'name=dashdemo' --header="$HDR" http://127.0.0.1:18099/api/admin/rm >/dev/null 2>&1
+        wget -qO- http://127.0.0.1:18099/api/users 2>/dev/null | grep -q '"disabled".*dashdemo' \
+            && ok "disabled stanza surfaced" || bad "disabled stanza missing"
+        wget -qO- --post-data '{"name":"dashdemo"}' --header="$HDR" --header="$J" \
+            http://127.0.0.1:18099/api/config/stanza/enable 2>/dev/null | grep -q '已恢复' \
+            && ok "stanza re-enable" || bad "stanza re-enable"
+        wget -qO- http://127.0.0.1:18099/api/users 2>/dev/null | grep -q '"name":"dashdemo"' \
+            && ok "re-enabled stanza active again" || bad "re-enable verify"
         kill "$DPID" 2>/dev/null; wait "$DPID" 2>/dev/null
         rm -f /tmp/ft_dashboard; rm -rf "$D"
     else

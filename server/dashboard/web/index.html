@@ -364,6 +364,12 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
     <symbol id="i-server" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></symbol>
     <symbol id="i-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></symbol>
     <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"/></symbol>
+    <symbol id="i-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></symbol>
+    <symbol id="i-archive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><line x1="10" y1="12" x2="14" y2="12"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></symbol>
   </defs>
 </svg>
 
@@ -376,13 +382,14 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
         <div class="t1">fwknop 运维面板</div>
         <div class="t2">单包授权 · 零信任访问</div>
       </div>
-      <span class="ver" id="brand-ver">v2.2.0</span>
+      <span class="ver" id="brand-ver">v2.3.0</span>
     </div>
     <button class="nav-item active" data-page="overview"><svg><use href="#i-dash"/></svg>概览</button>
     <button class="nav-item" data-page="events"><svg><use href="#i-list"/></svg>SPA 事件</button>
     <button class="nav-item" data-page="users"><svg><use href="#i-users"/></svg>用户与授权</button>
     <button class="nav-item" data-page="tofu"><svg><use href="#i-fp"/></svg>TOFU 设备绑定</button>
     <button class="nav-item" data-page="config"><svg><use href="#i-cfg"/></svg>服务配置</button>
+    <button class="nav-item" data-page="profiles"><svg><use href="#i-archive"/></svg>配置方案</button>
     <button class="nav-item" data-page="about"><svg><use href="#i-info"/></svg>关于</button>
     <div class="spacer"></div>
     <div class="side-foot">
@@ -422,6 +429,25 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
 
       <!-- ======== 概览 ======== -->
       <section class="page active" id="page-overview">
+        <div class="card">
+          <div class="head">
+            <h2>服务控制</h2><span class="sub" id="svc-sub">fwknopd 进程管理</span>
+            <div class="tools"><span class="hint" id="svc-uptime"></span></div>
+          </div>
+          <div class="body">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+              <button class="btn" id="svc-start" style="background:var(--green)"><svg width="15" height="15"><use href="#i-play"/></svg>启动</button>
+              <button class="btn danger" id="svc-stop"><svg width="15" height="15"><use href="#i-stop"/></svg>停止</button>
+              <button class="btn ghost" id="svc-restart"><svg width="15" height="15"><use href="#i-refresh"/></svg>重启</button>
+              <button class="btn ghost" id="svc-reload"><svg width="15" height="15"><use href="#i-bolt"/></svg>热加载</button>
+              <span style="flex:0 0 8px"></span>
+              <button class="btn ghost" id="svc-validate"><svg width="15" height="15"><use href="#i-check"/></svg>校验配置</button>
+              <button class="btn ghost" id="svc-fwlist"><svg width="15" height="15"><use href="#i-list"/></svg>防火墙规则</button>
+            </div>
+            <div class="hint" id="svc-hint" style="margin-top:10px"></div>
+            <pre class="out-pre" id="svc-output" style="display:none;margin-top:12px"></pre>
+          </div>
+        </div>
         <div class="grid-status" id="status-cards"></div>
         <div class="grid-tiles" id="tiles"></div>
         <div class="card">
@@ -437,6 +463,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
             <h2>SPA 事件</h2><span class="sub" id="events-sub"></span>
             <div class="tools">
               <input class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因…" style="width:230px">
+              <a class="btn ghost small" href="/api/audit/download" download title="下载完整审计日志（JSONL）"><svg width="14" height="14"><use href="#i-download"/></svg>导出</a>
             </div>
           </div>
           <div class="body" style="padding-bottom:6px">
@@ -563,10 +590,47 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
           <div class="head">
             <h2>fwknopd 配置</h2><span class="sub" id="config-sub"></span>
             <div class="tools">
+              <button class="btn ghost small" id="conf-edit-btn" style="display:none"><svg width="14" height="14"><use href="#i-pencil"/></svg>编辑</button>
               <button class="btn ghost small" id="raw-toggle">查看原文</button>
             </div>
           </div>
           <div class="body" id="config-body"><div class="skel" style="height:120px"></div></div>
+        </div>
+
+        <div class="card" id="conf-editor" style="display:none">
+          <div class="head">
+            <h2>编辑 fwknopd.conf</h2><span class="sub">保存前自动预检（fwknopd --exit-parse-config），通过后备份并热加载</span>
+            <div class="tools">
+              <button class="btn ghost small" id="conf-add-row"><svg width="14" height="14"><use href="#i-plus"/></svg>新增指令</button>
+              <button class="btn ghost small" id="conf-raw-edit">原文编辑</button>
+              <button class="btn small" id="conf-save"><svg width="14" height="14"><use href="#i-save"/></svg>保存</button>
+            </div>
+          </div>
+          <div class="body">
+            <div id="conf-edit-rows"></div>
+            <textarea class="ctl" id="conf-raw-area" style="display:none;width:100%;min-height:380px;font-family:var(--mono);font-size:12px;line-height:1.7"></textarea>
+            <pre class="out-pre" id="conf-save-out" style="display:none;margin-top:12px"></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======== 配置方案 ======== -->
+      <section class="page" id="page-profiles">
+        <div class="card" id="profile-save-card" style="display:none">
+          <div class="head"><h2>保存当前配置为方案</h2><span class="sub">快照 fwknopd.conf + access.conf</span></div>
+          <div class="body">
+            <div class="form-grid">
+              <div class="field"><label>方案名 <span class="req">*</span></label>
+                <input id="pf-name" placeholder="例如：办公网-仅SSH"></div>
+              <div class="field"><label>备注</label>
+                <input id="pf-note" placeholder="用途说明（可选）"></div>
+              <div class="field" style="align-self:end"><button class="btn" id="pf-save"><svg width="15" height="15"><use href="#i-save"/></svg>保存方案</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="head"><h2>配置方案</h2><span class="sub" id="profiles-sub">一键切换整套服务端配置</span></div>
+          <div class="body" id="profiles-body"><div class="skel" style="height:80px"></div></div>
         </div>
       </section>
 
@@ -581,16 +645,17 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
           <div class="body">
             <ul style="margin:0; padding-left:20px; font-size:13px; color:var(--muted); line-height:2">
               <li>面板默认仅监听 <code>127.0.0.1</code>，请勿直接暴露到不受信网络；如需远程访问请置于反向代理 + 认证之后。</li>
-              <li>写操作（签发 / 撤销 / 解绑）需启动时加 <code>-enable-write</code>，并建议设置 <code>DASHBOARD_TOKEN</code>。</li>
-              <li>面板本身不接触密钥原文：密钥由 <code>fwknopd-admin</code> 生成，access.conf 中的密钥在界面中一律以「已配置」掩码显示。</li>
-              <li>撤销用户会将对应 stanza 注释禁用（自动生成备份），并向 fwknopd 发送 SIGHUP 使其重新加载。</li>
-              <li>SPA 协议版本 <code>4.0.0</code>，与 v3 客户端向后兼容。</li>
+              <li>写操作（服务控制 / 签发 / 撤销 / 解绑 / 配置编辑 / 方案切换）需启动时加 <code>-enable-write</code>，并建议设置 <code>DASHBOARD_TOKEN</code>。</li>
+              <li>面板本身不接触密钥原文：密钥由 <code>fwknopd-admin</code> 生成；access.conf 的密钥行在界面与 API 中一律掩码，stanza 在线编辑只允许修改非密钥指令。</li>
+              <li>启动服务前强制配置预检（<code>--exit-parse-config</code>）；任何配置落盘都会先预检、自动备份（<code>.bak-时间戳</code>）并热加载（SIGHUP）。</li>
+              <li>方案切换会先校验方案配置，再备份当前配置——可随时回滚。</li>
+              <li>撤销用户会将对应 stanza 注释禁用（可在「用户与授权」页一键恢复）；SPA 协议版本 <code>4.0.0</code>，与 v3 客户端向后兼容。</li>
             </ul>
           </div>
         </div>
       </section>
 
-      <footer class="foot">fwknop 运维面板 · fwknop fork 2.2.0 · 协议 4.0.0 · 数据每 <span id="foot-ivl">5</span> 秒自动刷新</footer>
+      <footer class="foot">fwknop 运维面板 · fwknop fork 2.3.0 · 协议 4.0.0 · 数据每 <span id="foot-ivl">5</span> 秒自动刷新</footer>
     </div>
   </div>
 </div>
@@ -668,7 +733,7 @@ const S = {
 };
 const HIST_MAX = 72;   // 5s 间隔约 6 分钟
 
-const PAGE_TITLES = { overview:'概览', events:'SPA 事件', users:'用户与授权', tofu:'TOFU 设备绑定', config:'服务配置', about:'关于' };
+const PAGE_TITLES = { overview:'概览', events:'SPA 事件', users:'用户与授权', tofu:'TOFU 设备绑定', config:'服务配置', profiles:'配置方案', about:'关于' };
 
 /* ==================== 事件元数据（全中文） ==================== */
 const EVT = {
@@ -749,7 +814,19 @@ function refreshNow() {
   if (S.page === 'users') loadUsers();
   if (S.page === 'tofu') loadTOFU();
   if (S.page === 'config') loadConfig();
+  if (S.page === 'profiles') loadProfiles();
   if (S.page === 'about') renderAbout();
+}
+
+/* 写操作门禁：只读模式下禁用管理控件 */
+function applyWriteGate() {
+  const on = S.writeEnabled;
+  ['svc-start','svc-stop','svc-restart','svc-reload','svc-validate'].forEach(id => { $('#'+id).disabled = !on; });
+  $('#svc-hint').textContent = on ? '' : '当前为只读模式：启动面板时加 -enable-write 并设置 DASHBOARD_TOKEN 后，可进行服务控制与配置编辑';
+  $('#conf-edit-btn').style.display = on ? '' : 'none';
+  if (!on) $('#conf-editor').style.display = 'none';
+  $('#profile-save-card').style.display = on ? '' : 'none';
+  $('#show-add').style.display = on ? '' : 'none';
 }
 
 let connFail = 0;
@@ -770,9 +847,12 @@ async function loadOverview() {
     const pill = $('#daemon-pill');
     if (d.daemon && d.daemon.alive) {
       pill.className = 'pill on'; pill.innerHTML = '<span class="dot ok"></span>fwknopd 运行中 · PID ' + d.daemon.pid;
+      $('#svc-uptime').textContent = d.daemon.started ? '启动于 ' + fmtAbs(d.daemon.started) : '';
     } else {
       pill.className = 'pill off'; pill.innerHTML = '<span class="dot err"></span>fwknopd 未运行（或 PID 文件不可读）';
+      $('#svc-uptime').textContent = '';
     }
+    applyWriteGate();
     if (S.page === 'overview') renderStatusCards();
     if (S.page === 'about') renderAbout();
   } catch (e) { setConn(false); }
@@ -971,11 +1051,21 @@ function renderUsers() {
   }
   const st = d.stanzas || [];
   $('#users-sub').textContent = `${st.length} 个授权 · ${d.file.exists ? '更新于 ' + fmtAbs(d.file.mtime) : '文件不存在'}`;
+  const dis = d.disabled || [];
+  const disHtml = dis.length ? `
+    <div style="margin-top:6px">
+      <div class="form-sec">已禁用的授权（${dis.length}）</div>
+      ${dis.map(x => `<div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border-soft)">
+        <span style="color:var(--muted)">${icon('i-lock',15)}</span>
+        <b>${esc(x.name || '（未知）')}</b>
+        <span class="hint">第 ${x.start_line}–${x.end_line} 行 · 已注释禁用</span>
+        ${S.writeEnabled ? `<button class="btn ghost small" style="margin-left:auto" data-enable="${esc(x.name)}">${icon('i-play',13)}恢复</button>` : ''}
+      </div>`).join('')}
+    </div>` : '';
   if (!st.length) {
     $('#users-body').innerHTML = `<div class="empty">${icon('i-users',40)}
-      <div class="t">还没有任何授权</div><div class="d">点击右上角「签发新凭证」为第一位用户创建访问授权</div></div>`;
-    return;
-  }
+      <div class="t">还没有任何授权</div><div class="d">点击右上角「签发新凭证」为第一位用户创建访问授权</div></div>` + disHtml;
+  } else {
   $('#users-body').innerHTML = st.map(s => {
     const name = s.name || ('授权 #' + s.index);
     return `<div class="card" style="margin-bottom:14px;${s.changeme?'border-color:var(--red)':''}">
@@ -986,7 +1076,8 @@ function renderUsers() {
           <div class="hint">stanza 第 ${s.index} 个 · 第 ${s.start_line}–${s.end_line} 行</div></div>
         </div>
         <div class="tools">${S.writeEnabled ?
-          `<button class="btn ghost small" data-rm="${esc(name)}">${icon('i-trash',13)}撤销</button>` : ''}</div>
+          `<button class="btn ghost small" data-edit="${s.index}">${icon('i-pencil',13)}编辑</button>
+           <button class="btn ghost small" data-rm="${esc(name)}">${icon('i-trash',13)}撤销</button>` : ''}</div>
       </div>
       <div class="body" style="padding-top:6px">
         ${s.changeme ? `<div class="warn-strip">${icon('i-warn',15)}<div>该授权仍包含 <code>__CHANGEME__</code> 占位密钥，<b>无法正常工作</b>，请撤销后重新签发。</div></div>` : ''}
@@ -999,7 +1090,21 @@ function renderUsers() {
         <div>${stanzaBadges(s)}</div>
       </div>
     </div>`;
-  }).join('');
+  }).join('') + disHtml;
+  }
+  $$('#users-body [data-edit]').forEach(b => b.onclick = () => openStanzaEditor(+b.dataset.edit));
+  $$('#users-body [data-enable]').forEach(b => b.onclick = () => {
+    const name = b.dataset.enable;
+    confirmDialog('恢复授权', `确定恢复「<b>${esc(name)}</b>」吗？<br>被注释的 stanza 将还原为生效状态，预检通过后热加载。`,
+      '恢复', async () => {
+        try {
+          const r = await api('/api/config/stanza/enable', { method:'POST',
+            headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
+          if (r.error) toast('恢复失败：' + esc(r.error), 'err');
+          else { toast(`授权「${esc(name)}」已恢复`, 'ok'); loadUsers(); }
+        } catch (e) {}
+      });
+  });
   $$('#users-body [data-rm]').forEach(b => b.onclick = () => {
     const name = b.dataset.rm;
     confirmDialog('撤销授权', `确定撤销「<b>${esc(name)}</b>」吗？<br>
@@ -1156,6 +1261,14 @@ const CONF_META = {
 };
 const CONF_GROUP_ORDER = ['网络抓包', '安全策略', '防火墙', 'NAT / 转发', '审计与指标', '路径与运行', 'GnuPG', '高级', '其他'];
 
+/* 配置编辑器的指令名自动补全 */
+{
+  const dl = document.createElement('datalist');
+  dl.id = 'conf-keys';
+  dl.innerHTML = Object.keys(CONF_META).map(k => `<option value="${k}">`).join('');
+  document.body.appendChild(dl);
+}
+
 async function loadConfig() {
   try {
     const d = await api('/api/config');
@@ -1223,6 +1336,265 @@ function renderAbout() {
     `<tr><td style="width:150px;color:var(--muted)">${k}</td><td class="mono" style="font-size:12px">${v}</td></tr>`).join('') +
     `</tbody></table>`;
 }
+
+/* ==================== 通用模态 ==================== */
+function openModal(html, wide) {
+  const root = $('#modal-root');
+  root.innerHTML = `<div class="modal" role="dialog" aria-modal="true" ${wide ? 'style="width:min(760px,94vw)"' : ''}>${html}</div>`;
+  root.classList.add('show');
+  root.onclick = e => { if (e.target === root) root.classList.remove('show'); };
+  return root;
+}
+function closeModal() { $('#modal-root').classList.remove('show'); }
+function infoModal(title, text, isErr) {
+  openModal(`<h3>${title}</h3>
+    <pre class="out-pre" style="max-height:50vh;${isErr?'border-color:var(--red)':''}">${esc(text || '（无输出）')}</pre>
+    <div class="mf"><button class="btn" onclick="document.getElementById('modal-root').classList.remove('show')">关闭</button></div>`, true);
+}
+
+/* ==================== 服务控制 ==================== */
+async function svcAction(action, label, done) {
+  try {
+    const r = await api('/api/service/' + action, { method:'POST' });
+    const out = (r.output || '') + (r.error ? '\n错误：' + r.error : '');
+    if (r.error) { toast(label + '失败', 'err'); infoModal(label + ' — 失败', out, true); }
+    else { toast(label + '成功', 'ok'); if (out.trim()) infoModal(label, out); }
+  } catch (e) {}
+  loadOverview(); if (done) done();
+}
+$('#svc-start').onclick = () =>
+  confirmDialog('启动 fwknopd', '将先进行配置预检（<code>--exit-parse-config</code>），通过后启动服务。', '启动',
+    () => svcAction('start', '启动'));
+$('#svc-stop').onclick = () =>
+  confirmDialog('停止 fwknopd', '停止后所有 SPA 敲门将不再被处理，已放行的防火墙规则会按既有超时过期。<b>确定停止吗？</b>', '停止服务',
+    () => svcAction('stop', '停止'));
+$('#svc-restart').onclick = () =>
+  confirmDialog('重启 fwknopd', '将先停止再启动（启动前强制配置预检）。期间敲门请求会中断数秒。<b>确定重启吗？</b>', '重启',
+    () => svcAction('restart', '重启'));
+$('#svc-reload').onclick = () =>
+  confirmDialog('热加载配置', '向 fwknopd 发送 SIGHUP，重新读取 fwknopd.conf 与 access.conf（不中断进程）。', '热加载',
+    () => svcAction('reload', '热加载'));
+$('#svc-validate').onclick = async () => {
+  try {
+    const r = await api('/api/service/validate', { method:'POST' });
+    const out = (r.output || '') + (r.error ? '\n' + r.error : '');
+    if (r.error) infoModal('配置预检 — 未通过', out, true); else infoModal('配置预检 — 通过', out);
+  } catch (e) {}
+};
+$('#svc-fwlist').onclick = async () => {
+  try {
+    const r = await api('/api/service/fwrules');
+    infoModal('防火墙规则（fwknopd --fw-list）',
+      (r.output || '（无输出）') + (r.error ? '\n\n提示：' + r.error + '\n（无 root 权限时无法读取防火墙规则）' : ''));
+  } catch (e) {}
+};
+
+/* ==================== stanza 在线编辑（仅非密钥指令） ==================== */
+const STANZA_FIELDS = [
+  { k:'SOURCE',                 label:'来源限制',           ph:'ANY 或 192.168.1.0/24,10.1.1.5',  get:s=>s.source,                 tip:'接受哪些来源 IP 的 SPA 包' },
+  { k:'REQUIRE_USERNAME',       label:'要求客户端用户名',   ph:'留空 = 不校验',                   get:s=>s.require_username,       tip:'SPA 包内嵌入的用户名必须匹配' },
+  { k:'OPEN_PORTS',             label:'开放端口',           ph:'tcp/22,udp/53（留空 = 按包内请求）', get:s=>s.open_ports,            tip:'允许被敲开的端口白名单' },
+  { k:'RESTRICT_PORTS',         label:'禁止端口',           ph:'留空 = 不限制',                   get:s=>s.restrict_ports,         tip:'即使请求也不开放的端口' },
+  { k:'FW_ACCESS_TIMEOUT',      label:'访问超时（秒）',     ph:'默认 30',                         get:s=>s.fw_access_timeout,      tip:'放行规则自动过期时间' },
+  { k:'MAX_FW_TIMEOUT',         label:'最大访问超时（秒）', ph:'默认 300',                        get:s=>s.max_fw_timeout,         tip:'客户端自定义超时的上限' },
+  { k:'REQUIRE_SOURCE_ADDRESS', label:'强制包内真实 IP',    bool:true,                            get:s=>s.require_source_address, tip:'禁用 -s 伪造，客户端须解析真实外网 IP' },
+  { k:'TOTP_PORT_RANGE',        label:'TOTP 端口范围',      ph:'如 30000-60000',                  get:s=>s.port_range,             tip:'与客户端一致的跳变范围' },
+  { k:'REQUIRE_FINGERPRINT',    label:'要求设备指纹',       bool:true,                            get:s=>s.require_fingerprint,    tip:'v4 包必须携带 device_id 并通过白名单/TOFU' },
+  { k:'FINGERPRINT_TOFU_TIMEOUT', label:'TOFU 宽限期（秒）', ph:'留空 = 默认 86400',              get:s=>s.tofu_timeout ? String(s.tofu_timeout) : '', tip:'首用自动绑定的时间窗口' },
+  { k:'REQUIRE_TOTP_PORT_MATCH', label:'强制 TOTP 端口匹配', bool:true,                           get:s=>s.require_totp_port_match, tip:'端口本身作为一次性因子（需 TOTP 种子）' },
+];
+
+function openStanzaEditor(index) {
+  const s = (S.users && S.users.stanzas || []).find(x => x.index === index);
+  if (!s) return;
+  const name = s.name || ('授权 #' + s.index);
+  const rows = STANZA_FIELDS.map(f => `
+    <div class="field">
+      ${f.bool
+        ? `<label class="check-row"><input type="checkbox" data-sf="${f.k}" ${f.get(s) ? 'checked' : ''} style="width:auto"> ${f.label}</label>`
+        : `<label>${f.label}</label><input data-sf="${f.k}" value="${esc(f.get(s) || '')}" placeholder="${esc(f.ph || '')}">`}
+      <div class="tip">${esc(f.tip || '')}</div>
+    </div>`).join('');
+  openModal(`<h3>编辑授权「${esc(name)}」</h3>
+    <div class="mb">仅可编辑非密钥指令；密钥与指纹白名单保持不变。保存前自动预检，原文件自动备份。</div>
+    <div class="form-grid" style="max-height:52vh;overflow-y:auto;padding-right:6px">${rows}</div>
+    <div class="mf" style="margin-top:16px">
+      <button class="btn ghost" id="se-cancel">取消</button>
+      <button class="btn" id="se-save">${icon('i-save',14)}保存并生效</button>
+    </div>`, true);
+  $('#se-cancel').onclick = closeModal;
+  $('#se-save').onclick = async () => {
+    const fields = {};
+    $$('#modal-root [data-sf]').forEach(el => {
+      fields[el.dataset.sf] = el.type === 'checkbox' ? (el.checked ? 'Y' : '') : el.value.trim();
+    });
+    $('#se-save').disabled = true;
+    try {
+      const r = await api('/api/config/stanza', { method:'POST',
+        headers:{'Content-Type':'application/json'}, body: JSON.stringify({ index, fields }) });
+      closeModal();
+      if (r.error) { toast('保存失败', 'err'); infoModal('编辑授权 — 失败', r.output + '\n' + r.error, true); }
+      else { toast('授权已更新', 'ok'); loadUsers(); }
+    } catch (e) { $('#se-save').disabled = false; }
+  };
+}
+
+/* ==================== fwknopd.conf 可视化编辑 ==================== */
+let confEditing = false, confRawEdit = false, confRows = [];
+
+function confEntryRow(key, val) {
+  const meta = CONF_META[key];
+  const yn = /^(Y|N)?$/.test(val) && (key.startsWith('ENABLE_') || key.startsWith('FLUSH_') || key.startsWith('EXIT_'));
+  return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+    <input class="ctl ce-key" list="conf-keys" value="${esc(key)}" placeholder="指令名" style="flex:0 0 250px;font-family:var(--mono);font-size:12px">
+    ${yn ? `<select class="ctl ce-val" style="flex:0 0 90px">
+        <option value="Y" ${val==='Y'?'selected':''}>Y（是）</option>
+        <option value="N" ${val!=='Y'?'selected':''}>N（否）</option></select>`
+      : `<input class="ctl ce-val" value="${esc(val)}" placeholder="值" style="flex:1;font-family:var(--mono);font-size:12px">`}
+    <button class="icon-btn ce-del" title="删除该指令">${icon('i-trash',13)}</button>
+    <div class="hint" style="flex:1;min-width:160px">${meta ? esc(meta[1]) : ''}</div>
+  </div>`;
+}
+
+function renderConfEditor() {
+  $('#conf-edit-rows').style.display = confRawEdit ? 'none' : '';
+  $('#conf-raw-area').style.display = confRawEdit ? '' : 'none';
+  $('#conf-raw-edit').textContent = confRawEdit ? '返回结构化编辑' : '原文编辑';
+  if (!confRawEdit) {
+    $('#conf-edit-rows').innerHTML = confRows.map(([k,v]) => confEntryRow(k,v)).join('') ||
+      '<div class="hint">（配置为空，点击「新增指令」添加）</div>';
+    $$('#conf-edit-rows .ce-del').forEach(b => b.onclick = () => {
+      const row = b.parentElement; const i = Array.from(row.parentElement.children).indexOf(row);
+      confRows.splice(i, 1); renderConfEditor();
+    });
+  }
+}
+
+$('#conf-edit-btn').onclick = () => {
+  confEditing = !confEditing;
+  $('#conf-editor').style.display = confEditing ? '' : 'none';
+  if (confEditing) {
+    confRows = ((S.config && S.config.entries) || []).map(e => [e.key, e.value]);
+    $('#conf-raw-area').value = (S.config && S.config.raw) || '';
+    $('#conf-save-out').style.display = 'none';
+    renderConfEditor();
+    $('#conf-editor').scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+};
+$('#conf-raw-edit').onclick = () => { confRawEdit = !confRawEdit; renderConfEditor(); };
+$('#conf-add-row').onclick = () => { confRows.push(['', '']); renderConfEditor(); };
+$('#conf-save').onclick = () => {
+  let payload;
+  if (confRawEdit) {
+    payload = { mode:'raw', raw: $('#conf-raw-area').value };
+  } else {
+    const lines = [];
+    $$('#conf-edit-rows > div').forEach(row => {
+      const k = row.querySelector('.ce-key').value.trim();
+      const v = row.querySelector('.ce-val').value.trim();
+      if (k) lines.push(v ? k + ' ' + v : k);
+    });
+    if (!lines.length) { toast('配置不能为空', 'err'); return; }
+    payload = { mode:'structured', lines };
+  }
+  confirmDialog('保存 fwknopd.conf', '保存流程：<b>预检 → 备份 → 原子替换 → 热加载</b>。预检不通过则不会落盘。确定保存吗？', '保存',
+    async () => {
+      try {
+        const r = await api('/api/config/fwknopd', { method:'POST',
+          headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        const el = $('#conf-save-out');
+        el.style.display = ''; el.style.borderColor = r.error ? 'var(--red)' : 'var(--green)';
+        el.textContent = (r.output || '') + (r.error ? '\n错误：' + r.error : '');
+        if (r.error) toast('配置保存失败（未落盘）', 'err');
+        else { toast('配置已保存并热加载', 'ok'); loadConfig(); }
+      } catch (e) {}
+    });
+};
+
+/* ==================== 配置方案 ==================== */
+async function loadProfiles() {
+  try {
+    const d = await api('/api/profiles');
+    S.profiles = d;
+    if (S.page === 'profiles') renderProfiles();
+  } catch (e) { setConn(false); }
+}
+
+function renderProfiles() {
+  const d = S.profiles; if (!d) return;
+  const ps = d.profiles || [];
+  $('#profiles-sub').textContent = `${ps.length} 个方案 · 存放于 ${d.dir}`;
+  if (!ps.length) {
+    $('#profiles-body').innerHTML = `<div class="empty">${icon('i-archive',40)}
+      <div class="t">还没有配置方案</div>
+      <div class="d">${S.writeEnabled ? '在上方把当前配置保存为方案，之后可一键切换' : '只读模式下不可保存方案（需 -enable-write）'}</div></div>`;
+    return;
+  }
+  $('#profiles-body').innerHTML = ps.map(p => `
+    <div class="card" style="margin-bottom:14px">
+      <div class="head" style="border-bottom:0;padding-bottom:6px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:34px;height:34px;border-radius:10px;background:var(--blue-soft);color:var(--blue);display:flex;align-items:center;justify-content:center">${icon('i-archive',17)}</div>
+          <div><div style="font-weight:700">${esc(p.name)}</div>
+          <div class="hint">${p.created ? '保存于 ' + fmtAbs(p.created) : ''}${p.note ? ' · ' + esc(p.note) : ''}</div></div>
+        </div>
+        <div class="tools">
+          <button class="btn ghost small" data-pv="${esc(p.name)}">${icon('i-list',13)}预览</button>
+          ${S.writeEnabled ? `
+          <button class="btn small" data-pa="${esc(p.name)}">${icon('i-play',13)}应用</button>
+          <button class="btn ghost small" data-pd="${esc(p.name)}">${icon('i-trash',13)}删除</button>` : ''}
+        </div>
+      </div>
+    </div>`).join('');
+  $$('#profiles-body [data-pv]').forEach(b => b.onclick = async () => {
+    try {
+      const v = await api('/api/profiles/view?name=' + encodeURIComponent(b.dataset.pv));
+      openModal(`<h3>方案「${esc(b.dataset.pv)}」预览</h3>
+        <div class="form-sec">fwknopd.conf</div><pre class="out-pre" style="max-height:28vh">${esc(v.fwknopd_conf)}</pre>
+        <div class="form-sec">access.conf（密钥已掩码）</div><pre class="out-pre" style="max-height:28vh">${esc(v.access_conf)}</pre>
+        <div class="mf"><button class="btn" onclick="document.getElementById('modal-root').classList.remove('show')">关闭</button></div>`, true);
+    } catch (e) {}
+  });
+  $$('#profiles-body [data-pa]').forEach(b => b.onclick = () => {
+    const name = b.dataset.pa;
+    confirmDialog('切换配置方案', `确定切换到方案「<b>${esc(name)}</b>」吗？<br>
+      流程：校验方案配置 → 备份当前配置（.bak-时间戳）→ 替换 fwknopd.conf 与 access.conf → 热加载。`, '切换',
+      async () => {
+        try {
+          const r = await api('/api/profiles/apply', { method:'POST',
+            headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
+          if (r.error) { toast('切换失败（配置未变）', 'err'); infoModal('方案切换 — 失败', r.output + '\n' + r.error, true); }
+          else { toast(`已切换到方案「${esc(name)}」`, 'ok'); infoModal('方案切换 — 完成', r.output); loadConfig(); loadUsers(); }
+        } catch (e) {}
+      });
+  });
+  $$('#profiles-body [data-pd]').forEach(b => b.onclick = () => {
+    const name = b.dataset.pd;
+    confirmDialog('删除方案', `确定删除方案「<b>${esc(name)}</b>」吗？仅删除方案快照，不影响当前生效配置。`, '删除',
+      async () => {
+        try {
+          const r = await api('/api/profiles/delete', { method:'POST',
+            headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
+          if (r.error) toast('删除失败：' + esc(r.error), 'err');
+          else { toast('方案已删除', 'ok'); loadProfiles(); }
+        } catch (e) {}
+      });
+  });
+}
+
+$('#pf-save').onclick = () => {
+  const name = $('#pf-name').value.trim(), note = $('#pf-note').value.trim();
+  if (!name) { toast('请填写方案名', 'err'); return; }
+  confirmDialog('保存配置方案', `把当前 fwknopd.conf + access.conf 快照保存为方案「<b>${esc(name)}</b>」？`, '保存',
+    async () => {
+      try {
+        const r = await api('/api/profiles/save', { method:'POST',
+          headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, note }) });
+        if (r.error) toast('保存失败：' + esc(r.error), 'err');
+        else { toast(r.output || '方案已保存', 'ok'); $('#pf-name').value = ''; $('#pf-note').value = ''; loadProfiles(); }
+      } catch (e) {}
+    });
+};
 
 /* ==================== 启动 ==================== */
 refreshNow();

@@ -133,7 +133,10 @@ type Stanza struct {
 	Source               string `json:"source"`
 	RequireUsername      string `json:"require_username"`
 	OpenPorts            string `json:"open_ports"`
+	RestrictPorts        string `json:"restrict_ports"`
 	FWAccessTimeout      string `json:"fw_access_timeout"`
+	MaxFWTimeout         string `json:"max_fw_timeout"`
+	RequireSourceAddress bool   `json:"require_source_address"`
 	PortRange            string `json:"port_range"`
 	TofuTimeout          int    `json:"tofu_timeout"`
 	HasKey               bool   `json:"has_key"`
@@ -210,8 +213,10 @@ func parseDisabledStanzas(path string) []DisabledStanza {
 				cur = &DisabledStanza{StartLine: i + 1}
 				// extract name: # [disabled by fwknopd-admin rm '<name>' ...]
 				rest := strings.TrimPrefix(line, disabledPrefix)
-				if j := strings.Index(rest, "'"); j >= 0 {
-					cur.Name = rest[:j]
+				if strings.HasPrefix(rest, "'") {
+					if j := strings.Index(rest[1:], "'"); j >= 0 {
+						cur.Name = rest[1 : 1+j]
+					}
 				}
 			}
 			cur.EndLine = i + 1
@@ -276,8 +281,14 @@ func parseAccessConf(path string) ([]Stanza, error) {
 			s.RequireUsername = val
 		case "OPEN_PORTS":
 			s.OpenPorts = val
+		case "RESTRICT_PORTS":
+			s.RestrictPorts = val
 		case "FW_ACCESS_TIMEOUT":
 			s.FWAccessTimeout = val
+		case "MAX_FW_TIMEOUT":
+			s.MaxFWTimeout = val
+		case "REQUIRE_SOURCE_ADDRESS":
+			s.RequireSourceAddress = strings.HasPrefix(strings.ToUpper(val), "Y")
 		case "KEY_BASE64", "KEY":
 			s.HasKey = true
 		case "HMAC_KEY_BASE64":
