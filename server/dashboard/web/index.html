@@ -2363,7 +2363,11 @@ function renderTOFU() {
     showPage('events');
   });
   $$('#tofu-body [data-ub]').forEach(b => b.onclick = () => {
-    confirmDialog('解除设备绑定', `确定解绑设备<br><code>${esc(b.dataset.dev)}</code> 吗？<br>
+    /* 确认框附该设备最近敲门摘要，辅助判断是否误删活跃设备 */
+    const last = (S.events || []).find(e => e.device_id === b.dataset.dev);
+    const lastHtml = last ? `<br><span class="hint">最近敲门：${evMeta(last.event).label} · ${fmtAgo(last.time)} · ${esc(last.src_ip || '')}</span>`
+      : '<br><span class="hint">该设备近期无敲门记录</span>';
+    confirmDialog('解除设备绑定', `确定解绑设备<br><code>${esc(b.dataset.dev)}</code> 吗？${lastHtml}<br>
       解绑后该设备需重新完成 TOFU 首用绑定（或加入指纹白名单）才能继续敲门。`,
       '解绑', async () => {
         try {
