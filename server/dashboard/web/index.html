@@ -1097,6 +1097,14 @@ function fmtAgo(t) {
 }
 const fmtAbs = t => new Date(t*1000).toLocaleString('zh-CN', { hour12:false });
 const fmtNum = n => Number(n||0).toLocaleString('zh-CN');
+/* 人类可读文件体积：B/KB/MB/GB */
+const fmtSize = n => {
+  n = Number(n||0);
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n/1024).toFixed(1) + ' KB';
+  if (n < 1073741824) return (n/1048576).toFixed(1) + ' MB';
+  return (n/1073741824).toFixed(2) + ' GB';
+};
 
 /* ==================== 主题 ==================== */
 function applyTheme(t, persist) {
@@ -1242,8 +1250,17 @@ function renderStatusCards() {
     { ic:'server', c: d.daemon.alive ? 'var(--green)' : 'var(--red)',
       bg: d.daemon.alive ? 'var(--green-soft)' : 'var(--red-soft)',
       k:'服务进程', v: d.daemon.alive ? `运行中 <small>PID ${d.daemon.pid}</small>` : '未运行' },
-    { ic:'activity', c:'var(--blue)', bg:'var(--blue-soft)', k:'审计日志',
-      v: F.audit && F.audit.exists ? `正常 <small>${fmtNum(F.audit.size)} 字节 · ${fmtAgo(F.audit.mtime)}更新</small>` : '缺失' },
+    (() => { /* 审计日志卡：体积过大时分档警示 */
+      const a = F.audit;
+      if (!a || !a.exists) return { ic:'activity', c:'var(--blue)', bg:'var(--blue-soft)', k:'审计日志', v:'缺失' };
+      const MB = 1048576;
+      if (a.size > 200*MB) return { ic:'activity', c:'var(--red)', bg:'var(--red-soft)', k:'审计日志',
+        v:`过大 <small>${fmtSize(a.size)} · 建议立即导出后清理，过大文件拖慢事件页</small>` };
+      if (a.size > 50*MB) return { ic:'activity', c:'var(--amber)', bg:'var(--amber-soft)', k:'审计日志',
+        v:`偏大 <small>${fmtSize(a.size)} · 建议导出后清理</small>` };
+      return { ic:'activity', c:'var(--blue)', bg:'var(--blue-soft)', k:'审计日志',
+        v:`正常 <small>${fmtSize(a.size)} · ${fmtAgo(a.mtime)}更新</small>` };
+    })(),
     { ic:'bolt', c:'var(--amber)', bg:'var(--amber-soft)', k:'指标文件',
       v: F.metrics && F.metrics.exists ? `正常 <small>${fmtAgo(F.metrics.mtime)}更新</small>` : '缺失' },
     { ic:'key', c: d.write_enabled ? 'var(--amber)' : 'var(--muted)',
