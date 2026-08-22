@@ -320,6 +320,8 @@ table.tb { width:100%; border-collapse:collapse; font-size:13px; }
 @keyframes slidein { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:none; } }
 .toast .x { margin-left:auto; cursor:pointer; color:var(--faint); border:0; background:none; font-size:15px; padding:0; }
 .toast .tn { font-size:11px; color:var(--accent); font-weight:700; margin-left:4px; }
+.df-add { color:var(--green); display:block; background:var(--green-soft); }
+.df-del { color:var(--red); display:block; background:var(--red-soft); }
 
 /* modal */
 #modal-root { position:fixed; inset:0; z-index:90; display:none; align-items:center; justify-content:center; background:rgba(8,10,20,.55); backdrop-filter:blur(3px); }
@@ -2025,6 +2027,31 @@ $('#conf-save').onclick = () => {
     });
 };
 
+/* 行级 diff（LCS）：返回 [' '|'-'|'+', 行内容] 序列，仅保留增删行 */
+function lineDiff(oldText, newText) {
+  const a = oldText.split('\n'), b = newText.split('\n');
+  const n = a.length, m = b.length;
+  const dp = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
+    dp[i][j] = a[i] === b[j] ? dp[i+1][j+1] + 1 : Math.max(dp[i+1][j], dp[i][j+1]);
+  const ops = [];
+  let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (a[i] === b[j]) { i++; j++; }
+    else if (dp[i+1][j] >= dp[i][j+1]) ops.push(['-', a[i++]]);
+    else ops.push(['+', b[j++]]);
+  }
+  while (i < n) ops.push(['-', a[i++]]);
+  while (j < m) ops.push(['+', b[j++]]);
+  return ops;
+}
+function renderDiff(pre, cur) {
+  const ops = lineDiff(pre, cur).filter(([op, l]) => l.trim() !== '');
+  if (!ops.length) return '<div class="hint" style="padding:4px 0">与当前配置完全一致</div>';
+  return '<pre class="out-pre" style="max-height:24vh">' + ops.map(([op, l]) =>
+    `<span class="df-${op === '+' ? 'add' : 'del'}">${op} ${esc(l)}</span>`).join('\n') + '</pre>';
+}
+
 /* ==================== 配置方案 ==================== */
 async function loadProfiles() {
   try {
@@ -2062,8 +2089,11 @@ function renderProfiles() {
     </div>`).join('');
   $$('#profiles-body [data-pv]').forEach(b => b.onclick = async () => {
     try {
+      if (!S.config) await loadConfig();  /* diff 需要当前配置原文 */
       const v = await api('/api/profiles/view?name=' + encodeURIComponent(b.dataset.pv));
+      const curRaw = (S.config && S.config.raw) || '';
       openModal(`<h3>方案「${esc(b.dataset.pv)}」预览</h3>
+        <div class="form-sec">与当前配置的差异（fwknopd.conf）</div>${renderDiff(v.fwknopd_conf, curRaw)}
         <div class="form-sec">fwknopd.conf</div><pre class="out-pre" style="max-height:28vh">${esc(v.fwknopd_conf)}</pre>
         <div class="form-sec">access.conf（密钥已掩码）</div><pre class="out-pre" style="max-height:28vh">${esc(v.access_conf)}</pre>
         <div class="mf"><button class="btn" onclick="document.getElementById('modal-root').classList.remove('show')">关闭</button></div>`, true);
