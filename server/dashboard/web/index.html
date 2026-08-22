@@ -3356,7 +3356,8 @@ function renderAbout() {
   const d = S.overview;
   const F = (d && d.files) || {};
   /* 文件行附大小与更新时间 */
-  const frow = f => f ? `${esc(f.path)}${f.exists ? ` <span class="hint">${fmtSize(f.size)} · ${fmtAgo(f.mtime)}更新</span>` : ' <span class="hint">（不存在）</span>'}` : '—';
+  /* 文件路径点击即复制（cp-cell 全局委托，键盘可达由 MutationObserver 补齐） */
+  const frow = f => f ? `<span class="cp-cell" data-cp="${esc(f.path)}" title="点击复制完整路径">${esc(f.path)}</span>${f.exists ? ` <span class="hint">${fmtSize(f.size)} · ${fmtAgo(f.mtime)}更新</span>` : ' <span class="hint">（不存在）</span>'}` : '—';
   /* 时钟偏移检测：TOTP 依赖双方时钟，偏差超 60 秒给出显著警示 */
   let clockWarn = '';
   if (d && d.now) {
@@ -3398,6 +3399,8 @@ function renderAbout() {
       fstat('TOFU 状态', F.tofu), fstat('授权配置', F.access_conf), fstat('服务配置', F.fwknopd_conf),
     ].join('\n'), '诊断信息 ');
   };
+  /* 路径点击复制（键盘可达由全局 MutationObserver/委托覆盖） */
+  $$('#about-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, '路径 '));
 }
 
 /* ==================== 通用模态 ==================== */
