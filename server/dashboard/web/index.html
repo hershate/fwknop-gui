@@ -1845,7 +1845,7 @@ function renderEvents() {
         <td class="mono">${e.src_ip ? `<span class="cp-cell" data-cp="${esc(e.src_ip)}" title="点击复制来源 IP">${esc(e.src_ip)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.src_ip)}" title="查看该 IP 的全部事件">${icon('i-search',12)}</button>` : '—'}</td>
         <td class="mono">${e.spa_port ? `<span class="cp-cell" data-portq="${e.spa_port}" title="点击按 SPA 端口 ${e.spa_port} 筛选">${e.spa_port}</span>` : '—'}</td>
         <td class="mono">${e.target_port ? `<span class="cp-cell" data-portq="${e.target_port}" title="点击按目标端口 ${e.target_port} 筛选">${e.target_port}</span>` : '—'}</td>
-        <td class="hint" title="${e.reason ? '原始原因：' + esc(e.reason) : ''}">${esc(reasonZh(e.reason))}</td>
+        <td class="hint">${e.reason ? `<span class="cp-cell" data-reasonq="${esc(e.reason)}" title="点击按原因「${esc(e.reason)}」筛选">${esc(reasonZh(e.reason))}</span>` : esc(reasonZh(e.reason))}</td>
       </tr>${detail}`;
     }).join('');
     $$('#events-body [data-portq]').forEach(c => c.onclick = ev => {
@@ -1854,6 +1854,13 @@ function renderEvents() {
       $('#event-search').value = S.evQuery;
       renderEvents();
       toast(`已按端口 ${c.dataset.portq} 筛选`, 'ok', 1500);
+    });
+    $$('#events-body [data-reasonq]').forEach(c => c.onclick = ev => {
+      ev.stopPropagation();
+      S.evQuery = c.dataset.reasonq; S.evPage = 0;
+      $('#event-search').value = S.evQuery;
+      renderEvents();
+      toast(`已按原因筛选：${reasonZh(c.dataset.reasonq)}`, 'ok', 1500);
     });
     $$('#events-body .tmtoggle').forEach(c => c.onclick = ev => {
       ev.stopPropagation();
