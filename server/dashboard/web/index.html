@@ -373,6 +373,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
     <symbol id="i-cfg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
     <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></symbol>
     <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
     <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></symbol>
     <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
     <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></symbol>
@@ -413,6 +414,13 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
 .auth-brand .t2{font-size:12px;color:var(--dim)}
 .auth-err{color:var(--red);font-size:13px;min-height:18px;margin-top:10px}
 .auth-steps{margin:0 0 14px;padding-left:18px;color:var(--dim);font-size:13px;line-height:1.9}
+.pw-wrap{position:relative}
+.pw-wrap input{padding-right:40px}
+.pw-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--dim);cursor:pointer;padding:6px;display:flex}
+.pw-eye:hover{color:var(--accent)}
+.auth-hint{font-size:12px;min-height:16px;margin-top:6px}
+.auth-hint.ok{color:var(--green)}
+.auth-hint.no{color:var(--amber)}
 </style>
 
 <!-- 鉴权门：首次初始化向导 / 登录（默认显示，JS 检查状态后切换） -->
@@ -437,9 +445,12 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
       <li>之后每次访问需凭密码登录（会话 12 小时有效）</li>
     </ol>
     <label for="setup-pw1">管理员密码</label>
-    <input type="password" id="setup-pw1" autocomplete="new-password" placeholder="至少 8 位">
+    <div class="pw-wrap"><input type="password" id="setup-pw1" autocomplete="new-password" placeholder="至少 8 位">
+      <button type="button" class="pw-eye" data-eye="setup-pw1" title="显示/隐藏密码"><svg width="16" height="16"><use href="#i-eye"/></svg></button></div>
     <label for="setup-pw2">确认密码</label>
-    <input type="password" id="setup-pw2" autocomplete="new-password" placeholder="再次输入">
+    <div class="pw-wrap"><input type="password" id="setup-pw2" autocomplete="new-password" placeholder="再次输入">
+      <button type="button" class="pw-eye" data-eye="setup-pw2" title="显示/隐藏密码"><svg width="16" height="16"><use href="#i-eye"/></svg></button></div>
+    <div class="auth-hint" id="setup-pw-hint"></div>
     <button class="btn" id="setup-btn" style="background:var(--green)"><svg width="15" height="15"><use href="#i-check"/></svg>完成初始化并进入面板</button>
     <div class="auth-err" id="setup-err"></div>
   </div>
@@ -451,7 +462,8 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
     </div>
     <p class="desc">请输入管理员密码。连续失败 5 次将锁定 60 秒。</p>
     <label for="login-pw">管理员密码（或 DASHBOARD_TOKEN）</label>
-    <input type="password" id="login-pw" autocomplete="current-password" placeholder="密码 / 令牌">
+    <div class="pw-wrap"><input type="password" id="login-pw" autocomplete="current-password" placeholder="密码 / 令牌">
+      <button type="button" class="pw-eye" data-eye="login-pw" title="显示/隐藏密码"><svg width="16" height="16"><use href="#i-eye"/></svg></button></div>
     <button class="btn" id="login-btn"><svg width="15" height="15"><use href="#i-key"/></svg>登录</button>
     <div class="auth-err" id="login-err"></div>
   </div>
@@ -930,6 +942,27 @@ $('#setup-btn').onclick = submitSetup;
 $('#login-btn').onclick = submitLogin;
 $('#setup-pw2').addEventListener('keydown', e => { if (e.key === 'Enter') submitSetup(); });
 $('#login-pw').addEventListener('keydown', e => { if (e.key === 'Enter') submitLogin(); });
+
+/* 密码可见性切换 */
+$$('.pw-eye').forEach(b => b.onclick = () => {
+  const i = $('#' + b.dataset.eye);
+  i.type = i.type === 'password' ? 'text' : 'password';
+  b.style.color = i.type === 'text' ? 'var(--accent)' : '';
+});
+
+/* 初始化页实时校验提示：长度 + 两次一致 */
+function updateSetupHint() {
+  const p1 = $('#setup-pw1').value, p2 = $('#setup-pw2').value, el = $('#setup-pw-hint');
+  if (!p1 && !p2) { el.textContent = ''; el.className = 'auth-hint'; return; }
+  const parts = [];
+  parts.push(p1.length >= 8 ? '✓ 长度达标' : '✗ 至少 8 位');
+  if (p2) parts.push(p1 === p2 ? '✓ 两次输入一致' : '✗ 两次输入不一致');
+  const allOk = p1.length >= 8 && p2 && p1 === p2;
+  el.textContent = parts.join('　·　');
+  el.className = 'auth-hint ' + (allOk ? 'ok' : 'no');
+}
+$('#setup-pw1').addEventListener('input', updateSetupHint);
+$('#setup-pw2').addEventListener('input', updateSetupHint);
 
 $('#logout-btn').onclick = async () => {
   try { await fetch('/api/logout', { method:'POST', headers:{'X-Fwknop-Request':'1'} }); } catch (e) {}
