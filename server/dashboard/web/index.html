@@ -1934,6 +1934,12 @@ $('#add-form')['tofu-timeout'].addEventListener('input', ev => {
 $('#add-form').name.addEventListener('input', ev => {
   const v = ev.target.value.trim(), el = $('#add-name-hint');
   if (!v) { el.textContent = ''; el.className = 'auth-hint'; return; }
+  /* 格式前置校验：名称写入 access.conf 的标记注释行，空白/#/引号会破坏解析 */
+  if (v.length > 100) { el.textContent = '✗ 名称过长（≤100 字符）'; el.className = 'auth-hint no'; return; }
+  if (/[\s#"'`]/.test(v)) {
+    el.textContent = '✗ 名称不能含空白、#、引号或反引号（会写入配置注释行）';
+    el.className = 'auth-hint no'; return;
+  }
   const active = ((S.users && S.users.stanzas) || []).some(x => x.name === v);
   const disabled = ((S.users && S.users.disabled) || []).some(x => x.name === v);
   if (active) { el.textContent = '✗ 已有同名授权，签发前请先撤销或改名'; el.className = 'auth-hint no'; }
@@ -1944,8 +1950,12 @@ $('#add-form').name.addEventListener('input', ev => {
 $('#add-form').addEventListener('submit', async ev => {
   ev.preventDefault();
   const f = ev.target;
+  const nm = f.name.value.trim();
+  if (nm.length > 100 || /[\s#"'`]/.test(nm)) {
+    toast('名称不能含空白、#、引号或反引号，且不超过 100 字符', 'err'); return;
+  }
   const fd = new FormData();
-  fd.append('name', f.name.value.trim());
+  fd.append('name', nm);
   if (f.server.value.trim()) fd.append('server', f.server.value.trim());
   if (f.access.value.trim()) fd.append('access', f.access.value.trim());
   if (f.user.value.trim()) fd.append('user', f.user.value.trim());
