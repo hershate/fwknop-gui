@@ -8,6 +8,9 @@
 界面为单页中文 UI（`go:embed` 内嵌，无任何外部依赖），整个面板编译为**单个
 自包含二进制**。
 
+**2.4.0 起面板强制鉴权**：首次启动须先完成初始化（设置管理员密码），之后凭
+密码登录才能使用任何 API——不存在未认证即可管理的模式。
+
 设计依据：`REF/plan/Port Knocking.md` §7.4/§7.6。
 
 ## 构建
@@ -22,21 +25,44 @@ go build -o fwknop-dashboard .
 ## 运行
 
 ```bash
-# 只读模式，仅监听本机（默认，推荐）
+# 常规方式：首次打开页面时按向导设置管理员密码
 ./fwknop-dashboard -run-dir /var/run/fwknop -addr 127.0.0.1:8088
 
-# 启用管理写操作（签发/撤销/解绑），并用令牌保护
+# 启用管理写操作（签发/撤销/解绑/配置编辑/服务控制）
+./fwknop-dashboard -run-dir /var/run/fwknop -enable-write
+
+# 无头/CI 场景：用令牌代替密码初始化（Bearer 对全部 API 有效）
 DASHBOARD_TOKEN=<随机长令牌> ./fwknop-dashboard \
     -run-dir /var/run/fwknop -enable-write
 ```
 
 然后打开 http://127.0.0.1:8088 。
 
+### 首次启动初始化
+
+未设置 `DASHBOARD_TOKEN` 且不存在认证文件时，面板进入**初始化模式**：
+除 `/api/auth/state`、`/api/setup`、`/api/login`、`/api/logout` 与静态页外，
+所有 API 一律返回 `401 {"needs_setup":true}`。打开页面会显示初始化向导，
+设置管理员密码（至少 8 位）后自动登录。
+
+密码以 PBKDF2-HMAC-SHA256（10 万轮、16 字节随机盐）散列后存入
+`<run-dir>/dashboard_auth.json`（权限 0600，原子落盘）；面板任何路径都不会
+输出密码或其散列。如需重置密码，删除该文件并重启面板即可重新初始化。
+
+### 登录与会话
+
+- 登录成功后签发服务端会话：32 字节随机令牌，写入 `HttpOnly` +
+  `SameSite=Strict` Cookie（TLS 下追加 `Secure`），有效期 12 小时。
+- 登录按客户端 IP 限流：5 分钟内失败 5 次锁定 60 秒（HTTP 429）。
+- Cookie 会话发起的写操作必须携带 `X-Fwknop-Request: 1` 自定义头（防 CSRF，
+  前端已自动附带）；`Authorization: Bearer` 凭证不经过浏览器，豁免该检查。
+- 登录时也接受 `DASHBOARD_TOKEN` 的值作为凭证（便于无头部署的操作者进入界面）。
+
 ### 完整参数
 
 | 参数 | 默认值 | 说明 |
 | --- | --- | --- |
-| `-run-dir` | `/var/run/fwknop` | fwknopd 运行目录（审计/指标/TOFU 状态文件所在） |
+| `-run-dir` | `/var/run/fwknop` | fwknopd 运行目录（审计/指标/TOFU 状态/认证文件所在） |
 | `-addr` | `127.0.0.1:8088` | 监听地址 |
 | `-admin` | `fwknopd-admin` | fwknopd-admin 可执行文件路径 |
 | `-fwknopd` | `fwknopd` | fwknopd 可执行文件路径（服务控制 / 配置预检） |
@@ -44,7 +70,10 @@ DASHBOARD_TOKEN=<随机长令牌> ./fwknop-dashboard \
 | `-fwknopd-conf` | `/etc/fwknop/fwknopd.conf` | 服务配置（配置页数据源） |
 | `-pid-file` | `/var/run/fwknop/fwknopd.pid` | PID 文件（进程探测 / 停止 / SIGHUP） |
 | `-profile-dir` | `<run-dir>/profiles` | 配置方案存放目录 |
-| `-enable-write` | 关 | 启用写操作；设置 `DASHBOARD_TOKEN` 后需 Bearer 令牌 |
+| `-enable-write` | 关 | 启用写操作（签发/撤销/解绑/配置编辑/服务控制） |
+
+环境变量 `DASHBOARD_TOKEN`：设置后跳过密码初始化要求，作为 Bearer 凭证
+对全部 `/api` 有效（面向无头/CI；浏览器登录也可用该值作为密码）。
 
 ## 页面与功能
 
@@ -64,32 +93,45 @@ UX 细节：明/暗主题切换（记忆）、自动刷新（3/5/10/30 秒，标
 
 ## API
 
-| 端点 | 方法 | 说明 |
-| --- | --- | --- |
-| `/api/overview` | GET | 服务/文件/管理工具状态汇总 |
-| `/api/metrics` | GET | 解析后的 Prometheus 计数器 |
-| `/api/events` | GET | 最近 500 条审计事件（新→旧） |
-| `/api/audit/download` | GET | 审计日志下载（JSONL） |
-| `/api/tofu` | GET | 结构化 TOFU 绑定 |
-| `/api/users` | GET | access.conf stanza 列表（密钥掩码）+ 已禁用授权 |
-| `/api/config` | GET | fwknopd.conf 生效指令 + 原文 |
-| `/api/admin/add` | POST | 包装 `fwknopd-admin user add`（全选项） |
-| `/api/admin/rm` | POST | 包装 `fwknopd-admin user rm`（撤销授权） |
-| `/api/admin/tofu/unbind` | POST | 包装 `fwknopd-admin tofu unbind` |
-| `/api/service/validate` | POST | 配置预检（`--exit-parse-config`） |
-| `/api/service/start` `stop` `restart` `reload` | POST | 服务控制 |
-| `/api/service/fwrules` | GET | 活动防火墙规则（`--fw-list`） |
-| `/api/config/fwknopd` | POST | 保存 fwknopd.conf（structured / raw，预检+备份+热加载） |
-| `/api/config/stanza` | POST | 编辑 stanza 非密钥指令 |
-| `/api/config/stanza/enable` | POST | 恢复被禁用的授权 |
-| `/api/profiles` | GET | 配置方案列表 |
-| `/api/profiles/view` | GET | 方案预览（密钥掩码） |
-| `/api/profiles/save` `apply` `delete` | POST | 方案保存 / 一键应用 / 删除 |
+| 端点 | 方法 | 认证 | 说明 |
+| --- | --- | --- | --- |
+| `/api/auth/state` | GET | 公开 | 初始化/登录状态（前端据此切换向导/登录页/主界面） |
+| `/api/setup` | POST | 公开 | 首次初始化设置管理员密码（已初始化返回 409） |
+| `/api/login` | POST | 公开 | 管理员密码登录（按 IP 限流：5 次/5 分钟 → 锁 60 秒） |
+| `/api/logout` | POST | 公开 | 注销当前会话 |
+| `/api/overview` | GET | 登录 | 服务/文件/管理工具状态汇总 |
+| `/api/metrics` | GET | 登录 | 解析后的 Prometheus 计数器 |
+| `/api/events` | GET | 登录 | 最近 500 条审计事件（新→旧） |
+| `/api/audit/download` | GET | 登录 | 审计日志下载（JSONL） |
+| `/api/tofu` | GET | 登录 | 结构化 TOFU 绑定 |
+| `/api/users` | GET | 登录 | access.conf stanza 列表（密钥掩码）+ 已禁用授权 |
+| `/api/config` | GET | 登录 | fwknopd.conf 生效指令 + 原文 |
+| `/api/admin/add` | POST | 登录+写+CSRF | 包装 `fwknopd-admin user add`（全选项） |
+| `/api/admin/rm` | POST | 登录+写+CSRF | 包装 `fwknopd-admin user rm`（撤销授权） |
+| `/api/admin/tofu/unbind` | POST | 登录+写+CSRF | 包装 `fwknopd-admin tofu unbind` |
+| `/api/service/validate` | POST | 登录+写+CSRF | 配置预检（`--exit-parse-config`） |
+| `/api/service/start` `stop` `restart` `reload` | POST | 登录+写+CSRF | 服务控制 |
+| `/api/service/fwrules` | GET | 登录 | 活动防火墙规则（`--fw-list`） |
+| `/api/config/fwknopd` | POST | 登录+写+CSRF | 保存 fwknopd.conf（structured / raw，预检+备份+热加载） |
+| `/api/config/stanza` | POST | 登录+写+CSRF | 编辑 stanza 非密钥指令 |
+| `/api/config/stanza/enable` | POST | 登录+写+CSRF | 恢复被禁用的授权 |
+| `/api/profiles` | GET | 登录 | 配置方案列表 |
+| `/api/profiles/view` | GET | 登录 | 方案预览（密钥掩码） |
+| `/api/profiles/save` `apply` `delete` | POST | 登录+写+CSRF | 方案保存 / 一键应用 / 删除 |
+
+「登录」= 会话 Cookie 或 `Authorization: Bearer $DASHBOARD_TOKEN`；「写」=
+启动时加 `-enable-write`；「CSRF」= Cookie 会话须带 `X-Fwknop-Request: 1`
+（Bearer 豁免）。
 
 ## 安全说明
 
-- **默认仅监听 localhost**，不要直接暴露到不受信网络；远程访问请置于带认证的反向代理之后。
-- 写操作默认关闭；启用后若设置 `DASHBOARD_TOKEN`，所有写端点要求 `Authorization: Bearer <token>`。
+- **强制鉴权**：未初始化时所有 API 返回 401 要求先设置管理员密码；初始化后
+  所有 API 要求会话登录（或 `DASHBOARD_TOKEN` Bearer）。密码以
+  PBKDF2-HMAC-SHA256（10 万轮）存储，登录限流（5 次/5 分钟 → 锁 60 秒）。
+- **默认仅监听 localhost**；暴露到不受信网络时请置于 TLS 反向代理之后
+  （TLS 下会话 Cookie 自动加 `Secure` 属性）。
+- 写操作默认关闭，需显式 `-enable-write`；Cookie 会话的写操作另需
+  `X-Fwknop-Request: 1` 自定义头，配合 `SameSite=Strict` Cookie 抵御 CSRF。
 - 面板**不读取密钥原文**：access.conf 解析只记录「是否配置」布尔值，方案预览中密钥一律掩码；stanza 在线编辑在服务端强校验拒绝密钥字段。
 - 所有配置落盘都遵循 **预检（fwknopd --exit-parse-config）→ 备份（`.bak-时间戳`）→ 原子替换 → SIGHUP 热加载**；服务启动/重启强制预检，预检失败拒绝执行。
 - 撤销/解绑/方案切换均为**可恢复**操作（自动备份）。
@@ -98,6 +140,8 @@ UX 细节：明/暗主题切换（记忆）、自动刷新（3/5/10/30 秒，标
 
 ## 测试
 
-由 `test/run_fork_tests.sh` 覆盖：构建、全部 API 探针、令牌守卫、
-签发→列表→编辑→撤销→恢复、TOFU 解绑、配置保存（含坏配置拒绝）、
-方案保存/预览/应用/删除全链路（针对样例数据，无需 root）。
+由 `test/run_fork_tests.sh` 覆盖：构建、全部 API 探针、未认证/未初始化 401、
+初始化向导（短密码/不一致/成功/重复 409）、会话 Cookie 访问、CSRF 403 与
+放行、注销失效、重新登录、登录限流 429、签发→列表→编辑→撤销→恢复、
+TOFU 解绑、配置保存（含坏配置拒绝）、方案保存/预览/应用/删除全链路
+（针对样例数据，无需 root）。
