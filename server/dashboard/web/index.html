@@ -221,6 +221,8 @@ select.ctl, input.ctl {
 .tile-link { cursor:pointer; }
 .tile-link:hover { border-color:var(--accent); }
 .btn.dirty { box-shadow:0 0 0 2px var(--amber); }
+.sum-link { cursor:pointer; border-radius:var(--radius-sm); padding:4px 6px; margin:-4px -6px; transition:background .15s; }
+.sum-link:hover { background:var(--accent-soft); }
 .flash-prefill { animation:prefillFlash 1.6s ease; }
 @keyframes prefillFlash { 0% { box-shadow:0 0 0 2px var(--accent); } 100% { box-shadow:none; } }
 .tile .lab { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); font-weight:500; }
@@ -1281,13 +1283,22 @@ function renderSummary() {
     .reduce((s,e) => s + counterVal(c,e), 0);
   const last = (S.events && S.events[0]) ? `${esc(evMeta(S.events[0].event).label)} · ${fmtAgo(S.events[0].time)}` : '暂无事件';
   const pct = n => total ? (n/total*100).toFixed(1) + '%' : '—';
+  /* [标签, 值, 点击跳转动作（可选）]——可下钻的项悬停高亮 */
   const rows = [
-    ['累计 SPA 包', fmtNum(total)], ['放行率', pct(open)], ['拦截 / 异常率', pct(blocked)],
-    ['TOFU 绑定数', fmtNum(counterVal(c,'tofu_bind'))], ['最近事件', last],
-    ['指标生成时间', S.metrics.generated_at ? new Date(S.metrics.generated_at).toLocaleTimeString('zh-CN',{hour12:false}) : '—'],
+    ['累计 SPA 包', fmtNum(total), () => { S.evFilter='all'; S.evQuery=''; S.evPage=0; $('#event-search').value=''; showPage('events'); }],
+    ['放行率', pct(open), () => { S.evFilter='open'; S.evPage=0; showPage('events'); }],
+    ['拦截 / 异常率', pct(blocked), () => { S.evFilter='bad'; S.evPage=0; showPage('events'); }],
+    ['TOFU 绑定数', fmtNum(counterVal(c,'tofu_bind')), () => showPage('tofu')],
+    ['最近事件', last, () => showPage('events')],
+    ['指标生成时间', S.metrics.generated_at ? new Date(S.metrics.generated_at).toLocaleTimeString('zh-CN',{hour12:false}) : '—', null],
   ];
-  $('#summary-body').innerHTML = `<div class="form-grid">` + rows.map(([k,v]) =>
-    `<div><div class="hint">${k}</div><div style="font-size:16px;font-weight:700">${v}</div></div>`).join('') + `</div>`;
+  $('#summary-body').innerHTML = `<div class="form-grid">` + rows.map(([k,v], i) =>
+    `<div class="${rows[i][2] ? 'sum-link' : ''}" data-sum="${i}" ${rows[i][2] ? 'title="点击查看明细"' : ''}>
+      <div class="hint">${k}</div><div style="font-size:16px;font-weight:700">${v}</div></div>`).join('') + `</div>`;
+  $$('#summary-body [data-sum]').forEach(el => {
+    const fn = rows[+el.dataset.sum][2];
+    if (fn) el.onclick = fn;
+  });
 }
 
 /* ==================== 事件页 ==================== */
