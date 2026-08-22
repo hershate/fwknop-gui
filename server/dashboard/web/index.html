@@ -2077,17 +2077,28 @@ $('#raw-toggle').onclick = () => {
 function renderAbout() {
   const d = S.overview;
   const F = (d && d.files) || {};
+  /* 文件行附大小与更新时间 */
+  const frow = f => f ? `${esc(f.path)}${f.exists ? ` <span class="hint">${fmtSize(f.size)} · ${fmtAgo(f.mtime)}更新</span>` : ' <span class="hint">（不存在）</span>'}` : '—';
+  /* 时钟偏移检测：TOTP 依赖双方时钟，偏差超 60 秒给出显著警示 */
+  let clockWarn = '';
+  if (d && d.now) {
+    const drift = Math.round(Date.now() / 1000 - d.now);
+    if (Math.abs(drift) > 60) clockWarn = `<div class="warn-strip" style="margin-bottom:12px">${icon('i-warn',15)}<div>
+      浏览器与服务器时钟偏差约 <b>${Math.abs(drift)}</b> 秒（${drift > 0 ? '浏览器快' : '服务器快'}）。
+      TOTP 动态口令严格依赖双方时钟一致，偏差过大会导致合法敲门被判定超时，请校准 NTP。</div></div>`;
+  }
   const rows = [
     ['面板版本', 'v' + (d ? d.version : '…')],
     ['SPA 协议版本', '4.0.0'],
+    ['服务器时间', d && d.now ? `${fmtAbs(d.now)}${clockWarn ? '' : ' <span class="hint">（时钟正常）</span>'}` : '—'],
     ['管理工具状态', d && d.admin_tool && d.admin_tool.status ? esc(d.admin_tool.status).replace(/\n/g, '<br>') : '—'],
-    ['审计日志', F.audit ? esc(F.audit.path) : '—'],
-    ['指标文件', F.metrics ? esc(F.metrics.path) : '—'],
-    ['TOFU 状态', F.tofu ? esc(F.tofu.path) : '—'],
-    ['授权配置', F.access_conf ? esc(F.access_conf.path) : '—'],
-    ['服务配置', F.fwknopd_conf ? esc(F.fwknopd_conf.path) : '—'],
+    ['审计日志', frow(F.audit)],
+    ['指标文件', frow(F.metrics)],
+    ['TOFU 状态', frow(F.tofu)],
+    ['授权配置', frow(F.access_conf)],
+    ['服务配置', frow(F.fwknopd_conf)],
   ];
-  $('#about-body').innerHTML = `<table class="tb"><tbody>` + rows.map(([k,v]) =>
+  $('#about-body').innerHTML = clockWarn + `<table class="tb"><tbody>` + rows.map(([k,v]) =>
     `<tr><td style="width:150px;color:var(--muted)">${k}</td><td class="mono" style="font-size:12px">${v}</td></tr>`).join('') +
     `</tbody></table>`;
 }
