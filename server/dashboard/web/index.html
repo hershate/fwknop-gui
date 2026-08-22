@@ -1999,7 +1999,12 @@ function renderUsers() {
   });
   $$('#users-body [data-rm]').forEach(b => b.onclick = () => {
     const name = b.dataset.rm;
-    confirmDialog('撤销授权', `确定撤销「<b>${esc(name)}</b>」吗？<br>
+    /* 确认框附该授权用户最近事件摘要，辅助判断是否误撤活跃授权 */
+    const st0 = (S.users && S.users.stanzas || []).find(x => (x.name || ('授权 #' + x.index)) === name);
+    const last = st0 && st0.require_username ? (S.events || []).find(e => e.user === st0.require_username) : null;
+    const lastHtml = last ? `<br><span class="hint">最近敲门：${evMeta(last.event).label} · ${fmtAgo(last.time)} · ${esc(last.src_ip || '')}</span>`
+      : '<br><span class="hint">该授权近期无敲门记录</span>';
+    confirmDialog('撤销授权', `确定撤销「<b>${esc(name)}</b>」吗？${lastHtml}<br>
       对应 stanza 会被注释禁用（自动备份并可恢复），fwknopd 将收到 SIGHUP 重新加载，该凭证<b>立即失效</b>。`,
       '撤销并立即生效', async () => {
         try {
