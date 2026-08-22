@@ -13,6 +13,8 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -125,8 +127,22 @@ func handleUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleAuditDownload streams the audit log as an attachment（不含密钥）。
+/* 审计清理备份文件名白名单：仅允许 handleAdminAuditClear 产生的命名，
+   防 ?bak= 路径穿越。 */
+var auditBakName = regexp.MustCompile(`^fwknopd_audit\.log\.bak-\d{8}-\d{6}$`)
+
 func handleAuditDownload(w http.ResponseWriter, r *http.Request) {
-	f, err := os.Open(auditPath())
+	p := auditPath()
+	name := "fwknopd_audit_" + time.Now().Format("20060102-150405") + ".jsonl"
+	if bak := r.URL.Query().Get("bak"); bak != "" {
+		if !auditBakName.MatchString(bak) {
+			http.Error(w, "非法备份文件名", http.StatusBadRequest)
+			return
+		}
+		p = filepath.Join(cfg.RunDir, bak)
+		name = bak
+	}
+	f, err := os.Open(p)
 	if err != nil {
 		http.Error(w, "审计日志不存在", http.StatusNotFound)
 		return
@@ -135,8 +151,7 @@ func handleAuditDownload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/jsonl; charset=utf-8")
 	/* 文件名带服务器时间戳：多次导出互不覆盖，便于归档排查 */
 	w.Header().Set("Content-Disposition",
-		fmt.Sprintf(`attachment; filename="fwknopd_audit_%s.jsonl"`,
-			time.Now().Format("20060102-150405")))
+		fmt.Sprintf(`attachment; filename="%s"`, name))
 	io.Copy(w, f)
 }
 

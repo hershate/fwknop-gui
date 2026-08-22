@@ -1712,7 +1712,16 @@ $('#status-cards').addEventListener('click', ev => {
     '备份并清理', async () => {
       try {
         const r = await api('/api/admin/audit/clear', { method: 'POST' });
-        if (r.ok) { toast(r.msg || '审计日志已清空', 'ok', 6000); refreshNow(); }
+        if (r.ok) {
+          /* 回执弹窗：给出备份文件名与面板内下载入口，闭环「清理后取回」 */
+          const fn = (r.backup || '').split('/').pop();
+          openModal(`<h3>审计日志已清理</h3>
+            <div class="mb">${esc(r.msg || '')}</div>
+            <div class="mf"><a class="btn" href="/api/audit/download?bak=${encodeURIComponent(fn)}" download>${icon('i-download',14)} 下载备份</a>
+            <button class="btn ghost" id="m-done">完成</button></div>`);
+          $('#m-done').onclick = () => closeModal();
+          refreshNow();
+        }
         else infoModal('审计日志清理', r.msg || '无需清理');
       } catch (e) {}
     });
