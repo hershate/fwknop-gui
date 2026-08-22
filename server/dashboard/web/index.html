@@ -220,6 +220,7 @@ select.ctl, input.ctl {
 .tile:hover { transform:translateY(-2px); border-color:var(--border); }
 .tile-link { cursor:pointer; }
 .tile-link:hover { border-color:var(--accent); }
+.btn.dirty { box-shadow:0 0 0 2px var(--amber); }
 .tile .lab { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); font-weight:500; }
 .tile .lab svg { width:14px; height:14px; }
 .tile .num { font-size:27px; font-weight:750; margin-top:5px; font-variant-numeric:tabular-nums; letter-spacing:-.5px; }
@@ -977,6 +978,7 @@ applyTheme(localStorage.getItem('dash_theme') ||
 
 /* ==================== 导航 ==================== */
 function showPage(p) {
+  if (S.page === 'config' && p !== 'config' && !confGuardLeave()) return;
   S.page = p;
   $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.page === p));
   $$('.page').forEach(s => s.classList.toggle('active', s.id === 'page-' + p));
@@ -1773,7 +1775,18 @@ function openStanzaEditor(index) {
 }
 
 /* ==================== fwknopd.conf 可视化编辑 ==================== */
-let confEditing = false, confRawEdit = false, confRows = [];
+let confEditing = false, confRawEdit = false, confRows = [], confDirty = false;
+
+/* 未保存修改保护：折叠编辑器 / 切页 / 关闭页面前确认 */
+function confGuardLeave() {
+  if (confEditing && confDirty) return confirm('fwknopd.conf 编辑器有未保存的修改，确定丢弃吗？');
+  return true;
+}
+window.addEventListener('beforeunload', ev => {
+  if (confEditing && confDirty) { ev.preventDefault(); ev.returnValue = ''; }
+});
+function markConfDirty() { confDirty = true; $('#conf-save').classList.add('dirty'); }
+function clearConfDirty() { confDirty = false; $('#conf-save').classList.remove('dirty'); }
 
 function confEntryRow(key, val) {
   const meta = CONF_META[key];
@@ -1798,15 +1811,17 @@ function renderConfEditor() {
       '<div class="hint">（配置为空，点击「新增指令」添加）</div>';
     $$('#conf-edit-rows .ce-del').forEach(b => b.onclick = () => {
       const row = b.parentElement; const i = Array.from(row.parentElement.children).indexOf(row);
-      confRows.splice(i, 1); renderConfEditor();
+      confRows.splice(i, 1); markConfDirty(); renderConfEditor();
     });
   }
 }
 
 $('#conf-edit-btn').onclick = () => {
+  if (confEditing && !confGuardLeave()) return;  /* 折叠前检查未保存修改 */
   confEditing = !confEditing;
   $('#conf-editor').style.display = confEditing ? '' : 'none';
   if (confEditing) {
+    clearConfDirty();
     confRows = ((S.config && S.config.entries) || []).map(e => [e.key, e.value]);
     $('#conf-raw-area').value = (S.config && S.config.raw) || '';
     $('#conf-save-out').style.display = 'none';
@@ -1815,7 +1830,10 @@ $('#conf-edit-btn').onclick = () => {
   }
 };
 $('#conf-raw-edit').onclick = () => { confRawEdit = !confRawEdit; renderConfEditor(); };
-$('#conf-add-row').onclick = () => { confRows.push(['', '']); renderConfEditor(); };
+$('#conf-add-row').onclick = () => { confRows.push(['', '']); markConfDirty(); renderConfEditor(); };
+/* 任何键/值输入都标记为未保存（容器上委托，重渲染不失效） */
+$('#conf-edit-rows').addEventListener('input', markConfDirty);
+$('#conf-raw-area').addEventListener('input', markConfDirty);
 
 /* fwknopd.conf 快速模板：合并式填充（同键覆盖、新键追加），仍需手动「保存」落盘 */
 const CONF_TEMPLATES = {
@@ -1843,6 +1861,7 @@ $$('[data-ctpl]').forEach(chip => chip.onclick = () => {
   });
   $$('[data-ctpl]').forEach(c => c.classList.toggle('active', c === chip));
   $('#conf-tpl-desc').textContent = t.desc;
+  markConfDirty();
   renderConfEditor();
   toast(`模板已合并（更新 ${upd} 项、新增 ${add} 项），点击右上角「保存」生效`, 'ok', 5000);
 });
@@ -1869,7 +1888,7 @@ $('#conf-save').onclick = () => {
         el.style.display = ''; el.style.borderColor = r.error ? 'var(--red)' : 'var(--green)';
         el.textContent = (r.output || '') + (r.error ? '\n错误：' + r.error : '');
         if (r.error) toast('配置保存失败（未落盘）', 'err');
-        else { toast('配置已保存并热加载', 'ok'); loadConfig(); }
+        else { toast('配置已保存并热加载', 'ok'); clearConfDirty(); loadConfig(); }
       } catch (e) {}
     });
 };
