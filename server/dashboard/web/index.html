@@ -651,7 +651,9 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
               <div class="uri-box" id="add-uri-box" style="display:none">
                 <code id="add-uri"></code>
                 <button class="btn ghost small" id="copy-uri"><svg width="13" height="13"><use href="#i-copy"/></svg>复制 URI</button>
+                <button class="btn ghost small" id="copy-import"><svg width="13" height="13"><use href="#i-copy"/></svg>复制导入命令</button>
               </div>
+              <div class="hint" id="add-uri-hint" style="display:none;margin-top:6px">客户端导入方式任选其一：<code>fwknop import '&lt;URI&gt;'</code> · <code>fwknop import qr.png</code>（QR 图片）· 手机 App 直接扫码</div>
               <pre class="out-pre" id="add-output"></pre>
             </div>
           </div>
@@ -1381,8 +1383,10 @@ $('#add-form').addEventListener('submit', async ev => {
     if (m) {
       $('#add-uri').textContent = m[0];
       $('#add-uri-box').style.display = '';
+      $('#add-uri-hint').style.display = '';
       $('#copy-uri').onclick = () => copyText(m[0], '授权 URI ');
-    } else $('#add-uri-box').style.display = 'none';
+      $('#copy-import').onclick = () => copyText(`fwknop import '${m[0]}'`, '导入命令 ');
+    } else { $('#add-uri-box').style.display = 'none'; $('#add-uri-hint').style.display = 'none'; }
     if (r.error) toast('签发失败：' + esc(r.error), 'err', 6000);
     else { toast('凭证已签发，请立即复制授权 URI 分发给用户', 'ok', 6000); loadUsers(); }
   } catch (e) {} finally {
