@@ -862,7 +862,8 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <div class="form-grid">
               <div class="field"><label>方案名 <span class="req">*</span></label>
                 <input id="pf-name" placeholder="例如：办公网-仅SSH">
-                <div class="auth-hint" id="pf-name-hint"></div></div>
+                <div class="auth-hint" id="pf-name-hint"></div>
+                <div class="tip">想不到名字？<a href="javascript:void 0" id="pf-autoname" style="color:var(--accent)">用当前时间命名</a></div></div>
               <div class="field"><label>备注</label>
                 <input id="pf-note" placeholder="用途说明（可选）"></div>
               <div class="field" style="align-self:end"><button class="btn" id="pf-save"><svg width="15" height="15"><use href="#i-save"/></svg>保存方案</button></div>
@@ -3549,6 +3550,18 @@ $('#pf-name').addEventListener('input', () => {
   if (dup) fmtHint(el, false, '', `⚠ 将覆盖现有方案「${v}」${dup.created ? '（保存于 ' + fmtAbs(dup.created) + '）' : ''}`);
   else fmtHint(el, true, '✓ 新方案名', '');
 });
+
+$('#pf-autoname').onclick = () => {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const base = `conf-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+  const names = ((S.profiles && S.profiles.profiles) || []).map(x => x.name);
+  let nm = base, i = 2;
+  while (names.includes(nm)) nm = base + '-' + (i++);
+  $('#pf-name').value = nm;
+  $('#pf-name').dispatchEvent(new Event('input'));  /* 联动查重提示 */
+  $('#pf-name').focus();
+};
 
 $('#pf-save').onclick = () => {
   const name = $('#pf-name').value.trim(), note = $('#pf-note').value.trim();
