@@ -1468,6 +1468,21 @@ function renderSummary() {
     const fn = rows[+el.dataset.sum][2];
     if (fn) el.onclick = fn;
   });
+  /* 首次部署引导：一个 SPA 包都没收到时，给出三步上手路径 */
+  let guide = $('#ov-guide');
+  if (!total) {
+    if (!guide) {
+      guide = document.createElement('div');
+      guide.id = 'ov-guide';
+      guide.className = 'warn-strip';
+      guide.style.marginTop = '12px';
+      guide.innerHTML = `${icon('i-info',15)}<div>还没有收到任何 SPA 敲门。上手三步：
+        <b>①</b> 用户与授权页「签发新凭证」→ <b>②</b> 把授权 URI 发给客户端
+        <code>fwknop import 'fwknop://…'</code> 导入 → <b>③</b> 客户端执行
+        <code>fwknop -R -D 服务器</code> 发起敲门，事件随即出现在这里。</div>`;
+      $('#summary-body').appendChild(guide);
+    }
+  } else if (guide) guide.remove();
 }
 
 /* ==================== 事件页 ==================== */
