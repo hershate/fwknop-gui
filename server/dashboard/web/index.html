@@ -3792,6 +3792,12 @@ $('#pf-save').onclick = () => {
     });
 };
 
+/* 全局脚本错误兜底：界面 JS 异常时以驻留 toast 暴露（用户可截图上报），
+   避免静默失效后「点了没反应」的无头排查 */
+window.addEventListener('error', ev => {
+  try { toast('界面脚本错误：' + (ev.message || '未知错误'), 'err'); } catch (e) {}
+});
+
 /* ==================== 启动 ==================== */
 loadHist();
 bootAuth();
