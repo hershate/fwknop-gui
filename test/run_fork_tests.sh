@@ -424,6 +424,9 @@ if [ -x "$GOBIN" ]; then
         [ "$(code --post-data '{"password":"adm1npass!"}' --header="$CJ" \
             http://127.0.0.1:18098/api/login)" = 429 ] \
             && ok "连续失败触发登录限流（429）" || bad "登录限流"
+        wget -q --content-on-error -O- --post-data '{"password":"x"}' --header="$CJ" \
+            http://127.0.0.1:18098/api/login 2>/dev/null | grep -q '"retry_after":[0-9]' \
+            && ok "限流响应带 retry_after 秒数" || bad "retry_after 缺失"
         kill "$DPID2" 2>/dev/null; wait "$DPID2" 2>/dev/null; rm -rf "$D2"
 
         # --- 2.4.1：默认管理模式 / -read-only 显式只读（第三实例） ---
