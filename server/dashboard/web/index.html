@@ -194,6 +194,10 @@ select.ctl, input.ctl {
 
 /* 点击复制单元格 */
 .cp-cell { cursor:pointer; border-bottom:1px dashed var(--line); }
+.srch-wrap { position:relative; display:inline-flex; align-items:center; }
+.srch-wrap .ctl { padding-right:28px; }
+.srch-clear { position:absolute; right:5px; padding:2px 4px; color:var(--faint); display:none; }
+.srch-clear:hover { color:var(--ink); }
 .ev-click { cursor:pointer; }
 .ev-click:hover td { background:var(--panel-2); }
 .ev-detail td { background:var(--panel-2); padding:10px 16px; border-top:1px dashed var(--line); }
@@ -593,7 +597,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
                 <option value="1h">最近 1 小时</option>
                 <option value="today">今日</option>
               </select>
-              <input class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因…" style="width:230px">
+              <span class="srch-wrap"><input class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因…" style="width:230px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
               <button class="btn ghost small" id="ev-csv" title="把当前筛选结果导出为 CSV（可用表格软件打开）"><svg width="14" height="14"><use href="#i-download"/></svg>导出筛选 CSV</button>
               <a class="btn ghost small" href="/api/audit/download" download title="下载完整审计日志（JSONL）"><svg width="14" height="14"><use href="#i-download"/></svg>导出原始</a>
             </div>
@@ -622,7 +626,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
             <div class="head">
               <h2>访问授权（access.conf）</h2><span class="sub" id="users-sub"></span>
               <div class="tools">
-                <input class="ctl" id="users-search" placeholder="搜索名称 / 用户 / 端口 / 来源…" style="width:220px">
+                <span class="srch-wrap"><input class="ctl" id="users-search" placeholder="搜索名称 / 用户 / 端口 / 来源…" style="width:220px"><button class="icon-btn srch-clear" data-for="users-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
                 <button class="btn small" id="show-add"><svg width="14" height="14"><use href="#i-plus"/></svg>签发新凭证</button>
               </div>
             </div>
@@ -723,7 +727,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
           <div class="head">
             <h2>TOFU 设备绑定</h2><span class="sub" id="tofu-sub">首次使用自动绑定的设备指纹</span>
             <div class="tools">
-              <input class="ctl" id="tofu-search" placeholder="搜索指纹 / 用户 / 端口…" style="width:200px">
+              <span class="srch-wrap"><input class="ctl" id="tofu-search" placeholder="搜索指纹 / 用户 / 端口…" style="width:200px"><button class="icon-btn srch-clear" data-for="tofu-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
               <span class="hint" id="tofu-file"></span>
             </div>
           </div>
@@ -1469,6 +1473,7 @@ function renderEventChips() {
 }
 
 function renderEvents() {
+  syncSearchClear();
   renderEventChips();
   const evs = filteredEvents();
   $('#events-sub').textContent = `最近 ${fmtNum((S.events||[]).length)} 条（服务端保留 500 条）· ${fmtAgo(Date.now()/1000)}刷新`;
@@ -1604,6 +1609,7 @@ function stanzaBadges(s) {
 }
 
 function renderUsers() {
+  syncSearchClear();
   const d = S.users; if (!d) return;
   if (d.error) {
     $('#users-body').innerHTML = `<div class="empty">${icon('i-warn',40)}
@@ -1895,6 +1901,7 @@ function lastEventForDevice(dev) {
 }
 
 function renderTOFU() {
+  syncSearchClear();
   const d = S.tofu; if (!d) return;
   const all = d.bindings || [];
   const q = (S.tofuQuery || '').toLowerCase();
@@ -1996,6 +2003,19 @@ $('#tofu-batch-unbind').onclick = () => {
 
 $('#tofu-search').oninput = e => { S.tofuQuery = e.target.value.trim(); renderTOFU(); };
 $('#users-search').oninput = e => { S.usersQuery = e.target.value.trim(); renderUsers(); };
+
+/* 搜索框清空按钮：有内容时显示 ×，点击清空并触发原搜索逻辑 */
+function syncSearchClear() {
+  $$('.srch-clear').forEach(btn => {
+    const inp = $('#' + btn.dataset.for);
+    btn.style.display = inp && inp.value ? '' : 'none';
+  });
+}
+$$('.srch-clear').forEach(btn => {
+  const inp = $('#' + btn.dataset.for);
+  inp.addEventListener('input', syncSearchClear);
+  btn.onclick = () => { inp.value = ''; inp.dispatchEvent(new Event('input')); inp.focus(); };
+});
 
 /* ==================== 服务配置 ==================== */
 /* 常见配置项中文说明（未收录的显示原值，归入「其他」） */
