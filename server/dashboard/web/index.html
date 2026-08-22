@@ -233,6 +233,7 @@ select.ctl, input.ctl {
 .btn.dirty { box-shadow:0 0 0 2px var(--amber); }
 .ce-mod { box-shadow:inset 3px 0 0 var(--amber); padding-left:8px; border-radius:4px; }
 .ce-new { box-shadow:inset 3px 0 0 var(--green); padding-left:8px; border-radius:4px; }
+.ce-bad { border-color:var(--red) !important; box-shadow:0 0 0 2px var(--red-soft); }
 .sum-link { cursor:pointer; border-radius:var(--radius-sm); padding:4px 6px; margin:-4px -6px; transition:background .15s; }
 .sum-link:hover { background:var(--accent-soft); }
 .flash-prefill { animation:prefillFlash 1.6s ease; }
@@ -2489,6 +2490,20 @@ function markConfRows() {
     if (!k) return;
     if (!(k in confOrig)) row.classList.add('ce-new');
     else if (confOrig[k] !== v) row.classList.add('ce-mod');
+    /* 指令值类型校验：端口类 1-65535、端口范围类 X-Y、超时类正整数，非法即红框 */
+    let bad = '';
+    if (/_PORT$/.test(k)) {
+      if (!/^\d{1,5}$/.test(v) || +v < 1 || +v > 65535) bad = '端口应为 1-65535 的整数';
+    } else if (/_PORT_RANGE$/.test(k)) {
+      const m = v.match(/^(\d{1,5})-(\d{1,5})$/);
+      if (!(m && +m[1] >= 1 && +m[2] <= 65535 && +m[1] < +m[2])) bad = '范围应为 起-止（1-65535，起 < 止）';
+    } else if (/_TIMEOUT$|_INTERVAL$|_THRESHOLD$/.test(k)) {
+      if (!/^\d+$/.test(v)) bad = '应为非负整数';
+    }
+    if (vi) {
+      vi.classList.toggle('ce-bad', !!bad);
+      vi.title = bad || '';
+    }
   });
 }
 
