@@ -1317,9 +1317,15 @@ function sparkline(key) {
   const w = 66, hh = 22, n = deltas.length;
   const pts = deltas.map((v, i) =>
     `${(i/(n-1)*w).toFixed(1)},${(hh - v/max*(hh-2)).toFixed(1)}`).join(' ');
-  return `<svg class="spark" width="${w}" height="${hh}" viewBox="0 0 ${w} ${hh}">
+  /* 每个采样点叠一个透明圆点 + <title>，hover 显示「时刻 +增量」 */
+  const dots = deltas.map((v, i) => {
+    const x = (i/(n-1)*w).toFixed(1), y = (hh - v/max*(hh-2)).toFixed(1);
+    const tm = new Date((h[i+1].t)*1000).toLocaleTimeString('zh-CN', { hour12:false });
+    return `<circle cx="${x}" cy="${y}" r="4" fill="transparent"><title>${tm} 新增 ${v} 条</title></circle>`;
+  }).join('');
+  return `<svg class="spark" width="${w}" height="${hh}" viewBox="0 0 ${w} ${hh}" style="pointer-events:auto">
     <polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="1.6"
-      stroke-linecap="round" stroke-linejoin="round" opacity=".7"/></svg>`;
+      stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>${dots}</svg>`;
 }
 
 function renderTiles() {
