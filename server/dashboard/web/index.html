@@ -661,7 +661,10 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
         <div class="card">
           <div class="head">
             <h2>TOFU 设备绑定</h2><span class="sub" id="tofu-sub">首次使用自动绑定的设备指纹</span>
-            <div class="tools"><span class="hint" id="tofu-file"></span></div>
+            <div class="tools">
+              <input class="ctl" id="tofu-search" placeholder="搜索指纹 / 用户 / 端口…" style="width:200px">
+              <span class="hint" id="tofu-file"></span>
+            </div>
           </div>
           <div class="tb-wrap">
             <table class="tb">
@@ -909,6 +912,7 @@ const S = {
   overview: null, metrics: null, events: null, users: null, tofu: null, config: null,
   writeEnabled: false,
   evFilter: 'all', evQuery: '', evPage: 0, evPer: 20,
+  tofuQuery: '',
   hist: {},            // key -> [{t, v}] 计数器历史（前端采样，用于迷你趋势）
   rawMode: false,
 };
@@ -1391,13 +1395,19 @@ async function loadTOFU() {
 
 function renderTOFU() {
   const d = S.tofu; if (!d) return;
-  const bs = d.bindings || [];
-  $('#tofu-sub').textContent = `${bs.length} 台已绑定设备`;
+  const all = d.bindings || [];
+  const q = (S.tofuQuery || '').toLowerCase();
+  const bs = q ? all.filter(b =>
+    (b.device_id||'').toLowerCase().includes(q) ||
+    (b.username||'').toLowerCase().includes(q) ||
+    (b.open_ports||'').toLowerCase().includes(q) ||
+    (b.source||'').toLowerCase().includes(q)) : all;
+  $('#tofu-sub').textContent = q ? `匹配 ${bs.length} / ${all.length} 台已绑定设备` : `${all.length} 台已绑定设备`;
   $('#tofu-file').textContent = d.file.exists ? `状态文件更新于 ${fmtAgo(d.file.mtime)}` : '状态文件不存在';
   if (!bs.length) {
     $('#tofu-body').innerHTML = `<tr><td colspan="5"><div class="empty">
-      ${icon('i-fp',40)}<div class="t">暂无 TOFU 绑定</div>
-      <div class="d">当授权的指纹白名单为空且启用「要求设备指纹」时，第一台通过校验的设备会自动绑定并显示在这里</div>
+      ${icon('i-fp',40)}<div class="t">${q ? '无匹配绑定' : '暂无 TOFU 绑定'}</div>
+      <div class="d">${q ? '试试更换搜索关键词' : '当授权的指纹白名单为空且启用「要求设备指纹」时，第一台通过校验的设备会自动绑定并显示在这里'}</div>
     </div></td></tr>`;
     return;
   }
@@ -1426,6 +1436,7 @@ function renderTOFU() {
       });
   });
 }
+$('#tofu-search').oninput = e => { S.tofuQuery = e.target.value.trim(); renderTOFU(); };
 
 /* ==================== 服务配置 ==================== */
 /* 常见配置项中文说明（未收录的显示原值，归入「其他」） */
@@ -1436,9 +1447,9 @@ const CONF_META = {
   ENABLE_PCAP_PROMISC:       ['网络抓包', '抓包是否启用混杂模式'],
   PCAP_DISPATCH_COUNT:       ['网络抓包', '每轮 pcap 分发的最大包数'],
   ENABLE_UDP_SERVER:         ['网络抓包', '改用 UDP socket 直接监听（无需 libpcap）'],
-  UDP_SERVER_PORT:           ['网络抓包', 'UDP 监听端口'],
+  UDPSERV_PORT:                ['网络抓包', 'UDP 监听端口'],
   ENABLE_TCP_SERVER:         ['网络抓包', '启用 TCP 监听模式'],
-  TCP_SERVER_PORT:           ['网络抓包', 'TCP 监听端口'],
+  TCPSERV_PORT:                ['网络抓包', 'TCP 监听端口'],
   ENABLE_NFQ_CAPTURE:        ['网络抓包', '使用 Netfilter Queue 抓包（端口范围监听的最佳载体）'],
   NFQ_QUEUE_NUMBER:          ['网络抓包', 'NFQ 队列号（与 iptables NFQUEUE 规则对应）'],
   ENABLE_SPA_OVER_HTTP:      ['网络抓包', '允许 SPA 包封装在 HTTP 请求中'],
@@ -1476,7 +1487,6 @@ const CONF_META = {
   EXIT_AT_INTF_DOWN:         ['高级', '网卡断开时退出服务'],
   ENABLE_DESTINATION_RULE:   ['高级', '强制 SPA 包目的地址匹配 DESTINATION 规则'],
   RULES_CHECK_THRESHOLD:     ['高级', '防火墙规则一致性检查阈值'],
-  ENABLE_CRON:               ['高级', '允许 fwknopd 管理 cron 作业'],
 };
 const CONF_GROUP_ORDER = ['网络抓包', '安全策略', '防火墙', 'NAT / 转发', '审计与指标', '路径与运行', 'GnuPG', '高级', '其他'];
 
