@@ -6793,9 +6793,11 @@ function renderProfiles() {
       try {
         const r = await api('/api/profiles/note', { method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ name, note: v }) });
-        if (r.error) { toast('备注保存失败：' + r.error, 'err'); renderProfiles(); return; }
+        /* 失败保现场（与 stanza 编辑器/重发 URI 同语义）：不重绘列表——输入框
+           还在原位、已录文本不丢，复位 done 允许修正后重试（Enter/失焦再触发） */
+        if (r.error) { toast('备注保存失败：' + r.error + '（输入仍在，可修正后重试）', 'err', 5000); done = false; inp.focus(); return; }
         toast(v ? '备注已更新' : '备注已清除', 'ok', 1500);
-      } catch (e) { /* 网络层错误 api() 已统一兜底 toast */ }
+      } catch (e) { done = false; inp.focus(); return;  /* 网络层错误 api() 已统一兜底 toast */ }
       loadProfiles();
     };
     inp.onkeydown = e => { if (e.key === 'Enter') commit(true); else if (e.key === 'Escape') commit(false); };
