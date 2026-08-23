@@ -717,6 +717,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                   <option value="active">按最近活跃</option>
                   <option value="bound">按绑定设备数</option>
                 </select>
+                <button class="btn ghost small" id="users-lint" title="fwknopd-admin lint：检查 access.conf 一致性（重复来源/缺失指令等），结果弹窗展示"><svg width="14" height="14"><use href="#i-check"/></svg>一致性检查</button>
                 <button class="btn small" id="show-add"><svg width="14" height="14"><use href="#i-plus"/></svg>签发新凭证</button>
               </div>
             </div>
@@ -1806,6 +1807,7 @@ function applyWriteGate() {
   if (!on) $('#conf-editor').style.display = 'none';
   $('#profile-save-card').style.display = on ? '' : 'none';
   $('#show-add').style.display = on ? '' : 'none';
+  $('#users-lint').style.display = on ? '' : 'none';  /* lint 经写操作门禁（CSRF），只读隐藏 */
   /* 快速操作中的写动作在只读模式禁用 */
   $('#qa-add').disabled = !on; $('#qa-profile').disabled = !on;
   /* 侧栏常驻「只读」徽章：模式随时可见，不靠各页提示零散表达 */
@@ -3167,6 +3169,16 @@ $('#show-add').onclick = () => {
   }
 };
 $('#add-cancel').onclick = () => { $('#add-card').style.display = 'none'; syncAddToggle(); };
+
+/* 一致性检查：面板内直接跑 fwknopd-admin lint（手动编辑过 access.conf 后
+   快速验证，不用切终端）；异常退出码时按错误样式展示输出 */
+$('#users-lint').onclick = async () => {
+  try {
+    const r = await api('/api/admin/lint', { method: 'POST' });
+    infoModal('access.conf 一致性检查（fwknopd-admin lint）',
+      (r.output || '（无输出）') + (r.error ? '\n\n退出状态：' + r.error : ''), !!r.error);
+  } catch (e) {}
+};
 
 /* 签发快速模板：一键填充安全选项（不动名称/地址/用户名等部署相关字段） */
 const ADD_TEMPLATES = {

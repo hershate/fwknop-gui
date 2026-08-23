@@ -276,6 +276,20 @@ func handleAdminRm(w http.ResponseWriter, r *http.Request) {
 	adminResult(w, out, err)
 }
 
+// handleAdminLint wraps `fwknopd-admin lint <access.conf>` — access.conf
+// 一致性检查（重复 SOURCE/缺指令等），结果原样回显供弹窗展示。
+func handleAdminLint(w http.ResponseWriter, r *http.Request) {
+	if !requireWrite(w, r) {
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "需要 POST", http.StatusMethodNotAllowed)
+		return
+	}
+	out, err := runAdmin("lint", cfg.AccessConf)
+	adminResult(w, out, err)
+}
+
 // handleAdminTofuUnbind wraps `fwknopd-admin tofu unbind`.
 func handleAdminTofuUnbind(w http.ResponseWriter, r *http.Request) {
 	if !requireWrite(w, r) {

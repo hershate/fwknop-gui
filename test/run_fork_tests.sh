@@ -404,6 +404,9 @@ if [ -x "$GOBIN" ]; then
             && ok "方案删除" || bad "方案删除"
 
         # 经 WebUI 端点完成 rm（禁用）再 enable（恢复）的往返
+        wget -qO- --post-data '' --header="$HDR" http://127.0.0.1:18099/api/admin/lint 2>/dev/null \
+            | grep -q 'lint .*stanza' \
+            && ok "面板内 lint 一致性检查" || bad "lint 端点"
         wget -qO- --post-data 'name=dashdemo' --header="$HDR" http://127.0.0.1:18099/api/admin/rm >/dev/null 2>&1
         wget -qO- --header="$TK" http://127.0.0.1:18099/api/users 2>/dev/null | grep -q '"disabled".*dashdemo' \
             && ok "已禁用 stanza 在列表中可见" || bad "已禁用 stanza 缺失"
