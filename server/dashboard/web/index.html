@@ -2398,7 +2398,14 @@ async function loadEvents() {
     }
     S.evPrevNewest = newest;
     updateDocTitle();
-    if (S.page === 'events') renderEvents();
+    if (S.page === 'events') {
+      /* 焦点在事件表内（键盘导航/行内控件操作）时跳过整表重渲染：innerHTML
+         重建会销毁焦点元素，轮询每 5 秒把 Tab 位置清空；新事件由提示条、
+         徽标与新到行高亮（下次渲染生效）兜底，失焦后下一轮自动恢复 */
+      const eb = $('#events-body');
+      const focusInside = eb && document.activeElement && document.activeElement !== document.body && eb.contains(document.activeElement);
+      if (!focusInside) renderEvents();
+    }
   } catch (e) {
     setConn(false);
     showLoadError('#events-body', loadEvents);
