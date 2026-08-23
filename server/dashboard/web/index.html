@@ -1158,10 +1158,15 @@ const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
    晃到。所有滚动调用统一走 SB()，每次调用时查询（偏好运行中切换也即时生效） */
 const SB = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
 
-/* 通知历史：toast 入档（合并重发的累计计数同步到历史），侧栏铃铛可追溯 */
-try { S.notifLog = JSON.parse(sessionStorage.getItem('fwknop-notif-log') || '[]'); } catch (e) { S.notifLog = []; }
+/* 通知历史：toast 入档（合并重发的累计计数同步到历史），侧栏铃铛可追溯。
+   恢复须校验为数组：「可解析但非数组」（手改/异常写入的 {} 或字符串）会
+   让下方 push 抛 TypeError——而 toast 是所有错误反馈的通道，绝不能被拖垮 */
+try {
+  const nl0 = JSON.parse(sessionStorage.getItem('fwknop-notif-log') || '[]');
+  S.notifLog = Array.isArray(nl0) ? nl0 : [];
+} catch (e) { S.notifLog = []; }
 function notifLog(msg, kind) {
-  S.notifLog = S.notifLog || [];
+  if (!Array.isArray(S.notifLog)) S.notifLog = [];  /* 兜底：任何异常写入路径都不炸通知 */
   const last = S.notifLog[S.notifLog.length - 1];
   if (last && last.msg === msg && last.kind === (kind || '')) {
     last.n = (last.n || 1) + 1; last.t = Date.now() / 1000;
