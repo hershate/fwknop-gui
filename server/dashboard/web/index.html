@@ -1155,7 +1155,9 @@ $('#notif-btn').onclick = () => {
         <span class="hint" style="white-space:nowrap;font-size:11.5px">${fmtAgo(n.t)}</span>
       </div>`).join('')
       : '<div class="hint" style="padding:20px 0;text-align:center">暂无通知</div>';
-    $('#notif-erronly').textContent = notifKindFilter === 'err' ? '查看全部' : `仅看错误（${errs}）`;
+    const eo = $('#notif-erronly');
+    eo.textContent = notifKindFilter === 'err' ? '查看全部' : `仅看错误（${errs}）`;
+    eo.setAttribute('aria-pressed', notifKindFilter === 'err' ? 'true' : 'false');
   };
   openModal(`<h3>通知历史</h3>
     <div style="display:flex;justify-content:flex-end;margin-bottom:4px">
