@@ -4592,6 +4592,8 @@ function openModal(html, wide) {
   modalPrevFocus = document.activeElement;
   root.innerHTML = `<div class="modal" role="dialog" aria-modal="true" ${wide ? 'style="width:min(760px,94vw)"' : ''}>${html}</div>`;
   root.classList.add('show');
+  /* 背景滚动锁定：滚轮不再穿透到弹窗后面的页面（宽表格尤其容易误滚） */
+  document.body.style.overflow = 'hidden';
   root.onclick = e => { if (e.target === root) closeModal(); };
   trapModalFocus(root);
   return root;
@@ -4617,6 +4619,7 @@ function closeModal() {
   if (modalGuard && !modalGuard()) return;
   modalGuard = null;
   $('#modal-root').classList.remove('show');
+  document.body.style.overflow = '';
   /* 焦点返还：元素可能已随页面重绘移除，需确认仍在 DOM 中 */
   if (modalPrevFocus && modalPrevFocus.isConnected) modalPrevFocus.focus();
   modalPrevFocus = null;
@@ -4624,7 +4627,7 @@ function closeModal() {
 function infoModal(title, text, isErr) {
   openModal(`<h3>${title}</h3>
     <pre class="out-pre" style="max-height:50vh;${isErr?'border-color:var(--red)':''}">${esc(text || '（无输出）')}</pre>
-    <div class="mf"><button class="btn ghost" id="im-cp" title="复制全部输出内容（贴入工单/终端排查用）">${icon('i-copy',13)} 复制输出</button><button class="btn" onclick="document.getElementById('modal-root').classList.remove('show')">关闭</button></div>`, true);
+    <div class="mf"><button class="btn ghost" id="im-cp" title="复制全部输出内容（贴入工单/终端排查用）">${icon('i-copy',13)} 复制输出</button><button class="btn" onclick="closeModal()">关闭</button></div>`, true);
   $('#im-cp').onclick = () => copyText(text || '', '输出 ');
 }
 
@@ -5147,7 +5150,7 @@ function renderProfiles() {
         <div class="form-sec">与当前配置的差异（access.conf，密钥已掩码）</div>${renderDiff(v.access_conf, v.current_access_conf || '')}
         <div class="form-sec" style="display:flex;align-items:center;gap:8px">fwknopd.conf <button class="btn ghost small" id="pv-cp-fk" style="padding:1px 8px;font-size:11.5px">${icon('i-copy',12)} 复制</button></div><pre class="out-pre" style="max-height:28vh">${esc(v.fwknopd_conf)}</pre>
         <div class="form-sec" style="display:flex;align-items:center;gap:8px">access.conf（密钥已掩码）<button class="btn ghost small" id="pv-cp-ac" style="padding:1px 8px;font-size:11.5px">${icon('i-copy',12)} 复制</button></div><pre class="out-pre" style="max-height:28vh">${esc(v.access_conf)}</pre>
-        <div class="mf"><button class="btn" onclick="document.getElementById('modal-root').classList.remove('show')">关闭</button></div>`, true);
+        <div class="mf"><button class="btn" onclick="closeModal()">关闭</button></div>`, true);
       $('#pv-cp-fk').onclick = () => copyText(v.fwknopd_conf, '方案 fwknopd.conf ');
       $('#pv-cp-ac').onclick = () => copyText(v.access_conf, '方案 access.conf（密钥掩码）');
     } catch (e) {}
