@@ -3496,7 +3496,7 @@ function renderUsers() {
           <div><div style="font-weight:700"><span class="cp-cell" data-cp="${esc(name)}" title="点击复制授权名称（CLI：fwknopd-admin user rm 等用）">${esc(name)}</span></div>
           <div class="hint">stanza 第 ${s.index} 个 · 第 ${s.start_line}–${s.end_line} 行</div></div>
         </div>
-        <div class="tools">${S.writeEnabled ?
+        <div class="tools"><button class="btn ghost small" data-stev="${s.name ? esc(s.name) : String(s.index)}" title="在事件页查看命中该授权的全部事件（stanza: 前缀过滤；未设 REQUIRE_USERNAME 的授权无用户名可查，按授权维度更全）">${icon('i-search',13)}查事件</button>${S.writeEnabled ?
           `<input type="checkbox" class="usr-sel" data-selname="${esc(name)}" ${S.usersSel && S.usersSel.has(name) ? 'checked' : ''} title="选择以批量撤销" style="width:auto;margin-right:2px">
           <button class="btn ghost small" data-edit="${s.index}" title="编辑该授权的非密钥指令（来源/端口/超时等），保存前自动预检并备份">${icon('i-pencil',13)}编辑</button>
            <button class="btn ghost small" data-dup="${s.index}" title="按该授权的安全选项预填签发表单（名称留空待填）">${icon('i-copy',13)}签发类似</button>
@@ -3629,6 +3629,13 @@ function renderUsers() {
   if (dt) dt.onclick = () => { S.disCollapsed = !S.disCollapsed; try { localStorage.setItem('fwknop-dis-collapsed', S.disCollapsed ? '1' : '0'); } catch (e) {} renderUsers(); };
   $$('#users-body [data-uev]').forEach(b => b.onclick = () => {
     S.evQuery = b.dataset.uev; S.evPage = 0; S.evFilter = 'all';
+    $('#event-search').value = S.evQuery;
+    showPage('events');
+  });
+  /* 「查事件」：按授权维度过滤（stanza: 前缀匹配序号或授权名），覆盖未设
+     REQUIRE_USERNAME 的授权；口径与「最近事件」联动一致（回第 1 页、看全部类型） */
+  $$('#users-body [data-stev]').forEach(b => b.onclick = () => {
+    S.evQuery = 'stanza:' + b.dataset.stev; S.evPage = 0; S.evFilter = 'all';
     $('#event-search').value = S.evQuery;
     showPage('events');
   });
