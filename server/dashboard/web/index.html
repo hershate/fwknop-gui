@@ -2429,7 +2429,7 @@ function renderEvents() {
             if (stz && !stz.some(s => s.index === e.stanza))
               return `<button class="icon-btn" style="padding:2px 5px;margin-left:4px" disabled title="该 stanza 已不在当前配置（可能已撤销），无法反查">${icon('i-users',12)}</button>`;
             return `<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-evstanza="${e.stanza}" title="在用户与授权页查看该 stanza">${icon('i-users',12)}</button>`; })()}</div></div>
-          <div><div class="k">用户</div><div class="v">${e.user?`<span class="cp-cell" data-cp="${esc(e.user)}">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" title="查看该用户的全部事件">${icon('i-search',12)}</button>`:'—'}</div></div>
+          <div><div class="k">用户</div><div class="v">${e.user?`<span class="cp-cell" data-cp="${esc(e.user)}">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" title="查看该用户的全部事件">${icon('i-search',12)}</button><button class="icon-btn" style="padding:2px 5px;margin-left:2px" data-ev2usr="${esc(e.user)}" title="在用户与授权页按该用户名定位授权">${icon('i-users',12)}</button>`:'—'}</div></div>
           <div><div class="k">设备指纹（完整）</div><div class="v">${e.device_id?`<span class="cp-cell" data-cp="${esc(e.device_id)}">${esc(e.device_id)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" title="查看该设备的全部事件">${icon('i-search',12)}</button>${(() => { const bd = S.tofu && S.tofu.bindings;
             /* TOFU 数据已加载且查无绑定 → 禁用反查按钮并说明；未加载保持可点（跳转后 tofu 页自会加载） */
             if (bd && !bd.some(x => x.device_id === e.device_id))
@@ -2507,6 +2507,14 @@ function renderEvents() {
       $('#tofu-search').value = b.dataset.devtofu;
       showPage('tofu');
       toast('已在 TOFU 绑定中筛选该设备', 'ok', 1500);
+    });
+    /* 事件详情用户行 → 用户页按用户名定位授权（stanza 缺失/拒绝事件的补充反查） */
+    $$('#events-body [data-ev2usr]').forEach(b => b.onclick = ev => {
+      ev.stopPropagation();
+      S.usersQuery = b.dataset.ev2usr;
+      $('#users-search').value = S.usersQuery;
+      showPage('users');
+      toast(`已在用户页按「${b.dataset.ev2usr}」过滤`, 'ok', 1500);
     });
     $$('#events-body [data-evsum]').forEach(b => b.onclick = () => {
       const ev2 = slice.find(x => `${x.time}|${x.event}|${x.src_ip||''}|${x.device_id||''}` === b.dataset.evsum);
