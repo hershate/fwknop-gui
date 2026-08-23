@@ -94,12 +94,19 @@ func handleOverview(w http.ResponseWriter, r *http.Request) {
 			"available": adminOK,
 			"status":    adminText,
 		},
-		/* 授权规模一览：概览页状态卡直接显示生效/禁用数，免进用户页 */
+		/* 授权规模一览：概览页状态卡直接显示生效/禁用数，免进用户页；
+		   附带 __CHANGEME__ 占位密钥计数——这类授权永远无法工作，
+		   此前要进用户页或等导航徽标（用户数据懒加载）才被发现 */
 		"stanzas": func() map[string]int {
 			st, err := parseAccessConf(cfg.AccessConf)
 			m := map[string]int{"active": 0, "disabled": len(parseDisabledStanzas(cfg.AccessConf))}
 			if err == nil {
 				m["active"] = len(st)
+				for _, s := range st {
+					if s.Changeme {
+						m["changeme"]++
+					}
+				}
 			}
 			return m
 		}(),

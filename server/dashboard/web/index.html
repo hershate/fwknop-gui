@@ -2312,11 +2312,18 @@ function renderStatusCards() {
       pg: 'about',
       tip: (d.admin_tool && d.admin_tool.available ? '签发/撤销/解绑等管理操作经 fwknopd-admin 执行'
         : '检查 fwknopd-admin 是否在 PATH，或以 -admin 参数指定路径后重启面板；不可用则签发/撤销等管理操作全部失败') + '；点击查看「关于」页状态与诊断' },
-    /* 授权规模一览：免进用户页即可感知生效/禁用数量 */
-    { ic:'users', c:'var(--accent)', bg:'var(--accent-soft)', k:'访问授权',
-      v: d.stanzas ? `${d.stanzas.active} 个生效${d.stanzas.disabled ? ` <small>· ${d.stanzas.disabled} 个已禁用</small>` : ''}` : '—',
-      pg: 'users',
-      tip: 'access.conf 中的 stanza 计数（生效 / 已注释禁用）；点击查看「用户与授权」明细' },
+    /* 授权规模一览：免进用户页即可感知生效/禁用数量；__CHANGEME__ 占位密钥
+       授权永远无法工作，卡面红色置顶警示（数据随概览轮询，不依赖用户页懒加载） */
+    (() => {
+      const stz = d.stanzas;
+      const cm = (stz && stz.changeme) || 0;
+      return { ic:'users', c: cm ? 'var(--red)' : 'var(--accent)',
+        bg: cm ? 'var(--red-soft)' : 'var(--accent-soft)', k:'访问授权',
+        v: stz ? `${stz.active} 个生效${stz.disabled ? ` <small>· ${stz.disabled} 个已禁用</small>` : ''}${cm ? ` <small>· ⚠ ${cm} 个占位密钥</small>` : ''}` : '—',
+        pg: 'users',
+        tip: 'access.conf 中的 stanza 计数（生效 / 已注释禁用）；点击查看「用户与授权」明细' +
+          (cm ? `；⚠ ${cm} 个授权仍是 __CHANGEME__ 占位密钥，无法正常工作，请前往撤销并重签` : '') };
+    })(),
   ];
   $('#status-cards').innerHTML = cards.map(c => `
     <div class="stat-card"${c.pg ? ` data-pg="${c.pg}" role="button"` : ''}${c.tip ? ` title="${c.tip}"` : ''}>
