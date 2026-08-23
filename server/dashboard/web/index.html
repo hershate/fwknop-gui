@@ -618,7 +618,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
   <!-- ============ 主区 ============ -->
   <div id="main">
     <header id="topbar">
-      <button class="icon-btn" id="burger" title="菜单"><svg><use href="#i-menu"/></svg></button>
+      <button class="icon-btn" id="burger" title="菜单" aria-expanded="false" aria-controls="sidebar"><svg><use href="#i-menu"/></svg></button>
       <h1 id="page-title">概览</h1>
       <span class="pill dim" id="daemon-pill" style="cursor:pointer" title="点击查看服务控制"><span class="dot"></span>检测中…</span>
       <div class="right">
@@ -943,7 +943,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               <button class="btn ghost small" id="conf-collapse-all" title="收起全部分组">收起全部</button>
               <button class="btn ghost small" id="conf-edit-btn" style="display:none" title="打开结构化编辑器：增删改指令，含类型校验与重复预警"><svg width="14" height="14"><use href="#i-pencil"/></svg>编辑</button>
               <button class="btn ghost small" id="conf-save-profile" title="把当前 fwknopd.conf + access.conf 快照保存为命名方案（方案页）"><svg width="14" height="14"><use href="#i-archive"/></svg>存为方案</button>
-              <button class="btn ghost small" id="raw-toggle" title="查看 fwknopd.conf 原始文本（含注释，只读）">查看原文</button>
+              <button class="btn ghost small" id="raw-toggle" aria-pressed="false" title="查看 fwknopd.conf 原始文本（含注释，只读）">查看原文</button>
             </div>
           </div>
           <div class="body" id="config-body"><div class="skel" style="height:120px"></div></div>
@@ -1672,21 +1672,28 @@ function showPage(p) {
   $$('.page').forEach(s => s.classList.toggle('active', s.id === 'page-' + p));
   $('#page-title').textContent = PAGE_TITLES[p] || p;
   if (typeof updateDocTitle === 'function') updateDocTitle();
-  $('#sidebar').classList.remove('open'); $('#scrim').classList.remove('show');
+  closeSidebar();
   refreshNow();
   const memY = S.scrollMem[p];
   if (memY) requestAnimationFrame(() => window.scrollTo(0, memY));
   else window.scrollTo(0, 0);
 }
 $$('.nav-item').forEach(b => b.onclick = () => showPage(b.dataset.page));
-$('#burger').onclick = () => { $('#sidebar').classList.add('open'); $('#scrim').classList.add('show'); };
+$('#burger').onclick = () => { $('#sidebar').classList.add('open'); $('#scrim').classList.add('show'); $('#burger').setAttribute('aria-expanded', 'true'); };
+/* 侧栏开合状态同步到汉堡按钮（读屏可感知）；所有关栏路径统一走该函数 */
+function closeSidebar() {
+  $('#sidebar').classList.remove('open'); $('#scrim').classList.remove('show');
+  $('#burger').setAttribute('aria-expanded', 'false');
+}
 /* 桌面窄侧栏模式：状态持久化，刷新后保持 */
 if (localStorage.getItem('fwknop-sb-mini') === '1') document.body.classList.add('sb-mini');
+$('#sb-toggle').setAttribute('aria-pressed', document.body.classList.contains('sb-mini') ? 'true' : 'false');
 $('#sb-toggle').onclick = () => {
   const on = document.body.classList.toggle('sb-mini');
+  $('#sb-toggle').setAttribute('aria-pressed', on ? 'true' : 'false');
   try { localStorage.setItem('fwknop-sb-mini', on ? '1' : ''); } catch (e) {}
 };
-$('#scrim').onclick = () => { $('#sidebar').classList.remove('open'); $('#scrim').classList.remove('show'); };
+$('#scrim').onclick = () => closeSidebar();
 /* 移动端手势：左缘右滑开侧栏，侧栏上左滑收栏（水平位移需明显大于纵向滚动） */
 let touchX0 = null, touchY0 = null;
 document.addEventListener('touchstart', e => {
@@ -1703,8 +1710,9 @@ document.addEventListener('touchend', e => {
   /* 开栏仅限从屏幕左缘（≤30px）起滑，避免劫持页面内的横向滚动 */
   if (dx > 0 && startX <= 30 && !sb.classList.contains('open')) {
     sb.classList.add('open'); $('#scrim').classList.add('show');
+    $('#burger').setAttribute('aria-expanded', 'true');
   } else if (dx < 0 && sb.classList.contains('open')) {
-    sb.classList.remove('open'); $('#scrim').classList.remove('show');
+    closeSidebar();
   }
 }, { passive: true });
 
@@ -3252,7 +3260,7 @@ function renderUsers() {
   }
   const disHtml = dis.length ? `
     <div style="margin-top:6px">
-      <div class="form-sec" id="dis-toggle" style="cursor:pointer;user-select:none" title="点击折叠/展开">
+      <div class="form-sec" id="dis-toggle" role="button" aria-expanded="${S.disCollapsed ? 'false' : 'true'}" style="cursor:pointer;user-select:none" title="点击折叠/展开">
         <span style="display:inline-block;transition:transform .15s;transform:rotate(${S.disCollapsed ? 0 : 90}deg)">▸</span>
         已禁用的授权（${dis.length}）</div>
       <div id="dis-list" style="display:${S.disCollapsed ? 'none' : ''}">
@@ -3804,6 +3812,7 @@ function addSecSummary() {
 function setAddSecCollapsed(c) {
   $('#add-sec-body').style.display = c ? 'none' : '';
   $('#add-sec-arrow').textContent = c ? '▸' : '▾';
+  $('#add-sec-toggle').setAttribute('aria-expanded', c ? 'false' : 'true');
   const sum = $('#add-sec-summary');
   sum.style.display = c ? '' : 'none';
   sum.textContent = c ? addSecSummary() : '';
@@ -4547,7 +4556,7 @@ function renderConfig() {
     const list = groups[g];
     if (!list) continue;
     const collapsed = S.confCollapsed.has(g);
-    html += `<div class="form-sec conf-grp" data-grp="${esc(g)}" style="cursor:pointer;user-select:none" title="点击折叠/展开">
+    html += `<div class="form-sec conf-grp" data-grp="${esc(g)}" role="button" aria-expanded="${collapsed ? 'false' : 'true'}" style="cursor:pointer;user-select:none" title="点击折叠/展开">
         <span style="display:inline-block;transition:transform .15s;${collapsed?'':'transform:rotate(90deg)'}">▸</span> ${esc(g)}
         <span class="hint" style="font-weight:400">${list.length} 项</span></div>
       <table class="tb" style="${collapsed?'display:none':''}"><thead><tr><th style="width:250px">指令</th><th style="width:280px">当前值</th><th>说明</th></tr></thead><tbody>` +
@@ -4624,6 +4633,7 @@ $('#conf-collapse-all').onclick = () => {
 $('#raw-toggle').onclick = () => {
   S.rawMode = !S.rawMode;
   $('#raw-toggle').textContent = S.rawMode ? '查看分组说明' : '查看原文';
+  $('#raw-toggle').setAttribute('aria-pressed', S.rawMode ? 'true' : 'false');
   renderConfig();
 };
 /* 配置页直达「存为方案」：调完配置顺手快照，与概览快速操作同一动作 */
