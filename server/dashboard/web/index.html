@@ -1456,7 +1456,12 @@ function showPage(p) {
   if (S.page && S.page !== p) S.scrollMem[S.page] = window.scrollY;
   S.page = p;
   if (('#' + p) !== location.hash) history.pushState(null, '', '#' + p);  /* 产生历史条目，浏览器前进/后退可翻页 */
-  $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.page === p));
+  $$('.nav-item').forEach(b => {
+    const on = b.dataset.page === p;
+    b.classList.toggle('active', on);
+    /* 读屏语义：当前页导航项标注 aria-current */
+    if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
   $$('.page').forEach(s => s.classList.toggle('active', s.id === 'page-' + p));
   $('#page-title').textContent = PAGE_TITLES[p] || p;
   if (typeof updateDocTitle === 'function') updateDocTitle();
