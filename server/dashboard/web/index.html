@@ -633,6 +633,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <span class="hint">快速操作：</span>
             <button class="btn ghost small" id="qa-add"><svg width="14" height="14"><use href="#i-plus"/></svg>签发新凭证</button>
             <button class="btn ghost small" id="qa-bad"><svg width="14" height="14"><use href="#i-warn"/></svg>仅看异常事件</button>
+            <button class="btn ghost small" id="qa-diag" title="一键打包版本/时钟/服务/文件等非敏感状态，贴给运维即可定位"><svg width="14" height="14"><use href="#i-copy"/></svg>复制诊断信息</button>
             <button class="btn ghost small" id="qa-profile"><svg width="14" height="14"><use href="#i-archive"/></svg>保存配置方案</button>
             <a class="btn ghost small" id="qa-audit" href="/api/audit/download" download><svg width="14" height="14"><use href="#i-download"/></svg>导出审计日志</a>
           </div>
@@ -3963,6 +3964,27 @@ $('#raw-toggle').onclick = () => {
 };
 
 /* ==================== 关于 ==================== */
+/* 诊断信息打包（关于页按钮与概览快速操作共用）：排障高频追问的非敏感状态 */
+function collectDiag() {
+  const d = S.overview;
+  const F = (d && d.files) || {};
+  const drift = d && d.now ? Math.round(Date.now() / 1000 - d.now) : 0;
+  const fstat = (k, f) => `${k}: ${f ? (f.exists ? f.path + ' (' + fmtSize(f.size) + ')' : f.path + '（不存在）') : '—'}`;
+  return [
+    'fwknop 运维面板诊断信息',
+    '面板版本: v' + (d ? d.version : '?'),
+    'SPA 协议: 4.0.0',
+    'fwknopd: ' + (d && d.daemon && d.daemon.alive ? `运行中 PID ${d.daemon.pid}` : '未运行'),
+    '写操作: ' + (d && d.write_enabled ? '管理模式' : '只读'),
+    '服务器时间: ' + (d && d.now ? fmtAbs(d.now) : '?') + `（浏览器偏差 ${drift}s）`,
+    '管理工具: ' + (d && d.admin_tool && d.admin_tool.available ? '可用' : '不可用'),
+    fstat('审计日志', F.audit), fstat('指标文件', F.metrics),
+    fstat('TOFU 状态', F.tofu), fstat('授权配置', F.access_conf), fstat('服务配置', F.fwknopd_conf),
+    /* 备份堆积与近期异常是远程排障高频追问项，一并打包 */
+    '审计备份: ' + (d && d.audit_backups ? `${d.audit_backups.count} 个（${fmtSize(d.audit_backups.size)}）` : '—'),
+    '近 15 分钟异常事件: ' + (S.events || []).filter(e => BAD_EVTS.includes(e.event) && (Date.now() / 1000 - (e.time || 0)) < 900).length + ' 条',
+  ].join('\n');
+}
 function renderAbout() {
   const d = S.overview;
   const F = (d && d.files) || {};
@@ -4005,24 +4027,7 @@ function renderAbout() {
       <button class="btn ghost small" id="about-diag">${icon('i-copy',13)} 复制诊断信息</button>
     </div>`;
   /* 一键打包排障所需的非敏感状态（版本/时钟/服务/文件），贴给运维即可定位 */
-  $('#about-diag').onclick = () => {
-    const drift = d && d.now ? Math.round(Date.now() / 1000 - d.now) : 0;
-    const fstat = (k, f) => `${k}: ${f ? (f.exists ? f.path + ' (' + fmtSize(f.size) + ')' : f.path + '（不存在）') : '—'}`;
-    copyText([
-      'fwknop 运维面板诊断信息',
-      '面板版本: v' + (d ? d.version : '?'),
-      'SPA 协议: 4.0.0',
-      'fwknopd: ' + (d && d.daemon && d.daemon.alive ? `运行中 PID ${d.daemon.pid}` : '未运行'),
-      '写操作: ' + (d && d.write_enabled ? '管理模式' : '只读'),
-      '服务器时间: ' + (d && d.now ? fmtAbs(d.now) : '?') + `（浏览器偏差 ${drift}s）`,
-      '管理工具: ' + (d && d.admin_tool && d.admin_tool.available ? '可用' : '不可用'),
-      fstat('审计日志', F.audit), fstat('指标文件', F.metrics),
-      fstat('TOFU 状态', F.tofu), fstat('授权配置', F.access_conf), fstat('服务配置', F.fwknopd_conf),
-      /* 备份堆积与近期异常是远程排障高频追问项，一并打包 */
-      '审计备份: ' + (d && d.audit_backups ? `${d.audit_backups.count} 个（${fmtSize(d.audit_backups.size)}）` : '—'),
-      '近 15 分钟异常事件: ' + (S.events || []).filter(e => BAD_EVTS.includes(e.event) && (Date.now() / 1000 - (e.time || 0)) < 900).length + ' 条',
-    ].join('\n'), '诊断信息 ');
-  };
+  $('#about-diag').onclick = () => copyText(collectDiag(), '诊断信息 ');
   /* 路径点击复制（键盘可达由全局 MutationObserver/委托覆盖） */
   $$('#about-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, '路径 '));
   /* 审计备份删除：确认后删除并刷新（文件名服务端白名单校验） */
@@ -4511,6 +4516,8 @@ $('#qa-profile').onclick = () => {
   showPage('profiles');
   if (S.writeEnabled) $('#pf-name').focus();
 };
+/* 与关于页「复制诊断信息」同一数据源（collectDiag），概览页一键打包 */
+$('#qa-diag').onclick = () => copyText(collectDiag(), '诊断信息 ');
 
 /* ==================== 配置方案 ==================== */
 async function loadProfiles() {
