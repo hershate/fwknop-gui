@@ -253,6 +253,9 @@ select.ctl, input.ctl {
 .sum-link:hover, .sum-link:focus-visible { background:var(--accent-soft); outline:none; }
 .flash-prefill { animation:prefillFlash 1.6s ease; }
 @keyframes numBump { 0% { transform:scale(1.18); filter:brightness(1.5); } 100% { transform:scale(1); filter:none; } }
+/* 新到事件行一次性淡入高亮（增量轮询合入的行，监控扫视可感知落点） */
+@keyframes evFresh { 0% { background:var(--accent-soft); } 100% { background:transparent; } }
+.ev-fresh td { animation:evFresh 1.8s ease-out; }
 .num-bump { animation:numBump .6s ease; display:inline-block; }
 #to-top { position:fixed; right:22px; bottom:22px; z-index:40; width:38px; height:38px; border-radius:50%;
   display:none; align-items:center; justify-content:center; box-shadow:var(--shadow); }
@@ -2128,6 +2131,7 @@ $('#status-cards').addEventListener('click', ev => {
           /* 增量轮询模式下必须重置本地事件缓存：否则 since 水位悬空，
              清空后的空审计文件永远不会把旧事件替换下去 */
           S.events = []; S.evNewest = 0; S.evPrevNewest = 0;
+          if (S.evFresh) S.evFresh.clear();
           if (S.evExpanded) S.evExpanded.clear();
           /* 回执弹窗：给出备份文件名与面板内下载入口，闭环「清理后取回」 */
           const fn = (r.backup || '').split('/').pop();
@@ -2311,6 +2315,11 @@ async function loadEvents() {
     if (since && d) {
       const seen = new Set(S.events.map(evKey));
       const fresh = d.filter(e => !seen.has(evKey(e)));
+      /* 记录新到行的复合键：渲染时给一次性淡入高亮（监控扫视可感知新事件落点） */
+      if (fresh.length) {
+        if (!S.evFresh) S.evFresh = new Set();
+        fresh.forEach(e => S.evFresh.add(evKey(e)));
+      }
       S.events = fresh.concat(S.events).slice(0, 500);
     } else {
       S.events = d || [];
@@ -2776,7 +2785,9 @@ function renderEvents() {
           ${(() => { const bd = e.device_id && ((S.tofu && S.tofu.bindings) || []).find(x => x.device_id === e.device_id);
             return bd && S.writeEnabled ? ` <button class="btn ghost small" data-evub="${esc(bd.stanza_key)}" data-dev="${esc(e.device_id)}" title="该设备当前已绑定 TOFU，点击直接解绑">${icon('i-trash',12)} 解绑该设备</button>` : ''; })()}</div>
         </div></td></tr>`;
-      return `<tr class="ev-click${BAD_EVTS.includes(e.event) ? ' ev-bad' : ''}" data-key="${esc(key)}" tabindex="0" role="button" aria-expanded="${open?'true':'false'}" title="点击或 Enter 展开/收起完整详情">
+      const fresh9 = S.evFresh && S.evFresh.has([e.time, e.event, e.user || '', e.src_ip || '', e.device_id || '',
+        e.spa_port || 0, e.target_port || 0, e.stanza ?? '', e.reason || ''].join('|'));
+      return `<tr class="ev-click${BAD_EVTS.includes(e.event) ? ' ev-bad' : ''}${fresh9 ? ' ev-fresh' : ''}" data-key="${esc(key)}" tabindex="0" role="button" aria-expanded="${open?'true':'false'}" title="点击或 Enter 展开/收起完整详情">
         <td class="mono tmtoggle" title="点击切换相对/绝对时间" style="white-space:nowrap;color:var(--muted);cursor:pointer">${S.evTimeAbs ? fmtAbs(e.time) : fmtAgo(e.time)}</td>
         <td><span class="badge ${m.cls}">${m.label}</span></td>
         <td>${e.user ? `<span class="cp-cell" data-cp="${esc(e.user)}" title="点击复制用户名">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" data-lk="user" title="查看该用户的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
@@ -2939,6 +2950,9 @@ function renderEvents() {
     const want = evHashFor('events');
     if (location.hash !== want) history.replaceState(null, '', want);
   }
+  /* 新到行高亮只挂一次：本次渲染已带上 ev-fresh 类（CSS 动画自行播完），
+     清空键集避免后续重渲染（翻页/筛选）再次闪烁 */
+  if (S.evFresh && S.evFresh.size) S.evFresh.clear();
   /* 「展开全部」按钮文案随当前页展开状态切换 */
   const xa = $('#ev-expand-all');
   if (xa) {
