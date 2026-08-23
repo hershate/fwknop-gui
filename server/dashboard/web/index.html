@@ -321,6 +321,8 @@ table.tb { width:100%; border-collapse:collapse; font-size:13px; }
   font-weight:600; background:var(--panel-2); color:var(--muted); margin:1px 2px;
 }
 .tag.hl { background:var(--accent-soft); color:var(--accent); }
+/* 筛选标签条的长搜索词/区间截断显示，完整值在 title 里（不撑破布局） */
+#ev-active .tag { max-width:42vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle; }
 
 .empty { text-align:center; padding:44px 20px; color:var(--muted); }
 .empty svg { width:40px; height:40px; opacity:.4; margin-bottom:10px; }
@@ -2252,7 +2254,7 @@ function updateEvActiveStrip() {
   const backBtn = (S.evHeatStack && S.evHeatStack.length)
     ? '<button class="btn ghost small" id="ev-heat-back" style="padding:2px 8px;font-size:11.5px" title="返回钻取前的时间范围">↩ 上级视图</button>' : '';
   el.innerHTML = '<span class="hint" style="font-size:11.5px">筛选中：</span>' +
-    parts.map(([k, label]) => `<span class="tag hl" style="cursor:pointer" data-rmf="${k}" title="点击移除此筛选">${esc(label)} ✕</span>`).join('') +
+    parts.map(([k, label]) => `<span class="tag hl" style="cursor:pointer" data-rmf="${k}" title="${esc(label)}（点击移除此筛选）">${esc(label)} ✕</span>`).join('') +
     backBtn +
     '<button class="btn ghost small" id="ev-clear-all" style="padding:2px 8px;font-size:11.5px">全部清除</button>';
   $$('#ev-active [data-rmf]').forEach(t => t.onclick = () => {
