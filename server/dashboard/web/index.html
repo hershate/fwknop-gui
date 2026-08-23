@@ -2600,6 +2600,14 @@ function renderEvents() {
   S.evPage = Math.min(S.evPage, pages - 1);
   const slice = evs.slice(S.evPage * S.evPer, (S.evPage + 1) * S.evPer);
 
+  /* 展开状态修剪：事件滚出 500 条缓存后其展开键即成死键，长跑会话中
+     evExpanded 无限增长——按当前缓存内容修剪，存活事件的展开不受影响 */
+  if (S.evExpanded && S.evExpanded.size) {
+    const aliveKeys = new Set((S.events || []).map(e =>
+      `${e.time}|${e.event}|${e.src_ip||''}|${e.device_id||''}`));
+    [...S.evExpanded].forEach(k => { if (!aliveKeys.has(k)) S.evExpanded.delete(k); });
+  }
+
   if (!slice.length) {
     $('#events-body').innerHTML = `<tr><td colspan="8"><div class="empty">
       ${icon('i-list', 40)}<div class="t">暂无匹配事件</div>
