@@ -1645,11 +1645,15 @@ document.addEventListener('keydown', ev => {
     else if (typing) ev.target.blur();
     return;
   }
-  /* Ctrl/⌘+S：配置编辑器打开时快捷保存（拦截浏览器「保存网页」） */
+  /* Ctrl/⌘+S：配置编辑器打开时快捷保存（拦截浏览器「保存网页」）；
+     授权编辑弹窗内同样生效，与编辑器操作习惯一致 */
   if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && (ev.key === 's' || ev.key === 'S')) {
     if (confEditing && S.writeEnabled) {
       ev.preventDefault();
       $('#conf-save').click();
+    } else if (modalOpen && $('#se-save')) {
+      ev.preventDefault();
+      $('#se-save').click();
     }
     return;
   }
@@ -1692,7 +1696,7 @@ const KBD_HELP = [
   ['n', '用户页直达签发新凭证（名称框聚焦）'],
   ['← / →', '事件页翻页'],
   ['Enter / 空格', '展开聚焦的事件行详情；钻取聚焦的时间分布柱'],
-  ['Ctrl/⌘ + S', '保存服务配置（编辑器有改动时）'],
+  ['Ctrl/⌘ + S', '保存服务配置 / 授权编辑弹窗（有改动时）'],
   ['Esc', '关闭弹窗；搜索框中先清空内容、再按取消焦点'],
   ['?', '打开本帮助'],
 ];
@@ -4594,7 +4598,7 @@ function openStanzaEditor(index) {
     <div class="form-grid" style="max-height:52vh;overflow-y:auto;padding-right:6px">${rows}</div>
     <div class="mf" style="margin-top:16px">
       <button class="btn ghost" id="se-cancel">取消</button>
-      <button class="btn" id="se-save">${icon('i-save',14)}保存并生效</button>
+      <button class="btn" id="se-save" title="保存并热加载生效（Ctrl/⌘+S）">${icon('i-save',14)}保存并生效</button>
     </div>`, true);
   let seDirty = false;
   $('#modal-root').oninput = () => { seDirty = true; };  /* oninput 赋值覆盖，重复打开不累积监听器 */
