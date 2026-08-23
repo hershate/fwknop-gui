@@ -1807,7 +1807,7 @@ $('#cli-cheatsheet').innerHTML = CLI_CHEATSHEET.map(([grp, rows]) => `
   ${rows.map(([c, d]) => `<div style="display:flex;align-items:center;gap:10px;padding:6px 2px;border-bottom:1px solid var(--border-soft)">
     <code style="flex:1;font-size:12.5px;word-break:break-all">${esc(c)}</code>
     <span class="hint" style="flex:1.2;font-size:12px">${d}</span>
-    <button class="icon-btn" style="padding:2px 6px" data-cp="${esc(c)}" data-lab="命令 ">${icon('i-copy',12)}</button>
+    <button class="icon-btn" style="padding:2px 6px" data-cp="${esc(c)}" data-lab="命令 " title="复制该命令">${icon('i-copy',12)}</button>
   </div>`).join('')}`).join('');
 $$('#cli-cheatsheet [data-cp]').forEach(b => b.onclick = () => copyText(b.dataset.cp, b.dataset.lab));
 
@@ -4542,7 +4542,7 @@ function renderAbout() {
     `<tr><td style="width:150px;color:var(--muted)">${k}</td><td class="mono" style="font-size:12px">${v}</td></tr>`).join('') +
     `</tbody></table>
     <div style="margin-top:12px;text-align:right">
-      <button class="btn ghost small" id="about-diag">${icon('i-copy',13)} 复制诊断信息</button>
+      <button class="btn ghost small" id="about-diag" title="复制版本/时钟/服务/文件等非敏感诊断信息（报障时随附）">${icon('i-copy',13)} 复制诊断信息</button>
     </div>`;
   /* 一键打包排障所需的非敏感状态（版本/时钟/服务/文件），贴给运维即可定位 */
   $('#about-diag').onclick = () => copyText(collectDiag(), '诊断信息 ');
