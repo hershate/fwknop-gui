@@ -2675,11 +2675,12 @@ function renderEvHeat() {
 /* 来源/设备/用户排行：按当前时间窗聚合计数，点击芯片按该值筛选（再点
    取消），用于一眼定位扫源/爆破源或高频敲门设备/用户；维度循环切换并
    持久化；不足 2 个不同值时隐藏 */
-S.evTopDim = ['ip','dev','user'].includes(localStorage.getItem('fwknop-ev-topdim')) ? localStorage.getItem('fwknop-ev-topdim') : 'ip';
+S.evTopDim = ['ip','dev','user','port'].includes(localStorage.getItem('fwknop-ev-topdim')) ? localStorage.getItem('fwknop-ev-topdim') : 'ip';
 function renderTopIps() {
   const el = $('#ev-topip');
   const dim = S.evTopDim;
-  const DIMS = { ip:['来源', e => e.src_ip], dev:['设备', e => e.device_id], user:['用户', e => e.user] };
+  /* 端口维度：定位最热的被敲门服务（识别扫描聚焦的服务面） */
+  const DIMS = { ip:['来源', e => e.src_ip], dev:['设备', e => e.device_id], user:['用户', e => e.user], port:['端口', e => e.target_port] };
   const cnt = {};
   for (const e of timeFilteredEvents()) {
     const k = DIMS[dim][1](e);
@@ -2694,11 +2695,11 @@ function renderTopIps() {
   el.style.display = 'flex';
   /* 点击芯片写入字段前缀式查询（ip:/dev:/user:），精确限定字段、避免跨字段
      误命中（如「22」匹配到用户名）；搜索框同步显示，顺便教会用户语法 */
-  const prefix = { ip: 'ip:', dev: 'dev:', user: 'user:' }[dim];
+  const prefix = { ip: 'ip:', dev: 'dev:', user: 'user:', port: 'port:' }[dim];
   el.innerHTML = `<span class="hint" style="align-self:center">${DIMS[dim][0]}排行：</span>` + top.map(([k, c]) =>
     /* 长值（IPv6/长用户名）统一截断 20 字符，完整值在 title */
     `<button class="chip ${S.evQuery === prefix + k ? 'active' : ''}" data-tip="${esc(k)}" title="点击按 ${DIMS[dim][0]}「${esc(k)}」精确筛选，再点取消${c.bad ? `；其中 ${c.bad} 条异常` : ''}">${esc(k.length > 20 ? k.slice(0, 20) + '…' : k)}<span class="n">${c.n}</span>${c.bad ? `<span style="color:var(--red);font-weight:600" title="${c.bad} 条异常事件">⚠${c.bad}</span>` : ''}</button>`).join('') +
-    `<button class="chip" id="ev-topdim" title="切换统计维度（来源 IP / 设备指纹 / 用户）" style="opacity:.75">⇄ 换维度</button>`;
+    `<button class="chip" id="ev-topdim" title="切换统计维度（来源 IP / 设备指纹 / 用户 / 目标端口）" style="opacity:.75">⇄ 换维度</button>`;
   $$('#ev-topip .chip[data-tip]').forEach(b => b.onclick = () => {
     const v = prefix + b.dataset.tip;
     S.evQuery = S.evQuery === v ? '' : v;
@@ -2707,7 +2708,7 @@ function renderTopIps() {
     renderEvents();
   });
   $('#ev-topdim').onclick = () => {
-    const order = ['ip', 'dev', 'user'];
+    const order = ['ip', 'dev', 'user', 'port'];
     S.evTopDim = order[(order.indexOf(dim) + 1) % order.length];
     try { localStorage.setItem('fwknop-ev-topdim', S.evTopDim); } catch (e) {}
     renderTopIps();
