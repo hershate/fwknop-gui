@@ -624,7 +624,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
     <div class="brand">
       <svg width="30" height="30" style="color:var(--accent)"><use href="#i-shield"/></svg>
       <div>
-        <div class="t1">fwknop 运维面板</div>
+        <div class="t1">fwknop 运维面板<span id="brand-alias" style="display:none;font-size:12px;color:var(--accent);margin-left:6px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom"></span></div>
         <div class="t2">单包授权 · 零信任访问</div>
       </div>
       <span class="ver" id="brand-ver">v2.7.0</span>
@@ -2761,13 +2761,38 @@ $('#ev-new-pill').onclick = () => {
   renderEvents();
 };
 
+/* 面板别名（本机 localStorage，与设备别名同层）：多实例部署（生产/预发/
+   多端口）时浏览器标签与侧栏品牌位不再分不清「这是哪个面板」 */
+const PANEL_ALIAS_KEY = 'fwknop-panel-alias';
+function panelAlias() {
+  try { return (localStorage.getItem(PANEL_ALIAS_KEY) || '').trim().slice(0, 24); } catch (e) { return ''; }
+}
+/* 实例区分后缀：别名优先；无别名且监听地址非默认时退化为地址 */
+function panelInstSuffix() {
+  const al = panelAlias();
+  if (al) return ` · ${al}`;
+  const inst = (S.overview && S.overview.panel && S.overview.panel.listen_addr) || '';
+  return inst && inst !== '127.0.0.1:8088' ? ` · ${inst}` : '';
+}
+function syncPanelAlias() {
+  const al = panelAlias();
+  const ba = $('#brand-alias');
+  if (ba) {
+    ba.style.display = al ? 'inline-block' : 'none';
+    ba.textContent = al ? `· ${al}` : '';
+    ba.title = al ? '面板别名（本机设定，「关于」页可修改）' : '';
+  }
+  if (typeof updateDocTitle === 'function') updateDocTitle();  /* 标题后缀即时生效 */
+}
+syncPanelAlias();  /* 启动即同步（别名本机可读，无需等概览加载） */
+
 /* 标签页标题显示最近 15 分钟异常事件数 + 未读通知数，后台标签也能感知 */
 function updateDocTitle() {
   const bad = countRecentBad();
   const un = S.notifUnread || 0;
   const pg = (typeof PAGE_TITLES !== 'undefined' && PAGE_TITLES[S.page]) || '';
   document.title = (bad ? `(${bad} 异常) ` : '') + (un ? `[${un > 99 ? '99+' : un} 错误] ` : '') +
-    (pg ? pg + ' · ' : '') + 'fwknop 运维面板';
+    (pg ? pg + ' · ' : '') + 'fwknop 运维面板' + panelInstSuffix();
   /* 概览快速操作同步标注：不用切到事件页就知道有几条异常 */
   const qb = $('#qa-bad');
   if (qb) qb.innerHTML = `<svg width="14" height="14"><use href="#i-warn"/></svg>仅看异常事件${bad ? `（${bad}）` : ''}`;
@@ -5267,6 +5292,9 @@ function renderAbout() {
       (d.panel.started ? ` · 已运行 <span title="面板进程启动于 ${fmtAbs(d.panel.started)}（重启后重新计时）">${fmtAgo(d.panel.started)}</span>` : '') +
       (d.write_enabled ? '' : ' · <span style="color:var(--amber)">只读模式</span>'),
     ]] : []),
+    /* 面板别名：本机设定（localStorage），多实例部署时浏览器标签与侧栏
+       品牌位以此区分「这是哪个面板」；行内编辑与设备别名同款 */
+    ['面板别名', `<span class="pf-note-ed" id="about-alias-ed" title="点击编辑面板别名（本机设定，最多 24 字符，清空即删除）" style="cursor:pointer;border-bottom:1px dashed var(--border)">${esc(panelAlias() || '＋ 设定别名')}</span> <span class="hint">仅保存在本机浏览器，用于多实例区分</span>`],
     ['服务器时间', d && d.now ? `${fmtAbs(d.now)}${clockWarn ? '' : ' <span class="hint">（时钟正常）</span>'}` : '—'],
     ['管理工具状态', d && d.admin_tool && d.admin_tool.status
       ? esc(d.admin_tool.status).replace(/\n/g, '<br>') +
@@ -5302,6 +5330,31 @@ function renderAbout() {
     </div>`;
   /* 一键打包排障所需的非敏感状态（版本/时钟/服务/文件），贴给运维即可定位 */
   $('#about-diag').onclick = () => copyText(collectDiag(), '诊断信息 ');
+  /* 面板别名行内编辑：Enter/blur 保存、Esc 取消（done 幂等守卫防 Enter
+     重渲染后 blur 二次触发）；保存即同步品牌位与标签页标题 */
+  const aed = $('#about-alias-ed');
+  if (aed) aed.onclick = () => {
+    const cur = panelAlias();
+    const inp = document.createElement('input');
+    inp.className = 'ctl'; inp.value = cur; inp.maxLength = 24;
+    inp.placeholder = '例如：生产 / 预发（留空清除）';
+    inp.style.cssText = 'width:180px;padding:1px 6px;font-size:12px';
+    inp.setAttribute('aria-label', '面板别名');
+    aed.replaceWith(inp);
+    inp.focus(); inp.select();
+    let done = false;
+    const commit = save => {
+      if (done) return; done = true;
+      const v = inp.value.trim().slice(0, 24);
+      if (!save || v === cur) { renderAbout(); return; }
+      lsSet(PANEL_ALIAS_KEY, v);
+      syncPanelAlias();
+      toast(v ? `面板别名已设为「${v}」（仅本机）` : '面板别名已清除', 'ok', 2000);
+      renderAbout();
+    };
+    inp.onkeydown = e => { if (e.key === 'Enter') commit(true); else if (e.key === 'Escape') commit(false); };
+    inp.onblur = () => commit(true);
+  };
   /* 路径点击复制（键盘可达由全局 MutationObserver/委托覆盖） */
   $$('#about-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, '路径 '));
   /* 管理工具状态输出一键复制（多行文本手选易漏行） */
