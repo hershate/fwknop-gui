@@ -1670,18 +1670,20 @@ document.addEventListener('touchend', e => {
   }
 }, { passive: true });
 
-/* .cp-cell 点击复制、.tmtoggle 时间列切换全局键盘可达：模板生成点多，用
-   MutationObserver 统一补 tabindex，Enter/空格经事件委托触发其 click */
+/* .cp-cell 点击复制、.tmtoggle 时间列切换、分组折叠头等全局键盘可达：模板
+   生成点多，用 MutationObserver 统一补 tabindex，Enter/空格经事件委托触发其 click */
+const KB_CLICK_SEL = '.cp-cell, .tmtoggle, .evh-hot, .sum-link, .ratiobad-seg, .conf-grp, #dis-toggle';
 new MutationObserver(muts => {
   for (const m of muts) m.addedNodes.forEach(n => {
     if (n.nodeType !== 1) return;
-    if (n.matches && n.matches('.cp-cell:not([tabindex]), .tmtoggle:not([tabindex]), .evh-hot:not([tabindex]), .sum-link:not([tabindex]), .ratiobad-seg:not([tabindex])')) n.tabIndex = 0;
-    if (n.querySelectorAll) n.querySelectorAll('.cp-cell:not([tabindex]), .tmtoggle:not([tabindex]), .evh-hot:not([tabindex]), .sum-link:not([tabindex]), .ratiobad-seg:not([tabindex])').forEach(el => { el.tabIndex = 0; });
+    const sel = KB_CLICK_SEL.split(', ').map(s => s + ':not([tabindex])').join(', ');
+    if (n.matches && n.matches(sel)) n.tabIndex = 0;
+    if (n.querySelectorAll) n.querySelectorAll(sel).forEach(el => { el.tabIndex = 0; });
   });
 }).observe(document.body, { childList: true, subtree: true });
 document.addEventListener('keydown', ev => {
   if (ev.key !== 'Enter' && ev.key !== ' ') return;
-  const el = ev.target && ev.target.closest ? ev.target.closest('.cp-cell, .tmtoggle, .evh-hot, .sum-link, .ratiobad-seg') : null;
+  const el = ev.target && ev.target.closest ? ev.target.closest(KB_CLICK_SEL) : null;
   if (el) { ev.preventDefault(); el.click(); }
 });
 
