@@ -2887,6 +2887,12 @@ $('#tpl-save').onclick = () => {
   };
   $('#ct-ok').onclick = doSave;
   $('#ct-name').addEventListener('keydown', e => { if (e.key === 'Enter') doSave(); });
+  /* 同名覆盖即时预警：输入时即提示「将覆盖已有模板」，而非保存后才知 */
+  $('#ct-name').addEventListener('input', () => {
+    const v = $('#ct-name').value.trim(), h = $('#ct-hint');
+    if (v && loadCustomTpls()[v]) { h.textContent = '⚠ 将覆盖同名已有模板（保存即更新其内容）'; h.className = 'auth-hint no'; }
+    else if (h.textContent.startsWith('⚠')) { h.textContent = ''; h.className = 'auth-hint'; }
+  });
 };
 
 /* TOTP 端口范围常用值芯片：点击填充，再点同一枚清除恢复默认 */
