@@ -2585,8 +2585,16 @@ $('#ev-time').onchange = e => {
   $('#ev-custom').style.display = S.evTime === 'custom' ? 'inline-flex' : 'none';
   renderEvents();
 };
-$('#ev-from').onchange = e => { S.evFrom = e.target.value; S.evPage = 0; renderEvents(); };
-$('#ev-to').onchange = e => { S.evTo = e.target.value; S.evPage = 0; renderEvents(); };
+/* 起止倒挂时静默得 0 条结果，难排查：自动交换并提示 */
+const evRangeSwap = () => {
+  if (S.evFrom && S.evTo && new Date(S.evFrom) > new Date(S.evTo)) {
+    [S.evFrom, S.evTo] = [S.evTo, S.evFrom];
+    $('#ev-from').value = S.evFrom; $('#ev-to').value = S.evTo;
+    toast('起始时间晚于截止时间，已自动交换', 'ok', 2500);
+  }
+};
+$('#ev-from').onchange = e => { S.evFrom = e.target.value; evRangeSwap(); S.evPage = 0; renderEvents(); };
+$('#ev-to').onchange = e => { S.evTo = e.target.value; evRangeSwap(); S.evPage = 0; renderEvents(); };
 /* 自定义区间快捷预设：datetime-local 逐格点选繁琐，常见区间一键填充 */
 const pad2 = n => String(n).padStart(2, '0');
 const dtLocal = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
