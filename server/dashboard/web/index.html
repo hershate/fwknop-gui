@@ -874,7 +874,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="head">
             <h2>fwknopd 配置</h2><span class="sub" id="config-sub"></span>
             <div class="tools">
-              <span class="srch-wrap"><input class="ctl" id="conf-view-filter" placeholder="查找指令 / 说明…" style="width:150px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="conf-view-filter" title="清空查找" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+              <span class="srch-wrap"><input class="ctl" id="conf-view-filter" placeholder="查找指令 / 说明…" style="width:150px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="conf-view-filter" title="清空查找" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span><span class="hint" id="conf-view-filter-n" style="font-size:11.5px"></span>
               <button class="btn ghost small" id="conf-expand-all" title="展开全部分组">展开全部</button>
               <button class="btn ghost small" id="conf-collapse-all" title="收起全部分组">收起全部</button>
               <button class="btn ghost small" id="conf-edit-btn" style="display:none"><svg width="14" height="14"><use href="#i-pencil"/></svg>编辑</button>
@@ -888,7 +888,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="head">
             <h2>编辑 fwknopd.conf</h2><span class="sub">保存前自动预检（fwknopd --exit-parse-config），通过后备份并热加载 · <span style="color:var(--amber)">▎</span>已修改 <span style="color:var(--green)">▎</span>新增</span>
             <div class="tools">
-              <input class="ctl" id="conf-filter" placeholder="过滤指令名…" style="width:150px;padding:4px 8px;font-size:12.5px">
+              <input class="ctl" id="conf-filter" placeholder="过滤指令名…" style="width:150px;padding:4px 8px;font-size:12.5px"><span class="hint" id="conf-filter-n" style="font-size:11.5px"></span>
               <button class="btn ghost small" id="conf-add-row"><svg width="14" height="14"><use href="#i-plus"/></svg>新增指令</button>
               <button class="btn ghost small" id="conf-raw-edit">原文编辑</button>
               <button class="btn ghost small" id="conf-discard" title="放弃全部未保存修改，恢复为已保存的配置">放弃修改</button>
@@ -3755,6 +3755,7 @@ function renderConfig() {
 /* 视图模式指令查找：按键名/说明过滤行，命中分组自动展开，清空后恢复原折叠状态 */
 $('#conf-view-filter').oninput = e => {
   const q = e.target.value.trim().toUpperCase();
+  let hitAll = 0;
   $$('#config-body .conf-grp').forEach(h => {
     const tb = h.nextElementSibling;
     if (!tb || tb.tagName !== 'TABLE') return;
@@ -3764,9 +3765,13 @@ $('#conf-view-filter').oninput = e => {
       tr.style.display = show ? '' : 'none';
       if (show) hit++;
     });
+    hitAll += hit;
     h.style.display = hit ? '' : 'none';
     tb.style.display = hit ? (q ? '' : (S.confCollapsed.has(h.dataset.grp) ? 'none' : '')) : 'none';
   });
+  /* 命中总数即时可见：查无结果时明确是「无此指令」而非折叠/渲染问题 */
+  const vn = $('#conf-view-filter-n');
+  if (vn) vn.textContent = q ? `命中 ${hitAll} 条` : '';
 };
 /* 分组批量展开/收起（选择持久化与单组切换共用同一存储） */
 $('#conf-expand-all').onclick = () => {
@@ -4166,11 +4171,18 @@ $('#conf-add-row').onclick = () => {
 /* 指令名即时过滤：只隐藏不匹配行，不影响数据 */
 $('#conf-filter').oninput = e => {
   const q = e.target.value.trim().toUpperCase();
+  let hit = 0, total = 0;
   $$('#conf-edit-rows > div').forEach(row => {
     const ki = row.querySelector('.ce-key');
     if (!ki) return;
-    row.style.display = !q || ki.value.toUpperCase().includes(q) ? '' : 'none';
+    total++;
+    const show = !q || ki.value.toUpperCase().includes(q);
+    row.style.display = show ? '' : 'none';
+    if (show) hit++;
   });
+  /* 匹配计数即时可见：过滤无结果时一眼确认是指令不存在而非渲染异常 */
+  const cn = $('#conf-filter-n');
+  if (cn) cn.textContent = q ? `匹配 ${hit}/${total}` : '';
 };
 /* 任何键/值输入都标记为未保存（容器上委托，重渲染不失效） */
 $('#conf-edit-rows').addEventListener('input', () => { markConfDirty(); markConfRows(); });
