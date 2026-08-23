@@ -525,6 +525,33 @@ func deleteProfile(name string) error {
 	return os.RemoveAll(profileDir(name))
 }
 
+// updateProfileNote 只改写方案的备注（meta.json），不动配置快照本身。
+// 无 meta.json 的旧方案补一份（Name 兜底、Created 保持 0 沉底——不伪造
+// 创建时间），行为与 listProfiles 对残缺 meta 的容忍对齐。
+func updateProfileNote(name, note string) error {
+	if err := checkProfileName(name); err != nil {
+		return err
+	}
+	if len(note) > 200 {
+		return fmt.Errorf("备注过长（%d 字符，上限 200）", len(note))
+	}
+	dir := profileDir(name)
+	if _, err := os.Stat(filepath.Join(dir, "fwknopd.conf")); err != nil {
+		return fmt.Errorf("方案「%s」不存在或不完整", name)
+	}
+	mp := filepath.Join(dir, "meta.json")
+	var m ProfileMeta
+	if data, err := os.ReadFile(mp); err == nil {
+		_ = json.Unmarshal(data, &m)
+	}
+	if m.Name == "" {
+		m.Name = name
+	}
+	m.Note = note
+	data, _ := json.MarshalIndent(m, "", "  ")
+	return os.WriteFile(mp, data, 0600)
+}
+
 // duplicateProfile 把既有方案完整复制为新方案（不动当前生效配置），
 // 便于「在 xx 方案基础上改一版」的常见变体工作流；目标名已存在时拒绝，
 // 避免静默覆盖他人方案。

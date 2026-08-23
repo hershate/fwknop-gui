@@ -1826,7 +1826,7 @@ document.addEventListener('touchend', e => {
 
 /* .cp-cell 点击复制、.tmtoggle 时间列切换、分组折叠头等全局键盘可达：模板
    生成点多，用 MutationObserver 统一补 tabindex，Enter/空格经事件委托触发其 click */
-const KB_CLICK_SEL = '.cp-cell, .tmtoggle, .evh-hot, .sum-link, .ratiobad-seg, .conf-grp, #dis-toggle, [data-pg], [data-rmf], [data-evf], #daemon-pill, #conn-box, #nav-ev-badge, #nav-conf-dot, #sess-ttl';
+const KB_CLICK_SEL = '.cp-cell, .tmtoggle, .evh-hot, .sum-link, .ratiobad-seg, .conf-grp, #dis-toggle, [data-pg], [data-rmf], [data-evf], .pf-note-ed, #daemon-pill, #conn-box, #nav-ev-badge, #nav-conf-dot, #sess-ttl';
 new MutationObserver(muts => {
   for (const m of muts) m.addedNodes.forEach(n => {
     if (n.nodeType !== 1) return;
@@ -5909,7 +5909,7 @@ function renderProfiles() {
         <div style="display:flex;align-items:center;gap:10px">
           <div style="width:34px;height:34px;border-radius:10px;background:var(--blue-soft);color:var(--blue);display:flex;align-items:center;justify-content:center">${icon('i-archive',17)}</div>
           <div><div style="font-weight:700">${esc(p.name)}${p.current ? ' <span class="tag hl">当前生效</span>' : ''}</div>
-          <div class="hint">${p.created ? `保存于 ${fmtAbs(p.created)}（${fmtAgo(p.created)}）` : ''}${p.note ? ' · ' + esc(p.note) : ''}</div></div>
+          <div class="hint">${p.created ? `保存于 ${fmtAbs(p.created)}（${fmtAgo(p.created)}）` : ''}${S.writeEnabled ? ` · <span class="pf-note-ed" data-pnote="${esc(p.name)}" title="点击编辑备注（Enter 保存 / Esc 取消 / 清空即删除）" style="cursor:pointer;border-bottom:1px dashed var(--border)">${p.note ? esc(p.note) : '＋ 备注'}</span>` : (p.note ? ' · ' + esc(p.note) : '')}</div></div>
         </div>
         <div class="tools">
           <button class="btn ghost small" data-pv="${esc(p.name)}" title="预览方案内容及其与当前配置的差异（密钥已掩码，只读不改动）">${icon('i-list',13)}预览</button>
@@ -5920,6 +5920,35 @@ function renderProfiles() {
         </div>
       </div>
     </div>`).join('');
+  $$('#profiles-body [data-pnote]').forEach(sp => sp.onclick = () => {
+    /* 备注行内编辑（与 TOFU 别名同款）：span 原位换输入框，Enter/失焦保存，
+       Esc 放弃；成功后走 loadProfiles 重拉（current 标记依赖服务端重算） */
+    const name = sp.dataset.pnote;
+    const p0 = ((S.profiles && S.profiles.profiles) || []).find(x => x.name === name);
+    const cur = (p0 && p0.note) || '';
+    const inp = document.createElement('input');
+    inp.className = 'ctl'; inp.value = cur; inp.maxLength = 200;
+    inp.placeholder = '用途说明（留空清除）';
+    inp.style.cssText = 'width:180px;padding:1px 6px;font-size:12px';
+    inp.setAttribute('aria-label', '方案备注');
+    sp.replaceWith(inp);
+    inp.focus(); inp.select();
+    let done = false;
+    const commit = async save => {
+      if (done) return; done = true;
+      const v = inp.value.trim();
+      if (!save || v === cur) { renderProfiles(); return; }
+      try {
+        const r = await api('/api/profiles/note', { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ name, note: v }) });
+        if (r.error) { toast('备注保存失败：' + esc(r.error), 'err'); renderProfiles(); return; }
+        toast(v ? '备注已更新' : '备注已清除', 'ok', 1500);
+      } catch (e) { /* 网络层错误 api() 已统一兜底 toast */ }
+      loadProfiles();
+    };
+    inp.onkeydown = e => { if (e.key === 'Enter') commit(true); else if (e.key === 'Escape') commit(false); };
+    inp.onblur = () => commit(true);
+  });
   $$('#profiles-body [data-pv]').forEach(b => b.onclick = async () => {
     try {
       if (!S.config) await loadConfig();  /* diff 需要当前配置原文 */

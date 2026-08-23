@@ -590,6 +590,11 @@ func handleProfileOp(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			out = "方案「" + req.Name + "」已删除"
 		}
+	case "note":
+		err = updateProfileNote(req.Name, req.Note)
+		if err == nil {
+			out = "方案「" + req.Name + "」备注已更新"
+		}
 	case "duplicate":
 		if req.Target == "" {
 			http.Error(w, "缺少副本名", http.StatusBadRequest)
