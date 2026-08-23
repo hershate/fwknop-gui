@@ -506,6 +506,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
     <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></symbol>
     <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></symbol>
     <symbol id="i-undo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></symbol>
+    <symbol id="i-volume" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></symbol>
     <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></symbol>
     <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
@@ -735,6 +736,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               <button class="btn ghost small" id="ev-density" title="切换表格行密度（紧凑模式一屏看更多事件）">紧凑</button>
               <button class="btn ghost small" id="ev-expand-all" title="展开/收起当前页全部事件详情（对比多条事件字段用；快捷键 x）">展开全部</button>
               <button class="btn ghost small" id="ev-notify" title="后台标签页收到异常事件时弹桌面通知（需浏览器授权）；点击通知直达「仅看异常」视图"><svg width="14" height="14"><use href="#i-bell"/></svg>异常桌面通知</button>
+              <button class="btn ghost small" id="ev-sound" title="新异常事件到达时播放短促提示音（无需通知授权：前台挂屏不看、后台标签页、权限被拒场景均可感知）"><svg width="14" height="14"><use href="#i-volume"/></svg>异常提示音</button>
               <button class="btn ghost small" id="ev-csv" title="把当前筛选结果导出为 CSV（可用表格软件打开）"><svg width="14" height="14"><use href="#i-download"/></svg>导出筛选 CSV</button>
               <a class="btn ghost small" href="/api/audit/download" download title="下载完整审计日志（JSONL）"><svg width="14" height="14"><use href="#i-download"/></svg>导出原始</a>
             </div>
@@ -2569,6 +2571,11 @@ async function loadEvents() {
         };
       }
     }
+    /* 声音提示（可选开启）：与桌面通知同批新异常，但前后台都播——覆盖前台
+       挂屏不看与通知权限被拒的场景；一批新异常只响一次，打开面板的首次
+       加载（evPrevNewest 未建立）不播 */
+    if (S.evSound && S.evPrevNewest &&
+        S.events.some(e => BAD_EVTS.includes(e.event) && (e.time || 0) > S.evPrevNewest)) playBeep();
     S.evPrevNewest = newest;
     updateDocTitle();
     if (S.page === 'events' && !focusWithin('#events-body')) renderEvents();
@@ -2603,6 +2610,49 @@ $('#ev-notify').onclick = async () => {
   syncEvNotifyBtn();
 };
 syncEvNotifyBtn();
+
+/* 异常提示音：桌面通知的补充通道——无需通知授权，前台挂屏不看/后台标签页/
+   权限被拒场景都能感知。Web Audio 合成双音蜂鸣（880→660Hz 各 0.12s 指数
+   衰减，接近常规告警而不刺耳），无音频文件依赖 */
+S.evSound = localStorage.getItem('fwknop-ev-sound') === '1';
+let beepCtx = null;
+function playBeep() {
+  try {
+    if (!beepCtx) beepCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (beepCtx.state === 'suspended') beepCtx.resume();
+    const t0 = beepCtx.currentTime;
+    [880, 660].forEach((f, i) => {
+      const o = beepCtx.createOscillator(), g = beepCtx.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t0 + i * 0.14);
+      g.gain.exponentialRampToValueAtTime(0.18, t0 + i * 0.14 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + i * 0.14 + 0.12);
+      o.connect(g); g.connect(beepCtx.destination);
+      o.start(t0 + i * 0.14); o.stop(t0 + i * 0.14 + 0.13);
+    });
+  } catch (e) {}
+}
+function syncEvSoundBtn() {
+  const b = $('#ev-sound');
+  b.classList.toggle('active', !!S.evSound);
+  b.setAttribute('aria-pressed', S.evSound ? 'true' : 'false');
+  b.innerHTML = `<svg width="14" height="14"><use href="#i-volume"/></svg>异常提示音${S.evSound ? '·开' : ''}`;
+}
+$('#ev-sound').onclick = () => {
+  S.evSound = !S.evSound;
+  if (S.evSound) {
+    lsSet('fwknop-ev-sound', '1');
+    /* 开启点击即用户手势：在此创建/resume AudioContext 满足自动播放策略，
+       顺便作为试听确认 */
+    playBeep();
+    toast('已开启：新异常事件到达时播放提示音', 'ok', 3000);
+  } else {
+    lsDel('fwknop-ev-sound');
+    toast('已关闭异常提示音', 'ok', 1500);
+  }
+  syncEvSoundBtn();
+};
+syncEvSoundBtn();
 
 /* 行密度切换（事件 / TOFU 共用）：紧凑模式适合监控场景一屏多看；选择按表持久化 */
 function initDensityToggle(btnSel, bodySel, key) {
