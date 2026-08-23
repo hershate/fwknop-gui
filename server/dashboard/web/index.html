@@ -3113,7 +3113,11 @@ function renderUsers() {
     (d.file.exists ? '更新于 ' + fmtAbs(d.file.mtime) : '文件不存在');
   const dis = d.disabled || [];
   /* 禁用区可折叠：>5 条默认收起，减少长页干扰；折叠状态跟随会话 */
-  if (S.disCollapsed === undefined) S.disCollapsed = dis.length > 5;
+  /* 折叠状态记忆：用户显式折叠/展开后跨刷新保持；无偏好时沿用 >5 自动折叠 */
+  if (S.disCollapsed === undefined) {
+    const saved = localStorage.getItem('fwknop-dis-collapsed');
+    S.disCollapsed = saved === null ? dis.length > 5 : saved === '1';
+  }
   const disHtml = dis.length ? `
     <div style="margin-top:6px">
       <div class="form-sec" id="dis-toggle" style="cursor:pointer;user-select:none" title="点击折叠/展开">
@@ -3205,7 +3209,7 @@ function renderUsers() {
     showPage('tofu');
   });
   const dt = $('#dis-toggle');
-  if (dt) dt.onclick = () => { S.disCollapsed = !S.disCollapsed; renderUsers(); };
+  if (dt) dt.onclick = () => { S.disCollapsed = !S.disCollapsed; try { localStorage.setItem('fwknop-dis-collapsed', S.disCollapsed ? '1' : '0'); } catch (e) {} renderUsers(); };
   $$('#users-body [data-uev]').forEach(b => b.onclick = () => {
     S.evQuery = b.dataset.uev; S.evPage = 0; S.evFilter = 'all';
     $('#event-search').value = S.evQuery;
