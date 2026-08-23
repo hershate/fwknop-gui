@@ -143,6 +143,7 @@ func main() {
 	// 写操作（需登录 + -enable-write + CSRF 头）
 	mux.HandleFunc("/api/admin/add", guard(handleAdminAdd))
 	mux.HandleFunc("/api/admin/rm", guard(handleAdminRm))
+	mux.HandleFunc("/api/admin/qr", guard(handleAdminUserURI))
 	mux.HandleFunc("/api/admin/lint", guard(handleAdminLint))
 	mux.HandleFunc("/api/admin/tofu/unbind", guard(handleAdminTofuUnbind))
 	mux.HandleFunc("/api/admin/audit/clear", guard(handleAdminAuditClear))

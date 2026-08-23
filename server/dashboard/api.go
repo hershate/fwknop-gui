@@ -304,6 +304,30 @@ func handleAdminRm(w http.ResponseWriter, r *http.Request) {
 	adminResult(w, out, err)
 }
 
+// handleAdminUserURI wraps `fwknopd-admin user qr`：为已有授权重建 fwknop://
+// 授权 URI（用户丢失 cred.json 后的重发场景）。access.conf 不记录服务器地址
+// （cmd_user_qr 强制 --server），须随请求提供。输出含完整密钥材料（URI 内嵌
+// KEY/HMAC/TOTP_SEED），故与签发同级的写权限门禁 + CSRF，且仅经 admin 工具产出
+// （面板自身永不读取密钥，main.go 安全约定）。
+func handleAdminUserURI(w http.ResponseWriter, r *http.Request) {
+	if !requireWrite(w, r) {
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "需要 POST", http.StatusMethodNotAllowed)
+		return
+	}
+	name := strings.TrimSpace(r.FormValue("name"))
+	server := strings.TrimSpace(r.FormValue("server"))
+	if name == "" || server == "" {
+		http.Error(w, "缺少名称或服务器地址（access.conf 不记录 SPA 服务器地址，需重新提供）", http.StatusBadRequest)
+		return
+	}
+	out, err := runAdmin("user", "qr", name, "--server", server,
+		"--access-conf", cfg.AccessConf)
+	adminResult(w, out, err)
+}
+
 // handleAdminLint wraps `fwknopd-admin lint <access.conf>` — access.conf
 // 一致性检查（重复 SOURCE/缺指令等），结果原样回显供弹窗展示。
 func handleAdminLint(w http.ResponseWriter, r *http.Request) {

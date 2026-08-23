@@ -326,6 +326,16 @@ if [ -x "$GOBIN" ]; then
             --header='Authorization: Bearer fttok' http://127.0.0.1:18099/api/admin/tofu/unbind 2>/dev/null \
             | grep -q 'Removed 1' && ok "面板 tofu 解绑（写路径）" || bad "面板 tofu 解绑"
 
+        # 授权 URI 重建（user qr）：无令牌拒绝；缺 server 400；合法调用得 fwknop:// URI
+        wget -qO- --post-data 'name=dashdemo&server=203.0.113.10' http://127.0.0.1:18099/api/admin/qr 2>/dev/null \
+            && bad "无令牌重建 URI 应当失败" || ok "URI 重建要求令牌"
+        wget -qO- --post-data 'name=dashdemo' --header='Authorization: Bearer fttok' \
+            http://127.0.0.1:18099/api/admin/qr 2>/dev/null \
+            && bad "缺 server 应当被拒绝" || ok "URI 重建缺 server 拒绝（400）"
+        wget -qO- --post-data 'name=dashdemo&server=203.0.113.10' --header='Authorization: Bearer fttok' \
+            http://127.0.0.1:18099/api/admin/qr 2>/dev/null | grep -q 'fwknop://' \
+            && ok "面板授权 URI 重建（user qr 写路径）" || bad "面板 URI 重建"
+
         # 审计日志清理：备份 .bak-时间戳 后清空；无令牌拒绝
         wget -qO- --post-data '' http://127.0.0.1:18099/api/admin/audit/clear 2>/dev/null \
             && bad "无令牌清理审计" || ok "审计清理要求令牌"
