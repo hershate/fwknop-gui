@@ -1413,7 +1413,10 @@ $('#setup-pw2').addEventListener('input', setupPwCheck);
 $$('.pw-eye').forEach(b => b.onclick = () => {
   const i = $('#' + b.dataset.eye);
   i.type = i.type === 'password' ? 'text' : 'password';
-  b.style.color = i.type === 'text' ? 'var(--accent)' : '';
+  const shown = i.type === 'text';
+  b.style.color = shown ? 'var(--accent)' : '';
+  b.setAttribute('aria-pressed', shown ? 'true' : 'false');
+  b.title = shown ? '隐藏密码' : '显示密码';
 });
 
 /* 初始化页实时校验提示：长度 + 两次一致 */
