@@ -3271,6 +3271,9 @@ function loadAddDraft() {
   const f = $('#add-form');
   ADD_FIELDS.forEach(k => { if (typeof d[k] === 'string') f[k].value = d[k]; });
   ADD_CHECKS.forEach(k => { if (typeof d[k] === 'boolean') f[k].checked = d[k]; });
+  /* 程序化赋值不触发 input：逐字段派发让即时校验提示（重名/格式/范围冲突）
+     立即反映恢复的值，与模板应用同一手法；空值字段跳过避免无谓清空提示 */
+  ADD_FIELDS.forEach(k => { if (d[k]) f[k].dispatchEvent(new Event('input')); });
   /* 还原模板选择状态（高亮 + 描述），保持「当前基于哪个模板」的上下文 */
   const rtpl = d._tpl && allTpl(d._tpl);
   if (rtpl) {
