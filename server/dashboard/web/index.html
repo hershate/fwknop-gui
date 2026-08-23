@@ -1064,6 +1064,13 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
 /* ==================== 基础工具 ==================== */
 const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
+/* 焦点保护：轮询触发的整容器 innerHTML 重建会销毁焦点元素（Tab 位置每 5 秒
+   被清空）。渲染前判断焦点是否在容器内，在则跳过本轮——数据新鲜度由下一轮
+   （失焦后）恢复，事件页另有新事件提示条/徽标兜底 */
+function focusWithin(sel) {
+  const el = $(sel);
+  return !!(el && document.activeElement && document.activeElement !== document.body && el.contains(document.activeElement));
+}
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icon = (n, sz) => `<svg width="${sz||16}" height="${sz||16}"><use href="#i-${n}"/></svg>`;
@@ -2074,8 +2081,8 @@ async function loadOverview() {
       retitle('svc-start', alive, 'fwknopd 已在运行');
       ['svc-stop','svc-restart','svc-reload'].forEach(id => retitle(id, !alive, 'fwknopd 未运行，该操作无意义'));
     }
-    if (S.page === 'overview') renderStatusCards();
-    if (S.page === 'about') renderAbout();
+    if (S.page === 'overview' && !focusWithin('#status-cards')) renderStatusCards();
+    if (S.page === 'about' && !focusWithin('#about-body')) renderAbout();
   } catch (e) {
     setConn(false);
     showLoadError('#status-cards', loadOverview);
@@ -2207,7 +2214,10 @@ async function loadMetrics() {
       if (S.hist[e].length > HIST_MAX) S.hist[e].shift();
     }
     saveHist();
-    if (S.page === 'overview') renderTiles(), renderSummary();
+    if (S.page === 'overview') {
+      if (!focusWithin('#tiles')) renderTiles();
+      if (!focusWithin('#summary-body')) renderSummary();
+    }
   } catch (e) {
     setConn(false);
     showLoadError('#tiles', loadMetrics);
@@ -2398,14 +2408,7 @@ async function loadEvents() {
     }
     S.evPrevNewest = newest;
     updateDocTitle();
-    if (S.page === 'events') {
-      /* 焦点在事件表内（键盘导航/行内控件操作）时跳过整表重渲染：innerHTML
-         重建会销毁焦点元素，轮询每 5 秒把 Tab 位置清空；新事件由提示条、
-         徽标与新到行高亮（下次渲染生效）兜底，失焦后下一轮自动恢复 */
-      const eb = $('#events-body');
-      const focusInside = eb && document.activeElement && document.activeElement !== document.body && eb.contains(document.activeElement);
-      if (!focusInside) renderEvents();
-    }
+    if (S.page === 'events' && !focusWithin('#events-body')) renderEvents();
   } catch (e) {
     setConn(false);
     showLoadError('#events-body', loadEvents);
@@ -3130,7 +3133,7 @@ async function loadUsers() {
     ub.style.display = cm ? '' : 'none';
     if (cm) { ub.textContent = cm; ub.title = `${cm} 个授权仍是 __CHANGEME__ 占位密钥，无法正常工作，点击前往撤销并重签`; }
     syncNavTofuBadge();  /* 悬空绑定判定依赖授权列表 */
-    if (S.page === 'users') renderUsers();
+    if (S.page === 'users' && !focusWithin('#users-body')) renderUsers();
     if (S.page === 'tofu') renderTOFU();  /* 悬空绑定检测依赖授权列表 */
   } catch (e) {
     setConn(false);
@@ -4105,7 +4108,7 @@ async function loadTOFU() {
     const d = await api('/api/tofu');
     S.tofu = d;
     syncNavTofuBadge();
-    if (S.page === 'tofu') renderTOFU();
+    if (S.page === 'tofu' && !focusWithin('#tofu-body')) renderTOFU();
     if (S.page === 'users') renderUsers();  /* 绑定数徽章依赖 TOFU 数据 */
   } catch (e) {
     setConn(false);
@@ -4450,7 +4453,7 @@ async function loadConfig() {
   try {
     const d = await api('/api/config');
     S.config = d;
-    if (S.page === 'config') renderConfig();
+    if (S.page === 'config' && !focusWithin('#config-body')) renderConfig();
   } catch (e) {
     setConn(false);
     showLoadError('#config-body', loadConfig);
@@ -5285,7 +5288,7 @@ async function loadProfiles() {
   try {
     const d = await api('/api/profiles');
     S.profiles = d;
-    if (S.page === 'profiles') renderProfiles();
+    if (S.page === 'profiles' && !focusWithin('#profiles-body')) renderProfiles();
   } catch (e) {
     setConn(false);
     showLoadError('#profiles-body', loadProfiles);
