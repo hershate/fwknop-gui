@@ -1302,7 +1302,21 @@ async function bootAuth() {
     else if (st.authenticated) enterApp();
     else showAuthView('auth-login');
   } catch (e) {
-    $('#auth-loading .desc').textContent = '无法连接面板后端，请确认进程已启动后刷新页面。';
+    /* 连接失败自动重试（5s 倒数）+ 手动立即重试：面板重启恢复后无需手动 F5；
+       重试成功切换视图后旧倒计时经 display 守卫自行清除 */
+    const card = $('#auth-loading');
+    const desc = card.querySelector('.desc');
+    let left = 5;
+    desc.innerHTML = `无法连接面板后端，请确认进程已启动。 <span id="boot-retry-in"></span>
+      <br><button type="button" class="btn ghost small" id="boot-retry" style="margin-top:10px" title="立即重新检测面板状态">立即重试</button>`;
+    const tick = () => {
+      if (card.style.display === 'none') { clearInterval(timer); return; }
+      const sp = $('#boot-retry-in');
+      if (sp) sp.textContent = `（${left} 秒后自动重试）`;
+      if (left-- <= 0) { clearInterval(timer); bootAuth(); }
+    };
+    const timer = setInterval(tick, 1000); tick();
+    $('#boot-retry').onclick = () => { clearInterval(timer); bootAuth(); };
   }
 }
 
