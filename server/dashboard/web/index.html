@@ -3973,7 +3973,7 @@ function renderConfig() {
         <span class="hint" style="font-weight:400">${list.length} 项</span></div>
       <table class="tb" style="${collapsed?'display:none':''}"><thead><tr><th style="width:250px">指令</th><th style="width:280px">当前值</th><th>说明</th></tr></thead><tbody>` +
       list.map(e => `<tr>
-        <td class="mono" style="color:var(--accent);font-weight:600"><span class="cp-cell" data-cp="${esc(e.key)}" title="点击复制指令名">${esc(e.key)}</span></td>
+        <td class="mono" style="color:var(--accent);font-weight:600"><span class="cp-cell" data-cp="${esc(e.key)}" title="点击复制指令名">${esc(e.key)}</span>${S.writeEnabled ? `<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-ce-edit="${esc(e.key)}" title="在编辑器中定位该指令">${icon('i-pencil',12)}</button>` : ''}</td>
         <td class="mono"><span class="cp-cell" data-cp="${esc(e.value)}" title="点击复制当前值">${esc(e.value)}</span></td>
         <td class="hint">${esc((CONF_META[e.key] || [,''])[1] || '（未收录说明，请参考 fwknopd.conf 注释）')}</td>
       </tr>`).join('') + `</tbody></table>`;
@@ -3991,6 +3991,22 @@ function renderConfig() {
   if (vf && vf.value.trim()) vf.dispatchEvent(new Event('input'));
   /* 指令名/值点击复制（键盘可达由全局委托覆盖） */
   $$('#config-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, '配置项 '));
+  /* 视图行「编辑定位」：直达编辑器并聚焦该指令的值框（先清过滤保证可见） */
+  $$('#config-body [data-ce-edit]').forEach(b => b.onclick = () => {
+    if (!confEditing) $('#conf-edit-btn').click();
+    setTimeout(() => {
+      const fq = $('#conf-filter');
+      if (fq && fq.value) { fq.value = ''; fq.dispatchEvent(new Event('input')); }
+      const tgt = $$('#conf-edit-rows > div').find(r => {
+        const ki = r.querySelector('.ce-key');
+        return ki && ki.value.trim() === b.dataset.ceEdit;
+      });
+      if (!tgt) { toast('编辑器中未找到该指令', 'err', 2500); return; }
+      tgt.scrollIntoView({ behavior:'smooth', block:'center' });
+      const vi = tgt.querySelector('.ce-val');
+      if (vi) setTimeout(() => vi.focus(), 200);  /* 等滚动落定 */
+    }, 50);
+  });
 }
 /* 视图模式指令查找：按键名/说明过滤行，命中分组自动展开，清空后恢复原折叠状态 */
 $('#conf-view-filter').oninput = e => {
