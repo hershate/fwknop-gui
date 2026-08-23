@@ -1647,6 +1647,11 @@ document.addEventListener('keydown', ev => {
     S.evFilter = S.evFilter === 'bad' ? 'all' : 'bad'; S.evPage = 0;
     renderEvents();
     toast(S.evFilter === 'bad' ? '仅看异常' : '已查看全部', 'ok', 1200);
+  } else if (ev.key === 'n' && S.page === 'users' && S.writeEnabled) {
+    /* 用户页 n：直达签发（未展开先展开，名称框聚焦待填；只读模式无签发入口不响应） */
+    ev.preventDefault();
+    if ($('#add-card').style.display === 'none') $('#show-add').click();
+    $('#add-form').name.focus();
   } else if ((ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') && S.page === 'events') {
     /* 事件页 ←/→ 翻页：直接点分页器按钮，沿用其禁用边界 */
     const btn = $(ev.key === 'ArrowLeft' ? '#pg-prev' : '#pg-next');
@@ -1663,6 +1668,7 @@ const KBD_HELP = [
   ['r', '手动刷新全部数据'],
   ['t', '切换明暗主题'],
   ['b', '事件页「仅看异常」开/关'],
+  ['n', '用户页直达签发新凭证（名称框聚焦）'],
   ['← / →', '事件页翻页'],
   ['Enter / 空格', '展开聚焦的事件行详情；钻取聚焦的时间分布柱'],
   ['Ctrl/⌘ + S', '保存服务配置（编辑器有改动时）'],
