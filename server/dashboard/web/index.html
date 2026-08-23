@@ -2128,24 +2128,25 @@ function renderEventChips() {
     </div>` : '';
 }
 
-/* 来源/设备排行：按当前时间窗聚合计数，点击芯片按该值筛选（再点取消），
-   用于一眼定位扫源/爆破源或高频敲门设备；维度可切换并持久化；
-   不足 2 个不同值时隐藏 */
-S.evTopDim = localStorage.getItem('fwknop-ev-topdim') === 'dev' ? 'dev' : 'ip';
+/* 来源/设备/用户排行：按当前时间窗聚合计数，点击芯片按该值筛选（再点
+   取消），用于一眼定位扫源/爆破源或高频敲门设备/用户；维度循环切换并
+   持久化；不足 2 个不同值时隐藏 */
+S.evTopDim = ['ip','dev','user'].includes(localStorage.getItem('fwknop-ev-topdim')) ? localStorage.getItem('fwknop-ev-topdim') : 'ip';
 function renderTopIps() {
   const el = $('#ev-topip');
   const dim = S.evTopDim;
+  const DIMS = { ip:['来源', e => e.src_ip], dev:['设备', e => e.device_id], user:['用户', e => e.user] };
   const cnt = {};
   for (const e of timeFilteredEvents()) {
-    const k = dim === 'dev' ? e.device_id : e.src_ip;
+    const k = DIMS[dim][1](e);
     if (k) cnt[k] = (cnt[k] || 0) + 1;
   }
   const top = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 5);
   if (top.length < 2) { el.style.display = 'none'; el.innerHTML = ''; return; }
   el.style.display = 'flex';
-  el.innerHTML = `<span class="hint" style="align-self:center">${dim === 'dev' ? '设备' : '来源'}排行：</span>` + top.map(([k, n]) =>
+  el.innerHTML = `<span class="hint" style="align-self:center">${DIMS[dim][0]}排行：</span>` + top.map(([k, n]) =>
     `<button class="chip ${S.evQuery === k ? 'active' : ''}" data-tip="${esc(k)}" title="点击按 ${esc(k)} 筛选，再点取消">${esc(dim === 'dev' && k.length > 12 ? k.slice(0, 12) + '…' : k)}<span class="n">${n}</span></button>`).join('') +
-    `<button class="chip" id="ev-topdim" title="切换统计维度（来源 IP / 设备指纹）" style="opacity:.75">⇄ 按${dim === 'dev' ? '来源' : '设备'}</button>`;
+    `<button class="chip" id="ev-topdim" title="切换统计维度（来源 IP / 设备指纹 / 用户）" style="opacity:.75">⇄ 换维度</button>`;
   $$('#ev-topip .chip[data-tip]').forEach(b => b.onclick = () => {
     S.evQuery = S.evQuery === b.dataset.tip ? '' : b.dataset.tip;
     S.evPage = 0;
@@ -2153,7 +2154,8 @@ function renderTopIps() {
     renderEvents();
   });
   $('#ev-topdim').onclick = () => {
-    S.evTopDim = dim === 'dev' ? 'ip' : 'dev';
+    const order = ['ip', 'dev', 'user'];
+    S.evTopDim = order[(order.indexOf(dim) + 1) % order.length];
     try { localStorage.setItem('fwknop-ev-topdim', S.evTopDim); } catch (e) {}
     renderTopIps();
   };
