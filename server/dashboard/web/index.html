@@ -4936,6 +4936,10 @@ $('#pf-name').addEventListener('input', () => {
   else fmtHint(el, true, '✓ 新方案名', '');
 });
 
+/* 键盘流闭环：方案名/用途说明框内 Enter 直接触发保存（仍有确认框兜底） */
+['pf-name', 'pf-note'].forEach(id =>
+  $('#' + id).addEventListener('keydown', e => { if (e.key === 'Enter') $('#pf-save').click(); }));
+
 $('#pf-autoname').onclick = () => {
   const d = new Date();
   const pad = n => String(n).padStart(2, '0');
