@@ -4901,6 +4901,7 @@ function trapModalFocus(root) {
 function closeModal() {
   if (modalGuard && !modalGuard()) return;
   modalGuard = null;
+  seDirty = false;  /* 弹窗关闭即编辑现场终结（守卫已确认丢弃），脏标记复位防误拦刷新 */
   $('#modal-root').classList.remove('show');
   document.body.style.overflow = '';
   /* 焦点返还：元素可能已随页面重绘移除，需确认仍在 DOM 中 */
@@ -5015,7 +5016,7 @@ function openStanzaEditor(index) {
       <button class="btn ghost" id="se-cancel">取消</button>
       <button class="btn" id="se-save" title="保存并热加载生效（Ctrl/⌘+S）">${icon('i-save',14)}保存并生效</button>
     </div>`, true);
-  let seDirty = false;
+  seDirty = false;  /* 模块级（beforeunload 守卫共享）；打开新编辑器时清零 */
   /* 未修改时禁用保存：避免零改动误触产生无意义的备份与热加载 */
   const seSave = $('#se-save');
   seSave.disabled = true;
@@ -5166,6 +5167,9 @@ function openStanzaEditor(index) {
 
 /* ==================== fwknopd.conf 可视化编辑 ==================== */
 let confEditing = false, confRawEdit = false, confRows = [], confDirty = false, confOrig = {};
+/* stanza 编辑器脏标记提升为模块级：beforeunload 守卫（刷新/关标签页）需要读到，
+   此前只有弹窗内的 modalGuard 确认，刷新页面 11 个字段的修改静默丢失 */
+let seDirty = false;
 
 /* 未保存修改保护：折叠编辑器 / 切页 / 关闭页面前确认 */
 function confGuardLeave() {
@@ -5173,7 +5177,7 @@ function confGuardLeave() {
   return true;
 }
 window.addEventListener('beforeunload', ev => {
-  if (confEditing && confDirty) { ev.preventDefault(); ev.returnValue = ''; }
+  if ((confEditing && confDirty) || seDirty) { ev.preventDefault(); ev.returnValue = ''; }
 });
 function markConfDirty() {
   confDirty = true; $('#conf-save').classList.add('dirty');
