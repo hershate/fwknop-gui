@@ -1698,7 +1698,7 @@ document.addEventListener('touchend', e => {
 
 /* .cp-cell 点击复制、.tmtoggle 时间列切换、分组折叠头等全局键盘可达：模板
    生成点多，用 MutationObserver 统一补 tabindex，Enter/空格经事件委托触发其 click */
-const KB_CLICK_SEL = '.cp-cell, .tmtoggle, .evh-hot, .sum-link, .ratiobad-seg, .conf-grp, #dis-toggle, [data-pg]';
+const KB_CLICK_SEL = '.cp-cell, .tmtoggle, .evh-hot, .sum-link, .ratiobad-seg, .conf-grp, #dis-toggle, [data-pg], #daemon-pill, #conn-box, #nav-ev-badge, #nav-conf-dot, #sess-ttl';
 new MutationObserver(muts => {
   for (const m of muts) m.addedNodes.forEach(n => {
     if (n.nodeType !== 1) return;
@@ -1707,6 +1707,9 @@ new MutationObserver(muts => {
     if (n.querySelectorAll) n.querySelectorAll(sel).forEach(el => { el.tabIndex = 0; });
   });
 }).observe(document.body, { childList: true, subtree: true });
+/* 静态元素首扫：MutationObserver 只盯新增节点，初始 DOM 里已存在的匹配
+   （侧栏版本号、连接条、顶栏服务徽标等）需先补一次 tabindex */
+$$(KB_CLICK_SEL.split(', ').map(s => s + ':not([tabindex])').join(', ')).forEach(el => { el.tabIndex = 0; });
 document.addEventListener('keydown', ev => {
   if (ev.key !== 'Enter' && ev.key !== ' ') return;
   const el = ev.target && ev.target.closest ? ev.target.closest(KB_CLICK_SEL) : null;
