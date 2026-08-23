@@ -461,6 +461,29 @@ if [ -x "$GOBIN" ]; then
             --save-cookies "$JAR" --keep-session-cookies \
             http://127.0.0.1:18098/api/login 2>/dev/null | grep -q '登录成功' \
             && ok "正确密码重新登录" || bad "重新登录"
+        # --- 修改密码（/api/auth/password）；注意失败计数桶：错误旧密码会记一次
+        # 失败，但成功改密/成功登录会清空计数，因此本组用例不影响后续限流断言 ---
+        [ "$(code --load-cookies "$JAR" --post-data '{"old_password":"adm1npass!","password":"newpass999","confirm":"newpass999"}' --header="$CJ" \
+            http://127.0.0.1:18098/api/auth/password)" = 403 ] \
+            && ok "改密缺 CSRF 头返回 403" || bad "改密 CSRF"
+        [ "$(code --load-cookies "$JAR" --post-data '{"old_password":"wrongold","password":"newpass999","confirm":"newpass999"}' --header="$CJ" --header="$X" \
+            http://127.0.0.1:18098/api/auth/password)" = 401 ] \
+            && ok "改密旧密码错误返回 401" || bad "改密旧密码校验"
+        wget -q --content-on-error -O- --post-data '{"old_password":"adm1npass!","password":"newpass999","confirm":"newpass999"}' \
+            --header="$CJ" --header="$X" --load-cookies "$JAR" \
+            http://127.0.0.1:18098/api/auth/password 2>/dev/null | grep -q '密码已更新' \
+            && ok "修改密码成功（成功后清空失败计数）" || bad "修改密码"
+        [ "$(code --post-data '{"password":"adm1npass!"}' --header="$CJ" \
+            http://127.0.0.1:18098/api/login)" = 401 ] \
+            && ok "改密后旧密码失效" || bad "旧密码未失效"
+        wget -q --content-on-error -O- --post-data '{"password":"newpass999"}' --header="$CJ" \
+            --save-cookies "$JAR" --keep-session-cookies \
+            http://127.0.0.1:18098/api/login 2>/dev/null | grep -q '登录成功' \
+            && ok "新密码可登录（成功登录清空失败计数）" || bad "新密码登录"
+        wget -q --content-on-error -O- --post-data '{"old_password":"newpass999","password":"adm1npass!","confirm":"adm1npass!"}' \
+            --header="$CJ" --header="$X" --load-cookies "$JAR" \
+            http://127.0.0.1:18098/api/auth/password 2>/dev/null | grep -q '密码已更新' \
+            && ok "密码改回（恢复测试现场）" || bad "密码改回"
         # wget 对 401 不输出响应体，改用 python3 读取错误体核对剩余次数提示
         python3 -c "
 import urllib.request, urllib.error, json

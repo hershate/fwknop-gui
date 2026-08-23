@@ -969,10 +969,26 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           </div>
         </div>
         <div class="card">
+          <div class="head"><h2>修改密码</h2><span class="sub">需验证当前密码；成功后其他设备的会话将失效</span></div>
+          <div class="body" id="pw-body">
+            <div class="field"><label for="pw-old">当前密码</label>
+              <div class="pw-wrap"><input type="password" id="pw-old" autocomplete="current-password" placeholder="当前管理员密码" style="width:260px">
+                <button type="button" class="pw-eye" data-eye="pw-old" title="显示/隐藏密码"><svg width="16" height="16"><use href="#i-eye"/></svg></button></div></div>
+            <div class="field"><label for="pw-new1">新密码</label>
+              <div class="pw-wrap"><input type="password" id="pw-new1" autocomplete="new-password" placeholder="至少 8 位" style="width:260px">
+                <button type="button" class="pw-eye" data-eye="pw-new1" title="显示/隐藏密码"><svg width="16" height="16"><use href="#i-eye"/></svg></button></div></div>
+            <div class="field"><label for="pw-new2">确认新密码</label>
+              <div class="pw-wrap"><input type="password" id="pw-new2" autocomplete="new-password" placeholder="再次输入新密码" style="width:260px">
+                <button type="button" class="pw-eye" data-eye="pw-new2" title="显示/隐藏密码"><svg width="16" height="16"><use href="#i-eye"/></svg></button></div></div>
+            <div class="auth-hint" id="pw-hint"></div>
+            <button class="btn" id="pw-change-btn" style="margin-top:6px"><svg width="15" height="15"><use href="#i-key"/></svg>更新密码</button>
+          </div>
+        </div>
+        <div class="card">
           <div class="head"><h2>安全说明</h2></div>
           <div class="body">
             <ul style="margin:0; padding-left:20px; font-size:13px; color:var(--muted); line-height:2">
-              <li>面板首次启动必须完成初始化（设置管理员密码），之后所有 API 均需登录；密码以 PBKDF2-HMAC-SHA256（10 万轮加盐）存储在 <code>&lt;run-dir&gt;/dashboard_auth.json</code>，任何接口都不输出它。</li>
+              <li>面板首次启动必须完成初始化（设置管理员密码），之后所有 API 均需登录；密码以 PBKDF2-HMAC-SHA256（10 万轮加盐）存储在 <code>&lt;run-dir&gt;/dashboard_auth.json</code>，任何接口都不输出它。登录后可在本页上方「修改密码」自助改密（需验证当前密码，其他设备会话随即失效）。</li>
               <li>登录签发的会话 Cookie 为 HttpOnly + SameSite=Strict（12 小时过期，可点左下角「注销」失效）；登录按 IP 限流（5 分钟 5 次失败锁定 60 秒）；Cookie 会话的写操作必须带防跨站请求头。</li>
               <li>无头/CI 场景可用 <code>DASHBOARD_TOKEN</code> 作为 Bearer 凭证（对全部 API 有效），设置后可跳过初始化向导。</li>
               <li>面板默认仅监听 <code>127.0.0.1</code>；如需远程访问请置于带 TLS 的反向代理之后。</li>
@@ -1299,7 +1315,7 @@ $('#setup-pw2').addEventListener('input', setupPwCheck);
 
 /* Caps Lock 警示：密码框内大写锁定开启时提示（登录失败最常见诱因之一）。
    显隐切换会把 type 改成 text，故按元素 id 绑定而非 type 选择器。 */
-['setup-pw1', 'setup-pw2', 'login-pw'].forEach(id => {
+['setup-pw1', 'setup-pw2', 'login-pw', 'pw-old', 'pw-new1', 'pw-new2'].forEach(id => {
   const inp = document.getElementById(id);
   if (!inp) return;
   const h = document.createElement('div');
@@ -1346,6 +1362,57 @@ $('#logout-btn').onclick = () => {
   if (typeof confDirty !== 'undefined' && confDirty) {
     confirmDialog('注销登录', '服务配置有<b>未保存的修改</b>，注销后编辑现场将丢失。<b>确定注销吗？</b>', '仍要注销', doLogout);
   } else doLogout();
+};
+
+/* 关于页「修改密码」：实时校验新密码（长度/一致/强度复用初始化页逻辑），
+   提交用裸 fetch 而非 api()——旧密码错误返回 401，不能让 api() 的 401
+   兜底把当前有效会话误判成「未登录」而跳回登录页。 */
+const pwChangeCheck = () => {
+  const p1 = $('#pw-new1').value, p2 = $('#pw-new2').value, el = $('#pw-hint');
+  if (!$('#pw-old').value && !p1 && !p2) { el.textContent = ''; el.className = 'auth-hint'; return; }
+  const [lab, col] = pwStrength(p1);
+  const parts = [p1.length >= 8 ? ['✓ 长度达标', 'var(--green)'] : ['✗ 至少 8 位', 'var(--red)']];
+  if (p2) parts.push(p1 === p2 ? ['✓ 两次一致', 'var(--green)'] : ['✗ 两次不一致', 'var(--red)']);
+  parts.push([`强度：${lab}`, col]);
+  el.innerHTML = parts.map(([t, c]) => `<span style="color:${c}">${t}</span>`).join(' · ');
+  el.className = 'auth-hint';
+};
+['pw-old', 'pw-new1', 'pw-new2'].forEach(id => $('#' + id).addEventListener('input', pwChangeCheck));
+$('#pw-new2').addEventListener('keydown', e => { if (e.key === 'Enter') $('#pw-change-btn').click(); });
+$('#pw-change-btn').onclick = async () => {
+  const oldpw = $('#pw-old').value, p1 = $('#pw-new1').value, p2 = $('#pw-new2').value;
+  const el = $('#pw-hint');
+  const fail = msg => { el.textContent = '✗ ' + msg; el.className = 'auth-hint no'; };
+  if (!oldpw) { fail('请输入当前密码'); $('#pw-old').focus(); return; }
+  if (p1.length < 8) { fail('新密码至少 8 位'); $('#pw-new1').focus(); return; }
+  if (p1 !== p2) { fail('两次输入的新密码不一致'); $('#pw-new2').focus(); return; }
+  if (p1 === oldpw) { fail('新密码与当前密码相同，无需修改'); return; }
+  const btn = $('#pw-change-btn');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/auth/password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Fwknop-Request': '1' },
+      body: JSON.stringify({ old_password: oldpw, password: p1, confirm: p2 }),
+    });
+    if (r.ok) {
+      const d = await r.json();
+      $('#pw-old').value = $('#pw-new1').value = $('#pw-new2').value = '';
+      pwChangeCheck();
+      toast(d.msg || '密码已更新', 'ok', 5000);
+    } else if (r.status === 401) {
+      /* 当前密码错误：留在此页（会话仍有效），提示剩余尝试次数 */
+      fail((await r.text()).slice(0, 120));
+    } else if (r.status === 429) {
+      fail('失败次数过多，已被临时锁定，请稍后再试');
+    } else {
+      fail((await r.text()).slice(0, 120) || ('HTTP ' + r.status));
+    }
+  } catch (e) {
+    fail('网络错误：' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
 };
 
 /* ==================== API 封装（Cookie 会话 + CSRF 头） ==================== */

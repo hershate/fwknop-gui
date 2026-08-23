@@ -107,6 +107,7 @@ func main() {
 	mux.HandleFunc("/api/setup", handleSetup)
 	mux.HandleFunc("/api/login", handleLogin)
 	mux.HandleFunc("/api/logout", handleLogout)
+	mux.HandleFunc("/api/auth/password", guard(handlePassword))
 	// 只读 API（需登录）
 	mux.HandleFunc("/api/overview", guard(handleOverview))
 	mux.HandleFunc("/api/events", guard(handleEvents))

@@ -471,6 +471,84 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]interface{}{"ok": true, "msg": "已注销"})
 }
 
+// handlePassword 修改管理员密码：需已登录 + CSRF 头 + 验证当前密码。
+// 账户自助，不受 -read-only 限制（那只管 fwknopd 写操作）。成功后保留
+// 当前会话、失效其余会话（其他设备需用新密码重新登录）。
+func handlePassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "需要 POST", http.StatusMethodNotAllowed)
+		return
+	}
+	if !csrfOK(r) {
+		http.Error(w, "缺少防跨站请求头（X-Fwknop-Request）", http.StatusForbidden)
+		return
+	}
+	auth.mu.Lock()
+	init := auth.initialized
+	auth.mu.Unlock()
+	if !init {
+		http.Error(w, "未设置管理员密码（Bearer 令牌模式无需改密）", http.StatusConflict)
+		return
+	}
+	var req struct {
+		OldPassword string `json:"old_password"`
+		Password    string `json:"password"`
+		Confirm     string `json:"confirm"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "请求格式错误", http.StatusBadRequest)
+		return
+	}
+	ip := clientIP(r)
+	if d := loginLocked(ip); d > 0 {
+		sec := int(d.Seconds()) + 1
+		w.Header().Set("Retry-After", strconv.Itoa(sec))
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusTooManyRequests)
+		fmt.Fprintf(w, `{"error":"失败次数过多，请 %d 秒后再试","retry_after":%d}`, sec, sec)
+		return
+	}
+	if !checkPassword(req.OldPassword) {
+		/* 复用登录限流桶：防止会话被劫持后在线爆破当前密码 */
+		left := recordLoginFail(ip)
+		if left == 0 {
+			http.Error(w, fmt.Sprintf("当前密码不正确，失败次数过多已锁定 %d 秒",
+				int(loginLockTime.Seconds())), http.StatusUnauthorized)
+		} else {
+			http.Error(w, fmt.Sprintf("当前密码不正确（再失败 %d 次将锁定 %d 秒）",
+				left, int(loginLockTime.Seconds())), http.StatusUnauthorized)
+		}
+		return
+	}
+	if len(req.Password) < minPasswordLen {
+		http.Error(w, fmt.Sprintf("新密码长度至少 %d 位", minPasswordLen), http.StatusBadRequest)
+		return
+	}
+	if req.Password != req.Confirm {
+		http.Error(w, "两次输入的新密码不一致", http.StatusBadRequest)
+		return
+	}
+	if req.Password == req.OldPassword {
+		http.Error(w, "新密码与当前密码相同，无需修改", http.StatusBadRequest)
+		return
+	}
+	if err := saveAuth(req.Password); err != nil {
+		http.Error(w, "保存认证信息失败："+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	/* 踢掉其余会话：改密通常因为怀疑泄露，其他设备不应继续持有旧会话 */
+	cur := sessionFrom(r)
+	auth.mu.Lock()
+	for tok := range auth.sessions {
+		if tok != cur {
+			delete(auth.sessions, tok)
+		}
+	}
+	auth.mu.Unlock()
+	clearLoginFail(ip)
+	writeJSON(w, map[string]interface{}{"ok": true, "msg": "密码已更新；其他设备的会话已失效"})
+}
+
 // isAuthEndpoint 报告路径是否属于无需登录的鉴权端点。
 func isAuthEndpoint(p string) bool {
 	return p == "/api/setup" || p == "/api/login" || p == "/api/logout" ||
