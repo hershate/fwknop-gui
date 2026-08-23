@@ -4143,8 +4143,11 @@ function renderProfiles() {
       diffHtml = renderDiff(v.fwknopd_conf, (S.config && S.config.raw) || '');
     } catch (e) { diffHtml = '<div class="hint">差异预览不可用（不影响切换）</div>'; }
     b.disabled = false;
+    /* 与当前完全一致时提前说明：确认切换仅触发备份+热加载，无实际配置变更 */
+    const noDiff = diffHtml.indexOf('与当前配置完全一致') >= 0;
     openModal(`<h3>切换到方案「${esc(name)}」</h3>
       <div class="hint" style="margin-bottom:10px">流程：校验方案配置 → 备份当前配置（.bak-时间戳）→ 替换 fwknopd.conf 与 access.conf → 热加载。</div>
+      ${noDiff ? `<div class="warn-strip" style="margin-bottom:10px">${icon('i-info',15)}<div>该方案与当前配置 <b>完全一致</b>，确认切换仅会触发备份与热加载，无实际配置变更。</div></div>` : ''}
       <div class="form-sec">与当前配置的差异（fwknopd.conf）</div>
       <div style="max-height:34vh;overflow:auto">${diffHtml}</div>
       <div class="mf">
