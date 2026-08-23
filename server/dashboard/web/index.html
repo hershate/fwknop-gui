@@ -2993,7 +2993,7 @@ function renderEvents() {
       const fresh9 = S.evFresh && S.evFresh.has([e.time, e.event, e.user || '', e.src_ip || '', e.device_id || '',
         e.spa_port || 0, e.target_port || 0, e.stanza ?? '', e.reason || ''].join('|'));
       return `<tr class="ev-click${BAD_EVTS.includes(e.event) ? ' ev-bad' : ''}${fresh9 ? ' ev-fresh' : ''}" data-key="${esc(key)}" tabindex="0" role="button" aria-expanded="${open?'true':'false'}" title="点击或 Enter 展开/收起完整详情">
-        <td class="mono tmtoggle" title="点击切换相对/绝对时间" style="white-space:nowrap;color:var(--muted);cursor:pointer">${S.evTimeAbs ? fmtAbs(e.time) : fmtAgo(e.time)}</td>
+        <td class="mono tmtoggle" title="${S.evTimeAbs ? '相对：' + fmtAgo(e.time) : fmtAbs(e.time)} · 点击切换时间制式" style="white-space:nowrap;color:var(--muted);cursor:pointer">${S.evTimeAbs ? fmtAbs(e.time) : fmtAgo(e.time)}</td>
         <td><span class="badge ${m.cls}">${m.label}</span></td>
         <td>${e.user ? `<span class="cp-cell" data-cp="${esc(e.user)}" title="点击复制用户名">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" data-lk="user" title="查看该用户的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
         <td class="mono">${e.device_id ? `<span class="cp-cell" data-cp="${esc(e.device_id)}" title="点击复制完整指纹：${esc(e.device_id)}">${esc(e.device_id.slice(0,14))}…</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" data-lk="dev" title="查看该设备的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
