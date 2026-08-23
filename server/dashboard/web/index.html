@@ -399,6 +399,8 @@ body.users-dense #users-body .card .body { padding-bottom:6px; }
 }
 .toast.ok { border-left-color:var(--green); }
 .toast.err { border-left-color:var(--red); }
+/* 长路径/无空格报错文本不撑破 max-width：flex 子项需 min-width:0 才允许收缩换行 */
+.toast > div { min-width:0; overflow-wrap:anywhere; }
 @keyframes slidein { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:none; } }
 .toast .x { margin-left:auto; cursor:pointer; color:var(--faint); border:0; background:none; font-size:15px; padding:0; }
 .toast .tn { font-size:11px; color:var(--accent); font-weight:700; margin-left:4px; }
@@ -411,6 +413,8 @@ body.users-dense #users-body .card .body { padding-bottom:6px; }
 .modal {
   background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
   box-shadow:var(--shadow); width:min(460px,92vw); padding:22px 24px;
+  /* 短屏（横屏手机/矮窗口）兜底：内容再高也不溢出视口，内部滚动 */
+  max-height:92vh; overflow-y:auto;
   animation:fadeup .22s cubic-bezier(.3,.7,.4,1);
 }
 .modal h3 { margin:0 0 8px; font-size:15.5px; }
