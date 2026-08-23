@@ -7,6 +7,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -30,6 +31,16 @@ type AuditEvent struct {
 
 var auditMu sync.Mutex
 
+/* 审计尾读增量缓存：原实现每次调用全量读取并解析整个审计文件再截取尾部，
+   文件随运行膨胀（概览状态卡自己都会提示「>200MB 拖慢事件页」）后，每次
+   轮询都是 O(文件大小) 的 IO+JSON 解析。改为记录文件偏移只读增量：
+   常态轮询（无新事件）零解析，有事件只解析新增行。 */
+var auditTailCache struct {
+	off  int64        // 已消费到的文件偏移（最后一个完整行之后）
+	tail []AuditEvent // 尾部事件缓存（容量 nMax）
+	nMax int          // 缓存容量，取历史调用 n 的最大值
+}
+
 // readAuditTail returns the last n audit events (oldest first).
 func readAuditTail(n int) []AuditEvent {
 	auditMu.Lock()
@@ -39,23 +50,55 @@ func readAuditTail(n int) []AuditEvent {
 		return nil
 	}
 	defer f.Close()
-	var all []AuditEvent
-	sc := bufio.NewScanner(f)
-	sc.Buffer(make([]byte, 0, 1024), 1024*1024)
-	for sc.Scan() {
-		line := strings.TrimSpace(sc.Text())
-		if line == "" {
-			continue
+	st, err := f.Stat()
+	if err != nil {
+		return nil
+	}
+	size := st.Size()
+	c := &auditTailCache
+	/* 文件被截断/轮转（面板「清理审计日志」、外部 logrotate）：偏移悬空，
+	   从零重建缓存 */
+	if size < c.off {
+		c.off, c.tail = 0, nil
+	}
+	/* 调用方要更大的 n 时缓存容量不足，扩容重建（一次性全量读） */
+	if n > c.nMax {
+		c.off, c.tail, c.nMax = 0, nil, n
+	}
+	if _, err := f.Seek(c.off, io.SeekStart); err != nil {
+		c.off, c.tail = 0, nil
+		return nil
+	}
+	/* 逐行消费增量；fwknopd 可能正在写入（末尾半行）：只有读到 \n 的完整行
+	   才推进偏移——半行不消费，留待下次补齐后重读，防增量模式漏事件 */
+	br := bufio.NewReader(f)
+	var consumed int64
+	for {
+		line, rerr := br.ReadBytes('\n')
+		if rerr == nil { /* 完整行 */
+			consumed += int64(len(line))
+			if s := strings.TrimSpace(string(line)); s != "" {
+				var e AuditEvent
+				if json.Unmarshal([]byte(s), &e) == nil {
+					c.tail = append(c.tail, e)
+				}
+			}
 		}
-		var e AuditEvent
-		if json.Unmarshal([]byte(line), &e) == nil {
-			all = append(all, e)
+		if rerr != nil { /* io.EOF（含半行不消费）或读错误 */
+			break
 		}
 	}
-	if len(all) > n {
-		all = all[len(all)-n:]
+	c.off += consumed
+	/* 裁头保持容量；重新切片拷贝，避免底层数组随头指针滑动无限滞留旧事件 */
+	if len(c.tail) > c.nMax {
+		nt := make([]AuditEvent, c.nMax)
+		copy(nt, c.tail[len(c.tail)-c.nMax:])
+		c.tail = nt
 	}
-	return all
+	if len(c.tail) > n {
+		return c.tail[len(c.tail)-n:]
+	}
+	return c.tail
 }
 
 // parseMetrics reads the Prometheus text file into a map[counter]value.
