@@ -1636,6 +1636,16 @@ function tickUptime() {
   $('#svc-uptime').textContent =
     `已运行 ${fmtDur(Date.now()/1000 - S.daemonStarted)} · 启动于 ${fmtAbs(S.daemonStarted)}`;
 }
+/* 秒值人性化（整数倍才换算，否则返回 null 保持原样）：86400→1 天 */
+function fmtSecs(v) {
+  const s = String(v == null ? '' : v).trim();
+  if (!/^\d+$/.test(s)) return null;
+  const n = +s;
+  if (n >= 86400 && n % 86400 === 0) return (n / 86400) + ' 天';
+  if (n >= 3600 && n % 3600 === 0) return (n / 3600) + ' 小时';
+  if (n >= 60 && n % 60 === 0) return (n / 60) + ' 分钟';
+  return null;
+}
 setInterval(tickUptime, 1000);
 
 /* 会话剩余时间：每 30 秒刷新；不足 30 分钟时琥珀色预警 */
@@ -2366,7 +2376,7 @@ function stanzaBadges(s) {
   if (s.has_hmac) b.push('<span class="tag hl">HMAC</span>');
   if (s.has_totp) b.push(`<span class="tag hl">TOTP 跳变 ${esc(s.port_range||'')}</span>`);
   if (s.require_fingerprint && s.fingerprint_count > 0) b.push(`<span class="tag hl">指纹白名单 ×${s.fingerprint_count}</span>`);
-  else if (s.require_fingerprint) b.push(`<span class="tag hl">TOFU 首用绑定（${s.tofu_timeout > 0 ? s.tofu_timeout + 's' : '默认 86400s'}）</span>`);
+  else if (s.require_fingerprint) b.push(`<span class="tag hl">TOFU 首用绑定（${s.tofu_timeout > 0 ? (fmtSecs(s.tofu_timeout) || s.tofu_timeout + ' 秒') : '默认 1 天'}）</span>`);
   if (s.require_totp_port_match) b.push('<span class="tag hl">端口因子校验</span>');
   /* TOFU 绑定计数：stanza_key = SOURCE|用户名|开放端口（同 server/access.c tofu_stanza_key） */
   const n = tofuBindCount(s);
@@ -2451,7 +2461,7 @@ function renderUsers() {
           <div><div class="hint">来源限制（SOURCE）</div><div class="mono">${esc(s.source)||'—'}</div></div>
           <div><div class="hint">要求用户名</div><div class="mono">${esc(s.require_username)||'不校验'}</div></div>
           <div><div class="hint">开放端口</div><div class="mono">${esc(s.open_ports)||'按包内请求'}</div></div>
-          <div><div class="hint">访问超时</div><div class="mono">${esc(s.fw_access_timeout)||'默认 30'} 秒</div></div>
+          <div><div class="hint">访问超时</div><div class="mono">${esc(s.fw_access_timeout)||'默认 30'} 秒${fmtSecs(s.fw_access_timeout) ? ` <span class="hint">（${fmtSecs(s.fw_access_timeout)}）</span>` : ''}</div></div>
         </div>
         <div>${stanzaBadges(s)}</div>
         ${lastEventForUser(s)}
