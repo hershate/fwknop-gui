@@ -1740,13 +1740,20 @@ function tickSessTtl() {
     S.sessWarned = true;
     toast('会话将在 5 分钟内过期，请完成当前操作后重新登录', 'err');
   }
-  if (left <= 0) { el.style.display = ''; el.textContent = '会话已过期，请重新登录'; el.style.color = 'var(--red)'; return; }
+  if (left <= 0) { el.style.display = ''; el.textContent = '会话已过期，点击重新登录'; el.style.color = 'var(--red)'; return; }
   el.style.display = '';
   el.style.color = left < 1800 ? 'var(--amber)' : '';
   el.textContent = `会话剩余 ${left >= 3600 ? Math.floor(left/3600) + ' 小时 ' : ''}${Math.ceil(left % 3600 / 60)} 分钟`;
 }
 setInterval(tickSessTtl, 30000);
 tickSessTtl();
+/* 会话过期后红字即按钮：点击直达登录页（无需先找注销按钮）；未过期时点击无效 */
+$('#sess-ttl').style.cursor = 'pointer';
+$('#sess-ttl').title = '会话过期后点击此处重新登录';
+$('#sess-ttl').onclick = () => {
+  if (!S.sessionExp || S.sessionExp - Date.now() / 1000 > 0) return;
+  $('#logout-btn').click();  /* 复用注销链路：清服务端会话 + 回登录页 */
+};
 
 /* ==================== 概览 ==================== */
 async function loadOverview() {
