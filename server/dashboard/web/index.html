@@ -1046,6 +1046,11 @@ function toast(msg, kind, ms) {
      内的用户名，网络可控），innerHTML 拼接存在 HTML 注入面 */
   const txt = document.createElement('div');
   txt.textContent = msg;
+  /* 点击正文复制内容：报错文本（预检输出/服务端错误）常需贴进工单，
+     手选易误触关闭；复制不改变关闭语义（✕ 仍负责关闭） */
+  txt.style.cursor = 'copy';
+  txt.title = '点击复制该通知内容';
+  txt.onclick = () => copyText(msg, '通知内容 ');
   el.appendChild(txt);
   const xbtn = document.createElement('button');
   xbtn.className = 'x';
