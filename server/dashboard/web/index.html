@@ -2474,6 +2474,7 @@ function renderUsers() {
         </div>
         <div class="tools">${S.writeEnabled ?
           `<button class="btn ghost small" data-edit="${s.index}">${icon('i-pencil',13)}编辑</button>
+           <button class="btn ghost small" data-dup="${s.index}" title="按该授权的安全选项预填签发表单（名称留空待填）">${icon('i-copy',13)}签发类似</button>
            <button class="btn ghost small" data-rm="${esc(name)}">${icon('i-trash',13)}撤销</button>` : ''}</div>
       </div>
       <div class="body" style="padding-top:6px">
@@ -2491,6 +2492,28 @@ function renderUsers() {
   }).join('') + disHtml;
   }
   $$('#users-body [data-edit]').forEach(b => b.onclick = () => openStanzaEditor(+b.dataset.edit));
+  /* 签发类似：按现有授权的安全选项预填签发表单，名称留空聚焦待填 */
+  $$('#users-body [data-dup]').forEach(b => b.onclick = () => {
+    const s = ((S.users && S.users.stanzas) || []).find(x => x.index === +b.dataset.dup);
+    if (!s) return;
+    if ($('#add-card').style.display === 'none') $('#show-add').click();
+    const f = $('#add-form');
+    f.name.value = '';
+    f.access.value = s.open_ports || '';
+    f.user.value = s.require_username || '';
+    f.totp.checked = !!s.port_range;
+    f['port-range'].value = s.port_range || '';
+    f['require-fingerprint'].checked = !!s.require_fingerprint;
+    f['tofu-timeout'].value = s.tofu_timeout > 0 ? String(s.tofu_timeout) : '';
+    f['fw-timeout'].value = s.fw_access_timeout || '';
+    f['require-totp-port-match'].checked = !!s.require_totp_port_match;
+    syncTotpFields();
+    ['name','access','user','port-range','tofu-timeout','fw-timeout'].forEach(n =>
+      f[n] && f[n].dispatchEvent(new Event('input')));  /* 联动校验 + 芯片高亮 + 草稿 */
+    saveAddDraft();
+    toast('已按该授权预填，请填写新名称', 'ok');
+    f.name.focus();
+  });
   $$('#users-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, '授权名称 '));
   /* 最近事件按钮：直达事件页该用户筛选 */
   $$('#users-body [data-tofu-q]').forEach(b => b.onclick = () => {
