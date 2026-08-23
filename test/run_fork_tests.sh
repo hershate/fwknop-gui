@@ -398,6 +398,17 @@ if [ -x "$GOBIN" ]; then
             && ok "方案列表" || bad "方案列表"
         wget -qO- --header="$TK" 'http://127.0.0.1:18099/api/profiles/view?name=p1' 2>/dev/null | grep -q '已掩码' \
             && ok "方案预览掩码密钥" || bad "方案预览"
+        # 方案另存副本：成功 → 列表可见；重名被拒绝；清理副本
+        wget -qO- --post-data '{"name":"p1","target":"p1b"}' --header="$HDR" --header="$J" \
+            http://127.0.0.1:18099/api/profiles/duplicate 2>/dev/null | grep -q '已另存副本' \
+            && ok "方案另存副本" || bad "方案另存副本"
+        wget -qO- --header="$TK" http://127.0.0.1:18099/api/profiles 2>/dev/null | grep -q '"name":"p1b"' \
+            && ok "副本出现在方案列表" || bad "副本列表缺失"
+        wget -qO- --post-data '{"name":"p1","target":"p1b"}' --header="$HDR" --header="$J" \
+            http://127.0.0.1:18099/api/profiles/duplicate 2>/dev/null | grep -q '已存在' \
+            && ok "副本重名被拒绝" || bad "副本重名防护"
+        wget -qO- --post-data '{"name":"p1b"}' --header="$HDR" --header="$J" \
+            http://127.0.0.1:18099/api/profiles/delete >/dev/null 2>&1
         wget -qO- --post-data '{"name":"p1"}' --header="$HDR" --header="$J" \
             http://127.0.0.1:18099/api/profiles/apply 2>/dev/null | grep -q '已切换到方案' \
             && ok "方案应用" || bad "方案应用"

@@ -536,14 +536,15 @@ func handleProfileView(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, v)
 }
 
-// handleProfileOp: JSON {name, note?}；action 取自 URL 末段。
+// handleProfileOp: JSON {name, note?, target?}；action 取自 URL 末段。
 func handleProfileOp(w http.ResponseWriter, r *http.Request) {
 	if !requirePost(w, r) {
 		return
 	}
 	var req struct {
-		Name string `json:"name"`
-		Note string `json:"note"`
+		Name   string `json:"name"`
+		Note   string `json:"note"`
+		Target string `json:"target"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
 		http.Error(w, "缺少方案名", http.StatusBadRequest)
@@ -564,6 +565,15 @@ func handleProfileOp(w http.ResponseWriter, r *http.Request) {
 		err = deleteProfile(req.Name)
 		if err == nil {
 			out = "方案「" + req.Name + "」已删除"
+		}
+	case "duplicate":
+		if req.Target == "" {
+			http.Error(w, "缺少副本名", http.StatusBadRequest)
+			return
+		}
+		err = duplicateProfile(req.Name, req.Target)
+		if err == nil {
+			out = "已另存副本「" + req.Target + "」"
 		}
 	default:
 		http.Error(w, "未知的方案操作", http.StatusNotFound)

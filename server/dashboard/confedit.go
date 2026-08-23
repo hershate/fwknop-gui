@@ -524,3 +524,52 @@ func deleteProfile(name string) error {
 	}
 	return os.RemoveAll(profileDir(name))
 }
+
+// duplicateProfile 把既有方案完整复制为新方案（不动当前生效配置），
+// 便于「在 xx 方案基础上改一版」的常见变体工作流；目标名已存在时拒绝，
+// 避免静默覆盖他人方案。
+func duplicateProfile(name, target string) error {
+	if err := checkProfileName(name); err != nil {
+		return err
+	}
+	if err := checkProfileName(target); err != nil {
+		return err
+	}
+	if target == name {
+		return fmt.Errorf("副本名与原方案相同")
+	}
+	src := profileDir(name)
+	for _, f := range []string{"fwknopd.conf", "access.conf"} {
+		if _, err := os.Stat(filepath.Join(src, f)); err != nil {
+			return fmt.Errorf("原方案缺少 %s", f)
+		}
+	}
+	dst := profileDir(target)
+	if _, err := os.Stat(dst); err == nil {
+		return fmt.Errorf("方案「%s」已存在", target)
+	}
+	if err := os.MkdirAll(dst, 0700); err != nil {
+		return err
+	}
+	for _, f := range []string{"fwknopd.conf", "access.conf"} {
+		if err := copyFile(filepath.Join(src, f), filepath.Join(dst, f)); err != nil {
+			os.RemoveAll(dst) // 半途而废不留残缺方案
+			return err
+		}
+	}
+	/* 备注继承原方案并标注来源；创建时间取副本时刻 */
+	note := ""
+	if data, err := os.ReadFile(filepath.Join(src, "meta.json")); err == nil {
+		var m ProfileMeta
+		if json.Unmarshal(data, &m) == nil {
+			note = m.Note
+		}
+	}
+	if note != "" {
+		note += "；"
+	}
+	note += "副本自「" + name + "」"
+	meta := ProfileMeta{Name: target, Note: note, Created: time.Now().Unix()}
+	data, _ := json.MarshalIndent(meta, "", "  ")
+	return os.WriteFile(filepath.Join(dst, "meta.json"), data, 0600)
+}

@@ -5174,6 +5174,7 @@ function renderProfiles() {
           <button class="btn ghost small" data-pv="${esc(p.name)}" title="预览方案内容及其与当前配置的差异（密钥已掩码，只读不改动）">${icon('i-list',13)}预览</button>
           ${S.writeEnabled ? `
           <button class="btn small" data-pa="${esc(p.name)}" title="应用该方案：预检 → 备份当前配置（.bak-时间戳）→ 替换 → 热加载；确认框内可见完整差异">${icon('i-play',13)}应用</button>
+          <button class="btn ghost small" data-pdup="${esc(p.name)}" title="把该方案完整复制为一个新方案（不动当前生效配置），便于在其基础上做变体">${icon('i-copy',13)}另存副本</button>
           <button class="btn ghost small" data-pd="${esc(p.name)}" title="删除该方案文件（不影响当前生效配置）">${icon('i-trash',13)}删除</button>` : ''}
         </div>
       </div>
@@ -5230,6 +5231,43 @@ function renderProfiles() {
         if (r.error) { toast('切换失败（配置未变）', 'err'); infoModal('方案切换 — 失败', r.output + '\n' + r.error, true); }
         else { toast(`已切换到方案「${esc(name)}」`, 'ok'); infoModal('方案切换 — 完成', r.output); loadConfig(); loadUsers(); loadProfiles(); loadOverview(); }
       } catch (e) {}
+    };
+  });
+  /* 另存副本：预填「原名-副本」，查重即时提示；确认后走 duplicate 端点 */
+  $$('#profiles-body [data-pdup]').forEach(b => b.onclick = () => {
+    const name = b.dataset.pdup;
+    openModal(`<h3>方案「${esc(name)}」另存副本</h3>
+      <div class="mb hint">完整复制 fwknopd.conf 与 access.conf 快照为新方案，不动当前生效配置；备注自动标注来源。</div>
+      <div class="fg"><label>副本名称</label>
+        <input class="ctl" id="pdup-name" value="${esc(name)}-副本" maxlength="64" style="width:100%">
+        <div class="auth-hint" id="pdup-hint"></div>
+        <div class="tip">只能包含字母、数字、点、下划线、连字符；已存在的名称会被拒绝（不覆盖）。</div></div>
+      <div class="mf"><button class="btn ghost" id="pdup-cancel">取消</button>
+      <button class="btn" id="pdup-ok">另存副本</button></div>`);
+    const inp = $('#pdup-name'), hint = $('#pdup-hint'), ok = $('#pdup-ok');
+    inp.focus(); inp.select();
+    const check = () => {
+      const v = inp.value.trim();
+      const bad = v && !/^[A-Za-z0-9._-]{1,64}$/.test(v);
+      const dup = S.profiles && ((S.profiles.profiles) || []).some(p => p.name === v);
+      hint.textContent = !v ? '' : bad ? '名称含非法字符' : dup ? '已存在同名方案' : '';
+      hint.style.color = 'var(--red)';
+      ok.disabled = !v || bad || dup;
+    };
+    inp.addEventListener('input', check);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !ok.disabled) ok.click(); });
+    check();
+    $('#pdup-cancel').onclick = () => closeModal();
+    ok.onclick = async () => {
+      if (ok.disabled) return;
+      ok.disabled = true;
+      try {
+        const r = await api('/api/profiles/duplicate', { method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ name, target: inp.value.trim() }) });
+        if (r.error) { toast('另存副本失败：' + esc(r.error), 'err'); ok.disabled = false; }
+        else { closeModal(); toast(r.output || '副本已创建', 'ok'); loadProfiles(); }
+      } catch (e) { ok.disabled = false; }
     };
   });
   $$('#profiles-body [data-pd]').forEach(b => b.onclick = () => {
