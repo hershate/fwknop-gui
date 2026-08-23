@@ -618,13 +618,13 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               </div>
             </div>
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-              <button class="btn" id="svc-start" style="background:var(--green)"><svg width="15" height="15"><use href="#i-play"/></svg>启动</button>
-              <button class="btn danger" id="svc-stop"><svg width="15" height="15"><use href="#i-stop"/></svg>停止</button>
-              <button class="btn ghost" id="svc-restart"><svg width="15" height="15"><use href="#i-refresh"/></svg>重启</button>
-              <button class="btn ghost" id="svc-reload"><svg width="15" height="15"><use href="#i-bolt"/></svg>热加载</button>
+              <button class="btn" id="svc-start" style="background:var(--green)" title="启动 fwknopd（启动前强制配置预检）"><svg width="15" height="15"><use href="#i-play"/></svg>启动</button>
+              <button class="btn danger" id="svc-stop" title="停止 fwknopd：敲门不再被处理，已放行规则按超时过期"><svg width="15" height="15"><use href="#i-stop"/></svg>停止</button>
+              <button class="btn ghost" id="svc-restart" title="先停后启（启动前预检），期间敲门中断数秒"><svg width="15" height="15"><use href="#i-refresh"/></svg>重启</button>
+              <button class="btn ghost" id="svc-reload" title="SIGHUP 热加载配置，不中断进程"><svg width="15" height="15"><use href="#i-bolt"/></svg>热加载</button>
               <span style="flex:0 0 8px"></span>
-              <button class="btn ghost" id="svc-validate"><svg width="15" height="15"><use href="#i-check"/></svg>校验配置</button>
-              <button class="btn ghost" id="svc-fwlist"><svg width="15" height="15"><use href="#i-list"/></svg>防火墙规则</button>
+              <button class="btn ghost" id="svc-validate" title="fwknopd --exit-parse-config 预检当前配置，不落盘不改状态"><svg width="15" height="15"><use href="#i-check"/></svg>校验配置</button>
+              <button class="btn ghost" id="svc-fwlist" title="查看当前防火墙放行规则（fwknopd --fw-list，需 root）"><svg width="15" height="15"><use href="#i-list"/></svg>防火墙规则</button>
             </div>
             <div class="hint" id="svc-hint" style="margin-top:10px"></div>
           </div>
