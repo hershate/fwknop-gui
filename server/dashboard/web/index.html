@@ -983,6 +983,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               <button type="button" class="tpl-chip" data-ctpl="totp">TOTP 端口跳变监听</button>
               <button type="button" class="tpl-chip" data-ctpl="udp">UDP 监听模式</button>
               <button type="button" class="tpl-chip" data-ctpl="nfq">NFQ 抓包模式</button>
+              <button type="button" class="tpl-chip" data-ctpl="spahttp">SPA over HTTP</button>
               <button type="button" class="tpl-chip" data-ctpl="noaudit">关闭审计输出</button>
             </div>
             <div class="tpl-desc" id="conf-tpl-desc"></div>
@@ -5405,6 +5406,13 @@ const CONF_TEMPLATES = {
        队列号默认 1（须与 iptables NFQUEUE 规则一致） */
     desc: '改用 NFQ（Netfilter Queue）抓包：大端口范围监听性能最佳，配合 TOTP 跳变推荐。仅需开启此开关；队列号默认 1，须与 iptables NFQUEUE 规则一致。',
     lines: [['ENABLE_NFQ_CAPTURE', 'Y']],
+  },
+  spahttp: {
+    /* incoming_spa.c:100-136 已核实：识别 GET / 请求中的 SPA 数据；UA 校验
+       （ALLOW_ANY_USER_AGENT 默认 N）要求 User-Agent 以 Fwknop 开头——不放宽；
+       XFF 仅接受 IPv4。不替用户动 PCAP_FILTER：显式过滤器会顶掉既有 UDP 抓包 */
+    desc: '允许 SPA 包封装进 HTTP GET 请求（穿透只放行 80/443 外出的严格出口防火墙）。仅开两个开关：抓包侧需自行覆盖 80/TCP（调 PCAP_FILTER 或抓包范围，本模板不动以免顶掉现有 UDP 监听）；客户端 UA 须以 Fwknop 开头（默认校验保持开启）；经反向代理时从 X-Forwarded-For 取真实来源（仅 IPv4）。',
+    lines: [['ENABLE_SPA_OVER_HTTP', 'Y'], ['ENABLE_X_FORWARDED_FOR', 'Y']],
   },
 };
 /* 快速模板芯片：hover/聚焦预览改动说明（与签发卡片模板同一交互），点击合并填充 */
