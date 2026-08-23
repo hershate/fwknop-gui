@@ -3194,7 +3194,8 @@ $('#ev-csv').onclick = async () => {
   /* 授权索引旁补名称列：序号对外分享时不直观；用户数据未加载先懒加载（失败则留空） */
   if (!S.users) { try { await loadUsers(); } catch (e) {} }
   const stzName = n => { const s = ((S.users && S.users.stanzas) || []).find(x => x.index === n); return s ? (s.name || '') : ''; };
-  const cell = v => { v = String(v ?? ''); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  /* RFC 4180：字段含逗号/引号/CR/LF 任一即需整体加引号（\r 漏网会让 Excel 断行错位） */
+  const cell = v => { v = String(v ?? ''); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
   const head = ['时间', '事件', '事件中文', '用户', '设备指纹', '来源IP', 'SPA端口', '目标端口', '授权索引', '授权名称', '原因', '原因中文'];
   /* 时间列用 sv-SE 本地格式（YYYY-MM-DD HH:MM:SS）：Excel/WPS 直接识别为时间
      可排序可透视，zh-CN 的「2026/8/23」斜杠格式常被当文本 */
@@ -3213,7 +3214,9 @@ $('#ev-csv').onclick = async () => {
   a.download = 'fwknop_events_' + (tag ? tag + '_' : '') +
     new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.csv';
   a.click();
-  URL.revokeObjectURL(a.href);
+  /* 延迟回收 blob URL（与 cred.json 下载同款 5s）：部分浏览器异步开始下载，
+     立即 revoke 会偶发下载失败 */
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   /* 缓存截断时提示：CSV 只含缓存内最近 500 条，完整历史用「导出原始」 */
   const capped = (S.events || []).length >= 500;
   toast(`已导出 ${evs.length} 条事件` + (capped ? '（仅缓存内最近 500 条；完整历史请用「导出原始」）' : ''), 'ok', capped ? 6000 : 3000);
