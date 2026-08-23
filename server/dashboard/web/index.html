@@ -2103,7 +2103,11 @@ $('#conn-box').onclick = () => { refreshNow(); toast('正在刷新…', 'ok', 12
 /* 按当前页面决定拉取哪些数据 */
 function refreshNow() {
   S.nextTry = Date.now() + S.ivl;  /* 供断连倒计时显示 */
-  setConn(true);
+  /* 本轮失败基数：恢复判定以「本轮无新增失败」为准（见 allSettled 回调）——
+     旧实现起手乐观 setConn(true)，宕机期间每轮重试都先误报「连接已恢复」toast、
+      conn-text 假绿再被打回异常；且失败计数被周期清零，单任务页面（关于页仅
+     oplog）永远攒不到断连阈值，宕机时全程假绿 */
+  const fail0 = connFail;
   const jobs = [loadOverview()];
   if (S.page === 'overview') jobs.push(loadMetrics(), loadEvents());
   if (S.page === 'events') jobs.push(loadEvents());
@@ -2113,6 +2117,10 @@ function refreshNow() {
   if (S.page === 'profiles') jobs.push(loadProfiles());
   if (S.page === 'about') { renderAbout(); jobs.push(loadOpLog()); }
   return Promise.allSettled(jobs).then(() => {
+    /* 本轮无新增失败才宣告连接正常：稳态下每轮更新时间戳；真实恢复时刻才发
+       「连接已恢复」toast（setConn 内 wasBad 判定）；有新增失败则保持断连态，
+       断连倒计时 connTicker 继续走，不被假绿打断 */
+    if (connFail === fail0) setConn(true);
     /* 断连退避：连续失败时下次自动重试按 ivl×2ⁿ 递增（封顶 60s）——服务器宕机
        期间不再按原间隔打无效请求（错误日志噪音同步减少）；任意手动刷新（顶栏
        刷新钮/连接区点击/online 事件）会重置 nextTry 即清退避，恢复后回到原间隔 */
