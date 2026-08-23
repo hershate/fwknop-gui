@@ -4997,10 +4997,10 @@ function renderProfiles() {
           <div class="hint">${p.created ? `保存于 ${fmtAbs(p.created)}（${fmtAgo(p.created)}）` : ''}${p.note ? ' · ' + esc(p.note) : ''}</div></div>
         </div>
         <div class="tools">
-          <button class="btn ghost small" data-pv="${esc(p.name)}">${icon('i-list',13)}预览</button>
+          <button class="btn ghost small" data-pv="${esc(p.name)}" title="预览方案内容及其与当前配置的差异（密钥已掩码，只读不改动）">${icon('i-list',13)}预览</button>
           ${S.writeEnabled ? `
-          <button class="btn small" data-pa="${esc(p.name)}">${icon('i-play',13)}应用</button>
-          <button class="btn ghost small" data-pd="${esc(p.name)}">${icon('i-trash',13)}删除</button>` : ''}
+          <button class="btn small" data-pa="${esc(p.name)}" title="应用该方案：预检 → 备份当前配置（.bak-时间戳）→ 替换 → 热加载；确认框内可见完整差异">${icon('i-play',13)}应用</button>
+          <button class="btn ghost small" data-pd="${esc(p.name)}" title="删除该方案文件（不影响当前生效配置）">${icon('i-trash',13)}删除</button>` : ''}
         </div>
       </div>
     </div>`).join('');
