@@ -1064,7 +1064,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               <option value="all">全部</option><option value="fail">仅看失败</option>
               <option value="acct">账户（登录/注销/改密）</option><option value="stanza">授权（签发/撤销/编辑等）</option>
               <option value="conf">配置与方案</option><option value="svc">服务与审计</option>
-            </select><a class="btn ghost small" id="oplog-dl" href="/api/oplog/download" download title="下载完整面板操作日志（JSONL，文件名带服务器时间戳）"><svg width="13" height="13"><use href="#i-download"/></svg>导出</a></div></div>
+            </select><button class="btn ghost small" id="oplog-csv" title="导出当前类别+搜索筛选结果为 CSV（范围为本页已加载的最近记录，Excel 可直接打开；完整历史用右侧 JSONL 导出）"><svg width="13" height="13"><use href="#i-download"/></svg>导出筛选</button><a class="btn ghost small" id="oplog-dl" href="/api/oplog/download" download title="下载完整面板操作日志（JSONL，文件名带服务器时间戳）"><svg width="13" height="13"><use href="#i-download"/></svg>导出</a></div></div>
           <div class="body" id="oplog-body"><div class="skel" style="height:60px"></div></div>
         </div>
         <div class="card">
@@ -1291,7 +1291,7 @@ $('#notif-btn').onclick = () => {
     const kindZh = k => k === 'err' ? '错误' : k === 'ok' ? '成功' : '信息';
     const lines = log.map(n => `[${fmtAbs(n.t)}] [${kindZh(n.kind)}] ${n.msg}${n.n > 1 ? `（×${n.n}）` : ''}`);
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\n') + '\n'], { type: 'text/plain;charset=utf-8' }));
+    a.href = URL.createObjectURL(new Blob(['\ufeff' + lines.join('\n') + '\n'], { type: 'text/plain;charset=utf-8' }));
     a.download = 'fwknop_notifications_' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.txt';
     document.body.appendChild(a); a.click(); a.remove();
     toast('已导出 ' + log.length + ' 条通知', 'ok', 2000);
@@ -5507,32 +5507,40 @@ async function loadOpLog() {
     showLoadError('#oplog-body', loadOpLog);
   }
 }
+/* 类别过滤口径单点化：renderOpLog 与「导出筛选」共用（同 filteredStanzas 模式）。
+   类别：爆破刷屏（锁定桶有界但持续尝试每天仍可观）时真实操作不被淹没；
+   「仅看失败」聚焦被拒/失败动作，排查爆破与误操作的第一入口 */
+function oplogCat(op) {
+  if (/^(登录|注销|初始化面板|修改密码)/.test(op)) return 'acct';
+  if (/^(签发|撤销|恢复|编辑授权|重发授权|解绑)/.test(op)) return 'stanza';
+  if (/^(保存 fwknopd\.conf|方案：)/.test(op)) return 'conf';
+  return 'svc';  /* 服务控制：* / 清理审计日志 / 删除审计备份 */
+}
+/* 当前类别+搜索过滤后的记录（新→旧，与列表渲染同序）；未加载返回空数组 */
+function filteredOpLog() {
+  const d = S.oplog; if (!d) return [];
+  const all = (d.entries || []).slice().reverse();
+  const f = S.oplogFilter || 'all';
+  const q = (S.oplogQuery || '').toLowerCase();
+  const matchQ = e => !q || (e.op || '').toLowerCase().includes(q) ||
+    (e.detail || '').toLowerCase().includes(q) || (e.ip || '').toLowerCase().includes(q);
+  return (f === 'all' ? all : (f === 'fail' ? all.filter(e => !e.ok) : all.filter(e => oplogCat(e.op) === f))).filter(matchQ);
+}
 function renderOpLog() {
   try { localStorage.setItem('fwknop-oplog-query', S.oplogQuery || ''); } catch (e) {}
   const d = S.oplog; if (!d) return;
   const all = (d.entries || []).slice().reverse();  /* 新→旧，与事件页同向 */
-  /* 类别过滤：爆破刷屏（锁定桶有界但持续尝试每天仍可观）时真实操作不被
-     淹没；「仅看失败」聚焦被拒/失败动作，排查爆破与误操作的第一入口 */
-  const catOf = op => {
-    if (/^(登录|注销|初始化面板|修改密码)/.test(op)) return 'acct';
-    if (/^(签发|撤销|恢复|编辑授权|重发授权|解绑)/.test(op)) return 'stanza';
-    if (/^(保存 fwknopd\.conf|方案：)/.test(op)) return 'conf';
-    return 'svc';  /* 服务控制：* / 清理审计日志 / 删除审计备份 */
-  };
   const f = S.oplogFilter || 'all';
-  /* 自由文本搜索（操作/详情/来源 IP 子串）：与类别过滤叠加。审计问询
-     「谁何时从何 IP 做了什么」逐行肉眼扫 100 条不现实；爆破排查定位来源
-     IP 也是第一动作 */
   const q = (S.oplogQuery || '').toLowerCase();
-  const matchQ = e => !q || (e.op || '').toLowerCase().includes(q) ||
-    (e.detail || '').toLowerCase().includes(q) || (e.ip || '').toLowerCase().includes(q);
-  const es = (f === 'all' ? all : (f === 'fail' ? all.filter(e => !e.ok) : all.filter(e => catOf(e.op) === f))).filter(matchQ);
+  const es = filteredOpLog();
   const failN = all.filter(e => !e.ok).length;
   $('#oplog-sub').textContent = `管理面审计：签发 / 撤销 / 配置保存 / 服务控制 / 登录等 · 显示 ${es.length}/${all.length} 条` +
     (q ? `（搜索「${S.oplogQuery}」）` : '') +
     (failN ? ` · ${failN} 次失败` : '') + ` · 日志文件 ${fmtSize(d.size || 0)}`;
   const dl = $('#oplog-dl');
   if (dl) dl.style.display = d.size ? '' : 'none';  /* 空文件不提供无意义下载 */
+  const csvB = $('#oplog-csv');
+  if (csvB) csvB.style.display = all.length ? '' : 'none';  /* 无记录不提供空导出 */
   if (!es.length) {
     $('#oplog-body').innerHTML = all.length
       ? `<div class="empty">${icon('i-list',40)}<div class="t">${q ? '无匹配记录' : '该类别下暂无记录'}</div>
@@ -5571,6 +5579,37 @@ function renderOpLog() {
 $('#oplog-filter').onchange = e => { S.oplogFilter = e.target.value; renderOpLog(); };
 $('#oplog-search').oninput = e => { S.oplogQuery = e.target.value.trim(); renderOpLog(); };
 attachSearchHistory($('#oplog-search'), 'fwknop-hist-oplog');
+/* 导出当前类别+搜索筛选结果为 CSV：事件/授权/TOFU 三个列表都有筛选感知导出，
+   操作日志此前只有全量 JSONL——事故复盘筛出「登录失败」贴工单还要手 grep。
+   过滤语义与列表渲染共用 filteredOpLog()；时间列 sv-SE 本地格式（Excel 可排序） */
+$('#oplog-csv').onclick = () => {
+  const es = filteredOpLog();
+  const total = ((S.oplog && S.oplog.entries) || []).length;
+  if (!es.length) { toast(total ? '当前筛选无匹配记录可导出' : '暂无操作记录可导出', 'err'); return; }
+  /* RFC 4180：字段含逗号/引号/CR/LF 任一即需整体加引号 */
+  const cell = v => { v = String(v ?? ''); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  const catLab = { acct: '账户', stanza: '授权', conf: '配置与方案', svc: '服务与审计' };
+  const fmtCsvTime = t => new Date(t * 1000).toLocaleString('sv-SE');
+  const head = ['时间', '操作', '类别', '详情', '来源IP', '结果'];
+  const lines = es.map(e => [fmtCsvTime(e.time), e.op, catLab[oplogCat(e.op)] || oplogCat(e.op),
+    e.detail, e.ip, e.ok ? '成功' : '失败'].map(cell).join(','));
+  /* 加 BOM 以便表格软件正确识别 UTF-8 中文 */
+  const blob = new Blob(['\ufeff' + head.join(',') + '\n' + lines.join('\n')], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  /* 文件名携带筛选上下文（类别 + 搜索词），多文件并排可区分 */
+  const f = S.oplogFilter || 'all';
+  const tag = [f !== 'all' ? f : '', S.oplogQuery ? S.oplogQuery.replace(/[^\w.-]/g, '_').slice(0, 24) : '']
+    .filter(Boolean).join('_');
+  a.download = 'fwknop_oplog_' + (tag ? tag + '_' : '') +
+    new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.csv';
+  a.click();
+  /* 延迟回收 blob URL（与 ev-csv 同款 5s）：立即 revoke 偶发下载失败 */
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  toast(`已导出 ${es.length} 条操作记录` +
+    (f !== 'all' || S.oplogQuery ? '（当前筛选）' : '') +
+    (es.length < total ? `，窗口内共 ${total} 条` : ''), 'ok', 3000);
+};
 function renderAbout() {
   const d = S.overview;
   const F = (d && d.files) || {};
