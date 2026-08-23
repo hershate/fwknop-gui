@@ -2763,6 +2763,22 @@ function reasonZh(r) {
   return r;
 }
 
+/* 排障建议：与 reasonZh 平行的「下一步怎么办」知识库，仅事件详情展开时显示。
+   每条建议引用的指令/页面均在面板可达（CONF_META 收录 MAX_SPA_PACKET_AGE 等），
+   正常类事件（accepted/tofu_bound）无建议返回空 */
+function reasonTip(r) {
+  if (!r) return '';
+  if (r === 'replay_digest_hit') return '同一 SPA 包被重复投递：偶发多为网络重传（无害）；持续出现且来源可疑则可能是重放攻击——结合来源 IP 的全部事件判断';
+  if (r === 'fingerprint_required_but_missing') return '客户端协议过旧（v3 及更早）不支持设备指纹：升级客户端；或为旧客户端单独签发不带指纹要求的授权（安全降级，仅作过渡）';
+  if (r === 'device_id_not_in_whitelist') return '该设备未完成 TOFU 绑定：确认是本人设备后，可编辑授权设「TOFU 宽限期」让其下次敲门自动绑定；到 TOFU 绑定页可查看现有绑定';
+  if (r === 'tofu_grace_expired') return '宽限期已过，新设备不再自动绑定：编辑授权重新设置宽限期；或让用户改用已绑定设备敲门';
+  let mm = r.match(/^aged_(\d+)s$/);
+  if (mm) return '客户端与服务器时钟偏差过大：两端 NTP 对时即可解决；确需放宽可调整 MAX_SPA_PACKET_AGE（服务配置页「安全策略」组），但会同步放宽重放防护窗口';
+  mm = r.match(/^arrived=(\d+)_expected=(\d+)$/);
+  if (mm) return 'TOTP 端口跳变不一致：两端时钟须在同一 30 秒窗口内（NTP 对时）；且客户端凭证的 TOTP 种子须与该授权一致（凭证被替换/错用时会持续不匹配）';
+  return '';
+}
+
 function timeFilteredEvents() {
   let evs = S.events || [];
   if (S.evTime === 'custom') {
@@ -3077,6 +3093,7 @@ function renderEvents() {
           <div><div class="k" title="客户端请求放行的服务端口（须在授权 OPEN_PORTS 白名单内），敲门成功后防火墙放行该端口">目标端口</div><div class="v">${e.target_port?`<span class="cp-cell" data-portq="${e.target_port}" title="点击按目标端口 ${e.target_port} 筛选">${e.target_port}</span>`:'—'}</div></div>
           <div><div class="k">原因（原始）</div><div class="v">${e.reason?`<span class="cp-cell" data-cp="${esc(e.reason)}">${esc(e.reason)}</span>`:'—'}</div></div>
           <div><div class="k">原因（中文）</div><div class="v">${esc(reasonZh(e.reason))}</div></div>
+          ${(() => { const tip = reasonTip(e.reason); return tip ? `<div style="grid-column:1/-1"><div class="k">排障建议</div><div class="v" style="color:var(--muted)">${icon('i-info',13)} ${esc(tip)}</div></div>` : ''; })()}
           <div style="align-self:end"><button class="btn ghost small" data-evjson="${esc(key)}" title="复制该事件的完整 JSON（排障/上报用）">${icon('i-copy',12)} 复制原始 JSON</button>
           <button class="btn ghost small" data-evsum="${esc(key)}" title="复制一行中文摘要（聊天/工单用）">${icon('i-copy',12)} 复制摘要</button>
           ${e.time ? `<button class="btn ghost small" data-evctx="${e.time}" title="筛选该事件前后 5 分钟内的全部事件（还原现场上下文，可「↩ 上级视图」返回）">${icon('i-search',12)} 前后 5 分钟</button>` : ''}
