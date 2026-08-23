@@ -4990,7 +4990,8 @@ function openStanzaEditor(index) {
         ? `<label class="check-row"><input spellcheck="false" autocomplete="off" autocapitalize="off" type="checkbox" data-sf="${f.k}" ${f.get(s) ? 'checked' : ''} style="width:auto"> ${f.label}</label>`
         : `<label>${f.label}</label><input spellcheck="false" autocomplete="off" autocapitalize="off" data-sf="${f.k}" value="${esc(f.get(s) || '')}" placeholder="${esc(f.ph || '')}">
            ${f.chips ? `<div class="tpl-row" style="margin-top:5px">${f.chips.map(c =>
-             `<button type="button" class="tpl-chip" data-sfc="${f.k}" data-v="${esc(c[1] || '')}" title="点击填入该值，再点同值清除">${esc(c[0])}</button>`).join('')}</div>` : ''}`}
+             `<button type="button" class="tpl-chip" data-sfc="${f.k}" data-v="${esc(c[1] || '')}" title="点击填入该值，再点同值清除">${esc(c[0])}</button>`).join('')}</div>` : ''}
+           ${f.bool ? '' : `<div class="auth-hint" data-sfh="${f.k}"></div>`}`}
       <div class="tip">${esc(f.tip || '')}</div>
     </div>`).join('');
   openModal(`<h3>编辑授权「${esc(name)}」</h3>
@@ -5006,13 +5007,50 @@ function openStanzaEditor(index) {
   seSave.disabled = true;
   seSave.title = '尚未修改任何字段';
   const seMarkDirty = () => { seDirty = true; seSave.disabled = false; seSave.title = '保存并热加载生效（Ctrl/⌘+S）'; };
-  $('#modal-root').oninput = seMarkDirty;  /* oninput 赋值覆盖，重复打开不累积监听器 */
+  /* 输入即校验（与签发卡片同一 V 规则、同一 auth-hint 样式）：不必等到点保存
+     才发现格式错/端口重叠。保存时校验仍保留作双保险 */
+  const sePortSet = v => new Set(v.split(',').map(x => x.trim().toLowerCase()).filter(Boolean));
+  const seHint = (k, ok, txt) => {
+    const h = document.querySelector(`#modal-root [data-sfh="${k}"]`);
+    if (!h) return;
+    h.textContent = txt;
+    h.className = 'auth-hint' + (ok === null ? '' : (ok ? ' ok' : ' no'));
+  };
+  const seOverlapCheck = () => {
+    const openEl = document.querySelector('#modal-root [data-sf="OPEN_PORTS"]');
+    const rstEl = document.querySelector('#modal-root [data-sf="RESTRICT_PORTS"]');
+    if (!openEl || !rstEl) return;
+    const ov = openEl.value.trim(), rv = rstEl.value.trim();
+    if (!ov || !rv || !V.access(ov) || !V.access(rv)) return;  /* 格式错时由各自提示先行 */
+    const both = [...sePortSet(ov)].filter(p => sePortSet(rv).has(p));
+    if (both.length) seHint('RESTRICT_PORTS', false, `⚠ 端口 ${both.join('、')} 同时在开放列表中：禁止优先，开放项不生效`);
+  };
+  const seLiveCheck = el => {
+    if (!el || !el.dataset || !el.dataset.sf || el.type === 'checkbox') return;
+    const k = el.dataset.sf, v = el.value.trim();
+    if (!v) { seHint(k, null, ''); if (k === 'OPEN_PORTS' || k === 'RESTRICT_PORTS') seOverlapCheck(); return; }
+    if (k === 'OPEN_PORTS' || k === 'RESTRICT_PORTS') {
+      if (!V.access(v)) { seHint(k, false, '✗ 格式应为 tcp/22 或 tcp/22,udp/53（端口 1-65535）'); return; }
+      seHint(k, true, '✓ 格式正确');
+      seOverlapCheck();
+    } else if (k === 'FW_ACCESS_TIMEOUT' || k === 'MAX_FW_TIMEOUT' || k === 'FINGERPRINT_TOFU_TIMEOUT') {
+      seHint(k, V.tofuto(v), V.tofuto(v) ? '✓ 有效' : '✗ 需为 1-8388608 的整数秒');
+    } else if (k === 'TOTP_PORT_RANGE') {
+      const m = v.match(/^(\d{1,5})-(\d{1,5})$/);
+      if (!(m && +m[1] >= 1 && +m[2] <= 65535 && +m[1] < +m[2])) { seHint(k, false, '✗ 格式应为 30000-60000（1-65535，起 < 止）'); return; }
+      /* S.config 未加载时 rangePcapConflict 返回 null，跨配置检查自然降级为仅格式 */
+      const sv = rangePcapConflict(v);
+      seHint(k, !sv, sv ? `✗ 超出服务端监听范围 ${sv}（PCAP_PORT_RANGE），范围外敲门无法被捕获` : '✓ 范围有效');
+    }
+  };
+  $('#modal-root').oninput = ev => { seMarkDirty(); seLiveCheck(ev.target); };  /* oninput 赋值覆盖，重复打开不累积监听器 */
   /* 常用值芯片：与签发卡片同一交互（再点同值清除），点击计入脏标记 */
   $$('#modal-root [data-sfc]').forEach(c => c.onclick = () => {
     const inp = document.querySelector(`#modal-root [data-sf="${c.dataset.sfc}"]`);
     if (!inp) return;
     inp.value = (c.dataset.v && inp.value.trim() === c.dataset.v) ? '' : c.dataset.v;
     seMarkDirty();
+    seLiveCheck(inp);  /* 芯片改值不触发 input 事件，手动补实时校验 */
     inp.focus();
   });
   modalGuard = () => !seDirty || confirm('授权编辑有未保存的修改，确定丢弃吗？');
