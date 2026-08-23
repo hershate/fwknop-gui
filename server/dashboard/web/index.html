@@ -1816,6 +1816,12 @@ document.addEventListener('keydown', ev => {
       ev.target.dispatchEvent(new Event('input'));
     }
     else if (typing) ev.target.blur();
+    else {
+      /* 无弹窗且非输入状态：Esc 清空通知角。驻留的错误 toast 此前只能靠鼠标点 ✕
+         （键盘用户需遍历整页才能聚焦）；通知历史已留存全部记录，清空不可惜 */
+      const ts = $$('#toasts .toast');
+      if (ts.length) ts.forEach(t => t.remove());
+    }
     return;
   }
   /* Ctrl/⌘+S：配置编辑器打开时快捷保存（拦截浏览器「保存网页」）；
@@ -1875,7 +1881,7 @@ const KBD_HELP = [
   ['← / →', '事件页翻页'],
   ['Enter / 空格', '展开聚焦的事件行详情；钻取聚焦的时间分布柱'],
   ['Ctrl/⌘ + S', '保存服务配置 / 授权编辑弹窗（有改动时）'],
-  ['Esc', '关闭弹窗；搜索框中先清空内容、再按取消焦点'],
+  ['Esc', '关闭弹窗；无弹窗时清空通知角；搜索框中先清空内容、再按取消焦点'],
   ['?', '打开本帮助'],
 ];
 /* 常用命令速查：语法与 fwknopd-admin usage()、fwknop import 实际行为一致 */
