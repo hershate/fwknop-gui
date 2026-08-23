@@ -561,7 +561,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
     <div class="pw-wrap"><input type="password" id="setup-pw2" autocomplete="new-password" placeholder="再次输入">
       <button type="button" class="pw-eye" data-eye="setup-pw2" title="显示/隐藏密码"><svg width="16" height="16"><use href="#i-eye"/></svg></button></div>
     <div class="auth-hint" id="setup-pw-hint"></div>
-    <button class="btn" id="setup-btn" style="background:var(--green)"><svg width="15" height="15"><use href="#i-check"/></svg>完成初始化并进入面板</button>
+    <button class="btn" id="setup-btn" style="background:var(--green)" title="设置管理密码并完成初始化（Enter 亦可提交）"><svg width="15" height="15"><use href="#i-check"/></svg>完成初始化并进入面板</button>
     <div class="auth-err" id="setup-err"></div>
   </div>
 
@@ -574,7 +574,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
     <label for="login-pw">管理员密码（或 DASHBOARD_TOKEN）</label>
     <div class="pw-wrap"><input type="password" id="login-pw" autocomplete="current-password" placeholder="密码 / 令牌">
       <button type="button" class="pw-eye" data-eye="login-pw" title="显示/隐藏密码"><svg width="16" height="16"><use href="#i-eye"/></svg></button></div>
-    <button class="btn" id="login-btn"><svg width="15" height="15"><use href="#i-key"/></svg>登录</button>
+    <button class="btn" id="login-btn" title="登录（Enter 亦可提交）；连续失败 5 次将锁定 60 秒"><svg width="15" height="15"><use href="#i-key"/></svg>登录</button>
     <div class="auth-err" id="login-err"></div>
     <div class="auth-hint" id="login-ro-hint" style="display:none;color:var(--amber)">当前面板为只读模式（-read-only）：登录后仅可查看，管理操作不可用。</div>
   </div>
@@ -636,7 +636,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           </select>
           <span class="hint" id="auto-ttl" title="距下次自动刷新" style="min-width:26px;text-align:right"></span>
         </div>
-        <button class="btn ghost small" id="refresh-btn"><svg width="14" height="14"><use href="#i-refresh"/></svg>刷新</button>
+        <button class="btn ghost small" id="refresh-btn" title="立即刷新全部数据（快捷键 r）"><svg width="14" height="14"><use href="#i-refresh"/></svg>刷新</button>
       </div>
     </header>
 
@@ -721,7 +721,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <div id="ev-active" style="display:none;margin-top:8px;flex-wrap:wrap;gap:6px;align-items:center"></div>
             <div id="ev-topip" class="chips" style="display:none;margin-top:8px"></div>
             <div id="ev-heat" style="display:none;margin-top:8px;gap:2px;align-items:flex-end" title="时间分布：柱高为该时段事件数，点击钻取"></div>
-            <button class="btn small" id="ev-new-pill" style="display:none;margin-top:8px;width:100%" aria-live="polite"></button>
+            <button class="btn small" id="ev-new-pill" style="display:none;margin-top:8px;width:100%" aria-live="polite" title="回到第一页显示全部最新事件（会清除当前类型筛选与搜索）"></button>
           </div>
           <div class="tb-wrap">
             <table class="tb">
@@ -757,9 +757,9 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             </div>
             <div id="users-batch-bar" style="display:none;padding:8px 16px;background:var(--accent-soft);border-top:1px solid var(--line);align-items:center;gap:10px;flex-wrap:wrap">
               <span id="users-sel-count" style="font-size:12.5px"></span>
-              <button class="btn ghost small" id="users-sel-all">全选当前列表</button>
-              <button class="btn ghost small" id="users-sel-clear">取消选择</button>
-              <button class="btn danger small" id="users-batch-rm" style="margin-left:auto"><svg width="13" height="13"><use href="#i-trash"/></svg>批量撤销</button>
+              <button class="btn ghost small" id="users-sel-all" title="选中当前列表中的全部授权（仅搜索过滤后的可见项）">全选当前列表</button>
+              <button class="btn ghost small" id="users-sel-clear" title="清空全部已选（含被搜索筛选隐藏的已选项）">取消选择</button>
+              <button class="btn danger small" id="users-batch-rm" style="margin-left:auto" title="逐个撤销全部已选授权：注释禁用并热加载，可在「已禁用的授权」区恢复"><svg width="13" height="13"><use href="#i-trash"/></svg>批量撤销</button>
             </div>
             <div class="body" id="users-body"><div class="skel" style="height:80px"></div></div>
           </div>
@@ -880,18 +880,18 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               </div>
               </div>
               <div style="margin-top:18px; display:flex; gap:10px;">
-                <button class="btn" type="submit" id="add-submit"><svg width="15" height="15"><use href="#i-key"/></svg>签发凭证</button>
-                <button class="btn ghost" type="button" id="add-cancel">收起</button>
+                <button class="btn" type="submit" id="add-submit" title="生成密钥并签发；勾选「签发后写入」时自动写入 access.conf 并热加载（Enter 亦可提交）"><svg width="15" height="15"><use href="#i-key"/></svg>签发凭证</button>
+                <button class="btn ghost" type="button" id="add-cancel" title="收起签发表单（已填内容自动保留为草稿，下次展开恢复）">收起</button>
               </div>
             </form>
             <div id="add-result" style="display:none; margin-top:18px" aria-live="polite">
               <div class="form-sec">签发结果（仅显示一次）</div>
               <div class="uri-box" id="add-uri-box" style="display:none">
                 <code id="add-uri"></code>
-                <button class="btn ghost small" id="copy-uri"><svg width="13" height="13"><use href="#i-copy"/></svg>复制 URI</button>
-                <button class="btn ghost small" id="copy-import"><svg width="13" height="13"><use href="#i-copy"/></svg>复制导入命令</button>
+                <button class="btn ghost small" id="copy-uri" title="复制 fwknop:// 授权 URI（发给客户端，fwknop import 导入）"><svg width="13" height="13"><use href="#i-copy"/></svg>复制 URI</button>
+                <button class="btn ghost small" id="copy-import" title="复制完整导入命令 fwknop import '<URI>'（客户端终端直接粘贴执行）"><svg width="13" height="13"><use href="#i-copy"/></svg>复制导入命令</button>
                 <button class="btn ghost small" id="dl-cred" title="下载明文 cred.json 凭证文件（fwknop import cred.json 导入）；含全部密钥材料，请妥善保管"><svg width="13" height="13"><use href="#i-download"/></svg>下载 cred.json</button>
-                <button class="btn ghost small" id="add-goto-user" style="display:none"><svg width="13" height="13"><use href="#i-users"/></svg>查看该授权</button>
+                <button class="btn ghost small" id="add-goto-user" style="display:none" title="在授权列表中定位刚签发的授权"><svg width="13" height="13"><use href="#i-users"/></svg>查看该授权</button>
               </div>
               <div class="hint" id="add-uri-hint" style="display:none;margin-top:6px">客户端导入方式任选其一：<code>fwknop import '&lt;URI&gt;'</code> · <code>fwknop import qr.png</code>（QR 图片）· 手机 App 直接扫码</div>
               <div class="warn-strip" id="add-noapply-strip" style="display:none;margin-top:10px"><svg width="15" height="15"><use href="#i-warn"/></svg><div>该授权<b>尚未写入 access.conf</b>（未勾选「签发后写入」）。请将上方 stanza 段手动追加到配置，或勾选后重新签发。 <button type="button" class="btn ghost small" id="add-cp-stanza" style="padding:1px 8px;font-size:11.5px" title="从签发输出中截取 stanza 段（### 标记至空行）复制，贴入 access.conf 末尾即可">复制 stanza 段</button></div></div>
@@ -919,8 +919,8 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           </div>
           <div id="tofu-batch-bar" style="display:none;padding:8px 16px;background:var(--accent-soft);border-top:1px solid var(--line);align-items:center;gap:10px">
             <span id="tofu-sel-count" style="font-size:13px"></span>
-            <button class="btn small" id="tofu-batch-unbind" style="margin-left:auto"><svg width="13" height="13"><use href="#i-trash"/></svg>批量解绑</button>
-            <button class="btn ghost small" id="tofu-sel-clear">取消选择</button>
+            <button class="btn small" id="tofu-batch-unbind" style="margin-left:auto" title="逐个解除全部已选设备的 TOFU 绑定（解绑后需重新完成首用绑定）"><svg width="13" height="13"><use href="#i-trash"/></svg>批量解绑</button>
+            <button class="btn ghost small" id="tofu-sel-clear" title="清空全部已选（含被搜索筛选隐藏的已选项）">取消选择</button>
           </div>
           <div class="tb-wrap">
             <table class="tb">
@@ -955,8 +955,8 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <div class="tools">
               <input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="conf-filter" placeholder="过滤指令名…" title="按指令名过滤编辑行（大小写不敏感；快捷键 / 在编辑器打开时聚焦此处）" style="width:150px;padding:4px 8px;font-size:12.5px"><span class="hint" id="conf-filter-n" style="font-size:11.5px"></span>
               <button class="btn ghost small" id="conf-only-changed" title="只显示本次编辑中已修改/新增的行（大配置保存前快速复核改动面）" aria-pressed="false">仅看修改</button>
-              <button class="btn ghost small" id="conf-add-row"><svg width="14" height="14"><use href="#i-plus"/></svg>新增指令</button>
-              <button class="btn ghost small" id="conf-raw-edit">原文编辑</button>
+              <button class="btn ghost small" id="conf-add-row" title="追加一行新指令（键名带自动补全与说明）"><svg width="14" height="14"><use href="#i-plus"/></svg>新增指令</button>
+              <button class="btn ghost small" id="conf-raw-edit" title="切换原文编辑：整份配置按文本直接修改（保存同样先预检+备份+热加载）">原文编辑</button>
               <button class="btn ghost small" id="conf-discard" title="放弃全部未保存修改，恢复为已保存的配置">放弃修改</button>
               <button class="btn small" id="conf-save" title="保存并热加载（Ctrl/⌘+S）；保存前自动预检，原文件自动备份"><svg width="14" height="14"><use href="#i-save"/></svg>保存</button>
             </div>
@@ -989,7 +989,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <div class="tip">想不到名字？<a href="javascript:void 0" id="pf-autoname" style="color:var(--accent)">用当前时间命名</a></div></div>
               <div class="field"><label>备注</label>
                 <input spellcheck="false" autocomplete="off" autocapitalize="off" id="pf-note" placeholder="用途说明（可选）"></div>
-              <div class="field" style="align-self:end"><button class="btn" id="pf-save"><svg width="15" height="15"><use href="#i-save"/></svg>保存方案</button></div>
+              <div class="field" style="align-self:end"><button class="btn" id="pf-save" title="把当前 fwknopd.conf + access.conf 快照保存为命名方案，随时一键套用"><svg width="15" height="15"><use href="#i-save"/></svg>保存方案</button></div>
             </div>
           </div>
         </div>
@@ -1025,7 +1025,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               <div class="pw-wrap"><input type="password" id="pw-new2" autocomplete="new-password" placeholder="再次输入新密码" style="width:260px">
                 <button type="button" class="pw-eye" data-eye="pw-new2" title="显示/隐藏密码"><svg width="16" height="16"><use href="#i-eye"/></svg></button></div></div>
             <div class="auth-hint" id="pw-hint"></div>
-            <button class="btn" id="pw-change-btn" style="margin-top:6px"><svg width="15" height="15"><use href="#i-key"/></svg>更新密码</button>
+            <button class="btn" id="pw-change-btn" style="margin-top:6px" title="验证当前密码后更新；新密码至少 8 位且不能与当前相同"><svg width="15" height="15"><use href="#i-key"/></svg>更新密码</button>
           </div>
         </div>
         <div class="card">
@@ -1829,7 +1829,7 @@ const KBD_HELP = [
   ['1 – 7', '切换页面（概览 / 事件 / 用户 / TOFU / 配置 / 方案 / 关于）'],
   ['/', '聚焦当前页搜索框（事件 / 用户 / TOFU / 配置 / 方案）'],
   ['r', '手动刷新全部数据'],
-  ['t', '切换明暗主题'],
+  ['t', '切换主题（跟随系统 → 深色 → 浅色）'],
   ['b', '事件页「仅看异常」开/关'],
   ['x', '事件页展开/收起本页全部详情'],
   ['n', '用户页直达签发新凭证（名称框聚焦）'],
@@ -3539,6 +3539,8 @@ function applyAddTemplate(key, chip) {
 function bindTplChip(chip) {
   const key = chip.dataset.tpl;
   if (!allTpl(key)) return;
+  /* 触屏无 hover，预览不可见：静态 title 同时服务读屏与键盘聚焦 */
+  chip.title = '点击一键填充该模板的安全选项（名称与服务器地址仍需自填）';
   /* hover/聚焦即预览描述（不填充），便于比较模板；离开后恢复已选模板的描述 */
   const preview = () => { const t = allTpl(key); if (t) $('#tpl-desc').textContent = '预览 · ' + t.desc; };
   const restore = () => {
