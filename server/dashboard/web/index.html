@@ -3170,8 +3170,8 @@ function renderEvents() {
       if (!S.users) { try { await loadUsers(); } catch (_) { /* loadUsers 内部已提示 */ } }
       const idx = +b.dataset.evstanza;
       const tgt = ((S.users && S.users.stanzas) || []).find(s => s.index === idx);
-      /* 无名授权回退按序号过滤（用户页搜索支持「#3」/「3」直查） */
-      S.usersQuery = tgt ? (tgt.name || ('#' + idx)) : '';
+      /* 与 data-toustz 同款「#序号」精确反查（名字子串在同前缀多授权时不唯一） */
+      S.usersQuery = tgt ? ('#' + idx) : '';
       $('#users-search').value = S.usersQuery;
       showPage('users');
       toast(tgt ? `已定位授权「${tgt.name || ('#' + idx)}」` : '该 stanza 已不存在于当前配置（可能已撤销）', tgt ? 'ok' : 'err', 2000);
@@ -4686,9 +4686,9 @@ function renderTOFU() {
     <td class="mono">${b.source ? `<span class="cp-cell" data-cp="${esc(b.source)}" title="点击复制来源限制" data-lab="来源限制">${esc(b.source)}</span>` : '—'}${(() => {
       const stz = stanzaOf(b);
       if (!stz) return '';
-      /* 授权可能无名：搜索词回退用户名/来源限制，保证过滤能定位 */
-      const q2 = stz.name || stz.require_username || stz.source || '';
-      return `<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-toustz="${esc(q2)}" data-toustzn="${esc(stz.name || ('#' + stz.index))}" title="在用户与授权页查看对应授权「${esc(stz.name || ('#' + stz.index))}」">${icon('i-users',12)}</button>`; })()}</td>
+      /* 反查词用「#序号」精确通道（用户页搜索对该形式全等匹配）：按授权名子串
+         过滤会把「web2」带进「web」的结果里，同前缀多授权时定位不唯一 */
+      return `<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-toustz="#${stz.index}" data-toustzn="${esc(stz.name || ('#' + stz.index))}" title="在用户与授权页查看对应授权「${esc(stz.name || ('#' + stz.index))}」">${icon('i-users',12)}</button>`; })()}</td>
     <td>${b.username ? `${esc(b.username)}<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-uev2="${esc(b.username)}" title="查看该用户的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
     <td class="mono">${b.open_ports ? `<span class="cp-cell" data-cp="${esc(b.open_ports)}" title="点击复制开放端口" data-lab="开放端口">${esc(b.open_ports)}</span>` : '—'}</td>
     <td>${S.writeEnabled ?
