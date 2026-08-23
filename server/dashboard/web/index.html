@@ -688,7 +688,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <button class="btn ghost small" id="ev-preset-24h" title="填充为「此刻往前 24 小时」" style="padding:4px 8px;font-size:11.5px">最近 24h</button>
                 <button class="btn ghost small" id="ev-preset-yday" title="填充为「昨天 00:00 至今天 00:00」" style="padding:4px 8px;font-size:11.5px">昨日全天</button>
               </span>
-              <span class="srch-wrap"><input class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口…（支持 user:/ip:/dev:/port: 前缀）" title="全字段子串匹配；空格分隔多关键词为 AND（如「admin 22」）；前缀语法精确限定字段：user:admin、ip:192.168、dev:指纹前缀、port:22（SPA 与目标端口都匹配）" style="width:270px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+              <span class="srch-wrap"><input class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口…（支持 user:/ip:/dev:/port: 前缀）" title="全字段子串匹配；空格分隔多关键词为 AND（如「admin 22」）；前缀语法精确限定字段：user:admin、ip:192.168、dev:指纹前缀、port:22（SPA 与目标端口都匹配）；快捷键 / 聚焦" style="width:270px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
               <button class="btn ghost small" id="ev-density" title="切换表格行密度（紧凑模式一屏看更多事件）">紧凑</button>
               <button class="btn ghost small" id="ev-expand-all" title="展开/收起当前页全部事件详情（对比多条事件字段用）">展开全部</button>
               <button class="btn ghost small" id="ev-notify" title="后台标签页收到异常事件时弹桌面通知（需浏览器授权）；点击通知直达「仅看异常」视图"><svg width="14" height="14"><use href="#i-bell"/></svg>异常桌面通知</button>
@@ -724,7 +724,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <div class="head">
               <h2>访问授权（access.conf）</h2><span class="sub" id="users-sub"></span>
               <div class="tools">
-                <span class="srch-wrap"><input class="ctl" id="users-search" placeholder="搜索名称 / 用户 / 端口 / 来源 / 序号（#3）…" style="width:240px"><button class="icon-btn srch-clear" data-for="users-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+                <span class="srch-wrap"><input class="ctl" id="users-search" placeholder="搜索名称 / 用户 / 端口 / 来源 / 序号（#3）…" title="匹配授权名称 / 要求用户名 / 端口 / 来源 / stanza 序号（快捷键 / 聚焦）" style="width:240px"><button class="icon-btn srch-clear" data-for="users-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
                 <select class="ctl" id="users-sort" title="授权排序方式" style="padding:5px 8px;font-size:12.5px">
                   <option value="conf">按配置顺序</option>
                   <option value="name">按名称</option>
@@ -732,7 +732,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                   <option value="bound">按绑定设备数</option>
                 </select>
                 <button class="btn ghost small" id="users-lint" title="fwknopd-admin lint：检查 access.conf 一致性（重复来源/缺失指令等），结果弹窗展示"><svg width="14" height="14"><use href="#i-check"/></svg>一致性检查</button>
-                <button class="btn small" id="show-add"><svg width="14" height="14"><use href="#i-plus"/></svg>签发新凭证</button>
+                <button class="btn small" id="show-add" title="展开签发新凭证表单（快捷键 n）"><svg width="14" height="14"><use href="#i-plus"/></svg>签发新凭证</button>
               </div>
             </div>
             <div id="users-batch-bar" style="display:none;padding:8px 16px;background:var(--accent-soft);border-top:1px solid var(--line);align-items:center;gap:10px;flex-wrap:wrap">
@@ -892,7 +892,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="head">
             <h2>TOFU 设备绑定</h2><span class="sub" id="tofu-sub">首次使用自动绑定的设备指纹</span>
             <div class="tools">
-              <span class="srch-wrap"><input class="ctl" id="tofu-search" placeholder="搜索指纹 / 用户 / 端口 / 来源，支持 stanza_key 直贴…" style="width:270px" title="支持从 CLI 复制的整串 stanza_key（SOURCE|用户|端口）直接粘贴检索"><button class="icon-btn srch-clear" data-for="tofu-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+              <span class="srch-wrap"><input class="ctl" id="tofu-search" placeholder="搜索指纹 / 用户 / 端口 / 来源，支持 stanza_key 直贴…" style="width:270px" title="支持从 CLI 复制的整串 stanza_key（SOURCE|用户|端口）直接粘贴检索（快捷键 / 聚焦）"><button class="icon-btn srch-clear" data-for="tofu-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
               <button class="btn ghost small" id="tofu-density" title="切换表格行密度（紧凑模式一屏看更多设备）">紧凑</button>
               <span class="hint" id="tofu-file"></span>
             </div>
@@ -918,7 +918,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="head">
             <h2>fwknopd 配置</h2><span class="sub" id="config-sub"></span>
             <div class="tools">
-              <span class="srch-wrap"><input class="ctl" id="conf-view-filter" placeholder="查找指令 / 说明…" style="width:150px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="conf-view-filter" title="清空查找" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span><span class="hint" id="conf-view-filter-n" style="font-size:11.5px"></span>
+              <span class="srch-wrap"><input class="ctl" id="conf-view-filter" placeholder="查找指令 / 说明…" title="按指令名或说明文字过滤（快捷键 / 聚焦）" style="width:150px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="conf-view-filter" title="清空查找" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span><span class="hint" id="conf-view-filter-n" style="font-size:11.5px"></span>
               <button class="btn ghost small" id="conf-expand-all" title="展开全部分组">展开全部</button>
               <button class="btn ghost small" id="conf-collapse-all" title="收起全部分组">收起全部</button>
               <button class="btn ghost small" id="conf-edit-btn" style="display:none"><svg width="14" height="14"><use href="#i-pencil"/></svg>编辑</button>
