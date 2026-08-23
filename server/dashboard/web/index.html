@@ -3506,8 +3506,10 @@ function stanzaBadges(s) {
   if (s.require_source_address) b.push('<span class="tag" title="REQUIRE_SOURCE_ADDRESS：禁用 -s 伪造，客户端须解析真实外网 IP">强制真实 IP</span>');
   /* TOFU 绑定计数：stanza_key = SOURCE|用户名|开放端口（同 server/access.c tofu_stanza_key） */
   const n = tofuBindCount(s);
-  if (n > 0) b.push(`<button class="tag hl" style="cursor:pointer;border:0" data-tofu-q="${esc(s.require_username||s.source||'')}"
-    title="该授权已自动绑定 ${n} 台设备，点击查看 TOFU 绑定">${icon('i-fp',11)} 已绑定 ${n} 台设备</button>`);
+  /* 过滤词用完整 stanza_key 精确匹配（TOFU 搜索支持整串直贴检索）：早期版本
+     只带用户名/来源，同用户多授权或宽来源（0.0.0.0/0）时会混入其他授权的设备 */
+  if (n > 0) b.push(`<button class="tag hl" style="cursor:pointer;border:0" data-tofu-q="${esc(`${s.source||''}|${s.require_username||''}|${s.open_ports||''}`)}"
+    title="该授权已自动绑定 ${n} 台设备，点击在 TOFU 绑定页精确查看（按 stanza_key 过滤）">${icon('i-fp',11)} 已绑定 ${n} 台设备</button>`);
   return b.join('');
 }
 
