@@ -970,6 +970,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               <span class="tpl-label">快速模板：</span>
               <button type="button" class="tpl-chip" data-ctpl="totp">TOTP 端口跳变监听</button>
               <button type="button" class="tpl-chip" data-ctpl="udp">UDP 监听模式</button>
+              <button type="button" class="tpl-chip" data-ctpl="nfq">NFQ 抓包模式</button>
               <button type="button" class="tpl-chip" data-ctpl="noaudit">关闭审计输出</button>
             </div>
             <div class="tpl-desc" id="conf-tpl-desc"></div>
@@ -5292,6 +5293,12 @@ const CONF_TEMPLATES = {
   noaudit: {
     desc: '关闭结构化审计与指标文件输出（syslog 不受影响）。排障或极致性能场景使用；面板的事件/统计页将不再有数据。',
     lines: [['ENABLE_AUDIT', 'N']],
+  },
+  nfq: {
+    /* 与 server/fwknopd.conf 注释一致：ENABLE_NFQ_CAPTURE 是唯一必选项，
+       队列号默认 1（须与 iptables NFQUEUE 规则一致） */
+    desc: '改用 NFQ（Netfilter Queue）抓包：大端口范围监听性能最佳，配合 TOTP 跳变推荐。仅需开启此开关；队列号默认 1，须与 iptables NFQUEUE 规则一致。',
+    lines: [['ENABLE_NFQ_CAPTURE', 'Y']],
   },
 };
 /* 快速模板芯片：hover/聚焦预览改动说明（与签发卡片模板同一交互），点击合并填充 */
