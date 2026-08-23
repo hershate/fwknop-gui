@@ -1059,7 +1059,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
         </div>
         <div class="card">
           <div class="head"><h2>面板操作日志</h2><span class="sub" id="oplog-sub">管理面审计：签发 / 撤销 / 配置保存 / 服务控制 / 登录等</span>
-            <div class="tools"><select class="ctl" id="oplog-filter" title="按类别过滤操作记录；「仅看失败」聚焦被拒/失败动作（排查爆破与误操作）" style="padding:3px 6px;font-size:12px">
+            <div class="tools"><span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="oplog-search" placeholder="搜索操作 / 详情 / IP…" title="按操作名、详情文本、来源 IP 子串过滤（与类别过滤叠加；快捷键 / 聚焦，Esc 清空）" style="width:170px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="oplog-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span><select class="ctl" id="oplog-filter" title="按类别过滤操作记录；「仅看失败」聚焦被拒/失败动作（排查爆破与误操作）" style="padding:3px 6px;font-size:12px">
               <option value="all">全部</option><option value="fail">仅看失败</option>
               <option value="acct">账户（登录/注销/改密）</option><option value="stanza">授权（签发/撤销/编辑等）</option>
               <option value="conf">配置与方案</option><option value="svc">服务与审计</option>
@@ -1876,7 +1876,7 @@ document.addEventListener('wheel', () => {
 /* 全局快捷键：1-7 切页，/ 聚焦当前页搜索，r 手动刷新，Esc 关闭弹窗。
    输入框/下拉聚焦时或弹窗打开（除 Esc 外）不触发。 */
 const PAGE_KEYS = ['overview','events','users','tofu','config','profiles','about'];
-const PAGE_SEARCH = { events:'#event-search', users:'#users-search', tofu:'#tofu-search', config:'#conf-view-filter', profiles:'#pf-search' };
+const PAGE_SEARCH = { events:'#event-search', users:'#users-search', tofu:'#tofu-search', config:'#conf-view-filter', profiles:'#pf-search', about:'#oplog-search' };
 /* 浏览器前进/后退翻页：popstate 按 hash 切页（hash 已是目标页，showPage 内
    不会重复 pushState）；配置页未保存修改被 confGuardLeave 拦截时，把 hash
    拨回当前页保持 URL 与页面一致 */
@@ -1913,7 +1913,7 @@ document.addEventListener('keydown', ev => {
     else if ($('#sidebar').classList.contains('open')) closeSidebar();
     /* 搜索框 Esc：有内容先清空并触发过滤复位，再按才失焦（主流搜索习惯）。
        仅搜索/过滤框，表单输入框不清内容（防误清已填数据） */
-    else if (typing && ev.target.matches && ev.target.matches('#event-search,#users-search,#tofu-search,#conf-view-filter,#conf-filter,#pf-search') && ev.target.value) {
+    else if (typing && ev.target.matches && ev.target.matches('#event-search,#users-search,#tofu-search,#conf-view-filter,#conf-filter,#pf-search,#oplog-search') && ev.target.value) {
       ev.target.value = '';
       ev.target.dispatchEvent(new Event('input'));
     }
@@ -5443,16 +5443,24 @@ function renderOpLog() {
     return 'svc';  /* 服务控制：* / 清理审计日志 / 删除审计备份 */
   };
   const f = S.oplogFilter || 'all';
-  const es = f === 'all' ? all : (f === 'fail' ? all.filter(e => !e.ok) : all.filter(e => catOf(e.op) === f));
+  /* 自由文本搜索（操作/详情/来源 IP 子串）：与类别过滤叠加。审计问询
+     「谁何时从何 IP 做了什么」逐行肉眼扫 100 条不现实；爆破排查定位来源
+     IP 也是第一动作 */
+  const q = (S.oplogQuery || '').toLowerCase();
+  const matchQ = e => !q || (e.op || '').toLowerCase().includes(q) ||
+    (e.detail || '').toLowerCase().includes(q) || (e.ip || '').toLowerCase().includes(q);
+  const es = (f === 'all' ? all : (f === 'fail' ? all.filter(e => !e.ok) : all.filter(e => catOf(e.op) === f))).filter(matchQ);
   const failN = all.filter(e => !e.ok).length;
   $('#oplog-sub').textContent = `管理面审计：签发 / 撤销 / 配置保存 / 服务控制 / 登录等 · 显示 ${es.length}/${all.length} 条` +
+    (q ? `（搜索「${S.oplogQuery}」）` : '') +
     (failN ? ` · ${failN} 次失败` : '') + ` · 日志文件 ${fmtSize(d.size || 0)}`;
   const dl = $('#oplog-dl');
   if (dl) dl.style.display = d.size ? '' : 'none';  /* 空文件不提供无意义下载 */
   if (!es.length) {
     $('#oplog-body').innerHTML = all.length
-      ? `<div class="empty">${icon('i-list',40)}<div class="t">该类别下暂无记录</div>
-        <div class="d">最近 ${all.length} 条操作均不在当前过滤类别内，切换上方过滤器查看</div></div>`
+      ? `<div class="empty">${icon('i-list',40)}<div class="t">${q ? '无匹配记录' : '该类别下暂无记录'}</div>
+        <div class="d">${q ? `没有操作/详情/IP 含「${esc(S.oplogQuery)}」的记录，试试更换关键词或清空搜索`
+          : `最近 ${all.length} 条操作均不在当前过滤类别内，切换上方过滤器查看`}</div></div>`
       : `<div class="empty">${icon('i-list',40)}
       <div class="t">暂无操作记录</div>
       <div class="d">面板操作日志从本次升级起开始记录：签发 / 撤销 / 解绑 / 配置保存 / 方案操作 / 服务控制 / 登录注销 / 修改密码都会入档（JSONL，0600）</div></div>`;
@@ -5463,12 +5471,15 @@ function renderOpLog() {
     <tbody>${es.map(e => `<tr>
       <td title="${esc(fmtAbs(e.time))}" style="white-space:nowrap">${esc(fmtAgo(e.time))}</td>
       <td style="white-space:nowrap">${esc(e.op)}</td>
-      <td style="word-break:break-all">${esc(e.detail || '')}</td>
-      <td style="white-space:nowrap">${esc(e.ip || '—')}</td>
+      <td style="word-break:break-all">${e.detail ? `<span class="cp-cell" data-cp="${esc(e.detail)}" data-lab="详情" title="点击复制详情">${esc(e.detail)}</span>` : ''}</td>
+      <td style="white-space:nowrap">${e.ip ? `<span class="cp-cell" data-cp="${esc(e.ip)}" data-lab="来源 IP" title="点击复制来源 IP（爆破排查可直接贴进防火墙封禁）">${esc(e.ip)}</span>` : '—'}</td>
       <td>${e.ok ? '<span style="color:var(--green)" title="成功">✓</span>' : '<span style="color:var(--red)" title="失败/被拒">✗</span>'}</td>
     </tr>`).join('')}</tbody></table></div>`;
+  $$('#oplog-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, (c.dataset.lab || '') + ' '));
 }
 $('#oplog-filter').onchange = e => { S.oplogFilter = e.target.value; renderOpLog(); };
+$('#oplog-search').oninput = e => { S.oplogQuery = e.target.value.trim(); renderOpLog(); };
+attachSearchHistory($('#oplog-search'), 'fwknop-hist-oplog');
 function renderAbout() {
   const d = S.overview;
   const F = (d && d.files) || {};
