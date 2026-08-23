@@ -5392,6 +5392,9 @@ S.pfQuery = localStorage.getItem('fwknop-pf-query') || '';
 if (S.pfQuery) $('#pf-search').value = S.pfQuery;
 S.oplogQuery = localStorage.getItem('fwknop-oplog-query') || '';
 if (S.oplogQuery) $('#oplog-search').value = S.oplogQuery;
+/* 恢复值后同步各搜索框的 ✕ 清空钮：程序化赋值不触发 input 事件，
+   events/users/tofu 靠各自渲染路径同步，pf/oplog 无渲染侧同步——此处统一补齐 */
+syncSearchClear();
 $('#pf-search').oninput = e => {
   S.pfQuery = e.target.value.trim();
   try { localStorage.setItem('fwknop-pf-query', S.pfQuery || ''); } catch (e2) {}
