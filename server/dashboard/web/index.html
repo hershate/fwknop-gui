@@ -3667,7 +3667,11 @@ function renderUsers() {
     const last = st0 && st0.require_username ? (S.events || []).find(e => e.user === st0.require_username) : null;
     const lastHtml = last ? `<br><span class="hint" title="${fmtAbs(last.time)}">最近敲门：${evMeta(last.event).label} · ${fmtAgo(last.time)} · ${esc(last.src_ip || '')}</span>`
       : '<br><span class="hint">该授权近期无敲门记录</span>';
-    confirmDialog('撤销授权', `确定撤销「<b>${esc(name)}</b>」吗？${lastHtml}<br>
+    /* TOFU 残留预警：撤销后该授权的设备绑定即成「悬空」（stanza 不再匹配），
+       确认时一次说清善后路径，避免留下自己也不知道的死绑定 */
+    const bindN = st0 ? tofuBindCount(st0) : 0;
+    const bindHtml = bindN ? `<br><span class="hint" style="color:var(--amber)">注意：该授权有 ${bindN} 台已绑定设备；撤销后绑定将「悬空」失效，建议随后到「TOFU 绑定」页清理。</span>` : '';
+    confirmDialog('撤销授权', `确定撤销「<b>${esc(name)}</b>」吗？${lastHtml}${bindHtml}<br>
       对应 stanza 会被注释禁用（自动备份并可恢复），fwknopd 将收到 SIGHUP 重新加载，该凭证<b>立即失效</b>。`,
       '撤销并立即生效', async () => {
         try {
@@ -3705,10 +3709,16 @@ $('#users-batch-rm').onclick = () => {
     const s = ((S.users && S.users.stanzas) || []).find(x => (x.name || ('授权 #' + x.index)) === n);
     return s && s.require_username && (S.events || []).some(e => e.user === s.require_username);
   });
+  /* TOFU 残留预警（与单撤销同款口径）：统计所选授权合计绑定设备数 */
+  const bindTotal = names.reduce((sum, n) => {
+    const s = ((S.users && S.users.stanzas) || []).find(x => (x.name || ('授权 #' + x.index)) === n);
+    return sum + (s ? tofuBindCount(s) : 0);
+  }, 0);
   confirmDialog('批量撤销授权',
     `将逐个撤销以下 <b>${names.length}</b> 个授权（注释禁用 + 自动备份 + 热加载，<b>立即失效</b>、可随时恢复）：
      <div class="mono" style="margin:8px 0;max-height:20vh;overflow:auto;font-size:12.5px">${names.map(esc).join('<br>')}</div>
      ${active.length ? `<span style="color:var(--amber)">⚠ 其中 ${active.length} 个近期有敲门记录：${active.map(esc).join('、')}</span><br>` : ''}
+     ${bindTotal ? `<span style="color:var(--amber)">⚠ 这些授权合计有 ${bindTotal} 台已绑定设备；撤销后绑定将「悬空」失效，建议随后到「TOFU 绑定」页清理。</span><br>` : ''}
      确定继续吗？`,
     `撤销 ${names.length} 个授权`, async () => {
       const btn = $('#users-batch-rm'); btn.disabled = true;
