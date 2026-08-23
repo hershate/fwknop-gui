@@ -2395,6 +2395,8 @@ function attachSearchHistory(input, key) {
 attachSearchHistory($('#event-search'), 'fwknop-ev-hist');
 attachSearchHistory($('#users-search'), 'fwknop-hist-users');
 attachSearchHistory($('#tofu-search'), 'fwknop-hist-tofu');
+attachSearchHistory($('#conf-view-filter'), 'fwknop-hist-confv');
+attachSearchHistory($('#conf-filter'), 'fwknop-hist-confe');
 $('#ev-time').onchange = e => {
   S.evTime = e.target.value; S.evPage = 0;
   $('#ev-custom').style.display = S.evTime === 'custom' ? 'inline-flex' : 'none';
