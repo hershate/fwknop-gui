@@ -4782,13 +4782,18 @@ function openStanzaEditor(index) {
       <button class="btn" id="se-save" title="保存并热加载生效（Ctrl/⌘+S）">${icon('i-save',14)}保存并生效</button>
     </div>`, true);
   let seDirty = false;
-  $('#modal-root').oninput = () => { seDirty = true; };  /* oninput 赋值覆盖，重复打开不累积监听器 */
+  /* 未修改时禁用保存：避免零改动误触产生无意义的备份与热加载 */
+  const seSave = $('#se-save');
+  seSave.disabled = true;
+  seSave.title = '尚未修改任何字段';
+  const seMarkDirty = () => { seDirty = true; seSave.disabled = false; seSave.title = '保存并热加载生效（Ctrl/⌘+S）'; };
+  $('#modal-root').oninput = seMarkDirty;  /* oninput 赋值覆盖，重复打开不累积监听器 */
   /* 常用值芯片：与签发卡片同一交互（再点同值清除），点击计入脏标记 */
   $$('#modal-root [data-sfc]').forEach(c => c.onclick = () => {
     const inp = document.querySelector(`#modal-root [data-sf="${c.dataset.sfc}"]`);
     if (!inp) return;
     inp.value = (c.dataset.v && inp.value.trim() === c.dataset.v) ? '' : c.dataset.v;
-    seDirty = true;
+    seMarkDirty();
     inp.focus();
   });
   modalGuard = () => !seDirty || confirm('授权编辑有未保存的修改，确定丢弃吗？');
