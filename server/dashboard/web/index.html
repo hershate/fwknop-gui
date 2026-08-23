@@ -4721,13 +4721,16 @@ function renderAbout() {
       `将永久删除 <b>${names.length}</b> 个备份（共 ${fmtSize(d.audit_backups.size)}），删除前请确认已下载或不再需要。`,
       '全部删除', async () => {
         toast('正在逐个删除备份…', 'ok', 1500);
-        let ok = 0, fail = 0;
+        let ok = 0, fail = 0, done = 0;
+        rmAll.disabled = true;
         for (const n of names) {
           try {
             const fd = new FormData(); fd.append('name', n);
             const r = await api('/api/admin/audit/rmbak', { method:'POST', body: fd });
             if (r.ok) ok++; else fail++;
           } catch (e) { fail++; }
+          /* 进度入按钮文案（与批量撤销/解绑同一模式；轮询重渲染后元素被替换亦无碍） */
+          try { rmAll.textContent = `删除中 ${++done}/${names.length}…`; } catch (e) {}
         }
         toast(fail ? `备份删除完成：成功 ${ok} 个、失败 ${fail} 个` : `已删除全部 ${ok} 个备份`, fail ? 'err' : 'ok', 5000);
         loadOverview();
