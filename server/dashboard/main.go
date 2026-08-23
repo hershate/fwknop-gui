@@ -27,6 +27,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
@@ -83,7 +84,12 @@ func main() {
 	flag.BoolVar(&cfg.EnableWrite, "enable-write", true,
 		"启用管理写操作（默认开；2.4.1 起保留仅为兼容旧启动脚本）")
 	readOnly := flag.Bool("read-only", false, "只读模式：禁用所有管理写操作")
+	showVer := flag.Bool("version", false, "打印版本并退出")
 	flag.Parse()
+	if *showVer {
+		fmt.Println("fwknop-dashboard", version)
+		return
+	}
 	if *readOnly {
 		cfg.EnableWrite = false
 	}
