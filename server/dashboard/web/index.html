@@ -4550,11 +4550,13 @@ async function svcAction(action, label, done) {
   const btns = ['svc-start','svc-stop','svc-restart','svc-reload','svc-validate','svc-fwlist'].map(id => $('#'+id));
   btns.forEach(b => b.disabled = true);
   $('#svc-hint').textContent = label + '执行中，请稍候…';
+  const t0 = Date.now();
   try {
     const r = await api('/api/service/' + action, { method:'POST' });
     const out = (r.output || '') + (r.error ? '\n错误：' + r.error : '');
-    if (r.error) { toast(label + '失败', 'err'); infoModal(label + ' — 失败', out, true); }
-    else { toast(label + '成功', 'ok'); if (out.trim()) infoModal(label, out); }
+    const secs = ((Date.now() - t0) / 1000).toFixed(1);
+    if (r.error) { toast(label + '失败（耗时 ' + secs + ' 秒）', 'err'); infoModal(label + ' — 失败', out, true); }
+    else { toast(label + '成功（耗时 ' + secs + ' 秒）', 'ok'); if (out.trim()) infoModal(label, out); }
   } catch (e) {}
   btns.forEach(b => b.disabled = !S.writeEnabled);
   $('#svc-hint').textContent = '';
