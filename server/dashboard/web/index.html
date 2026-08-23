@@ -649,6 +649,8 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <input type="datetime-local" class="ctl" id="ev-from" title="起始时间" style="padding:4px 6px;font-size:12px">
                 <span class="hint">至</span>
                 <input type="datetime-local" class="ctl" id="ev-to" title="截止时间" style="padding:4px 6px;font-size:12px">
+                <button class="btn ghost small" id="ev-preset-24h" title="填充为「此刻往前 24 小时」" style="padding:4px 8px;font-size:11.5px">最近 24h</button>
+                <button class="btn ghost small" id="ev-preset-yday" title="填充为「昨天 00:00 至今天 00:00」" style="padding:4px 8px;font-size:11.5px">昨日全天</button>
               </span>
               <span class="srch-wrap"><input class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口…" style="width:230px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
               <button class="btn ghost small" id="ev-density" title="切换表格行密度（紧凑模式一屏看更多事件）">紧凑</button>
@@ -2404,6 +2406,20 @@ $('#ev-time').onchange = e => {
 };
 $('#ev-from').onchange = e => { S.evFrom = e.target.value; S.evPage = 0; renderEvents(); };
 $('#ev-to').onchange = e => { S.evTo = e.target.value; S.evPage = 0; renderEvents(); };
+/* 自定义区间快捷预设：datetime-local 逐格点选繁琐，常见区间一键填充 */
+const pad2 = n => String(n).padStart(2, '0');
+const dtLocal = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+function fillEvRange(from, to) {
+  S.evFrom = dtLocal(from); S.evTo = dtLocal(to);
+  $('#ev-from').value = S.evFrom; $('#ev-to').value = S.evTo;
+  S.evPage = 0; renderEvents();
+}
+$('#ev-preset-24h').onclick = () => { const now = new Date(); fillEvRange(new Date(now.getTime() - 86400000), now); };
+$('#ev-preset-yday').onclick = () => {
+  const now = new Date();
+  const today0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  fillEvRange(new Date(today0.getTime() - 86400000), today0);
+};
 
 /* 导出当前筛选（时间窗 + 类型芯片 + 搜索词）结果为 CSV，含全部审计字段 */
 $('#ev-csv').onclick = () => {
