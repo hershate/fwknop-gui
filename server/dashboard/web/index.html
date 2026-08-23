@@ -670,7 +670,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <button class="btn ghost small" id="qa-bad" title="跳到事件页并只看异常（括号内为最近 15 分钟异常数）"><svg width="14" height="14"><use href="#i-warn"/></svg>仅看异常事件</button>
             <button class="btn ghost small" id="qa-diag" title="一键打包版本/时钟/服务/文件等非敏感状态，贴给运维即可定位"><svg width="14" height="14"><use href="#i-copy"/></svg>复制诊断信息</button>
             <button class="btn ghost small" id="qa-profile" title="把当前 fwknopd.conf + access.conf 快照保存为命名方案（配置方案页管理）"><svg width="14" height="14"><use href="#i-archive"/></svg>保存配置方案</button>
-            <a class="btn ghost small" id="qa-audit" href="/api/audit/download" download><svg width="14" height="14"><use href="#i-download"/></svg>导出审计日志</a>
+            <a class="btn ghost small" id="qa-audit" href="/api/audit/download" download title="下载完整审计日志（JSONL，文件名带服务器时间戳，多次导出互不覆盖）"><svg width="14" height="14"><use href="#i-download"/></svg>导出审计日志</a>
           </div>
         </div>
         <div class="grid-tiles" id="tiles"><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div></div>
@@ -2158,7 +2158,7 @@ $('#status-cards').addEventListener('click', ev => {
           const fn = (r.backup || '').split('/').pop();
           openModal(`<h3>审计日志已清理</h3>
             <div class="mb">${esc(r.msg || '')}</div>
-            <div class="mf"><a class="btn" href="/api/audit/download?bak=${encodeURIComponent(fn)}" download>${icon('i-download',14)} 下载备份</a>
+            <div class="mf"><a class="btn" href="/api/audit/download?bak=${encodeURIComponent(fn)}" download title="下载刚生成的备份文件（JSONL）">${icon('i-download',14)} 下载备份</a>
             <button class="btn ghost" id="m-done">完成</button></div>`);
           $('#m-done').onclick = () => closeModal();
           refreshNow();
