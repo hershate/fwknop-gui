@@ -2361,7 +2361,10 @@ function renderEvents() {
   const evs = filteredEvents();
   /* 缓存满 500 条时明示截断：更早事件仍在审计日志里，引导「导出原始」 */
   const capped = (S.events || []).length >= 500;
-  $('#events-sub').innerHTML = `最近 ${fmtNum((S.events||[]).length)} 条` +
+  /* 筛选/搜索生效时在副标题直接给出「匹配 N / 总 M」，不用数芯片 */
+  const hasFilter = S.evFilter !== 'all' || !!S.evQuery || (S.evTime && S.evTime !== 'all');
+  $('#events-sub').innerHTML = (hasFilter ? `<span style="color:var(--accent)">匹配 ${fmtNum(evs.length)} 条</span> · ` : '') +
+    `最近 ${fmtNum((S.events||[]).length)} 条` +
     (capped ? ' <span style="color:var(--amber)" title="事件缓存已达服务端上限，更早的事件请点右上角「导出原始」下载完整审计日志">（已达 500 条上限，更早请导出原始）</span>' : '（服务端保留 500 条）') +
     ` · ${fmtAgo(Date.now()/1000)}刷新`;
 
@@ -2370,7 +2373,6 @@ function renderEvents() {
   const slice = evs.slice(S.evPage * S.evPer, (S.evPage + 1) * S.evPer);
 
   if (!slice.length) {
-    const hasFilter = S.evFilter !== 'all' || !!S.evQuery || (S.evTime && S.evTime !== 'all');
     $('#events-body').innerHTML = `<tr><td colspan="8"><div class="empty">
       ${icon('i-list', 40)}<div class="t">暂无匹配事件</div>
       <div class="d">${(S.events||[]).length ? '当前筛选/搜索条件下无匹配' : 'fwknopd 收到 SPA 包后，事件会显示在这里'}</div>
