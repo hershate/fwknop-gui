@@ -2710,13 +2710,16 @@ $('#ev-preset-yday').onclick = () => {
 };
 
 /* 导出当前筛选（时间窗 + 类型芯片 + 搜索词）结果为 CSV，含全部审计字段 */
-$('#ev-csv').onclick = () => {
+$('#ev-csv').onclick = async () => {
   const evs = filteredEvents();
   if (!evs.length) { toast('当前筛选无事件可导出', 'err'); return; }
+  /* 授权索引旁补名称列：序号对外分享时不直观；用户数据未加载先懒加载（失败则留空） */
+  if (!S.users) { try { await loadUsers(); } catch (e) {} }
+  const stzName = n => { const s = ((S.users && S.users.stanzas) || []).find(x => x.index === n); return s ? (s.name || '') : ''; };
   const cell = v => { v = String(v ?? ''); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
-  const head = ['时间', '事件', '事件中文', '用户', '设备指纹', '来源IP', 'SPA端口', '目标端口', '授权索引', '原因', '原因中文'];
+  const head = ['时间', '事件', '事件中文', '用户', '设备指纹', '来源IP', 'SPA端口', '目标端口', '授权索引', '授权名称', '原因', '原因中文'];
   const lines = evs.map(e => [fmtAbs(e.time), e.event, evMeta(e.event).label, e.user, e.device_id,
-    e.src_ip, e.spa_port || '', e.target_port || '', e.stanza ?? '', e.reason, reasonZh(e.reason)].map(cell).join(','));
+    e.src_ip, e.spa_port || '', e.target_port || '', e.stanza ?? '', stzName(e.stanza), e.reason, reasonZh(e.reason)].map(cell).join(','));
   /* 加 BOM 以便表格软件正确识别 UTF-8 中文 */
   const blob = new Blob(['\ufeff' + head.join(',') + '\n' + lines.join('\n')], { type:'text/csv;charset=utf-8' });
   const a = document.createElement('a');
