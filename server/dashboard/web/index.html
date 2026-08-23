@@ -4209,7 +4209,7 @@ function renderTOFU() {
     <td class="mono">${b.open_ports ? `<span class="cp-cell" data-cp="${esc(b.open_ports)}" title="点击复制开放端口" data-lab="开放端口">${esc(b.open_ports)}</span>` : '—'}</td>
     <td>${S.writeEnabled ?
       `<button class="icon-btn" style="padding:2px 6px" data-cp="${esc(`fwknopd-admin tofu unbind '${b.stanza_key}' '${b.device_id}'`)}" data-lab="CLI 解绑命令" title="复制完整 CLI 解绑命令（fwknopd-admin tofu unbind，含 stanza_key 与设备指纹）">${icon('i-copy',12)}</button>
-       <button class="btn ghost small" data-ub="${esc(b.stanza_key)}" data-dev="${esc(b.device_id)}">${icon('i-trash',13)}解绑</button>` :
+       <button class="btn ghost small" data-ub="${esc(b.stanza_key)}" data-dev="${esc(b.device_id)}" title="解除该设备的 TOFU 绑定（下次敲门需重新完成绑定）">${icon('i-trash',13)}解绑</button>` :
       '<span class="hint">只读模式</span>'}</td>
   </tr>`).join('');
   $$('#tofu-body .tofu-sel').forEach(c => c.onchange = () => {
