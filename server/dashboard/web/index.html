@@ -2221,7 +2221,7 @@ function renderEvents() {
       const detail = `<tr class="ev-detail" style="display:${open?'table-row':'none'}" data-detail="${esc(key)}">
         <td colspan="8"><div class="ev-kv">
           <div><div class="k">时间</div><div class="v"><span class="cp-cell" data-cp="${fmtAbs(e.time)}" title="点击复制绝对时间">${fmtAbs(e.time)}</span>（${fmtAgo(e.time)}）</div></div>
-          <div><div class="k">事件类型</div><div class="v">${esc(e.event||'—')}（${m.label}）</div></div>
+          <div><div class="k">事件类型</div><div class="v">${esc(e.event||'—')}（${m.label}）${e.event ? `<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-evtype="${esc(e.event)}" title="筛选该类型的全部事件">${icon('i-search',12)}</button>` : ''}</div></div>
           <div><div class="k">授权索引（stanza）</div><div class="v">${e.stanza ?? '—'}${e.stanza != null ? `<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-evstanza="${e.stanza}" title="在用户与授权页查看该 stanza">${icon('i-users',12)}</button>` : ''}</div></div>
           <div><div class="k">用户</div><div class="v">${e.user?`<span class="cp-cell" data-cp="${esc(e.user)}">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" title="查看该用户的全部事件">${icon('i-search',12)}</button>`:'—'}</div></div>
           <div><div class="k">设备指纹（完整）</div><div class="v">${e.device_id?`<span class="cp-cell" data-cp="${esc(e.device_id)}">${esc(e.device_id)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" title="查看该设备的全部事件">${icon('i-search',12)}</button><button class="icon-btn" style="padding:2px 5px;margin-left:2px" data-devtofu="${esc(e.device_id)}" title="查该设备的 TOFU 绑定状态">${icon('i-fp',12)}</button>`:'—'}</div></div>
@@ -2259,6 +2259,13 @@ function renderEvents() {
       $('#event-search').value = S.evQuery;
       renderEvents();
       toast(`已按原因筛选：${reasonZh(c.dataset.reasonq)}`, 'ok', 1500);
+    });
+    /* 详情行「事件类型」旁的放大镜：一键切换类型筛选（与顶部类型芯片同源） */
+    $$('#events-body [data-evtype]').forEach(c => c.onclick = ev => {
+      ev.stopPropagation();
+      S.evFilter = c.dataset.evtype; S.evPage = 0;
+      renderEvents();
+      toast(`已筛选类型：${evMeta(c.dataset.evtype).label}`, 'ok', 1500);
     });
     $$('#events-body .tmtoggle').forEach(c => c.onclick = ev => {
       ev.stopPropagation();
