@@ -607,6 +607,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
       <svg width="30" height="30"><use href="#i-lock"/></svg>
       <div><div class="t1">登录</div><div class="t2">fwknop 运维面板 <span class="auth-ver">v2.7.0</span><span class="auth-alias" style="display:none;color:var(--accent)"></span></div></div>
     </div>
+    <div class="auth-hint" id="login-expired" role="status" style="display:none;color:var(--amber)"></div>
     <p class="desc">请输入管理员密码。连续失败 5 次将锁定 60 秒；登录成功后会话有效期 12 小时（顶栏可见剩余时间）。<br><span class="hint" style="font-size:11.5px">忘记密码：停止面板，删除运行目录下的 dashboard_auth.json（默认 /var/run/fwknop/），重启后回到初始化页重设。</span></p>
     <label for="login-pw">管理员密码（或 DASHBOARD_TOKEN）</label>
     <div class="pw-wrap"><input type="password" id="login-pw" autocomplete="current-password" placeholder="密码 / 令牌">
@@ -1338,6 +1339,7 @@ function showAuthView(which) {
 function enterApp() {
   $('#auth-gate').style.display = 'none';
   $('#app').style.display = '';
+  const le0 = $('#login-expired'); if (le0) le0.style.display = 'none';  /* 失效提示一次性，进门即收 */
   /* URL hash 深链接：刷新/分享链接回到原页面（#events~bad~q=… 还原筛选现场） */
   const { page: h, bad, q, f, t } = parseEvHash();
   if (PAGE_KEYS.includes(h)) S.page = h;
@@ -1619,7 +1621,18 @@ function api(path, opts) {
     if (r.status === 401) {
       let needsSetup = false;
       try { needsSetup = !!(await r.clone().json()).needs_setup; } catch (e) {}
-      if (needsSetup) showAuthView('auth-setup'); else showAuthView('auth-login');
+      if (needsSetup) showAuthView('auth-setup');
+      else {
+        /* 会话中途失效（12h 到期/他处改密/面板重启）被弹回登录页时交代原因——
+           无声弹回会让人误判「面板重启了？」「被踢下线了？」；页面与事件筛选
+           现场由 URL hash 在重登后自动还原，此处一并告知 */
+        const le = $('#login-expired');
+        if (le) {
+          le.textContent = '登录状态已失效（会话 12 小时到期、他处修改密码或面板重启均会使会话失效），请重新登录——之前的页面与事件筛选会自动还原。';
+          le.style.display = '';
+        }
+        showAuthView('auth-login');
+      }
       throw new Error('unauthorized');
     }
     if (r.status === 403) { toast('写操作被拒绝：只读模式（-read-only）或缺少防跨站请求头', 'err'); throw new Error('forbidden'); }
