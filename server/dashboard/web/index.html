@@ -248,6 +248,7 @@ select.ctl, input.ctl {
 .ce-mod { box-shadow:inset 3px 0 0 var(--amber); padding-left:8px; border-radius:4px; }
 .ce-new { box-shadow:inset 3px 0 0 var(--green); padding-left:8px; border-radius:4px; }
 .ce-bad { border-color:var(--red) !important; box-shadow:0 0 0 2px var(--red-soft); }
+.ce-dup { border-color:var(--amber) !important; box-shadow:0 0 0 2px var(--amber-soft); }
 .sum-link { cursor:pointer; border-radius:var(--radius-sm); padding:4px 6px; margin:-4px -6px; transition:background .15s; }
 .sum-link:hover, .sum-link:focus-visible { background:var(--accent-soft); outline:none; }
 .flash-prefill { animation:prefillFlash 1.6s ease; }
@@ -4782,6 +4783,19 @@ function markConfRows() {
       vi.classList.toggle('ce-bad', !!bad);
       vi.title = bad || '';
     }
+  });
+  /* 重复指令预警：fwknopd.conf 同名指令以最后出现的值为准，前面的被静默
+     忽略，多为误改/复制残留，琥珀框即时标出（随输入实时刷新） */
+  const counts = {};
+  $$('#conf-edit-rows > div .ce-key').forEach(ki => {
+    const k = ki.value.trim().toUpperCase(); if (k) counts[k] = (counts[k] || 0) + 1;
+  });
+  $$('#conf-edit-rows > div').forEach(row => {
+    const ki = row.querySelector('.ce-key'); if (!ki) return;
+    const k = ki.value.trim().toUpperCase();
+    const isDup = !!(k && counts[k] > 1);
+    ki.classList.toggle('ce-dup', isDup);
+    ki.title = isDup ? `指令 ${k} 出现 ${counts[k]} 次：fwknopd 以最后出现的值为准，其余被静默忽略` : '';
   });
 }
 
