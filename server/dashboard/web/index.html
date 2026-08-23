@@ -3806,7 +3806,17 @@ $('#conf-discard').onclick = () => {
     toast('已恢复为已保存的配置', 'ok');
   });
 };
-$('#conf-add-row').onclick = () => { confRows.push(['', '']); markConfDirty(); renderConfEditor(); };
+/* 新增指令：渲染后滚动到并聚焦新行键名（长配置末尾新增不再「找不到」） */
+$('#conf-add-row').onclick = () => {
+  confRows.push(['', '']); markConfDirty(); renderConfEditor();
+  const rows = $$('#conf-edit-rows > div');
+  const last = rows[rows.length - 1];
+  if (last) {
+    last.scrollIntoView({ behavior:'smooth', block:'center' });
+    const ki = last.querySelector('.ce-key');
+    if (ki) setTimeout(() => ki.focus(), 200);  /* 等滚动落定 */
+  }
+};
 /* 指令名即时过滤：只隐藏不匹配行，不影响数据 */
 $('#conf-filter').oninput = e => {
   const q = e.target.value.trim().toUpperCase();
