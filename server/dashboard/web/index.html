@@ -4804,11 +4804,13 @@ function setDevAlias(id, a) {
   lsSet(DEV_ALIAS_KEY, JSON.stringify(m));
 }
 /* 搜索过滤语义单点化：renderTOFU 渲染与「导出 CSV」共用同一套匹配字段，
-   防止两处各自实现随时间漂移（导出结果必须与所见列表一致） */
+   防止两处各自实现随时间漂移（导出结果必须与所见列表一致）。
+   始终返回副本——renderTOFU 会按表头 in-place 排序，直接返回 S.tofu.bindings
+   引用会把排序写回缓存，空搜索词下清除排序后无法恢复文件原始顺序 */
 function filteredTofuBindings() {
   const all = (S.tofu && S.tofu.bindings) || [];
   const q = (S.tofuQuery || '').toLowerCase();
-  if (!q) return all;
+  if (!q) return all.slice();
   const aliasOf = devAliasMap();
   return all.filter(b =>
     (b.device_id||'').toLowerCase().includes(q) ||
