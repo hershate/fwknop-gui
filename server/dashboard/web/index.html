@@ -219,6 +219,14 @@ select.ctl, input.ctl {
   border-color:var(--accent); background:var(--accent-soft); color:var(--accent);
   font-weight:600;
 }
+/* 自定义模板：应用钮 + 删除钮拼接为一粒芯片（删除钮独立可聚焦——
+   内嵌 span 的 ✕ 键盘/读屏不可达，此前删除自定义模板只能依赖鼠标） */
+.tpl-chip-wrap { display:inline-flex; }
+.tpl-chip-wrap > .tpl-chip { border-radius:999px 0 0 999px; border-right:none; }
+.tpl-chip-wrap > .tpl-del-btn {
+  border-radius:0 999px 999px 0; padding:6px 10px 6px 8px; opacity:.7;
+}
+.tpl-chip-wrap > .tpl-del-btn:hover, .tpl-chip-wrap > .tpl-del-btn:focus-visible { opacity:1; }
 .tpl-desc { font-size:12.5px; color:var(--muted); margin:4px 0 14px; min-height:0; }
 .tpl-desc:empty { display:none; }
 
@@ -4281,14 +4289,24 @@ function renderCustomTpls() {
   const cur = loadCustomTpls();
   box.innerHTML = '';
   Object.keys(cur).forEach(name => {
+    /* 应用钮 + 独立删除钮拼为一粒芯片：删除钮是原生 button，键盘 Tab 可达、
+       读屏可报（内嵌 span ✕ 的旧结构只能鼠标点） */
+    const wrap = document.createElement('span');
+    wrap.className = 'tpl-chip-wrap';
     const chip = document.createElement('button');
     chip.type = 'button';
     chip.className = 'tpl-chip';
     chip.dataset.tpl = name;
     chip.dataset.label = name;
-    chip.innerHTML = `${esc(name)} <span class="tpl-del" title="删除该自定义模板" style="opacity:.6">✕</span>`;
+    chip.textContent = name;
     bindTplChip(chip);
-    chip.querySelector('.tpl-del').onclick = ev => {
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'tpl-chip tpl-del-btn';
+    del.textContent = '✕';
+    del.title = `删除自定义模板「${name}」`;
+    del.setAttribute('aria-label', `删除自定义模板「${name}」`);
+    del.onclick = ev => {
       ev.stopPropagation();
       confirmDialog('删除自定义模板', `确定删除模板「<b>${esc(name)}</b>」吗？已签发的授权不受影响。`, '删除', () => {
         const m = loadCustomTpls();
@@ -4298,7 +4316,8 @@ function renderCustomTpls() {
         toast(`模板「${name}」已删除`, 'ok', 1500);
       }, true);
     };
-    box.appendChild(chip);
+    wrap.appendChild(chip); wrap.appendChild(del);
+    box.appendChild(wrap);
   });
 }
 
