@@ -1085,13 +1085,15 @@ function scheduleToastDismiss(el, ms) {
 let notifKindFilter = '';  /* '' = 全部，'err'/'ok' = 仅看该类 */
 $('#notif-btn').onclick = () => {
   const kindDot = k => k === 'err' ? 'var(--red)' : k === 'ok' ? 'var(--green)' : 'var(--muted)';
+  /* 本次打开前的最近已读时刻：晚于它的条目标「新」，弹窗内重渲染（过滤切换）时保持稳定 */
+  const unreadSince = S.notifReadTs || 0;
   const renderList = () => {
     const log = (S.notifLog || []).filter(n => !notifKindFilter || (n.kind || '') === notifKindFilter).slice().reverse();
     const errs = (S.notifLog || []).filter(n => n.kind === 'err').length;
     $('#notif-list').innerHTML = log.length ? log.map(n => `
       <div style="display:flex;gap:10px;align-items:baseline;padding:7px 2px;border-bottom:1px solid var(--border-soft)">
         <span style="color:${kindDot(n.kind)}">●</span>
-        <div style="flex:1;font-size:13px" class="cp-cell" data-nmsg="${esc(n.msg)}" title="点击复制该条通知">${esc(n.msg)}${n.n > 1 ? ` <span class="hint">×${n.n}</span>` : ''}</div>
+        <div style="flex:1;font-size:13px" class="cp-cell" data-nmsg="${esc(n.msg)}" title="点击复制该条通知">${esc(n.msg)}${n.n > 1 ? ` <span class="hint">×${n.n}</span>` : ''}${n.t > unreadSince ? ' <span class="tag hl" style="font-size:10.5px;padding:0 6px">新</span>' : ''}</div>
         <span class="hint" style="white-space:nowrap;font-size:11.5px">${fmtAgo(n.t)}</span>
       </div>`).join('')
       : '<div class="hint" style="padding:20px 0;text-align:center">暂无通知</div>';
@@ -1115,6 +1117,7 @@ $('#notif-btn').onclick = () => {
     $$('#notif-list [data-nmsg]').forEach(el => el.onclick = () => copyText(el.dataset.nmsg, '通知内容 '));
   };
   S.notifUnread = 0;
+  S.notifReadTs = Date.now() / 1000;  /* 已读水位：下次打开时用于「新」标记 */
   $('#notif-badge').style.display = 'none';
   updateDocTitle();  /* 已读后标题中的未读计数同步清零 */
   $('#notif-clear').onclick = () => {
