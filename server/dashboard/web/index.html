@@ -1732,6 +1732,12 @@ const fmtSize = n => {
   if (n < 1073741824) return (n/1048576).toFixed(1) + ' MB';
   return (n/1073741824).toFixed(2) + ' GB';
 };
+/* 审计体积分档阈值单点化：概览状态卡与关于页文件行共用同一判定，
+   防两处阈值漂移（备份堆积阈值语义不同，各自保留） */
+function auditSizeLevel(size) {
+  const MB = 1048576;
+  return size > 200*MB ? 'red' : size > 50*MB ? 'amber' : '';
+}
 
 /* skip link：JS 接管跳转保证焦点确实落到 #main（部分浏览器对碎片导航的
    焦点迁移不一致），滚动行为尊重减弱动效偏好 */
@@ -2397,10 +2403,11 @@ function renderStatusCards() {
         v: bk.count ? `已清空 <small>${bkHeavy ? '<span style="color:var(--amber)">' : ''}备份 ×${bk.count}（${fmtSize(bk.size)}）${bkHeavy ? ' ⚠ 建议清理</span>' : ''}，可从关于页或清理回执下载</small>` : '缺失' };
       const clr = (S.writeEnabled && a.size > 0)
         ? ` <button class="btn ghost small" data-audclear="${a.size}" style="padding:2px 8px;font-size:11.5px" title="备份为 .bak-时间戳 文件后清空审计日志">清理</button>` : '';
-      if (a.size > 200*MB) return { ic:'activity', c:'var(--red)', bg:'var(--red-soft)', k:'审计日志', pg:'about',
+      const alv = auditSizeLevel(a.size);  /* 分档判定单点化（与关于页文件行同阈值） */
+      if (alv === 'red') return { ic:'activity', c:'var(--red)', bg:'var(--red-soft)', k:'审计日志', pg:'about',
         tip: '审计日志过大：点击查看「关于」页导出/备份入口',
         v:`过大 <small>${fmtSize(a.size)} · 建议立即导出后清理，过大文件拖慢事件页${bakNote}</small>${clr}` };
-      if (a.size > 50*MB) return { ic:'activity', c:'var(--amber)', bg:'var(--amber-soft)', k:'审计日志', pg:'about',
+      if (alv === 'amber') return { ic:'activity', c:'var(--amber)', bg:'var(--amber-soft)', k:'审计日志', pg:'about',
         tip: '审计日志偏大：点击查看「关于」页导出/备份入口',
         v:`偏大 <small>${fmtSize(a.size)} · 建议导出后清理${bakNote}</small>${clr}` };
       return { ic:'activity', c:'var(--blue)', bg:'var(--blue-soft)', k:'审计日志', pg:'about',
@@ -5763,7 +5770,12 @@ function renderAbout() {
       ? esc(d.admin_tool.status).replace(/\n/g, '<br>') +
         ` <button class="icon-btn" style="padding:1px 6px;vertical-align:1px" data-adminstat="${esc(d.admin_tool.status)}" title="复制管理工具状态输出">${icon('i-copy',11)}</button>`
       : '—'],
-    ['审计日志', frow(F.audit)],
+    /* 审计行复刻状态卡分档（同 auditSizeLevel 阈值）：红/琥珀卡钻取落地后
+       严重性上下文不丢失——用户是带着「过大」预期来的，目的地要认账 */
+    ['审计日志', frow(F.audit) + (() => {
+      const lv = F.audit && F.audit.exists ? auditSizeLevel(F.audit.size) : '';
+      return lv ? ` <span style="color:var(--${lv})" title="${lv === 'red' ? '审计日志过大：拖慢事件页，建议立即导出后清理' : '审计日志偏大：建议导出后清理'}">${lv === 'red' ? '⚠ 过大' : '△ 偏大'}</span>` : '';
+    })()],
     ['指标文件', frow(F.metrics)],
     ['TOFU 状态', frow(F.tofu)],
     ['授权配置', frow(F.access_conf)],
