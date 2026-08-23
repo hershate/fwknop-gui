@@ -211,7 +211,7 @@ select.ctl, input.ctl {
 .tpl-label { font-size:12.5px; color:var(--muted); }
 .tpl-chip {
   font-size:12.5px; padding:6px 13px; border-radius:999px; cursor:pointer;
-  border:1px solid var(--line); background:var(--panel-2); color:var(--ink);
+  border:1px solid var(--border); background:var(--panel-2); color:var(--text);
   transition:all .15s;
 }
 .tpl-chip:hover { border-color:var(--accent); color:var(--accent); }
@@ -223,17 +223,17 @@ select.ctl, input.ctl {
 .tpl-desc:empty { display:none; }
 
 /* 点击复制单元格 */
-.cp-cell { cursor:pointer; border-bottom:1px dashed var(--line); }
+.cp-cell { cursor:pointer; border-bottom:1px dashed var(--border); }
 .srch-wrap { position:relative; display:inline-flex; align-items:center; }
 .srch-wrap .ctl { padding-right:28px; }
 .srch-clear { position:absolute; right:5px; padding:2px 4px; color:var(--faint); display:none; }
-.srch-clear:hover { color:var(--ink); }
+.srch-clear:hover { color:var(--text); }
 .ev-click { cursor:pointer; }
 .ev-click:hover td { background:var(--panel-2); }
 /* 展开中的事件行：左缘 3px 强调条（inset 阴影不改背景——与异常行红底、
    悬停底色兼容叠加），多行同时展开时一眼分辨哪些行处于展开态 */
 .ev-click[aria-expanded="true"] td:first-child { box-shadow:inset 3px 0 0 var(--accent); }
-.ev-detail td { background:var(--panel-2); padding:10px 16px; border-top:1px dashed var(--line); }
+.ev-detail td { background:var(--panel-2); padding:10px 16px; border-top:1px dashed var(--border); }
 .ev-kv { display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:6px 18px; font-size:12.5px; }
 .ev-kv .k { color:var(--faint); font-size:11.5px; margin-bottom:1px; }
 .ev-kv .v { font-family:var(--mono); word-break:break-all; }
@@ -535,28 +535,28 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
 <style>
 /* ============ 鉴权门（初始化向导 / 登录） ============ */
 #auth-gate{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:20px}
-.auth-card{width:100%;max-width:420px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:28px 26px;box-shadow:0 8px 40px rgba(0,0,0,.12)}
+.auth-card{width:100%;max-width:420px;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:28px 26px;box-shadow:0 8px 40px rgba(0,0,0,.12)}
 .auth-card h2{margin:14px 0 6px;font-size:20px}
-.auth-card .desc{color:var(--dim);font-size:13px;line-height:1.7;margin-bottom:18px}
-.auth-card label{display:block;font-size:13px;color:var(--dim);margin:12px 0 5px}
-.auth-card input{width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);font-size:14px}
+.auth-card .desc{color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:18px}
+.auth-card label{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px}
+.auth-card input{width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:14px}
 .auth-card input:focus{outline:none;border-color:var(--accent)}
 .auth-card .btn{width:100%;margin-top:18px;justify-content:center}
 .auth-brand{display:flex;align-items:center;gap:10px;color:var(--accent)}
-.auth-brand .t1{font-weight:700;font-size:16px;color:var(--fg)}
-.auth-brand .t2{font-size:12px;color:var(--dim)}
+.auth-brand .t1{font-weight:700;font-size:16px;color:var(--text)}
+.auth-brand .t2{font-size:12px;color:var(--muted)}
 .auth-err{color:var(--red);font-size:13px;min-height:18px;margin-top:10px}
-.auth-steps{margin:0 0 14px;padding-left:18px;color:var(--dim);font-size:13px;line-height:1.9}
+.auth-steps{margin:0 0 14px;padding-left:18px;color:var(--muted);font-size:13px;line-height:1.9}
 .pw-wrap{position:relative}
 .pw-wrap input{padding-right:40px}
-.pw-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--dim);cursor:pointer;padding:6px;display:flex}
+.pw-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--muted);cursor:pointer;padding:6px;display:flex}
 .pw-eye:hover{color:var(--accent)}
 .auth-hint{font-size:12px;min-height:16px;margin-top:6px}
 .auth-hint.ok{color:var(--green)}
 .th-sort{cursor:pointer;user-select:none;white-space:nowrap}
 .th-sort:hover{color:var(--accent)}
 .th-sort .arr{font-size:10px;margin-left:2px}
-kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-bottom-width:2px;border-radius:6px;background:var(--bg-soft,var(--panel));font:11.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--fg)}
+kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-bottom-width:2px;border-radius:6px;background:var(--bg-soft,var(--panel));font:11.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--text)}
 .auth-hint.no{color:var(--amber)}
 </style>
 
@@ -784,7 +784,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <button class="btn small" id="show-add" title="展开签发新凭证表单（快捷键 n）"><svg width="14" height="14"><use href="#i-plus"/></svg>签发新凭证</button>
               </div>
             </div>
-            <div id="users-batch-bar" style="display:none;padding:8px 16px;background:var(--accent-soft);border-top:1px solid var(--line);align-items:center;gap:10px;flex-wrap:wrap">
+            <div id="users-batch-bar" style="display:none;padding:8px 16px;background:var(--accent-soft);border-top:1px solid var(--border);align-items:center;gap:10px;flex-wrap:wrap">
               <span id="users-sel-count" style="font-size:12.5px"></span>
               <button class="btn ghost small" id="users-sel-all" title="选中当前列表中的全部授权（仅搜索过滤后的可见项）">全选当前列表</button>
               <button class="btn ghost small" id="users-sel-clear" title="清空全部已选（含被搜索筛选隐藏的已选项）">取消选择</button>
@@ -946,7 +946,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               <span class="hint" id="tofu-file"></span>
             </div>
           </div>
-          <div id="tofu-batch-bar" style="display:none;padding:8px 16px;background:var(--accent-soft);border-top:1px solid var(--line);align-items:center;gap:10px">
+          <div id="tofu-batch-bar" style="display:none;padding:8px 16px;background:var(--accent-soft);border-top:1px solid var(--border);align-items:center;gap:10px">
             <span id="tofu-sel-count" style="font-size:13px"></span>
             <button class="btn small" id="tofu-batch-unbind" style="margin-left:auto" title="逐个解除全部已选设备的 TOFU 绑定（解绑后需重新完成首用绑定）"><svg width="13" height="13"><use href="#i-trash"/></svg>批量解绑</button>
             <button class="btn ghost small" id="tofu-sel-clear" title="清空全部已选（含被搜索筛选隐藏的已选项）">取消选择</button>
