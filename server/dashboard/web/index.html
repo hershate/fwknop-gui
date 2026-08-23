@@ -2757,6 +2757,7 @@ async function loadEvents() {
     if (S.evSound && S.evPrevNewest &&
         S.events.some(e => BAD_EVTS.includes(e.event) && (e.time || 0) > S.evPrevNewest)) playBeep();
     S.evPrevNewest = newest;
+    syncEvNotifyBtn();  /* 权限中途被撤时按钮态随刷新周期降级（渲染缓存保证无变化零开销） */
     updateDocTitle();
     if (S.page === 'events' && !focusWithin('#events-body')) renderEvents();
   } catch (e) {
@@ -2766,18 +2767,31 @@ async function loadEvents() {
 }
 /* 异常桌面通知开关：状态持久化；未授权时先请求浏览器权限 */
 S.evNotify = localStorage.getItem('fwknop-ev-notify') === '1';
+/* 渲染缓存：loadEvents 每轮都调用本函数同步权限撤销态，状态未变时不动 DOM
+   （重写 innerHTML 会打断按钮上的焦点/悬停） */
+let evNotifyBtnKey = '';
 function syncEvNotifyBtn() {
   const b = $('#ev-notify');
-  b.classList.toggle('active', !!S.evNotify);
-  b.setAttribute('aria-pressed', S.evNotify ? 'true' : 'false');
-  b.innerHTML = `<svg width="14" height="14"><use href="#i-bell"/></svg>异常桌面通知${S.evNotify ? '·开' : ''}`;
+  /* 权限在浏览器侧被撤（站点设置/策略重置）时开关仍显「开」是假承诺——
+     发射路径要求 granted，通知永远不会弹；显式降级为「权限被撤」 */
+  const denied = S.evNotify && 'Notification' in window && Notification.permission === 'denied';
+  const key = (S.evNotify ? '1' : '0') + (denied ? 'd' : '');
+  if (key === evNotifyBtnKey) return;
+  evNotifyBtnKey = key;
+  b.classList.toggle('active', !!S.evNotify && !denied);
+  b.setAttribute('aria-pressed', S.evNotify && !denied ? 'true' : 'false');
+  b.innerHTML = `<svg width="14" height="14"><use href="#i-bell"/></svg>异常桌面通知${denied ? '·权限被撤' : S.evNotify ? '·开' : ''}`;
+  b.title = denied
+    ? '通知权限已在浏览器侧被撤销，当前开关形同虚设：请在站点设置中恢复授权，或再次点击关闭本开关'
+    : '后台标签页收到异常事件时弹桌面通知（需浏览器授权）；点击通知直达「仅看异常」视图';
 }
 $('#ev-notify').onclick = async () => {
   if (!S.evNotify) {
     if (!('Notification' in window)) { toast('当前浏览器不支持桌面通知', 'err'); return; }
     if (Notification.permission !== 'granted') {
       const p = await Notification.requestPermission();
-      if (p !== 'granted') { toast('未获得通知权限，可在浏览器站点设置中开启', 'err', 5000); return; }
+      /* 具体找回路径：被拒后浏览器不再弹授权框，只能手动改站点设置 */
+      if (p !== 'granted') { toast('未获得通知权限：点地址栏左侧图标 → 网站设置 → 通知改为「允许」后再开启', 'err', 6000); return; }
     }
     S.evNotify = true;
     lsSet('fwknop-ev-notify', '1');
