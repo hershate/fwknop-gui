@@ -319,7 +319,7 @@ func handleAdminAdd(w http.ResponseWriter, r *http.Request) {
 		args = append(args, "--require-totp-port-match")
 	}
 	out, err := runAdmin(args...)
-	logOp(r, "签发凭证", name, err == nil)
+	logOpR(r, "签发凭证", name, err)
 	// apply=1：截取输出中的 stanza 段并写入 access.conf（预检+备份+热加载），
 	// 实现「一键签发即生效」；失败不视为签发失败，原始 stanza 仍在输出中可复制。
 	if err == nil && r.FormValue("apply") == "1" {
@@ -350,7 +350,7 @@ func handleAdminRm(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := runAdmin("user", "rm", name,
 		"--access-conf", cfg.AccessConf, "--pid-file", cfg.PidFile)
-	logOp(r, "撤销授权", name, err == nil)
+	logOpR(r, "撤销授权", name, err)
 	adminResult(w, out, err)
 }
 
@@ -375,7 +375,7 @@ func handleAdminUserURI(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := runAdmin("user", "qr", name, "--server", server,
 		"--access-conf", cfg.AccessConf)
-	logOp(r, "重发授权 URI", name, err == nil)
+	logOpR(r, "重发授权 URI", name, err)
 	adminResult(w, out, err)
 }
 
@@ -442,7 +442,7 @@ func handleAdminTofuUnbind(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := runAdmin("tofu", "unbind", key, dev,
 		"--state-file", tofuPath(), "--pid-file", cfg.PidFile)
-	logOp(r, "解绑 TOFU 设备", key+" ← "+dev, err == nil)
+	logOpR(r, "解绑 TOFU 设备", key+" ← "+dev, err)
 	adminResult(w, out, err)
 }
 
@@ -550,7 +550,7 @@ func handleService(w http.ResponseWriter, r *http.Request) {
 	/* validate/fwlist 是只读预检不记；start/stop/restart/reload 改变进程状态，
 	   全部入管理面操作日志（敲门中断类动作事后可追） */
 	if action != "validate" {
-		logOp(r, "服务控制："+action, "", err == nil)
+		logOpR(r, "服务控制："+action, "", err)
 	}
 	adminResult(w, out, err)
 }
@@ -604,7 +604,7 @@ func handleSaveFwknopdConf(w http.ResponseWriter, r *http.Request) {
 		}
 		out, err = saveFwknopdConf(req.Lines)
 	}
-	logOp(r, "保存 fwknopd.conf", "mode="+req.Mode, err == nil)
+	logOpR(r, "保存 fwknopd.conf", "mode="+req.Mode, err)
 	adminResult(w, out, err)
 }
 
@@ -636,7 +636,7 @@ func handleUpdateStanza(w http.ResponseWriter, r *http.Request) {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	logOp(r, "编辑授权", fmt.Sprintf("#%d [%s]", req.Index, strings.Join(keys, ",")), err == nil)
+	logOpR(r, "编辑授权", fmt.Sprintf("#%d [%s]", req.Index, strings.Join(keys, ",")), err)
 	adminResult(w, out, err)
 }
 
@@ -653,7 +653,7 @@ func handleEnableStanza(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out, err := enableStanza(req.Name)
-	logOp(r, "恢复授权", req.Name, err == nil)
+	logOpR(r, "恢复授权", req.Name, err)
 	adminResult(w, out, err)
 }
 
@@ -730,6 +730,6 @@ func handleProfileOp(w http.ResponseWriter, r *http.Request) {
 	if action == "duplicate" {
 		detail = req.Name + " → " + req.Target
 	}
-	logOp(r, "方案："+action, detail, err == nil)
+	logOpR(r, "方案："+action, detail, err)
 	adminResult(w, out, err)
 }

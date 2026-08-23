@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -20,13 +21,15 @@ import (
 const opLogFileName = "dashboard_ops.jsonl"
 
 // OpEntry 是一条管理面操作记录。Detail 只含名称/规模类元信息，
-// 绝不写入密钥材料或配置值内容。
+// 绝不写入密钥材料或配置值内容。Reason 仅失败时记录错误摘要，
+// 让审计读者看到「为什么失败」而非只有布尔（如 mtime 冲突/校验失败）。
 type OpEntry struct {
 	Time   int64  `json:"time"`
 	Op     string `json:"op"`
 	Detail string `json:"detail,omitempty"`
 	IP     string `json:"ip,omitempty"`
 	OK     bool   `json:"ok"`
+	Reason string `json:"reason,omitempty"`
 }
 
 var opLogMu sync.Mutex
@@ -36,7 +39,25 @@ func opLogPath() string { return filepath.Join(cfg.RunDir, opLogFileName) }
 // logOp 追加一条操作日志。尽力而为：运行目录不可写时静默放弃，
 // 不阻断业务请求（只读部署/磁盘满都不应让管理操作失败）。
 func logOp(r *http.Request, op, detail string, ok bool) {
-	e := OpEntry{Time: time.Now().Unix(), Op: op, Detail: detail, OK: ok}
+	logOpFull(r, op, detail, ok, "")
+}
+
+// logOpR 同 logOp，但失败时把 err 摘要记入 Reason（单行、截断 200B）。
+// 调用处保持一行式：logOpR(r, "签发凭证", name, err)。
+func logOpR(r *http.Request, op, detail string, err error) {
+	if err == nil {
+		logOpFull(r, op, detail, true, "")
+		return
+	}
+	reason := strings.ReplaceAll(strings.TrimSpace(err.Error()), "\n", " ⏎ ")
+	if len(reason) > 200 {
+		reason = reason[:200]
+	}
+	logOpFull(r, op, detail, false, reason)
+}
+
+func logOpFull(r *http.Request, op, detail string, ok bool, reason string) {
+	e := OpEntry{Time: time.Now().Unix(), Op: op, Detail: detail, OK: ok, Reason: reason}
 	if r != nil {
 		e.IP = clientIP(r)
 	}

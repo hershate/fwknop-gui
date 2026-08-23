@@ -5619,6 +5619,7 @@ function filteredOpLog() {
   const q = (S.oplogQuery || '').toLowerCase();
   const matchQ = e => !q || (e.op || '').toLowerCase().includes(q) ||
     (e.detail || '').toLowerCase().includes(q) || (e.ip || '').toLowerCase().includes(q) ||
+    (e.reason || '').toLowerCase().includes(q) ||  /* 失败原因亦可搜（所见即可搜） */
     /* 结果列状态词（界面所见即所搜，与事件页「异常」同一心智）：搜「失败」
        直达全部失败/被拒记录——与类别过滤的「仅看失败」互补（可再叠关键词） */
     ((e.ok ? '成功' : '失败').includes(q));
@@ -5654,7 +5655,7 @@ function renderOpLog() {
     <tbody>${es.map(e => `<tr>
       <td title="${esc(fmtAbs(e.time))}" style="white-space:nowrap">${esc(fmtAgo(e.time))}</td>
       <td style="white-space:nowrap">${esc(e.op)}</td>
-      <td style="word-break:break-all">${e.detail ? `<span class="cp-cell" data-cp="${esc(e.detail)}" data-lab="详情" title="点击复制详情">${esc(e.detail)}</span>` : ''}</td>
+      <td style="word-break:break-all">${e.detail ? `<span class="cp-cell" data-cp="${esc(e.detail)}" data-lab="详情" title="点击复制详情">${esc(e.detail)}</span>` : ''}${!e.ok && e.reason ? `<div style="color:var(--red);font-size:12px;margin-top:2px" title="失败原因（服务端记录的错误摘要）">原因：${esc(e.reason)}</div>` : ''}</td>
       <td style="white-space:nowrap">${e.ip ? `<span class="cp-cell" data-cp="${esc(e.ip)}" data-lab="来源 IP" title="点击复制来源 IP（爆破排查可直接贴进防火墙封禁）">${esc(e.ip)}</span>` : '—'}</td>
       <td>${e.ok ? '<span style="color:var(--green)" title="成功">✓</span>' : '<span style="color:var(--red)" title="失败/被拒">✗</span>'}</td>
     </tr>`).join('')}</tbody></table></div>`;
@@ -5688,9 +5689,9 @@ $('#oplog-csv').onclick = () => {
   const cell = v => { v = String(v ?? ''); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
   const catLab = { acct: '账户', stanza: '授权', conf: '配置与方案', svc: '服务与审计' };
   const fmtCsvTime = t => new Date(t * 1000).toLocaleString('sv-SE');
-  const head = ['时间', '操作', '类别', '详情', '来源IP', '结果'];
+  const head = ['时间', '操作', '类别', '详情', '来源IP', '结果', '失败原因'];
   const lines = es.map(e => [fmtCsvTime(e.time), e.op, catLab[oplogCat(e.op)] || oplogCat(e.op),
-    e.detail, e.ip, e.ok ? '成功' : '失败'].map(cell).join(','));
+    e.detail, e.ip, e.ok ? '成功' : '失败', e.ok ? '' : (e.reason || '')].map(cell).join(','));
   /* 加 BOM 以便表格软件正确识别 UTF-8 中文 */
   const blob = new Blob(['\ufeff' + head.join(',') + '\n' + lines.join('\n')], { type:'text/csv;charset=utf-8' });
   const a = document.createElement('a');
