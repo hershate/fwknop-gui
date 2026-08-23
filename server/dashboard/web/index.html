@@ -4375,7 +4375,7 @@ $$('[data-ctpl]').forEach(chip => chip.onclick = () => {
   renderConfEditor();
   toast(`模板已合并（更新 ${upd} 项、新增 ${add} 项），点击右上角「保存」生效`, 'ok', 5000);
 });
-$('#conf-save').onclick = () => {
+$('#conf-save').onclick = async () => {
   /* 保存前拦截：结构化模式下存在类型校验红框（ce-bad）时拒绝并聚焦 */
   if (!confRawEdit) {
     markConfRows();
@@ -4411,7 +4411,25 @@ $('#conf-save').onclick = () => {
     if (!lines.length) { toast('配置不能为空', 'err'); return; }
     payload = { mode:'structured', lines };
   }
-  confirmDialog('保存 fwknopd.conf', '保存流程：<b>预检 → 备份 → 原子替换 → 热加载</b>。预检不通过则不会落盘。确定保存吗？', '保存',
+  /* 反向跨配置校验：收窄/修改 PCAP_PORT_RANGE 可能使现有授权的 TOTP 范围
+     越界（敲门静默丢失）。保存前在确认框中列出受影响授权，由运维确认。
+     授权数据未加载时先懒加载（config 页直达场景） */
+  const newLines = payload.mode === 'raw' ? payload.raw.split('\n') : payload.lines;
+  const pcapLine = newLines.map(l => l.trim()).find(l => /^PCAP_PORT_RANGE(\s|$)/.test(l) && !l.startsWith('#'));
+  const newPcap = pcapLine ? pcapLine.split(/\s+/).slice(1).join(' ').trim() : '';
+  let pcapWarn = '';
+  if (newPcap) {
+    if (!S.users) { try { await loadUsers(); } catch (_) { /* loadUsers 内部已提示 */ } }
+    const bad = ((S.users && S.users.stanzas) || []).filter(s => {
+      const pr = String(s.port_range || '').trim();
+      if (!pr) return false;
+      const a = pr.split('-').map(Number), b = newPcap.split('-').map(Number);
+      return b.length === 2 && !(a[0] >= b[0] && a[1] <= b[1]);
+    });
+    if (bad.length) pcapWarn = `<br><br><span style="color:var(--amber)">⚠ 授权 ${bad.map(s => `<b>${esc(s.name || ('#' + s.index))}</b>（${esc(s.port_range)}）`).join('、')}
+      的 TOTP 端口范围超出新的监听范围 ${esc(newPcap)}，保存后这些授权的敲门将无法被捕获。</span>`;
+  }
+  confirmDialog('保存 fwknopd.conf', '保存流程：<b>预检 → 备份 → 原子替换 → 热加载</b>。预检不通过则不会落盘。' + pcapWarn + '确定保存吗？', '保存',
     async () => {
       try {
         const r = await api('/api/config/fwknopd', { method:'POST',
