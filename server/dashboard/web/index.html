@@ -4549,7 +4549,7 @@ function renderProfiles() {
         <div style="display:flex;align-items:center;gap:10px">
           <div style="width:34px;height:34px;border-radius:10px;background:var(--blue-soft);color:var(--blue);display:flex;align-items:center;justify-content:center">${icon('i-archive',17)}</div>
           <div><div style="font-weight:700">${esc(p.name)}${p.current ? ' <span class="tag hl">当前生效</span>' : ''}</div>
-          <div class="hint">${p.created ? '保存于 ' + fmtAbs(p.created) : ''}${p.note ? ' · ' + esc(p.note) : ''}</div></div>
+          <div class="hint">${p.created ? `保存于 ${fmtAbs(p.created)}（${fmtAgo(p.created)}）` : ''}${p.note ? ' · ' + esc(p.note) : ''}</div></div>
         </div>
         <div class="tools">
           <button class="btn ghost small" data-pv="${esc(p.name)}">${icon('i-list',13)}预览</button>
