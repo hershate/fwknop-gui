@@ -3368,7 +3368,7 @@ function renderTOFU() {
   $('#tofu-body').innerHTML = bs.map(b => `<tr>
     <td>${S.writeEnabled ? `<input type="checkbox" class="tofu-sel" data-sk="${esc(b.stanza_key)}" data-dev="${esc(b.device_id)}"
       ${S.tofuSel.has(b.stanza_key + '\x01' + b.device_id) ? 'checked' : ''}>` : ''}</td>
-    <td class="mono" title="${esc(b.device_id)}">${esc(b.device_id)}
+    <td class="mono" title="完整指纹：${esc(b.device_id)}">${esc(b.device_id && b.device_id.length > 16 ? b.device_id.slice(0, 16) + '…' : b.device_id)}
       <button class="icon-btn" style="padding:2px 6px;margin-left:6px" data-cp="${esc(b.device_id)}" title="复制指纹">${icon('i-copy',12)}</button>
       ${orphanOf(b) ? `<div><span class="tag" style="background:var(--amber-soft);color:var(--amber);margin-top:3px" title="对应授权已删除/禁用，该绑定不再生效，建议解绑清理">⚠ 悬空绑定</span></div>` : ''}
       ${lastEventForDevice(b.device_id)}</td>
