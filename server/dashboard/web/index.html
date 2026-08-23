@@ -811,6 +811,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <button type="button" class="tpl-chip" data-tpl="std">标准 SSH（推荐）</button>
                 <button type="button" class="tpl-chip" data-tpl="hardened">高安全 SSH（零信任）</button>
                 <button type="button" class="tpl-chip" data-tpl="multi">多服务网关</button>
+                <button type="button" class="tpl-chip" data-tpl="vpn">VPN 长时放行（WireGuard 等）</button>
                 <button type="button" class="tpl-chip" data-tpl="legacy">兼容 v3 旧客户端</button>
                 <button type="button" class="tpl-chip" data-tpl="debug">临时排障（5 分钟）</button>
                 <span id="custom-tpls" style="display:inline-flex;gap:8px;flex-wrap:wrap"></span>
@@ -3773,6 +3774,14 @@ const ADD_TEMPLATES = {
     desc: '多服务网关：一次敲门同时开放 SSH / HTTPS / DNS，TOTP 跳变 + 指纹 + 首用自动绑定。',
     access: 'tcp/22,tcp/443,udp/53', totp: true, portRange: '30000-60000',
     fingerprint: true, tofuTimeout: '86400', portMatch: false,
+  },
+  vpn: {
+    /* UDP 服务无 TCP 那样的 ESTABLISHED 连接态可沿：默认 30s 放行超时一到，
+       防火墙规则即删，WireGuard 漫游/重连会被打断——故放行拉长到 8h
+       （一个工作日），下班自然失效，无需重新敲门 */
+    desc: 'WireGuard 等 UDP VPN：敲门放行 8 小时（UDP 无连接态，默认 30 秒超时会让 VPN 反复中断）。端口按实际服务改，TOTP 跳变 + 指纹 + 首用自动绑定向 SSH 基线看齐。',
+    access: 'udp/51820', totp: true, portRange: '30000-60000',
+    fingerprint: true, tofuTimeout: '86400', portMatch: false, fwTimeout: '28800',
   },
   legacy: {
     desc: '兼容 SPA v3 旧客户端：关闭 TOTP 跳变与设备指纹（v3 不支持）。安全性最低，仅作过渡，建议尽快升级客户端。',
