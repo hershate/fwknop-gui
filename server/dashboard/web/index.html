@@ -664,6 +664,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <div id="event-ratio" style="margin-top:8px"></div>
             <div id="ev-active" style="display:none;margin-top:8px;flex-wrap:wrap;gap:6px;align-items:center"></div>
             <div id="ev-topip" class="chips" style="display:none;margin-top:8px"></div>
+            <div id="ev-heat" style="display:none;margin-top:8px;gap:2px;align-items:flex-end" title="时间分布：柱高为该时段事件数，点击钻取"></div>
             <button class="btn small" id="ev-new-pill" style="display:none;margin-top:8px;width:100%" aria-live="polite"></button>
           </div>
           <div class="tb-wrap">
@@ -2212,6 +2213,42 @@ function renderEventChips() {
   if (rb) rb.onclick = () => { S.evFilter = 'bad'; S.evPage = 0; renderEvents(); };
 }
 
+/* 时间分布条：当前时间窗内事件分 24 桶，柱高=条数（含异常的桶显红），
+   点击非空桶把自定义时间区间设为该桶——反复点击逐级钻取，快速定位
+   活跃/攻击时段；事件太少（<8 条）没有分布意义时隐藏 */
+function renderEvHeat() {
+  const el = $('#ev-heat');
+  if (!el) return;
+  const evs = timeFilteredEvents();
+  if (evs.length < 8) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  const ts = evs.map(e => e.time || 0).filter(Boolean);
+  const lo = Math.min(...ts), hi = Math.max(...ts);
+  const span = Math.max(hi - lo, 3600);
+  const B = 24, bw = span / B;
+  const buckets = Array.from({ length: B }, () => ({ n: 0, bad: 0 }));
+  for (const e of evs) {
+    const i = Math.min(B - 1, Math.floor(((e.time || 0) - lo) / bw));
+    buckets[i].n++;
+    if (BAD_EVTS.includes(e.event)) buckets[i].bad++;
+  }
+  const max = Math.max(...buckets.map(b => b.n), 1);
+  el.style.display = 'flex';
+  el.innerHTML = buckets.map((b, i) => {
+    const t0 = lo + i * bw;
+    const lab = `${fmtAbs(t0).slice(0, 16)} 起 · ${b.n} 条${b.bad ? `（异常 ${b.bad}）` : ''}${b.n ? '，点击筛选该时段' : ''}`;
+    return `<div class="evh-bar" data-i="${i}" title="${lab}" style="flex:1;display:flex;align-items:flex-end;height:34px;${b.n ? 'cursor:pointer' : ''}">
+      <div style="width:100%;height:${b.n ? Math.max(b.n / max * 100, 8) : 2}%;background:${b.bad ? 'var(--red)' : 'var(--accent)'};opacity:${b.n ? 0.45 + 0.55 * b.n / max : 0.15};border-radius:2px 2px 0 0"></div></div>`;
+  }).join('');
+  $$('#ev-heat .evh-bar').forEach(bar => bar.onclick = () => {
+    const i = +bar.dataset.i;
+    if (!buckets[i].n) return;
+    S.evTime = 'custom';
+    $('#ev-time').value = 'custom';
+    $('#ev-custom').style.display = 'inline-flex';
+    fillEvRange(new Date((lo + i * bw) * 1000), new Date((lo + (i + 1) * bw) * 1000));
+  });
+}
+
 /* 来源/设备/用户排行：按当前时间窗聚合计数，点击芯片按该值筛选（再点
    取消），用于一眼定位扫源/爆破源或高频敲门设备/用户；维度循环切换并
    持久化；不足 2 个不同值时隐藏 */
@@ -2262,6 +2299,7 @@ function renderEvents() {
   if (S.evPage === 0 && S.evFilter === 'all' && !S.evQuery) $('#ev-new-pill').style.display = 'none';
   renderEventChips();
   renderTopIps();
+  renderEvHeat();
   const evs = filteredEvents();
   $('#events-sub').textContent = `最近 ${fmtNum((S.events||[]).length)} 条（服务端保留 500 条）· ${fmtAgo(Date.now()/1000)}刷新`;
 
