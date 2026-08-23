@@ -5568,7 +5568,7 @@ function openStanzaEditor(index) {
 }
 
 /* ==================== fwknopd.conf 可视化编辑 ==================== */
-let confEditing = false, confRawEdit = false, confRows = [], confDirty = false, confOrig = {};
+let confEditing = false, confRawEdit = false, confRows = [], confDirty = false, confOrig = {}, confOrigCnt = {};
 /* stanza 编辑器脏标记提升为模块级：beforeunload 守卫（刷新/关标签页）需要读到，
    此前只有弹窗内的 modalGuard 确认，刷新页面 11 个字段的修改静默丢失 */
 let seDirty = false;
@@ -5588,6 +5588,14 @@ function markConfDirty() {
 function clearConfDirty() {
   confDirty = false; $('#conf-save').classList.remove('dirty');
   $('#nav-conf-dot').style.display = 'none';
+}
+/* 值快照 + 键计数快照（打开/保存成功/放弃修改三处共用）：confOrig 是
+   「改回原值自动复位」的比对基准；confOrigCnt 记录各指令出现次数——
+   原配置本身含重复指令时，值映射会折叠重复键，仅凭值比对会打开即误脏 */
+function snapConfOrig() {
+  confOrig = Object.fromEntries(confRows.map(([k, v]) => [k, v]));
+  confOrigCnt = {};
+  confRows.forEach(([k]) => { const key = k.trim(); if (key) confOrigCnt[key] = (confOrigCnt[key] || 0) + 1; });
 }
 
 function confEntryRow(key, val) {
@@ -5612,12 +5620,14 @@ function confEntryRow(key, val) {
 
 /* 行级修改高亮：与打开编辑器时的快照比对，琥珀=已修改、绿=新增 */
 function markConfRows() {
+  const cur = {}, curCnt = {};  /* 当前行集（值映射 + 键计数），供末尾脏标记实比对 */
   $$('#conf-edit-rows > div').forEach(row => {
     const ki = row.querySelector('.ce-key'); if (!ki) return;
     const vi = row.querySelector('.ce-val');
     const k = ki.value.trim(), v = vi ? vi.value : '';
     row.classList.remove('ce-mod', 'ce-new');
     if (!k) return;
+    cur[k] = v; curCnt[k] = (curCnt[k] || 0) + 1;
     if (!(k in confOrig)) row.classList.add('ce-new');
     else if (confOrig[k] !== v) row.classList.add('ce-mod');
     /* 还原按钮 title 随当前键同步原值预览（键可被改名后改回，静态 title 会滞后）；
@@ -5661,6 +5671,15 @@ function markConfRows() {
     ki.classList.toggle('ce-dup', isDup);
     ki.title = isDup ? `指令 ${k} 出现 ${counts[k]} 次：fwknopd 以最后出现的值为准，其余被静默忽略` : '';
   });
+  /* 脏标记实比对：「input 即脏」过粗——全部改回原值（或删掉新增行）后
+     自动复位，保存按钮高亮/侧栏圆点/beforeunload 与折叠守卫不再对
+     「实质无改动」误报；键计数比对避免原配置本身含重复指令时误脏 */
+  let eff = false;
+  for (const k in cur) {
+    if (!(k in confOrig) || confOrig[k] !== cur[k] || curCnt[k] !== (confOrigCnt[k] || 0)) { eff = true; break; }
+  }
+  if (!eff) { for (const k in confOrig) { if (!(k in cur)) { eff = true; break; } } }
+  if (eff) markConfDirty(); else clearConfDirty();
 }
 
 function renderConfEditor() {
@@ -5725,7 +5744,7 @@ $('#conf-edit-btn').onclick = () => {
     const oc = $('#conf-only-changed');
     oc.classList.remove('on'); oc.textContent = '仅看修改'; oc.setAttribute('aria-pressed', 'false');
     confRows = ((S.config && S.config.entries) || []).map(e => [e.key, e.value]);
-    confOrig = Object.fromEntries(confRows.map(([k, v]) => [k, v]));
+    snapConfOrig();
     $('#conf-raw-area').value = (S.config && S.config.raw) || '';
     $('#conf-save-out').style.display = 'none';
     renderConfEditor();
@@ -5752,7 +5771,7 @@ $('#conf-discard').onclick = () => {
   if (!confDirty) { toast('没有未保存的修改', 'ok', 1500); return; }
   confirmDialog('放弃全部修改？', '编辑器将恢复为<b>已保存</b>的配置内容，全部未保存修改都会丢失。', '放弃修改', () => {
     confRows = ((S.config && S.config.entries) || []).map(e => [e.key, e.value]);
-    confOrig = Object.fromEntries(confRows.map(([k, v]) => [k, v]));
+    snapConfOrig();
     $('#conf-raw-area').value = (S.config && S.config.raw) || '';
     clearConfDirty();
     renderConfEditor();
@@ -5799,9 +5818,9 @@ $('#conf-only-changed').onclick = () => {
   b.setAttribute('aria-pressed', confOnlyChanged ? 'true' : 'false');
   applyConfFilter();
 };
-/* 任何键/值输入都标记为未保存（容器上委托，重渲染不失效） */
+/* 键/值输入经 markConfRows 实比对标脏：改回原值自动复位（容器上委托，重渲染不失效） */
 $('#conf-edit-rows').addEventListener('input', ev => {
-  markConfDirty(); markConfRows();
+  markConfRows();
   /* 「仅看修改」开启时，改回原值的行应即时从视图撤下（ce-mod 类刚被摘掉） */
   if (confOnlyChanged) applyConfFilter();
   /* 指令名改动时同步刷新行内说明：新增指令行键入/点选已知指令后，
@@ -5813,8 +5832,9 @@ $('#conf-edit-rows').addEventListener('input', ev => {
   }
 });
 $('#conf-raw-area').addEventListener('input', () => {
-  markConfDirty();
   const v = $('#conf-raw-area').value;
+  /* 与打开时原文快照实比对：改回原文自动复位脏标记（同结构化模式口径） */
+  if (v === ((S.config && S.config.raw) || '')) clearConfDirty(); else markConfDirty();
   const lines = v ? v.split('\n').length : 0;
   $('#conf-raw-stat').textContent = `${lines} 行 · ${v.length} 字符`;
 });
@@ -5983,7 +6003,9 @@ $('#conf-save').onclick = async () => {
         el.textContent = (r.output || '') + (r.error ? '\n错误：' + r.error : '');
         if (r.error) toast('配置保存失败（未落盘）', 'err');
         else { toast('配置已保存并热加载', 'ok'); clearConfDirty(); loadConfig();
-          confOrig = Object.fromEntries(confRows.map(([k, v]) => [k, v])); markConfRows(); }
+          harvestConfRows();  /* 先收割再快照：confRows 可能落后于 DOM（input 委托不回写），
+            直接快照会把已保存的修改误判为「打开后新改动」，实比对随即使保存成功页误脏 */
+          snapConfOrig(); markConfRows(); }
       } catch (e) {}
     });
 };
