@@ -1016,6 +1016,7 @@ function notifLog(msg, kind) {
   const badge = $('#notif-badge');
   badge.textContent = S.notifUnread > 99 ? '99+' : S.notifUnread;
   badge.style.display = '';
+  $('#notif-btn').title = `通知历史（${S.notifUnread} 条未读）`;
   /* 持久化到会话存储：刷新页面后历史仍可追溯（关标签即清，不长期残留） */
   try { sessionStorage.setItem('fwknop-notif-log', JSON.stringify(S.notifLog)); } catch (e) {}
   updateDocTitle();  /* 未读计数同步进标签页标题（后台标签可感知） */
@@ -1121,6 +1122,7 @@ $('#notif-btn').onclick = () => {
   S.notifUnread = 0;
   S.notifReadTs = Date.now() / 1000;  /* 已读水位：下次打开时用于「新」标记 */
   $('#notif-badge').style.display = 'none';
+  $('#notif-btn').title = '通知历史';
   updateDocTitle();  /* 已读后标题中的未读计数同步清零 */
   $('#notif-clear').onclick = () => {
     S.notifLog = [];
