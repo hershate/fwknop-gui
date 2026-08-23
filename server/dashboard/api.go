@@ -96,17 +96,20 @@ func handleOverview(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// auditBackupStat 汇总审计清理产生的 .bak-时间戳 备份（数量与总字节），
-// 供概览页提示「备份在堆积，记得取回/删除」。
+// auditBackupStat 汇总审计清理产生的 .bak-时间戳 备份（数量、总字节与
+// 文件名列表），供概览页提示「备份在堆积」及关于页列出下载入口。
 func auditBackupStat() map[string]interface{} {
 	names, _ := filepath.Glob(auditPath() + ".bak-*")
 	var total int64
+	base := make([]string, 0, len(names))
 	for _, n := range names {
 		if st, err := os.Stat(n); err == nil {
 			total += st.Size()
 		}
+		base = append(base, filepath.Base(n))
 	}
-	return map[string]interface{}{"count": len(names), "size": total}
+	sort.Sort(sort.Reverse(sort.StringSlice(base)))  /* 新的在前 */
+	return map[string]interface{}{"count": len(names), "size": total, "names": base}
 }
 
 func handleEvents(w http.ResponseWriter, r *http.Request) {
