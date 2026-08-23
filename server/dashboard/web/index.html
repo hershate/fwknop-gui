@@ -2832,6 +2832,15 @@ function syncPanelAlias() {
 }
 syncPanelAlias();  /* 启动即同步（别名本机可读，无需等概览加载） */
 
+/* 多标签页偏好同步：运维常把面板开在多个标签页，此前 A 标签改面板/设备
+   别名后 B 标签要刷新才跟随（主题的同步已在主题初始化处单独挂接）。
+   storage 事件只在「其他」标签页触发（不自环），且回调异步执行于脚本全量
+   加载后，后声明的 DEV_ALIAS_KEY 也可安全引用 */
+window.addEventListener('storage', ev => {
+  if (ev.key === PANEL_ALIAS_KEY) syncPanelAlias();
+  else if (ev.key === DEV_ALIAS_KEY) renderTOFU();  /* renderTOFU 自带空数据守卫 */
+});
+
 /* 标签页标题显示最近 15 分钟异常事件数 + 未读通知数，后台标签也能感知 */
 function updateDocTitle() {
   const bad = countRecentBad();
