@@ -1863,7 +1863,9 @@ function renderStatusCards() {
         : '指标文件不存在：检查 fwknopd.conf 的 ENABLE_AUDIT 是否为 N，或 fwknopd 尚未运行' },
     { ic:'key', c: d.write_enabled ? 'var(--amber)' : 'var(--muted)',
       bg: d.write_enabled ? 'var(--amber-soft)' : 'var(--panel-2)', k:'写操作模式',
-      v: d.write_enabled ? '管理模式 <small>默认启用</small>' : '只读 <small>-read-only</small>' },
+      v: d.write_enabled ? '管理模式 <small>默认启用</small>' : '只读 <small>-read-only</small>',
+      tip: d.write_enabled ? '可执行签发/撤销/解绑/配置编辑/服务控制等写操作'
+        : '当前只读：所有写操作被服务端拒绝；去掉 -read-only 重启面板可启用管理模式' },
     { ic:'cfg', c: d.admin_tool && d.admin_tool.available ? 'var(--teal)' : 'var(--red)',
       bg: d.admin_tool && d.admin_tool.available ? 'var(--teal-soft)' : 'var(--red-soft)', k:'管理工具',
       v: d.admin_tool && d.admin_tool.available ? 'fwknopd-admin 可用' : 'fwknopd-admin 不可用',
