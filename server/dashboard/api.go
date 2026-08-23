@@ -94,6 +94,15 @@ func handleOverview(w http.ResponseWriter, r *http.Request) {
 			"available": adminOK,
 			"status":    adminText,
 		},
+		/* 授权规模一览：概览页状态卡直接显示生效/禁用数，免进用户页 */
+		"stanzas": func() map[string]int {
+			st, err := parseAccessConf(cfg.AccessConf)
+			m := map[string]int{"active": 0, "disabled": len(parseDisabledStanzas(cfg.AccessConf))}
+			if err == nil {
+				m["active"] = len(st)
+			}
+			return m
+		}(),
 		"files": map[string]interface{}{
 			"audit":        statFile(auditPath()),
 			"metrics":      statFile(metricsPath()),

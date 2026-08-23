@@ -652,7 +652,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           </div>
         </div>
         <div id="ov-clock-warn"></div>
-        <div class="grid-status" id="status-cards"><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div></div>
+        <div class="grid-status" id="status-cards"><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div></div>
         <div class="card">
           <div class="body" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:13px 20px">
             <span class="hint">快速操作：</span>
@@ -2102,6 +2102,10 @@ function renderStatusCards() {
       v: d.admin_tool && d.admin_tool.available ? 'fwknopd-admin 可用' : 'fwknopd-admin 不可用',
       tip: d.admin_tool && d.admin_tool.available ? '签发/撤销/解绑等管理操作经 fwknopd-admin 执行'
         : '检查 fwknopd-admin 是否在 PATH，或以 -admin 参数指定路径后重启面板；不可用则签发/撤销等管理操作全部失败' },
+    /* 授权规模一览：免进用户页即可感知生效/禁用数量 */
+    { ic:'users', c:'var(--accent)', bg:'var(--accent-soft)', k:'访问授权',
+      v: d.stanzas ? `${d.stanzas.active} 个生效${d.stanzas.disabled ? ` <small>· ${d.stanzas.disabled} 个已禁用</small>` : ''}` : '—',
+      tip: 'access.conf 中的 stanza 计数（生效 / 已注释禁用）；明细见「用户与授权」页' },
   ];
   $('#status-cards').innerHTML = cards.map(c => `
     <div class="stat-card"${c.tip ? ` title="${c.tip}"` : ''}>
