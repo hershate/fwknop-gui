@@ -3418,7 +3418,7 @@ function renderTOFU() {
     <td>${b.username ? `${esc(b.username)}<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-uev2="${esc(b.username)}" title="查看该用户的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
     <td class="mono">${b.open_ports ? `<span class="cp-cell" data-cp="${esc(b.open_ports)}" title="点击复制开放端口" data-lab="开放端口">${esc(b.open_ports)}</span>` : '—'}</td>
     <td>${S.writeEnabled ?
-      `<button class="icon-btn" style="padding:2px 6px" data-cp="${esc(b.stanza_key)}" data-lab="stanza_key" title="复制 stanza_key（CLI unbind 用）">${icon('i-copy',12)}</button>
+      `<button class="icon-btn" style="padding:2px 6px" data-cp="${esc(`fwknopd-admin tofu unbind '${b.stanza_key}' '${b.device_id}'`)}" data-lab="CLI 解绑命令" title="复制完整 CLI 解绑命令（fwknopd-admin tofu unbind，含 stanza_key 与设备指纹）">${icon('i-copy',12)}</button>
        <button class="btn ghost small" data-ub="${esc(b.stanza_key)}" data-dev="${esc(b.device_id)}">${icon('i-trash',13)}解绑</button>` :
       '<span class="hint">只读模式</span>'}</td>
   </tr>`).join('');
