@@ -1866,7 +1866,7 @@ document.addEventListener('touchend', e => {
 
 /* .cp-cell 点击复制、.tmtoggle 时间列切换、分组折叠头等全局键盘可达：模板
    生成点多，用 MutationObserver 统一补 tabindex，Enter/空格经事件委托触发其 click */
-const KB_CLICK_SEL = '.cp-cell, .tmtoggle, .evh-hot, .sum-link, .ratiobad-seg, .conf-grp, #dis-toggle, [data-pg], [data-rmf], [data-evf], .pf-note-ed, #daemon-pill, #conn-box, #nav-ev-badge, #nav-about-badge, #nav-usr-badge, #nav-conf-dot, #sess-ttl';
+const KB_CLICK_SEL = '.cp-cell, .tmtoggle, .evh-hot, .sum-link, .ratiobad-seg, .conf-grp, #dis-toggle, [data-pg], [data-rmf], [data-evf], .pf-note-ed, #daemon-pill, #conn-box, #nav-ev-badge, #nav-about-badge, #nav-usr-badge, #nav-tofu-badge, #nav-conf-dot, #sess-ttl';
 new MutationObserver(muts => {
   for (const m of muts) m.addedNodes.forEach(n => {
     if (n.nodeType !== 1) return;
@@ -2926,6 +2926,13 @@ $('#nav-usr-badge').onclick = ev => {
   ev.stopPropagation();
   S.usersQuery = '占位'; const us = $('#users-search'); if (us) us.value = '占位';
   showPage('users');
+};
+/* 悬空绑定徽标钻取（与占位徽标同模式）：预填「悬空」搜索词直达问题行——
+   filteredTofuBindings 对该词匹配 tofuOrphan 态，口径与徽标计数一致 */
+$('#nav-tofu-badge').onclick = ev => {
+  ev.stopPropagation();
+  S.tofuQuery = '悬空'; const tq = $('#tofu-search'); if (tq) tq.value = '悬空';
+  showPage('tofu');
 };
 
 /* 异常事件集合：「仅看异常」快捷筛选用 */
