@@ -2281,9 +2281,16 @@ function renderStatusCards() {
   const cw = $('#ov-clock-warn');
   if (cw) {
     const drift = d.now ? Math.round(Date.now() / 1000 - d.now) : 0;
-    cw.innerHTML = Math.abs(drift) > 60 ? `<div class="warn-strip" style="margin-bottom:12px">${icon('i-warn',15)}<div>
+    let warnHtml = Math.abs(drift) > 60 ? `<div class="warn-strip" style="margin-bottom:12px">${icon('i-warn',15)}<div>
       浏览器与服务器时钟偏差约 <b>${Math.abs(drift)}</b> 秒（${drift > 0 ? '浏览器快' : '服务器快'}）。
       TOTP 动态口令严格依赖双方时钟一致，偏差过大会导致合法敲门被判超时，请校准 NTP。</div></div>` : '';
+    /* 非回环监听警示提升到概览顶部（此前仅「关于」页展示）：明文 HTTP + 密码
+       登录绑到全网卡会把凭证暴露给链路嗅探——不点进关于页的 operator 也该在
+       进门第一眼看到这条安全态势 */
+    const la = d.panel && d.panel.listen_addr;
+    if (la && !panelLoopback(la)) warnHtml += `<div class="warn-strip" style="margin-bottom:12px">${icon('i-warn',15)}<div>
+      面板当前监听 <b>${esc(la)}</b>（非本机回环）。面板本身为明文 HTTP，远程访问会把登录凭证暴露给链路嗅探，请置于带 TLS 的反向代理之后，或改回 <code>127.0.0.1</code> 监听。</div></div>`;
+    cw.innerHTML = warnHtml;
   }
   /* 首次运行引导：0 授权（含已禁用也为 0，即从未配置过）时显示三步上线
      清单（启动 → 签发 → 客户端导入）——新部署最常见的困惑是「先做什么」；
