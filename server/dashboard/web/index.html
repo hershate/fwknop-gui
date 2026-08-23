@@ -2864,9 +2864,9 @@ function renderUsers() {
       <div class="body" style="padding-top:6px">
         ${s.changeme ? `<div class="warn-strip">${icon('i-warn',15)}<div>该授权仍包含 <code>__CHANGEME__</code> 占位密钥，<b>无法正常工作</b>，请撤销后重新签发。</div></div>` : ''}
         <div class="form-grid" style="margin-bottom:10px">
-          <div><div class="hint">来源限制（SOURCE）</div><div class="mono">${esc(s.source)||'—'}</div></div>
-          <div><div class="hint">要求用户名</div><div class="mono">${esc(s.require_username)||'不校验'}</div></div>
-          <div><div class="hint">开放端口</div><div class="mono">${esc(s.open_ports)||'按包内请求'}</div></div>
+          <div><div class="hint">来源限制（SOURCE）</div><div class="mono">${s.source ? `<span class="cp-cell" data-cp="${esc(s.source)}" data-lab="来源限制" title="点击复制来源限制">${esc(s.source)}</span>` : '—'}</div></div>
+          <div><div class="hint">要求用户名</div><div class="mono">${s.require_username ? `<span class="cp-cell" data-cp="${esc(s.require_username)}" data-lab="用户名" title="点击复制用户名">${esc(s.require_username)}</span>` : '不校验'}</div></div>
+          <div><div class="hint">开放端口</div><div class="mono">${s.open_ports ? `<span class="cp-cell" data-cp="${esc(s.open_ports)}" data-lab="端口列表" title="点击复制端口列表">${esc(s.open_ports)}</span>` : '按包内请求'}</div></div>
           <div><div class="hint">访问超时</div><div class="mono">${esc(s.fw_access_timeout)||'默认 30'} 秒${fmtSecs(s.fw_access_timeout) ? ` <span class="hint">（${fmtSecs(s.fw_access_timeout)}）</span>` : ''}</div></div>
         </div>
         <div>${stanzaBadges(s)}</div>
@@ -2904,7 +2904,7 @@ function renderUsers() {
     toast('已按该授权预填，请填写新名称', 'ok');
     f.name.focus();
   });
-  $$('#users-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, '授权名称 '));
+  $$('#users-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, (c.dataset.lab || '授权名称') + ' '));
   /* 最近事件按钮：直达事件页该用户筛选 */
   $$('#users-body [data-tofu-q]').forEach(b => b.onclick = () => {
     S.tofuQuery = b.dataset.tofuQ; const ts = $('#tofu-search'); if (ts) ts.value = S.tofuQuery;
