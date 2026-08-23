@@ -1073,6 +1073,7 @@ $('#notif-btn').onclick = () => {
     </div>
     <div id="notif-list" style="max-height:50vh;overflow:auto"></div>
     <div class="mf">
+      <button class="btn ghost" id="notif-export" title="把当前视图（含「仅看错误」过滤）的通知历史下载为文本文件">导出</button>
       <button class="btn ghost" id="notif-clear">清空历史</button>
       <button class="btn" id="notif-close">关闭</button>
     </div>`, true);
@@ -1089,6 +1090,18 @@ $('#notif-btn').onclick = () => {
     S.notifLog = [];
     try { sessionStorage.removeItem('fwknop-notif-log'); } catch (e) {}
     closeModal(); toast('通知历史已清空', 'ok', 1500);
+  };
+  /* 导出当前视图的通知历史为 .txt（遵循「仅看错误」过滤），便于随工单/排查记录归档 */
+  $('#notif-export').onclick = () => {
+    const log = (S.notifLog || []).filter(n => !notifKindFilter || (n.kind || '') === notifKindFilter);
+    if (!log.length) { toast('当前视图无通知可导出', 'err'); return; }
+    const kindZh = k => k === 'err' ? '错误' : k === 'ok' ? '成功' : '信息';
+    const lines = log.map(n => `[${fmtAbs(n.t)}] [${kindZh(n.kind)}] ${n.msg}${n.n > 1 ? `（×${n.n}）` : ''}`);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\n') + '\n'], { type: 'text/plain;charset=utf-8' }));
+    a.download = 'fwknop_notifications_' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.txt';
+    document.body.appendChild(a); a.click(); a.remove();
+    toast('已导出 ' + log.length + ' 条通知', 'ok', 2000);
   };
   $('#notif-close').onclick = () => closeModal();
 };
