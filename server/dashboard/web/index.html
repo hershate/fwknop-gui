@@ -3588,7 +3588,8 @@ function closeModal() {
 function infoModal(title, text, isErr) {
   openModal(`<h3>${title}</h3>
     <pre class="out-pre" style="max-height:50vh;${isErr?'border-color:var(--red)':''}">${esc(text || '（无输出）')}</pre>
-    <div class="mf"><button class="btn" onclick="document.getElementById('modal-root').classList.remove('show')">关闭</button></div>`, true);
+    <div class="mf"><button class="btn ghost" id="im-cp">${icon('i-copy',13)} 复制输出</button><button class="btn" onclick="document.getElementById('modal-root').classList.remove('show')">关闭</button></div>`, true);
+  $('#im-cp').onclick = () => copyText(text || '', '输出 ');
 }
 
 /* ==================== 服务控制 ==================== */
