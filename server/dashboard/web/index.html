@@ -518,7 +518,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
       <svg width="30" height="30"><use href="#i-lock"/></svg>
       <div><div class="t1">登录</div><div class="t2">fwknop 运维面板 v2.4.4</div></div>
     </div>
-    <p class="desc">请输入管理员密码。连续失败 5 次将锁定 60 秒。</p>
+    <p class="desc">请输入管理员密码。连续失败 5 次将锁定 60 秒；登录成功后会话有效期 12 小时（顶栏可见剩余时间）。</p>
     <label for="login-pw">管理员密码（或 DASHBOARD_TOKEN）</label>
     <div class="pw-wrap"><input type="password" id="login-pw" autocomplete="current-password" placeholder="密码 / 令牌">
       <button type="button" class="pw-eye" data-eye="login-pw" title="显示/隐藏密码"><svg width="16" height="16"><use href="#i-eye"/></svg></button></div>
@@ -720,7 +720,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <div class="field">
                   <label>凭证名称 <span class="req">*</span></label>
                   <input name="name" placeholder="例如 prod-ssh" required>
-                  <div class="tip">作为 access.conf stanza 的标识</div>
+                  <div class="tip">作为 access.conf stanza 的标识 · 想不到名字？<a href="javascript:void 0" id="add-autoname" style="color:var(--accent)">用当前时间命名</a></div>
                   <div class="auth-hint" id="add-name-hint"></div>
                 </div>
                 <div class="field">
@@ -2903,6 +2903,22 @@ $('#add-form').name.addEventListener('input', ev => {
     fillSuggest(suggest());
   } else { el.textContent = '✓ 名称可用'; el.className = 'auth-hint ok'; }
 });
+
+/* 签发名称一键时间戳命名（与方案页 pf-autoname 同一交互；重名自动 -2/-3） */
+$('#add-autoname').onclick = () => {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const base = `cred-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+  const taken = n =>
+    ((S.users && S.users.stanzas) || []).some(x => x.name === n) ||
+    ((S.users && S.users.disabled) || []).some(x => x.name === n);
+  let nm = base, i = 2;
+  while (taken(nm)) nm = base + '-' + (i++);
+  const inp = $('#add-form').name;
+  inp.value = nm;
+  inp.dispatchEvent(new Event('input'));  /* 联动唯一性提示与草稿 */
+  inp.focus();
+};
 
 /* URI → cred.json（v1）：转换规则与 server/credential.c 的
    credential_from_uri / credential_to_json 一致（urlsafe base64 还原 +
