@@ -2475,16 +2475,29 @@ function renderSummary() {
     const fn = rows[+el.dataset.sum][2];
     if (fn) el.onclick = fn;
   });
-  /* 首次部署引导：一个 SPA 包都没收到时，给出三步上手路径 */
+  /* 首次部署引导：一个 SPA 包都没收到时给出下一步。按有无生效授权分流：
+     无授权 → 三步上手（签发导向）；已有授权但仍无事件 → 排障导向（链路
+     检查清单）。授权计数取自 overview.stanzas，无需加载用户页 */
   let guide = $('#ov-guide');
   if (!total) {
+    const act = (S.overview && S.overview.stanzas && S.overview.stanzas.active) || 0;
+    /* 情景状态入 dataset：授权计数或读写模式变化后旧文案不再适用，移除重建 */
+    const gk = act + '|' + (S.writeEnabled ? '1' : '0');
+    if (guide && guide.dataset.gk !== gk) { guide.remove(); guide = null; }
     if (!guide) {
       guide = document.createElement('div');
       guide.id = 'ov-guide';
       guide.className = 'warn-strip';
       guide.style.marginTop = '12px';
-      /* 只读模式不能签发：①改为提示找管理员，而非指向不可用的签发入口 */
-      guide.innerHTML = S.writeEnabled
+      guide.dataset.gk = gk;
+      guide.innerHTML = act > 0
+        ? `${icon('i-info',15)}<div>已有 <b>${act}</b> 个生效授权，等待首次敲门。客户端敲门后事件会出现在这里；若已敲门仍无事件，按序排查：
+        <b>①</b> 服务器防火墙/云安全组需放行 SPA 入向包（默认 UDP 62201，实际端口与抓包模式见
+        <a href="javascript:void 0" id="ov-guide-conf" style="color:var(--accent)">配置页</a>）
+        <b>②</b> 确认客户端 URI 里的服务器地址指向本机
+        <b>③</b> 确认上方 fwknopd 服务状态为「运行中」。</div>`
+        /* 只读模式不能签发：①改为提示找管理员，而非指向不可用的签发入口 */
+        : S.writeEnabled
         ? `${icon('i-info',15)}<div>还没有收到任何 SPA 敲门。上手三步：
         <b>①</b> <a href="javascript:void 0" id="ov-guide-add" style="color:var(--accent)">用户与授权页「签发新凭证」</a> → <b>②</b> 把授权 URI 发给客户端
         <code>fwknop import 'fwknop://…'</code> 导入（写入与凭证同名的 stanza）→ <b>③</b> 客户端执行
@@ -2498,6 +2511,8 @@ function renderSummary() {
         showPage('users');
         if ($('#add-card').style.display === 'none') $('#show-add').click();
       };
+      const gc = $('#ov-guide-conf');
+      if (gc) gc.onclick = () => showPage('config');
     }
   } else if (guide) guide.remove();
 }
