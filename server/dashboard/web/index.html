@@ -1863,10 +1863,12 @@ function renderStatusCards() {
       v: d.write_enabled ? '管理模式 <small>默认启用</small>' : '只读 <small>-read-only</small>' },
     { ic:'cfg', c: d.admin_tool && d.admin_tool.available ? 'var(--teal)' : 'var(--red)',
       bg: d.admin_tool && d.admin_tool.available ? 'var(--teal-soft)' : 'var(--red-soft)', k:'管理工具',
-      v: d.admin_tool && d.admin_tool.available ? 'fwknopd-admin 可用' : 'fwknopd-admin 不可用' },
+      v: d.admin_tool && d.admin_tool.available ? 'fwknopd-admin 可用' : 'fwknopd-admin 不可用',
+      tip: d.admin_tool && d.admin_tool.available ? '签发/撤销/解绑等管理操作经 fwknopd-admin 执行'
+        : '检查 fwknopd-admin 是否在 PATH，或以 -admin 参数指定路径后重启面板；不可用则签发/撤销等管理操作全部失败' },
   ];
   $('#status-cards').innerHTML = cards.map(c => `
-    <div class="stat-card">
+    <div class="stat-card"${c.tip ? ` title="${c.tip}"` : ''}>
       <div class="ic" style="color:${c.c};background:${c.bg}">${icon(c.ic, 19)}</div>
       <div><div class="k">${c.k}</div><div class="v">${c.v}</div></div>
     </div>`).join('');
