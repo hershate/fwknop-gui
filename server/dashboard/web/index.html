@@ -635,7 +635,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
     <button class="nav-item" data-page="tofu" title="TOFU 设备绑定（快捷键 4）"><svg><use href="#i-fp"/></svg>TOFU 设备绑定<span class="nb-badge amber" id="nav-tofu-badge" style="display:none"></span></button>
     <button class="nav-item" data-page="config" title="服务配置（快捷键 5）"><svg><use href="#i-cfg"/></svg>服务配置<span id="nav-conf-dot" style="display:none;color:var(--amber);font-size:16px;line-height:0;vertical-align:-1px" title="有未保存的配置修改（点击直达编辑器）"> ●</span></button>
     <button class="nav-item" data-page="profiles" title="配置方案（快捷键 6）"><svg><use href="#i-archive"/></svg>配置方案</button>
-    <button class="nav-item" data-page="about" title="关于（快捷键 7）"><svg><use href="#i-info"/></svg>关于</button>
+    <button class="nav-item" data-page="about" title="关于（快捷键 7）"><svg><use href="#i-info"/></svg>关于<span class="nb-badge" id="nav-about-badge" style="display:none"></span></button>
     <div class="spacer"></div>
     <div class="side-foot">
       <div class="conn" id="conn-box" title="点击立即重连刷新" style="cursor:pointer" role="status" aria-live="polite"><span class="dot" id="conn-dot"></span><span id="conn-text">正在连接…</span>
@@ -1850,7 +1850,7 @@ document.addEventListener('touchend', e => {
 
 /* .cp-cell 点击复制、.tmtoggle 时间列切换、分组折叠头等全局键盘可达：模板
    生成点多，用 MutationObserver 统一补 tabindex，Enter/空格经事件委托触发其 click */
-const KB_CLICK_SEL = '.cp-cell, .tmtoggle, .evh-hot, .sum-link, .ratiobad-seg, .conf-grp, #dis-toggle, [data-pg], [data-rmf], [data-evf], .pf-note-ed, #daemon-pill, #conn-box, #nav-ev-badge, #nav-conf-dot, #sess-ttl';
+const KB_CLICK_SEL = '.cp-cell, .tmtoggle, .evh-hot, .sum-link, .ratiobad-seg, .conf-grp, #dis-toggle, [data-pg], [data-rmf], [data-evf], .pf-note-ed, #daemon-pill, #conn-box, #nav-ev-badge, #nav-about-badge, #nav-conf-dot, #sess-ttl';
 new MutationObserver(muts => {
   for (const m of muts) m.addedNodes.forEach(n => {
     if (n.nodeType !== 1) return;
@@ -2267,6 +2267,15 @@ async function loadOverview() {
     }
     if (S.page === 'overview' && !focusWithin('#status-cards')) renderStatusCards();
     if (S.page === 'about' && !focusWithin('#about-body')) renderAbout();
+    /* 「关于」导航徽标：近 15 分钟登录失败数。521 的概览警示条只在概览页
+       可见——operator 停在他页时遭遇爆破无从察觉；徽标跨页常驻（与
+       nav-ev/usr/tofu 徽标同一体系），点击直达 oplog 并预填搜索词 */
+    const afb = $('#nav-about-badge');
+    if (afb) {
+      const afn = d.auth_fail_15m || 0;
+      afb.style.display = afn ? '' : 'none';
+      if (afn) { afb.textContent = afn; afb.title = `最近 15 分钟 ${afn} 次登录失败，点击前往操作日志核查来源 IP`; }
+    }
   } catch (e) {
     setConn(false);
     showLoadError('#status-cards', loadOverview);
@@ -2844,6 +2853,13 @@ $('#nav-ev-badge').onclick = ev => {
   ev.stopPropagation();
   S.evFilter = 'bad'; S.evPage = 0;
   showPage('events');
+};
+/* 「关于」徽标点击 = 直达 oplog 并预填「登录失败」搜索词（阻止冒泡到导航，
+   与 nav-ev-badge 同一范式） */
+$('#nav-about-badge').onclick = ev => {
+  ev.stopPropagation();
+  S.oplogQuery = '登录失败'; const os3 = $('#oplog-search'); if (os3) os3.value = '登录失败';
+  showPage('about');
 };
 
 /* 异常事件集合：「仅看异常」快捷筛选用 */
