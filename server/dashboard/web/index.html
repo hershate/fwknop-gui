@@ -195,7 +195,11 @@ select.ctl, input.ctl {
 }
 .card > .head h2 { margin:0; font-size:14.5px; font-weight:700; }
 .card > .head .sub { font-size:12px; color:var(--muted); }
-.card > .head .tools { margin-left:auto; display:flex; gap:8px; align-items:center; }
+.card > .head .tools { margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+/* 自定义时间区间（起始/至/截止/两预设钮）窄屏折行：双 datetime 输入 intrinsic
+   宽度合计近 400px，不折行会随 tools 一起顶出卡片（JS 以 inline-flex 显示，
+   此规则在显示时生效；宽度够时不折行，桌面无影响） */
+#ev-custom { flex-wrap:wrap; }
 .card > .body { padding:18px 20px; }
 .hint { font-size:12px; color:var(--muted); }
 .warn-strip {
@@ -486,6 +490,12 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
      手机上免横向长滚。主行第 4/6 格即这两列；详情行单格 colspan 不受影响 */
   #page-events thead th:nth-child(4), #page-events thead th:nth-child(6),
   #events-body tr.ev-click td:nth-child(4), #events-body tr.ev-click td:nth-child(6) { display:none; }
+  /* 搜索框整行占满：事件/授权/绑定页搜索框内联定宽 240–290px，320–360px
+     级窄屏（卡头双 padding 后可用仅 ~250–290px）会顶出卡片右缘；整行化
+     拇指可达且宽度自适应（!important 覆盖内联 width；✕ 钮绝对定位相对
+     wrapper，不受影响） */
+  .srch-wrap { display:flex; width:100%; }
+  .srch-wrap .ctl { flex:1; min-width:0; width:auto !important; }
 }
 @media (max-width: 920px) {
   /* 窄屏兜底：事件/TOFU 大表已有 .tb-wrap 横向滚动；其余裸表（配置视图、
