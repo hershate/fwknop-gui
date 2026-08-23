@@ -2579,7 +2579,7 @@ function renderEventChips() {
     const n = counts[k] || 0;
     const bump = k in S.chipPrev && S.chipPrev[k] !== n ? ' num-bump' : '';
     S.chipPrev[k] = n;
-    return `<button class="chip ${S.evFilter===k?'active':''}" data-ev="${k}"${k === 'bad' ? ` title="异常 = ${BAD_EVTS.map(t => evMeta(t).label).join(' / ')}（与审计异常判定口径一致）"` : ''}>${label}<span class="n${bump}">${n}</span></button>`;
+    return `<button class="chip ${S.evFilter===k?'active':''}" data-ev="${k}" aria-pressed="${S.evFilter===k ? 'true' : 'false'}"${k === 'bad' ? ` title="异常 = ${BAD_EVTS.map(t => evMeta(t).label).join(' / ')}（与审计异常判定口径一致）"` : ''}>${label}<span class="n${bump}">${n}</span></button>`;
   };
   $('#event-chips').innerHTML = mk('all','全部') +
     (counts.bad ? mk('bad','⚠ 仅看异常') : '') +
