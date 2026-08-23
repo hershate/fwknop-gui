@@ -545,6 +545,8 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
 .auth-brand{display:flex;align-items:center;gap:10px;color:var(--accent)}
 .auth-brand .t1{font-weight:700;font-size:16px;color:var(--text)}
 .auth-brand .t2{font-size:12px;color:var(--muted)}
+/* 登录/初始化卡品牌区版本号：与侧栏 .brand .ver 同款胶囊（行内小字号场景 padding 略收） */
+.auth-ver{font-size:10px;color:var(--accent);background:var(--accent-soft);padding:1px 6px;border-radius:20px;font-weight:600}
 .auth-err{color:var(--red);font-size:13px;min-height:18px;margin-top:10px}
 .auth-steps{margin:0 0 14px;padding-left:18px;color:var(--muted);font-size:13px;line-height:1.9}
 .pw-wrap{position:relative}
@@ -2140,7 +2142,7 @@ function showLoadError(sel, retry) {
   const box = `<div class="empty">${icon('i-warn', 36)}
     <div class="t">加载失败</div>
     <div class="d">与面板服务连接中断，恢复后将自动刷新</div>
-    <button class="btn sm" data-loadretry style="margin-top:10px">立即重试</button></div>`;
+    <button class="btn small" data-loadretry style="margin-top:10px">立即重试</button></div>`;
   if (el.tagName === 'TBODY') {
     const td = el.querySelector('td');
     el.innerHTML = `<tr><td colspan="${td ? td.colSpan : 8}">${box}</td></tr>`;
@@ -3555,7 +3557,7 @@ function renderUsers() {
     const lastSrv = localStorage.getItem('fwknop-last-server') || '';
     openModal(`<h3>重发授权 URI「${esc(name)}」</h3>
       <div class="mb hint">access.conf 不记录 SPA 服务器地址，重建 URI 需重新提供。<b>URI 内嵌完整密钥材料</b>，等同于该授权的 cred.json，请妥善传递。</div>
-      <div class="fg"><label for="qr-server">SPA 服务器地址</label>
+      <div class="field"><label for="qr-server">SPA 服务器地址</label>
         <input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="qr-server" list="server-history" value="${esc(lastSrv)}" placeholder="例如 203.0.113.10 或 vpn.example.com" style="width:100%">
         <div class="auth-hint" aria-live="polite" id="qr-hint"></div>
         <div class="tip">IPv4/IPv6 或主机名；可从历史记录下拉点选。</div></div>
@@ -5909,7 +5911,7 @@ function renderProfiles() {
     const name = b.dataset.pdup;
     openModal(`<h3>方案「${esc(name)}」另存副本</h3>
       <div class="mb hint">完整复制 fwknopd.conf 与 access.conf 快照为新方案，不动当前生效配置；备注自动标注来源。</div>
-      <div class="fg"><label>副本名称</label>
+      <div class="field"><label>副本名称</label>
         <input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="pdup-name" value="${esc(name)}-副本" maxlength="64" style="width:100%">
         <div class="auth-hint" aria-live="polite" id="pdup-hint"></div>
         <div class="tip">只能包含字母、数字、点、下划线、连字符；已存在的名称会被拒绝（不覆盖）。</div></div>
