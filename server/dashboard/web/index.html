@@ -1428,7 +1428,7 @@ function showPage(p) {
   if (!S.scrollMem) S.scrollMem = {};
   if (S.page && S.page !== p) S.scrollMem[S.page] = window.scrollY;
   S.page = p;
-  if (('#' + p) !== location.hash) history.replaceState(null, '', '#' + p);
+  if (('#' + p) !== location.hash) history.pushState(null, '', '#' + p);  /* 产生历史条目，浏览器前进/后退可翻页 */
   $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.page === p));
   $$('.page').forEach(s => s.classList.toggle('active', s.id === 'page-' + p));
   $('#page-title').textContent = PAGE_TITLES[p] || p;
@@ -1482,6 +1482,16 @@ document.addEventListener('keydown', ev => {
    输入框/下拉聚焦时或弹窗打开（除 Esc 外）不触发。 */
 const PAGE_KEYS = ['overview','events','users','tofu','config','profiles','about'];
 const PAGE_SEARCH = { events:'#event-search', users:'#users-search', tofu:'#tofu-search', config:'#conf-view-filter' };
+/* 浏览器前进/后退翻页：popstate 按 hash 切页（hash 已是目标页，showPage 内
+   不会重复 pushState）；配置页未保存修改被 confGuardLeave 拦截时，把 hash
+   拨回当前页保持 URL 与页面一致 */
+window.addEventListener('popstate', () => {
+  const h = location.hash.replace('#', '');
+  if (!PAGE_KEYS.includes(h) || h === S.page) return;
+  const before = S.page;
+  showPage(h);
+  if (S.page === before) history.pushState(null, '', '#' + before);
+});
 document.addEventListener('keydown', ev => {
   const tag = (ev.target.tagName || '').toLowerCase();
   const typing = tag === 'input' || tag === 'textarea' || tag === 'select';
