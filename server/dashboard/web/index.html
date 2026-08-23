@@ -711,6 +711,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <button type="button" class="tpl-chip" data-tpl="hardened">高安全 SSH（零信任）</button>
                 <button type="button" class="tpl-chip" data-tpl="multi">多服务网关</button>
                 <button type="button" class="tpl-chip" data-tpl="legacy">兼容 v3 旧客户端</button>
+                <button type="button" class="tpl-chip" data-tpl="debug">临时排障（5 分钟）</button>
                 <span id="custom-tpls" style="display:inline-flex;gap:8px;flex-wrap:wrap"></span>
                 <button type="button" class="tpl-chip" id="tpl-save" title="把当前表单的安全选项保存为可复用模板">＋ 存为模板</button>
               </div>
@@ -2533,6 +2534,11 @@ const ADD_TEMPLATES = {
     desc: '兼容 SPA v3 旧客户端：关闭 TOTP 跳变与设备指纹（v3 不支持）。安全性最低，仅作过渡，建议尽快升级客户端。',
     access: 'tcp/22', totp: false, portRange: '',
     fingerprint: false, tofuTimeout: '', portMatch: false,
+  },
+  debug: {
+    desc: '临时排障：关闭 TOTP 跳变与设备指纹，放行 5 分钟即自动关闭。仅用于短时连通性验证，用完请立即撤销该授权。',
+    access: 'tcp/22', totp: false, portRange: '',
+    fingerprint: false, tofuTimeout: '', portMatch: false, fwTimeout: '300',
   },
 };
 /* 自定义签发模板：localStorage 持久化 {名: 模板}，与预制模板同一交互 */
