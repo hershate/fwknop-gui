@@ -1217,6 +1217,7 @@ function toast(msg, kind, ms) {
   xbtn.onclick = () => el.remove();
   /* 悬停暂停消失倒计时，移开后 2s 兜底关闭；驻留型错误 toast 不受影响 */
   const sticky = kind === 'err' && !ms;
+  el.dataset.sticky = sticky ? '1' : '';  /* 容量顶出时识别：驻留错误不被静默顶掉 */
   if (!sticky) {
     el.addEventListener('mouseenter', () => {
       clearTimeout(+el.dataset.t1); clearTimeout(+el.dataset.t2);
@@ -1225,8 +1226,10 @@ function toast(msg, kind, ms) {
     el.addEventListener('mouseleave', () => scheduleToastDismiss(el, 2000));
   }
   box.appendChild(el);
-  /* 最多同时显示 5 条，多余的移除最旧 */
-  while (box.children.length > 5) box.firstElementChild.remove();
+  /* 最多同时显示 5 条：优先顶出最旧的非驻留 toast——驻留错误承诺「需手动
+     关闭」，被后来的普通通知静默顶掉会破坏该承诺；全是驻留时才顶最旧 */
+  while (box.children.length > 5)
+    ([...box.children].find(c => c.dataset.sticky !== '1') || box.firstElementChild).remove();
   /* 错误通知默认驻留（需手动关闭），关键失败不会因超时错过；显式传 ms 仍生效 */
   if (kind === 'err' && !ms) { el.style.borderLeftWidth = '4px'; return; }
   scheduleToastDismiss(el, ms || 4200);
