@@ -707,6 +707,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           </div>
         </div>
         <div id="ov-clock-warn"></div>
+        <div id="ov-first-run"></div>
         <div class="grid-status" id="status-cards"><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div></div>
         <div class="card">
           <div class="body" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:13px 20px">
@@ -2268,6 +2269,30 @@ function renderStatusCards() {
     cw.innerHTML = Math.abs(drift) > 60 ? `<div class="warn-strip" style="margin-bottom:12px">${icon('i-warn',15)}<div>
       浏览器与服务器时钟偏差约 <b>${Math.abs(drift)}</b> 秒（${drift > 0 ? '浏览器快' : '服务器快'}）。
       TOTP 动态口令严格依赖双方时钟一致，偏差过大会导致合法敲门被判超时，请校准 NTP。</div></div>` : '';
+  }
+  /* 首次运行引导：0 授权（含已禁用也为 0，即从未配置过）时显示三步上线
+     清单（启动 → 签发 → 客户端导入）——新部署最常见的困惑是「先做什么」；
+     授权出现后自动消失；「不再显示」供习惯 CLI 的运维折叠（localStorage 记忆） */
+  const fr = $('#ov-first-run');
+  if (fr) {
+    const stz = d.stanzas;
+    let frDone = false;
+    try { frDone = localStorage.getItem('fwknop-first-run-done') === '1'; } catch (e2) {}
+    const showFr = stz && !stz.active && !stz.disabled && !frDone;
+    fr.innerHTML = showFr ? `<div class="warn-strip" style="margin-bottom:12px;border-color:var(--accent)">${icon('i-info',15)}<div style="flex:1">
+      <b>三步上线 fwknop：</b>① <a href="javascript:void 0" id="fr-validate" style="color:var(--accent)">校验配置</a>并<a href="javascript:void 0" id="fr-start" style="color:var(--accent)">启动服务</a>${d.daemon.alive ? '（✓ 运行中）' : ''} → ② <a href="javascript:void 0" id="fr-issue" style="color:var(--accent)">签发首个凭证</a>（推荐「标准 SSH」模板一键填充）→ ③ 客户端导入签发结果中的 fwknop:// URI 或 cred.json（fwknop import 即完成）
+      <button class="btn ghost small" id="fr-dismiss" style="margin-left:8px;padding:1px 8px;font-size:11.5px" title="折叠本引导（授权出现后它也会自动消失）">不再显示</button>
+    </div></div>` : '';
+    if (showFr) {
+      $('#fr-validate').onclick = () => $('#svc-validate').click();
+      $('#fr-start').onclick = () => $('#svc-start').click();
+      $('#fr-issue').onclick = () => $('#qa-add').click();
+      $('#fr-dismiss').onclick = () => {
+        try { localStorage.setItem('fwknop-first-run-done', '1'); } catch (e2) {}
+        fr.innerHTML = '';
+        toast('已折叠首次引导', 'ok', 2000);
+      };
+    }
   }
   const F = d.files || {};
   /* 快速操作「导出审计日志」实时标注当前文件大小与更新时间，下载前即有预期 */
