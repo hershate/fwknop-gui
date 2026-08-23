@@ -676,7 +676,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="head">
             <h2>SPA 事件</h2><span class="sub" id="events-sub"></span>
             <div class="tools">
-              <select class="ctl" id="ev-time" title="时间范围" style="padding:5px 8px;font-size:12.5px">
+              <select class="ctl" id="ev-time" title="时间范围（与类型芯片/搜索词叠加生效；下方时间分布柱点击可继续钻取）" style="padding:5px 8px;font-size:12.5px">
                 <option value="all">全部时间</option>
                 <option value="5m">最近 5 分钟</option>
                 <option value="1h">最近 1 小时</option>
@@ -727,7 +727,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               <h2>访问授权（access.conf）</h2><span class="sub" id="users-sub"></span>
               <div class="tools">
                 <span class="srch-wrap"><input class="ctl" id="users-search" placeholder="搜索名称 / 用户 / 端口 / 来源 / 序号（#3）…" title="匹配授权名称 / 要求用户名 / 端口 / 来源 / stanza 序号（快捷键 / 聚焦）" style="width:240px"><button class="icon-btn srch-clear" data-for="users-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
-                <select class="ctl" id="users-sort" title="授权排序方式" style="padding:5px 8px;font-size:12.5px">
+                <select class="ctl" id="users-sort" title="授权排序方式（选择跨刷新记忆）" style="padding:5px 8px;font-size:12.5px">
                   <option value="conf">按配置顺序</option>
                   <option value="name">按名称</option>
                   <option value="active">按最近活跃</option>
