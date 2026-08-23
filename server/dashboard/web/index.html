@@ -961,7 +961,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="head">
             <h2>TOFU 设备绑定</h2><span class="sub" id="tofu-sub">首次使用自动绑定的设备指纹</span>
             <div class="tools">
-              <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="tofu-search" placeholder="搜索指纹 / 别名 / 用户 / 端口 / 来源，支持 stanza_key 直贴…" style="width:270px" title="支持按设备别名检索；支持从 CLI 复制的整串 stanza_key（SOURCE|用户|端口）直接粘贴检索（快捷键 / 聚焦）"><button class="icon-btn srch-clear" data-for="tofu-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+              <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="tofu-search" placeholder="搜索指纹 / 别名 / 用户 / 端口 / 来源 / 悬空，支持 stanza_key 直贴…" style="width:270px" title="支持按设备别名检索；搜「悬空」定位授权已删的残留绑定；支持从 CLI 复制的整串 stanza_key（SOURCE|用户|端口）直接粘贴检索（快捷键 / 聚焦）"><button class="icon-btn srch-clear" data-for="tofu-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
               <button class="btn ghost small" id="tofu-density" title="切换表格行密度（紧凑模式一屏看更多设备）">紧凑</button>
               <button class="btn ghost small" id="tofu-csv" title="把当前搜索过滤后的绑定列表导出为 CSV（含设备别名与悬空状态；访问评审/迁移快照用，不含任何密钥）"><svg width="14" height="14"><use href="#i-download"/></svg>导出 CSV</button>
               <span class="hint" id="tofu-file"></span>
@@ -4882,7 +4882,7 @@ async function loadTOFU() {
 function syncNavTofuBadge() {
   const tb = $('#nav-tofu-badge'); if (!tb) return;
   if (!S.tofu || !S.users) { tb.style.display = 'none'; return; }
-  const live = new Set((S.users.stanzas || []).map(s => `${s.source||''}|${s.require_username||''}|${s.open_ports||''}`));
+  const live = tofuLiveKeys();  /* 判定口径单点化（与列表/搜索/导出共用） */
   const n = (S.tofu.bindings || []).filter(b => !live.has(b.stanza_key)).length;
   tb.style.display = n ? '' : 'none';
   if (n) { tb.textContent = n; tb.title = `${n} 条绑定的授权已删除/禁用，不再生效，点击前往清理`; }
@@ -4912,6 +4912,18 @@ function setDevAlias(id, a) {
    防止两处各自实现随时间漂移（导出结果必须与所见列表一致）。
    始终返回副本——renderTOFU 会按表头 in-place 排序，直接返回 S.tofu.bindings
    引用会把排序写回缓存，空搜索词下清除排序后无法恢复文件原始顺序 */
+/* 悬空判定单点化：授权已从 access.conf 删除/禁用后，残留绑定不再匹配任何
+   stanza，敲门永远失败。liveKeys 构建供 renderTOFU 的 orphanOf 与搜索
+   状态词（「悬空」）共用（授权列表未加载时不判定，返回 null/false 自然降级） */
+function tofuLiveKeys() {
+  return S.users
+    ? new Set((S.users.stanzas || []).map(s => `${s.source||''}|${s.require_username||''}|${s.open_ports||''}`))
+    : null;
+}
+function tofuOrphan(b) {
+  const lk = tofuLiveKeys();
+  return lk ? !lk.has(b.stanza_key) : false;
+}
 function filteredTofuBindings() {
   const all = (S.tofu && S.tofu.bindings) || [];
   const q = (S.tofuQuery || '').toLowerCase();
@@ -4924,7 +4936,10 @@ function filteredTofuBindings() {
     (b.open_ports||'').toLowerCase().includes(q) ||
     (b.source||'').toLowerCase().includes(q) ||
     /* 支持从 CLI 复制整串 stanza_key（SOURCE|用户|端口）直接检索 */
-    (b.stanza_key||'').toLowerCase().includes(q));
+    (b.stanza_key||'').toLowerCase().includes(q) ||
+    /* 状态中文可读文案同样可搜（与授权页「占位」同一心智）：搜「悬空」定位
+       授权已删的残留绑定；授权列表未加载时该子句不命中（其余字段照常） */
+    ('悬空绑定'.includes(q) && tofuOrphan(b)));
 }
 function renderTOFU() {
   syncSearchClear();
@@ -4946,11 +4961,9 @@ function renderTOFU() {
     if (on) th.setAttribute('aria-sort', ts.dir > 0 ? 'ascending' : 'descending');
     else th.removeAttribute('aria-sort');
   });
-  /* 悬空绑定检测：授权已从 access.conf 删除/禁用后，残留绑定不再匹配任何
-     stanza，敲门永远失败——标出并计数提醒清理（授权列表未加载时不判定） */
-  const liveKeys = S.users
-    ? new Set((S.users.stanzas || []).map(s => `${s.source||''}|${s.require_username||''}|${s.open_ports||''}`))
-    : null;
+  /* 悬空绑定检测：判定口径已单点化为 tofuLiveKeys()/tofuOrphan()（与搜索
+     状态词共用）；标出并计数提醒清理（授权列表未加载时不判定） */
+  const liveKeys = tofuLiveKeys();
   const orphanOf = b => liveKeys && !liveKeys.has(b.stanza_key);
   /* 绑定 → 授权反查：按 stanza_key（SOURCE|用户|端口）找回 stanza，供行内
      「查看授权」按钮定位；S.users 未加载或悬空绑定时不提供该入口 */
@@ -5146,12 +5159,10 @@ $('#tofu-csv').onclick = async () => {
   const bs = filteredTofuBindings();
   const total = ((S.tofu && S.tofu.bindings) || []).length;
   if (!bs.length) { toast(total ? '当前搜索无匹配绑定可导出' : '暂无绑定可导出', 'err'); return; }
-  /* 悬空判定与列表渲染同口径（SOURCE|用户|端口 比对授权列表）；未加载先懒加载，
+  /* 悬空判定与列表渲染同口径（单点 tofuLiveKeys()）；未加载先懒加载，
      失败则该列留空——宁可缺列也不给错误判定 */
   if (!S.users) { try { await loadUsers(); } catch (e) {} }
-  const liveKeys = S.users
-    ? new Set((S.users.stanzas || []).map(s => `${s.source||''}|${s.require_username||''}|${s.open_ports||''}`))
-    : null;
+  const liveKeys = tofuLiveKeys();
   const aliasOf = devAliasMap();
   /* RFC 4180：字段含逗号/引号/CR/LF 任一即需整体加引号 */
   const cell = v => { v = String(v ?? ''); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
