@@ -944,7 +944,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="head">
             <h2>TOFU 设备绑定</h2><span class="sub" id="tofu-sub">首次使用自动绑定的设备指纹</span>
             <div class="tools">
-              <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="tofu-search" placeholder="搜索指纹 / 用户 / 端口 / 来源，支持 stanza_key 直贴…" style="width:270px" title="支持从 CLI 复制的整串 stanza_key（SOURCE|用户|端口）直接粘贴检索（快捷键 / 聚焦）"><button class="icon-btn srch-clear" data-for="tofu-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+              <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="tofu-search" placeholder="搜索指纹 / 别名 / 用户 / 端口 / 来源，支持 stanza_key 直贴…" style="width:270px" title="支持按设备别名检索；支持从 CLI 复制的整串 stanza_key（SOURCE|用户|端口）直接粘贴检索（快捷键 / 聚焦）"><button class="icon-btn srch-clear" data-for="tofu-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
               <button class="btn ghost small" id="tofu-density" title="切换表格行密度（紧凑模式一屏看更多设备）">紧凑</button>
               <span class="hint" id="tofu-file"></span>
             </div>
@@ -3067,7 +3067,7 @@ function renderEvents() {
               return `${e.stanza}${nm} <span class="hint">已删除</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" disabled title="该 stanza 已不在当前配置（可能已撤销），无法反查">${icon('i-users',12)}</button>`;
             return `${e.stanza}${nm}<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-evstanza="${e.stanza}" title="在用户与授权页查看该 stanza">${icon('i-users',12)}</button>`; })()}</div></div>
           <div><div class="k">用户</div><div class="v">${e.user?`<span class="cp-cell" data-cp="${esc(e.user)}">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" data-lk="user" title="查看该用户的全部事件">${icon('i-search',12)}</button><button class="icon-btn" style="padding:2px 5px;margin-left:2px" data-ev2usr="${esc(e.user)}" title="在用户与授权页按该用户名定位授权">${icon('i-users',12)}</button>`:'—'}</div></div>
-          <div><div class="k">设备指纹（完整）</div><div class="v">${e.device_id?`<span class="cp-cell" data-cp="${esc(e.device_id)}">${esc(e.device_id)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" data-lk="dev" title="查看该设备的全部事件">${icon('i-search',12)}</button>${(() => { const bd = S.tofu && S.tofu.bindings;
+          <div><div class="k">设备指纹（完整）</div><div class="v">${e.device_id?`<span class="cp-cell" data-cp="${esc(e.device_id)}">${esc(e.device_id)}</span>${(() => { const al = devAlias(e.device_id); return al ? ` <span class="hint" title="本机备注的设备别名">（${esc(al)}）</span>` : ''; })()}<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" data-lk="dev" title="查看该设备的全部事件">${icon('i-search',12)}</button>${(() => { const bd = S.tofu && S.tofu.bindings;
             /* TOFU 数据已加载且查无绑定 → 禁用反查按钮并说明；未加载保持可点（跳转后 tofu 页自会加载） */
             if (bd && !bd.some(x => x.device_id === e.device_id))
               return `<button class="icon-btn" style="padding:2px 5px;margin-left:2px" disabled title="该设备当前无 TOFU 绑定（可能已解绑或从未绑定）">${icon('i-fp',12)}</button>`;
@@ -3089,7 +3089,7 @@ function renderEvents() {
         <td class="mono tmtoggle" title="${S.evTimeAbs ? '相对：' + fmtAgo(e.time) : fmtAbs(e.time)} · 点击切换时间制式" style="white-space:nowrap;color:var(--muted);cursor:pointer">${S.evTimeAbs ? fmtAbs(e.time) : fmtAgo(e.time)}</td>
         <td>${e.event ? `<span class="badge ${m.cls}" data-evf="${esc(e.event)}" style="cursor:pointer" title="点击筛选该类型全部事件 · 审计事件类型：${esc(e.event)}">${m.label}</span>` : `<span class="badge ${m.cls}" title="审计记录缺失事件类型字段">${m.label}</span>`}</td>
         <td>${e.user ? `<span class="cp-cell" data-cp="${esc(e.user)}" title="点击复制用户名">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" data-lk="user" title="查看该用户的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
-        <td class="mono">${e.device_id ? `<span class="cp-cell" data-cp="${esc(e.device_id)}" title="点击复制完整指纹：${esc(e.device_id)}">${esc(e.device_id.slice(0,14))}…</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" data-lk="dev" title="查看该设备的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
+        <td class="mono">${e.device_id ? `<span class="cp-cell" data-cp="${esc(e.device_id)}" title="点击复制完整指纹：${esc(e.device_id)}${devAlias(e.device_id) ? ' · 别名：' + esc(devAlias(e.device_id)) : ''}">${esc(e.device_id.slice(0,14))}…</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" data-lk="dev" title="查看该设备的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
         <td class="mono">${e.src_ip ? `<span class="cp-cell" data-cp="${esc(e.src_ip)}" title="点击复制来源 IP">${esc(e.src_ip)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.src_ip)}" data-lk="ip" title="查看该 IP 的全部事件">${icon('i-search',12)}</button>` : '—'}</td>
         <td class="mono">${e.spa_port ? `<span class="cp-cell" data-portq="${e.spa_port}" title="点击按 SPA 端口 ${e.spa_port} 筛选">${e.spa_port}</span>` : '—'}</td>
         <td class="mono">${e.target_port ? `<span class="cp-cell" data-portq="${e.target_port}" title="点击按目标端口 ${e.target_port} 筛选">${e.target_port}</span>` : '—'}</td>
@@ -4497,14 +4497,27 @@ function lastEventForDevice(dev) {
     title="查看该设备的全部事件">最近：${m.label} · ${fmtAgo(last.time)}</button></div>`;
 }
 
+/* 设备别名：给十六进制指纹起人话名（「小明的 Pixel」），解绑/排查时认得设备。
+   面板侧偏好存 localStorage（与主题/草稿同层）：不随配置分发，丢失不致命；
+   指纹本身即设备标识，别名仅作展示标注，不参与任何安全判定 */
+const DEV_ALIAS_KEY = 'fwknop-dev-alias';
+function devAliasMap() { try { return JSON.parse(localStorage.getItem(DEV_ALIAS_KEY) || '{}'); } catch (e) { return {}; } }
+function devAlias(id) { return (devAliasMap()[id]) || ''; }
+function setDevAlias(id, a) {
+  const m = devAliasMap();
+  if (a) m[id] = a; else delete m[id];
+  lsSet(DEV_ALIAS_KEY, JSON.stringify(m));
+}
 function renderTOFU() {
   syncSearchClear();
   try { localStorage.setItem('fwknop-tofu-query', S.tofuQuery || ''); } catch (e) {}
   const d = S.tofu; if (!d) return;
   const all = d.bindings || [];
   const q = (S.tofuQuery || '').toLowerCase();
+  const aliasOf = devAliasMap();  /* 别名纳入检索：记人话名找设备 */
   const bs = q ? all.filter(b =>
     (b.device_id||'').toLowerCase().includes(q) ||
+    (aliasOf[b.device_id] || '').toLowerCase().includes(q) ||
     (b.username||'').toLowerCase().includes(q) ||
     (b.open_ports||'').toLowerCase().includes(q) ||
     (b.source||'').toLowerCase().includes(q) ||
@@ -4569,6 +4582,8 @@ function renderTOFU() {
       ${S.tofuSel.has(b.stanza_key + '\x01' + b.device_id) ? 'checked' : ''}>` : ''}</td>
     <td class="mono" title="完整指纹：${esc(b.device_id)}">${esc(b.device_id && b.device_id.length > 16 ? b.device_id.slice(0, 16) + '…' : b.device_id)}
       <button class="icon-btn" style="padding:2px 6px;margin-left:6px" data-cp="${esc(b.device_id)}" title="复制指纹">${icon('i-copy',12)}</button>
+      ${(() => { const al = aliasOf[b.device_id] || '';
+        return `<div style="margin-top:3px"><button class="icon-btn" style="padding:1px 5px;vertical-align:1px" data-alias="${esc(b.device_id)}" title="${al ? '编辑别名' : '起个别名'}（人话标注，如「小明的 Pixel」；仅存本浏览器，不参与安全判定）">${icon('i-pencil',11)}</button><span class="hint" style="font-size:11.5px">${al ? esc(al) : '未命名'}</span></div>`; })()}
       ${orphanOf(b) ? `<div><span class="tag" style="background:var(--amber-soft);color:var(--amber);margin-top:3px" title="对应授权已删除/禁用，该绑定不再生效，建议解绑清理">⚠ 悬空绑定</span></div>` : ''}
       ${lastEventForDevice(b.device_id)}</td>
     <td class="mono">${b.source ? `<span class="cp-cell" data-cp="${esc(b.source)}" title="点击复制来源限制" data-lab="来源限制">${esc(b.source)}</span>` : '—'}${(() => {
@@ -4591,6 +4606,27 @@ function renderTOFU() {
   });
   updateTofuBatchBar();
   $$('#tofu-body [data-cp]').forEach(b => b.onclick = () => copyText(b.dataset.cp, (b.dataset.lab || '设备指纹') + ' '));
+  /* 设备别名行内编辑：点击铅笔 → 别名位变输入框；Enter/失焦保存（清空即删除），
+     Esc 放弃。与结构化编辑器同一行内交互，不弹窗 */
+  $$('#tofu-body [data-alias]').forEach(btn => btn.onclick = () => {
+    const id = btn.dataset.alias;
+    const wrap = btn.parentElement;
+    const cur = devAlias(id);
+    wrap.innerHTML = `<input class="ctl" style="width:140px;padding:2px 6px;font-size:12px" value="${esc(cur)}" placeholder="如：小明的 Pixel（留空清除）" maxlength="40" aria-label="设备别名">`;
+    const inp = wrap.querySelector('input');
+    inp.focus(); inp.select();
+    let done = false;
+    const commit = save => {
+      if (done) return; done = true;  /* Enter 触发重渲染后 blur 会再火一次，幂等守卫 */
+      if (save) {
+        const v = inp.value.trim();
+        if (v !== cur) { setDevAlias(id, v); toast(v ? '设备别名已保存' : '已清除别名', 'ok', 1500); }
+      }
+      renderTOFU();
+    };
+    inp.onkeydown = e => { if (e.key === 'Enter') commit(true); else if (e.key === 'Escape') commit(false); };
+    inp.onblur = () => commit(true);
+  });
   $$('#tofu-body [data-uev2]').forEach(b => b.onclick = () => {
     S.evQuery = b.dataset.uev2; S.evPage = 0; S.evFilter = 'all';
     $('#event-search').value = S.evQuery;
