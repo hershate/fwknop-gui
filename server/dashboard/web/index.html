@@ -1508,13 +1508,13 @@ document.addEventListener('touchend', e => {
 new MutationObserver(muts => {
   for (const m of muts) m.addedNodes.forEach(n => {
     if (n.nodeType !== 1) return;
-    if (n.matches && n.matches('.cp-cell:not([tabindex]), .tmtoggle:not([tabindex]), .evh-hot:not([tabindex])')) n.tabIndex = 0;
-    if (n.querySelectorAll) n.querySelectorAll('.cp-cell:not([tabindex]), .tmtoggle:not([tabindex]), .evh-hot:not([tabindex])').forEach(el => { el.tabIndex = 0; });
+    if (n.matches && n.matches('.cp-cell:not([tabindex]), .tmtoggle:not([tabindex]), .evh-hot:not([tabindex]), .sum-link:not([tabindex])')) n.tabIndex = 0;
+    if (n.querySelectorAll) n.querySelectorAll('.cp-cell:not([tabindex]), .tmtoggle:not([tabindex]), .evh-hot:not([tabindex]), .sum-link:not([tabindex])').forEach(el => { el.tabIndex = 0; });
   });
 }).observe(document.body, { childList: true, subtree: true });
 document.addEventListener('keydown', ev => {
   if (ev.key !== 'Enter' && ev.key !== ' ') return;
-  const el = ev.target && ev.target.closest ? ev.target.closest('.cp-cell, .tmtoggle, .evh-hot') : null;
+  const el = ev.target && ev.target.closest ? ev.target.closest('.cp-cell, .tmtoggle, .evh-hot, .sum-link') : null;
   if (el) { ev.preventDefault(); el.click(); }
 });
 
@@ -2040,7 +2040,7 @@ function renderSummary() {
     })(),
   ];
   $('#summary-body').innerHTML = `<div class="form-grid">` + rows.map(([k,v], i) =>
-    `<div class="${rows[i][2] ? 'sum-link' : ''}" data-sum="${i}" ${rows[i][2] ? 'title="点击查看明细"' : ''}>
+    `<div class="${rows[i][2] ? 'sum-link' : ''}" data-sum="${i}" ${rows[i][2] ? 'role="button" title="点击查看明细（Enter 亦可）"' : ''}>
       <div class="hint">${k}</div><div style="font-size:16px;font-weight:700">${v}</div></div>`).join('') + `</div>`;
   $$('#summary-body [data-sum]').forEach(el => {
     const fn = rows[+el.dataset.sum][2];
