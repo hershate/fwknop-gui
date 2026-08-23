@@ -767,7 +767,8 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                   <div class="auth-hint" id="add-fwto-hint"></div>
                 </div>
               </div>
-              <div class="form-sec">安全选项</div>
+              <div class="form-sec" id="add-sec-toggle" role="button" tabindex="0" title="点击折叠/展开安全选项" style="cursor:pointer;display:flex;align-items:center;gap:8px;user-select:none"><span id="add-sec-arrow">▾</span>安全选项<span class="hint" id="add-sec-summary" style="display:none;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span></div>
+              <div id="add-sec-body">
               <div class="form-grid">
                 <div class="field">
                   <label class="check-row"><input type="checkbox" name="totp" checked style="width:auto"> 启用 TOTP 端口跳变</label>
@@ -807,6 +808,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                   <label class="check-row"><input type="checkbox" name="apply" checked style="width:auto"> 签发后写入 access.conf 并热加载</label>
                   <div class="tip">推荐开启，授权即刻生效；关闭则仅生成 stanza 文本，需自行追加配置</div>
                 </div>
+              </div>
               </div>
               <div style="margin-top:18px; display:flex; gap:10px;">
                 <button class="btn" type="submit" id="add-submit"><svg width="15" height="15"><use href="#i-key"/></svg>签发凭证</button>
@@ -2845,6 +2847,37 @@ function loadAddDraft() {
 function clearAddDraft() { localStorage.removeItem(ADD_DRAFT_KEY); }
 $('#add-form').addEventListener('input', saveAddDraft);
 $('#add-form').addEventListener('change', saveAddDraft);
+
+/* 安全选项分组折叠：表单较长，收起后标题行右侧显示当前生效值摘要
+   （TOTP/指纹/宽限/写入方式），折叠状态持久化；默认展开保持原有行为 */
+function addSecSummary() {
+  const f = $('#add-form');
+  const range = f['port-range'].value.trim() || '30000-60000';
+  const to = f['tofu-timeout'].value.trim();
+  const parts = [
+    f.totp.checked ? `TOTP 开 · 范围 ${range}` : 'TOTP 关',
+    f['require-fingerprint'].checked ? `指纹绑定 开 · 宽限 ${to ? (fmtSecs(to) || to + ' 秒') : '仅本机'}` : '指纹绑定 关',
+    f.totp.checked && f['require-totp-port-match'].checked ? '端口匹配 开' : '',
+    f.apply.checked ? '自动写入' : '仅出文本',
+  ];
+  return parts.filter(Boolean).join(' · ');
+}
+function setAddSecCollapsed(c) {
+  $('#add-sec-body').style.display = c ? 'none' : '';
+  $('#add-sec-arrow').textContent = c ? '▸' : '▾';
+  const sum = $('#add-sec-summary');
+  sum.style.display = c ? '' : 'none';
+  sum.textContent = c ? addSecSummary() : '';
+  try { localStorage.setItem('fwknop-add-sec', c ? '1' : '0'); } catch (e) {}
+}
+$('#add-sec-toggle').onclick = () => setAddSecCollapsed($('#add-sec-body').style.display !== 'none');
+$('#add-sec-toggle').addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#add-sec-toggle').click(); }
+});
+['input', 'change'].forEach(ev => $('#add-form').addEventListener(ev, () => {
+  if ($('#add-sec-body').style.display === 'none') $('#add-sec-summary').textContent = addSecSummary();
+}));
+setAddSecCollapsed(localStorage.getItem('fwknop-add-sec') === '1');
 
 /* TOTP 关闭时端口范围/端口匹配校验不生效：禁用并灰化提示，防止误填误解 */
 function syncTotpFields() {
