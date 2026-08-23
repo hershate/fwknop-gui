@@ -2970,9 +2970,17 @@ $('#users-batch-rm').onclick = () => {
 };
 
 /* 签发凭证 */
+/* 展开/收起状态同步到按钮：文案 + aria-expanded（读屏可感知折叠状态） */
+function syncAddToggle() {
+  const open = $('#add-card').style.display !== 'none';
+  const b = $('#show-add');
+  b.innerHTML = `<svg width="14" height="14"><use href="#i-plus"/></svg>${open ? '收起签发' : '签发新凭证'}`;
+  b.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
 $('#show-add').onclick = () => {
   const c = $('#add-card');
   c.style.display = c.style.display === 'none' ? '' : 'none';
+  syncAddToggle();
   if (c.style.display !== 'none') {
     renderServerHistory(); renderCustomTpls(); loadAddDraft();
     if (!S.config) loadConfig();  /* 端口范围跨配置校验需要 PCAP_PORT_RANGE */
@@ -2980,7 +2988,7 @@ $('#show-add').onclick = () => {
     setTimeout(() => $('#add-form').name.focus(), 250);  /* 展开后聚焦第一必填项（等滚动落定） */
   }
 };
-$('#add-cancel').onclick = () => { $('#add-card').style.display = 'none'; };
+$('#add-cancel').onclick = () => { $('#add-card').style.display = 'none'; syncAddToggle(); };
 
 /* 签发快速模板：一键填充安全选项（不动名称/地址/用户名等部署相关字段） */
 const ADD_TEMPLATES = {
