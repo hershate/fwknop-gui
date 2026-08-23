@@ -975,6 +975,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               <button class="btn ghost small" id="conf-edit-btn" style="display:none" title="打开结构化编辑器：增删改指令，含类型校验与重复预警"><svg width="14" height="14"><use href="#i-pencil"/></svg>编辑</button>
               <button class="btn ghost small" id="conf-save-profile" title="把当前 fwknopd.conf + access.conf 快照保存为命名方案（方案页）"><svg width="14" height="14"><use href="#i-archive"/></svg>存为方案</button>
               <button class="btn ghost small" id="raw-toggle" aria-pressed="false" title="查看 fwknopd.conf 原始文本（含注释，只读）">查看原文</button>
+              <button class="btn ghost small" id="raw-copy" style="display:none" title="复制 fwknopd.conf 完整原文到剪贴板（留档/迁移用；始终为全文，不受查找过滤影响）"><svg width="14" height="14"><use href="#i-copy"/></svg>复制原文</button>
             </div>
           </div>
           <div class="body" id="config-body"><div class="skel" style="height:120px"></div></div>
@@ -4923,7 +4924,14 @@ $('#raw-toggle').onclick = () => {
   S.rawMode = !S.rawMode;
   $('#raw-toggle').textContent = S.rawMode ? '查看分组说明' : '查看原文';
   $('#raw-toggle').setAttribute('aria-pressed', S.rawMode ? 'true' : 'false');
+  $('#raw-copy').style.display = S.rawMode ? '' : 'none';
   renderConfig();
+};
+/* 复制完整原文：行号用 user-select:none 渲染、手动全选本就不会混入行号，
+   一键复制省去全选动作，且不受查找过滤影响（留档/迁移要的是全文） */
+$('#raw-copy').onclick = () => {
+  if (!S.config || !S.config.raw) { toast('暂无配置原文', 'err', 2500); return; }
+  copyText(S.config.raw, '配置原文 ');
 };
 /* 配置页直达「存为方案」：调完配置顺手快照，与概览快速操作同一动作 */
 $('#conf-save-profile').onclick = () => {
