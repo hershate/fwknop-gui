@@ -221,7 +221,10 @@ func maskAccessConfLine(line string) string {
 	if i < 0 {
 		return line
 	}
-	if sensitiveDirectives[p[:i]] {
+	/* 指令名兼容上游冒号格式（KEY_BASE64:）：本 fork 解析器不认冒号（该指令
+	   对 fwknopd 是惰性的），但迁移文件里的密钥值仍是真实密钥材料，掩码不
+	   能因格式差异漏出 */
+	if sensitiveDirectives[strings.TrimSuffix(p[:i], ":")] {
 		return p[:i] + "  ••••••••（已配置，已掩码）"
 	}
 	return line

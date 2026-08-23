@@ -221,6 +221,34 @@ func handleConfig(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, parseFwknopdConf(cfg.FwknopdConf))
 }
 
+// handleAccessConfView 返回 access.conf 原文（密钥指令值已掩码，只读）。
+// stanza 卡片只展示结构化字段——注释、空行与禁用块的原始布局不可见；
+// 这里给出 lint 与 fwknopd 实际解析的文本视图。掩码原文可复制外发
+// （工单/评审），无密钥泄露面，与 stanza 卡片同属只读曝光级。
+func handleAccessConfView(w http.ResponseWriter, r *http.Request) {
+	data, err := os.ReadFile(cfg.AccessConf)
+	if err != nil {
+		writeJSON(w, map[string]interface{}{"exists": false, "raw": "", "error": errStr(err)})
+		return
+	}
+	raw := string(data)
+	const maxRaw = 128 * 1024
+	if len(raw) > maxRaw {
+		raw = raw[:maxRaw] + "\n# ... (文件过大，已截断)"
+	}
+	lines := strings.Split(raw, "\n")
+	for i, l := range lines {
+		lines[i] = maskAccessConfLine(l)
+	}
+	var mtime int64
+	if fi, e := os.Stat(cfg.AccessConf); e == nil {
+		mtime = fi.ModTime().Unix()
+	}
+	writeJSON(w, map[string]interface{}{
+		"exists": true, "raw": strings.Join(lines, "\n"), "mtime": mtime,
+	})
+}
+
 // ------------------------------------------------------------------
 // 写操作端点（默认启用；-read-only 关闭；Cookie 会话需 CSRF 头）
 // ------------------------------------------------------------------

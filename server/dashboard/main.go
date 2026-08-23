@@ -136,6 +136,7 @@ func main() {
 	mux.HandleFunc("/api/tofu", guard(handleTOFU))
 	mux.HandleFunc("/api/users", guard(handleUsers))
 	mux.HandleFunc("/api/config", guard(handleConfig))
+	mux.HandleFunc("/api/accessconf/view", guard(handleAccessConfView))
 	mux.HandleFunc("/api/audit/download", guard(handleAuditDownload))
 	mux.HandleFunc("/api/oplog", guard(handleOpLog))
 	mux.HandleFunc("/api/oplog/download", guard(handleOpLogDownload))

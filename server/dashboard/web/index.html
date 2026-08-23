@@ -790,6 +790,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                   <option value="active">按最近活跃</option>
                   <option value="bound">按绑定设备数</option>
                 </select>
+                <button class="btn ghost small" id="users-raw" title="查看 access.conf 原始文本（密钥指令已掩码，含注释与禁用块布局——lint 与 fwknopd 实际解析的文本视图）"><svg width="14" height="14"><use href="#i-list"/></svg>查看原文</button>
                 <button class="btn ghost small" id="users-lint" title="fwknopd-admin lint：检查 access.conf 一致性（重复来源/缺失指令等），结果弹窗展示"><svg width="14" height="14"><use href="#i-check"/></svg>一致性检查</button>
                 <button class="btn ghost small" id="users-density" title="切换卡片密度：紧凑模式只显示名称与操作按钮，授权多时一屏总览">紧凑</button>
                 <button class="btn small" id="show-add" title="展开签发新凭证表单（快捷键 n）"><svg width="14" height="14"><use href="#i-plus"/></svg>签发新凭证</button>
@@ -3955,6 +3956,20 @@ $('#show-add').onclick = () => {
   }
 };
 $('#add-cancel').onclick = () => { $('#add-card').style.display = 'none'; syncAddToggle(); };
+
+/* access.conf 原文查看（密钥掩码，只读）：stanza 卡片只展示结构化字段，
+   注释/空行/禁用块布局与 lint 实际解析的文本视图在这里；掩码原文可安全外发 */
+$('#users-raw').onclick = async () => {
+  try {
+    const r = await api('/api/accessconf/view');
+    if (!r.exists) { infoModal('access.conf 原文', '（文件不存在或不可读：' + (r.error || '未知原因') + '）'); return; }
+    openModal(`<h3>access.conf 原文</h3>
+      <div class="hint" style="margin-bottom:8px">修改于 ${fmtAbs(r.mtime)}（${fmtAgo(r.mtime)}）· 密钥指令已掩码，复制外发安全；结构化编辑请用授权卡片</div>
+      <pre class="out-pre" style="max-height:52vh">${esc(r.raw || '（空文件）')}</pre>
+      <div class="mf"><button class="btn ghost" id="ar-cp" title="复制掩码原文（密钥已掩码，可安全贴入工单/评审/文档）">${icon('i-copy',13)} 复制掩码原文</button><button class="btn" onclick="closeModal()">关闭</button></div>`, true);
+    $('#ar-cp').onclick = () => copyText(r.raw || '', 'access.conf 掩码原文 ');
+  } catch (e) {}
+};
 
 /* 一致性检查：面板内直接跑 fwknopd-admin lint（手动编辑过 access.conf 后
    快速验证，不用切终端）；异常退出码时按错误样式展示输出 */
