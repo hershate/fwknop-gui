@@ -556,7 +556,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
       <div class="side-actions">
         <button class="icon-btn" id="kbd-btn" title="键盘快捷键（按 ? 随时打开）"><svg><use href="#i-key"/></svg>快捷键</button>
         <button class="icon-btn" id="notif-btn" title="通知历史"><svg><use href="#i-bell"/></svg>通知<span class="nb-badge" id="notif-badge" style="display:none"></span></button>
-        <button class="icon-btn" id="theme-btn" title="切换明暗主题"><svg><use href="#i-sun"/></svg><span id="theme-lab">浅色</span></button>
+        <button class="icon-btn" id="theme-btn" title="切换明暗主题（快捷键 t）"><svg><use href="#i-sun"/></svg><span id="theme-lab">浅色</span></button>
         <button class="icon-btn" id="logout-btn" title="注销登录"><svg><use href="#i-lock"/></svg>注销</button>
       </div>
     </div>
@@ -1517,6 +1517,8 @@ document.addEventListener('keydown', ev => {
     if (sel) { ev.preventDefault(); $(sel).focus(); }
   } else if (ev.key === 'r') {
     refreshNow(); toast('已刷新', 'ok', 1200);
+  } else if (ev.key === 't') {
+    $('#theme-btn').click();  /* 明暗主题切换（复用按钮逻辑，含持久化与系统跟随） */
   } else if ((ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') && S.page === 'events') {
     /* 事件页 ←/→ 翻页：直接点分页器按钮，沿用其禁用边界 */
     const btn = $(ev.key === 'ArrowLeft' ? '#pg-prev' : '#pg-next');
@@ -1531,6 +1533,7 @@ const KBD_HELP = [
   ['1 – 7', '切换页面（概览 / 事件 / 用户 / TOFU / 配置 / 方案 / 关于）'],
   ['/', '聚焦当前页搜索框（事件 / 用户 / TOFU / 配置）'],
   ['r', '手动刷新全部数据'],
+  ['t', '切换明暗主题'],
   ['← / →', '事件页翻页'],
   ['Enter / 空格', '展开聚焦的事件行详情'],
   ['Ctrl/⌘ + S', '保存服务配置（编辑器有改动时）'],
