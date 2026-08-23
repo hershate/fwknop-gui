@@ -975,7 +975,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <table class="tb"><tbody id="about-kbd"></tbody></table>
           </div>
         </div>
-        <div class="card">
+        <div class="card" id="pw-card">
           <div class="head"><h2>修改密码</h2><span class="sub">需验证当前密码；成功后其他设备的会话将失效</span></div>
           <div class="body" id="pw-body">
             <div class="field"><label for="pw-old">当前密码</label>
@@ -1230,6 +1230,7 @@ async function bootAuth() {
     }
     if (st.session_exp) S.sessionExp = st.session_exp;
     S.writeEnabled = !!st.write_enabled;
+    S.passwordSet = !!st.password_set;  /* Bearer 令牌模式下隐藏「修改密码」卡 */
     if (st.needs_setup) showAuthView('auth-setup');
     else if (st.authenticated) enterApp();
     else showAuthView('auth-login');
@@ -4323,6 +4324,9 @@ function collectDiag() {
 function renderAbout() {
   const d = S.overview;
   const F = (d && d.files) || {};
+  /* Bearer 令牌模式（未设置管理员密码）：改密端点不可用（409），隐藏卡片并说明 */
+  const pwc = $('#pw-card');
+  if (pwc) pwc.style.display = S.passwordSet === false ? 'none' : '';
   /* 文件行附大小与更新时间 */
   /* 文件路径点击即复制（cp-cell 全局委托，键盘可达由 MutationObserver 补齐） */
   const frow = f => f ? `<span class="cp-cell" data-cp="${esc(f.path)}" title="点击复制完整路径">${esc(f.path)}</span>${f.exists ? ` <span class="hint">${fmtSize(f.size)} · ${fmtAgo(f.mtime)}更新</span>` : ' <span class="hint">（不存在）</span>'}` : '—';
