@@ -4119,8 +4119,11 @@ $('#users-lint').onclick = async () => {
   btn.disabled = true;
   try {
     const r = await api('/api/admin/lint', { method: 'POST' });
+    /* 未通过时给后续动作（与预检失败→配置页同一心智）：lint 行号与原文
+       视图行号一一对应，一键直达定位；通过则无需动作 */
     infoModal('access.conf 一致性检查（fwknopd-admin lint）',
-      (r.output || '（无输出）') + (r.error ? '\n\n退出状态：' + r.error : ''), !!r.error);
+      (r.output || '（无输出）') + (r.error ? '\n\n退出状态：' + r.error : ''), !!r.error,
+      r.error ? { label: '查看原文定位', icon: 'i-list', title: '打开 access.conf 原文视图（含行号，与 lint 输出的行号一一对应；密钥已掩码）', onclick: () => $('#users-raw').click() } : null);
   } catch (e) {} finally { btn.disabled = false; }
 };
 
@@ -5858,7 +5861,7 @@ function closeModal() {
 function infoModal(title, text, isErr, action) {
   openModal(`<h3>${title}</h3>
     <pre class="out-pre" style="max-height:50vh;${isErr?'border-color:var(--red)':''}">${esc(text || '（无输出）')}</pre>
-    <div class="mf">${action ? `<button class="btn ghost" id="im-act" title="${esc(action.title || '')}">${icon('i-cfg',13)} ${esc(action.label)}</button>` : ''}<button class="btn ghost" id="im-cp" title="复制全部输出内容（贴入工单/终端排查用）">${icon('i-copy',13)} 复制输出</button><button class="btn" onclick="closeModal()">关闭</button></div>`, true);
+    <div class="mf">${action ? `<button class="btn ghost" id="im-act" title="${esc(action.title || '')}">${icon(action.icon || 'i-cfg',13)} ${esc(action.label)}</button>` : ''}<button class="btn ghost" id="im-cp" title="复制全部输出内容（贴入工单/终端排查用）">${icon('i-copy',13)} 复制输出</button><button class="btn" onclick="closeModal()">关闭</button></div>`, true);
   $('#im-cp').onclick = () => copyText(text || '', '输出 ');
   /* 可选的后续动作按钮（如预检失败 → 前往配置页）：读完输出一步直达修复位置 */
   if (action) $('#im-act').onclick = () => { closeModal(); action.onclick(); };
