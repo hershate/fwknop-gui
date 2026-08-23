@@ -707,7 +707,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <button class="btn ghost small" id="ev-preset-24h" title="填充为「此刻往前 24 小时」" style="padding:4px 8px;font-size:11.5px">最近 24h</button>
                 <button class="btn ghost small" id="ev-preset-yday" title="填充为「昨天 00:00 至今天 00:00」" style="padding:4px 8px;font-size:11.5px">昨日全天</button>
               </span>
-              <span class="srch-wrap"><input class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口…（支持 user:/ip:/dev:/port: 前缀）" title="全字段子串匹配；空格分隔多关键词为 AND（如「admin 22」）；前缀语法精确限定字段：user:admin、ip:192.168、dev:指纹前缀、port:22（SPA 与目标端口都匹配），前缀词与裸词可混用（「user:admin port:22」）；快捷键 / 聚焦" style="width:270px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+              <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口…（支持 user:/ip:/dev:/port: 前缀）" title="全字段子串匹配；空格分隔多关键词为 AND（如「admin 22」）；前缀语法精确限定字段：user:admin、ip:192.168、dev:指纹前缀、port:22（SPA 与目标端口都匹配），前缀词与裸词可混用（「user:admin port:22」）；快捷键 / 聚焦" style="width:270px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
               <button class="btn ghost small" id="ev-density" title="切换表格行密度（紧凑模式一屏看更多事件）">紧凑</button>
               <button class="btn ghost small" id="ev-expand-all" title="展开/收起当前页全部事件详情（对比多条事件字段用）">展开全部</button>
               <button class="btn ghost small" id="ev-notify" title="后台标签页收到异常事件时弹桌面通知（需浏览器授权）；点击通知直达「仅看异常」视图"><svg width="14" height="14"><use href="#i-bell"/></svg>异常桌面通知</button>
@@ -743,7 +743,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <div class="head">
               <h2>访问授权（access.conf）</h2><span class="sub" id="users-sub"></span>
               <div class="tools">
-                <span class="srch-wrap"><input class="ctl" id="users-search" placeholder="搜索名称 / 用户 / 端口 / 来源 / 序号（#3）…" title="匹配授权名称 / 要求用户名 / 端口 / 来源 / stanza 序号（快捷键 / 聚焦）" style="width:240px"><button class="icon-btn srch-clear" data-for="users-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+                <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="users-search" placeholder="搜索名称 / 用户 / 端口 / 来源 / 序号（#3）…" title="匹配授权名称 / 要求用户名 / 端口 / 来源 / stanza 序号（快捷键 / 聚焦）" style="width:240px"><button class="icon-btn srch-clear" data-for="users-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
                 <select class="ctl" id="users-sort" title="授权排序方式（选择跨刷新记忆）" style="padding:5px 8px;font-size:12.5px">
                   <option value="conf">按配置顺序</option>
                   <option value="name">按名称</option>
@@ -790,13 +790,13 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               <div class="form-grid">
                 <div class="field">
                   <label>凭证名称 <span class="req">*</span></label>
-                  <input name="name" placeholder="例如 prod-ssh" required>
+                  <input spellcheck="false" autocomplete="off" autocapitalize="off" name="name" placeholder="例如 prod-ssh" required>
                   <div class="tip">作为 access.conf stanza 的标识 · 想不到名字？<a href="javascript:void 0" id="add-autoname" style="color:var(--accent)">用当前时间命名</a></div>
                   <div class="auth-hint" id="add-name-hint"></div>
                 </div>
                 <div class="field">
                   <label>SPA 服务器地址</label>
-                  <input name="server" list="server-history" placeholder="例如 203.0.113.10 或 vpn.example.com">
+                  <input spellcheck="false" autocomplete="off" autocapitalize="off" name="server" list="server-history" placeholder="例如 203.0.113.10 或 vpn.example.com">
                   <datalist id="server-history"></datalist>
                   <div class="tip">写入客户端配置，客户端向该地址发 SPA 包<span id="srv-hist-ctl" style="display:none"> · <span id="srv-hist-n"></span> 条历史 <a href="javascript:void 0" id="srv-hist-manage" style="color:var(--accent)">管理</a> <a href="javascript:void 0" id="srv-hist-clear" style="color:var(--faint)">清空</a></span></div>
                   <div id="srv-hist-chips" style="display:none;flex-wrap:wrap;gap:6px;margin-top:6px"></div>
@@ -804,7 +804,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 </div>
                 <div class="field">
                   <label>允许访问端口</label>
-                  <input name="access" placeholder="默认 tcp/22">
+                  <input spellcheck="false" autocomplete="off" autocapitalize="off" name="access" placeholder="默认 tcp/22">
                   <div class="tip">OPEN_PORTS：敲门成功后<b>放行的服务端口</b>，如 tcp/22,udp/53（与下方 TOTP 跳变端口是两回事）</div>
                   <div id="access-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
                     <button type="button" class="tpl-chip" data-port="tcp/22" title="SSH · 点击加入/移出端口列表">tcp/22</button>
@@ -818,13 +818,13 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 </div>
                 <div class="field">
                   <label>要求客户端用户名</label>
-                  <input name="user" placeholder="可选，如 alice">
+                  <input spellcheck="false" autocomplete="off" autocapitalize="off" name="user" placeholder="可选，如 alice">
                   <div class="tip">REQUIRE_USERNAME，留空则不校验</div>
                   <div class="auth-hint" id="add-user-hint"></div>
                 </div>
                 <div class="field">
                   <label>访问超时（秒）</label>
-                  <input name="fw-timeout" placeholder="默认 30">
+                  <input spellcheck="false" autocomplete="off" autocapitalize="off" name="fw-timeout" placeholder="默认 30">
                   <div class="tip">FW_ACCESS_TIMEOUT，敲门后端口保持开放的时长</div>
                   <div id="fwto-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
                     <button type="button" class="tpl-chip" data-fwto="30">30 秒</button>
@@ -844,7 +844,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 </div>
                 <div class="field">
                   <label>TOTP 端口范围</label>
-                  <input name="port-range" placeholder="默认 30000-60000">
+                  <input spellcheck="false" autocomplete="off" autocapitalize="off" name="port-range" placeholder="默认 30000-60000">
                   <div class="tip">敲门包的<b>目的端口</b>在此范围内随时间跳变（SPA 包的落点，不是服务端口）</div>
                   <div id="range-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
                     <button type="button" class="tpl-chip" data-pr="30000-60000">30000-60000</button>
@@ -859,7 +859,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 </div>
                 <div class="field">
                   <label>TOFU 宽限期（秒）</label>
-                  <input name="tofu-timeout" placeholder="留空 = 绑定本机指纹；86400 = 首用自动绑定">
+                  <input spellcheck="false" autocomplete="off" autocapitalize="off" name="tofu-timeout" placeholder="留空 = 绑定本机指纹；86400 = 首用自动绑定">
                   <div class="tip">设值后首个敲门的设备自动绑定；留空则绑定当前设备</div>
                   <div id="tofuto-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
                     <button type="button" class="tpl-chip" data-tfto="3600">1 小时</button>
@@ -912,7 +912,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="head">
             <h2>TOFU 设备绑定</h2><span class="sub" id="tofu-sub">首次使用自动绑定的设备指纹</span>
             <div class="tools">
-              <span class="srch-wrap"><input class="ctl" id="tofu-search" placeholder="搜索指纹 / 用户 / 端口 / 来源，支持 stanza_key 直贴…" style="width:270px" title="支持从 CLI 复制的整串 stanza_key（SOURCE|用户|端口）直接粘贴检索（快捷键 / 聚焦）"><button class="icon-btn srch-clear" data-for="tofu-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+              <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="tofu-search" placeholder="搜索指纹 / 用户 / 端口 / 来源，支持 stanza_key 直贴…" style="width:270px" title="支持从 CLI 复制的整串 stanza_key（SOURCE|用户|端口）直接粘贴检索（快捷键 / 聚焦）"><button class="icon-btn srch-clear" data-for="tofu-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
               <button class="btn ghost small" id="tofu-density" title="切换表格行密度（紧凑模式一屏看更多设备）">紧凑</button>
               <span class="hint" id="tofu-file"></span>
             </div>
@@ -938,7 +938,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="head">
             <h2>fwknopd 配置</h2><span class="sub" id="config-sub"></span>
             <div class="tools">
-              <span class="srch-wrap"><input class="ctl" id="conf-view-filter" placeholder="查找指令 / 说明…" title="按指令名或说明文字过滤；「查看原文」模式下按行过滤（含注释）并高亮命中；快捷键 / 聚焦" style="width:150px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="conf-view-filter" title="清空查找" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span><span class="hint" id="conf-view-filter-n" style="font-size:11.5px"></span>
+              <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="conf-view-filter" placeholder="查找指令 / 说明…" title="按指令名或说明文字过滤；「查看原文」模式下按行过滤（含注释）并高亮命中；快捷键 / 聚焦" style="width:150px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="conf-view-filter" title="清空查找" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span><span class="hint" id="conf-view-filter-n" style="font-size:11.5px"></span>
               <button class="btn ghost small" id="conf-expand-all" title="展开全部分组">展开全部</button>
               <button class="btn ghost small" id="conf-collapse-all" title="收起全部分组">收起全部</button>
               <button class="btn ghost small" id="conf-edit-btn" style="display:none" title="打开结构化编辑器：增删改指令，含类型校验与重复预警"><svg width="14" height="14"><use href="#i-pencil"/></svg>编辑</button>
@@ -953,7 +953,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="head">
             <h2>编辑 fwknopd.conf</h2><span class="sub">保存前自动预检（fwknopd --exit-parse-config），通过后备份并热加载 · <span style="color:var(--amber)">▎</span>已修改 <span style="color:var(--green)">▎</span>新增</span>
             <div class="tools">
-              <input class="ctl" id="conf-filter" placeholder="过滤指令名…" title="按指令名过滤编辑行（大小写不敏感；快捷键 / 在编辑器打开时聚焦此处）" style="width:150px;padding:4px 8px;font-size:12.5px"><span class="hint" id="conf-filter-n" style="font-size:11.5px"></span>
+              <input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="conf-filter" placeholder="过滤指令名…" title="按指令名过滤编辑行（大小写不敏感；快捷键 / 在编辑器打开时聚焦此处）" style="width:150px;padding:4px 8px;font-size:12.5px"><span class="hint" id="conf-filter-n" style="font-size:11.5px"></span>
               <button class="btn ghost small" id="conf-only-changed" title="只显示本次编辑中已修改/新增的行（大配置保存前快速复核改动面）" aria-pressed="false">仅看修改</button>
               <button class="btn ghost small" id="conf-add-row"><svg width="14" height="14"><use href="#i-plus"/></svg>新增指令</button>
               <button class="btn ghost small" id="conf-raw-edit">原文编辑</button>
@@ -984,18 +984,18 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="body">
             <div class="form-grid">
               <div class="field"><label>方案名 <span class="req">*</span></label>
-                <input id="pf-name" placeholder="例如：办公网-仅SSH">
+                <input spellcheck="false" autocomplete="off" autocapitalize="off" id="pf-name" placeholder="例如：办公网-仅SSH">
                 <div class="auth-hint" id="pf-name-hint"></div>
                 <div class="tip">想不到名字？<a href="javascript:void 0" id="pf-autoname" style="color:var(--accent)">用当前时间命名</a></div></div>
               <div class="field"><label>备注</label>
-                <input id="pf-note" placeholder="用途说明（可选）"></div>
+                <input spellcheck="false" autocomplete="off" autocapitalize="off" id="pf-note" placeholder="用途说明（可选）"></div>
               <div class="field" style="align-self:end"><button class="btn" id="pf-save"><svg width="15" height="15"><use href="#i-save"/></svg>保存方案</button></div>
             </div>
           </div>
         </div>
         <div class="card">
           <div class="head"><h2>配置方案</h2><span class="sub" id="profiles-sub">一键切换整套服务端配置</span>
-            <div class="tools"><span class="srch-wrap"><input class="ctl" id="pf-search" placeholder="搜索方案名 / 备注…" title="按方案名或备注过滤（快捷键 / 聚焦；Esc 清空）" style="width:190px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="pf-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span></div></div>
+            <div class="tools"><span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="pf-search" placeholder="搜索方案名 / 备注…" title="按方案名或备注过滤（快捷键 / 聚焦；Esc 清空）" style="width:190px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="pf-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span></div></div>
           <div class="body" id="profiles-body"><div class="skel" style="height:80px"></div></div>
         </div>
       </section>
@@ -2995,7 +2995,7 @@ function renderEvents() {
     </select>
     <button class="btn ghost small" id="pg-prev" ${S.evPage<=0?'disabled':''}>上一页</button>
     <button class="btn ghost small" id="pg-next" ${S.evPage>=pages-1?'disabled':''}>下一页</button>
-    ${pages > 5 ? `<input class="ctl" id="pg-jump" type="number" min="1" max="${pages}" placeholder="跳页" title="输入页码回车跳转（1-${pages}）" style="width:64px;padding:3px 6px;font-size:12px">` : ''}`;
+    ${pages > 5 ? `<input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="pg-jump" type="number" min="1" max="${pages}" placeholder="跳页" title="输入页码回车跳转（1-${pages}）" style="width:64px;padding:3px 6px;font-size:12px">` : ''}`;
   const pv = $('#pg-prev'), nx = $('#pg-next');
   if (pv) pv.onclick = () => { S.evPage--; renderEvents(); };
   if (nx) nx.onclick = () => { S.evPage++; renderEvents(); };
@@ -3555,8 +3555,8 @@ function renderCustomTpls() {
 /* 存为模板：名称 + 可选描述，抓取当前表单安全选项 */
 $('#tpl-save').onclick = () => {
   openModal(`<h3>保存为签发模板</h3>
-    <div class="field"><label>模板名称</label><input id="ct-name" maxlength="20" placeholder="例如 边缘节点标准"><div class="auth-hint" id="ct-hint"></div></div>
-    <div class="field" style="margin-top:10px"><label>描述（可选）</label><input id="ct-desc" maxlength="60" placeholder="一句话说明适用场景"></div>
+    <div class="field"><label>模板名称</label><input spellcheck="false" autocomplete="off" autocapitalize="off" id="ct-name" maxlength="20" placeholder="例如 边缘节点标准"><div class="auth-hint" id="ct-hint"></div></div>
+    <div class="field" style="margin-top:10px"><label>描述（可选）</label><input spellcheck="false" autocomplete="off" autocapitalize="off" id="ct-desc" maxlength="60" placeholder="一句话说明适用场景"></div>
     <div class="mf"><button class="btn ghost" id="ct-cancel">取消</button><button class="btn" id="ct-ok">保存模板</button></div>`);
   $('#ct-name').focus();
   $('#ct-cancel').onclick = () => closeModal();
@@ -4855,8 +4855,8 @@ function openStanzaEditor(index) {
   const rows = STANZA_FIELDS.map(f => `
     <div class="field">
       ${f.bool
-        ? `<label class="check-row"><input type="checkbox" data-sf="${f.k}" ${f.get(s) ? 'checked' : ''} style="width:auto"> ${f.label}</label>`
-        : `<label>${f.label}</label><input data-sf="${f.k}" value="${esc(f.get(s) || '')}" placeholder="${esc(f.ph || '')}">
+        ? `<label class="check-row"><input spellcheck="false" autocomplete="off" autocapitalize="off" type="checkbox" data-sf="${f.k}" ${f.get(s) ? 'checked' : ''} style="width:auto"> ${f.label}</label>`
+        : `<label>${f.label}</label><input spellcheck="false" autocomplete="off" autocapitalize="off" data-sf="${f.k}" value="${esc(f.get(s) || '')}" placeholder="${esc(f.ph || '')}">
            ${f.chips ? `<div class="tpl-row" style="margin-top:5px">${f.chips.map(c =>
              `<button type="button" class="tpl-chip" data-sfc="${f.k}" data-v="${esc(c[1] || '')}" title="点击填入该值，再点同值清除">${esc(c[0])}</button>`).join('')}</div>` : ''}`}
       <div class="tip">${esc(f.tip || '')}</div>
@@ -4959,11 +4959,11 @@ function confEntryRow(key, val) {
   const meta = CONF_META[key];
   const yn = /^(Y|N)?$/.test(val) && (key.startsWith('ENABLE_') || key.startsWith('FLUSH_') || key.startsWith('EXIT_'));
   return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-    <input class="ctl ce-key" list="conf-keys" value="${esc(key)}" placeholder="指令名" style="flex:0 0 250px;font-family:var(--mono);font-size:12px">
+    <input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl ce-key" list="conf-keys" value="${esc(key)}" placeholder="指令名" style="flex:0 0 250px;font-family:var(--mono);font-size:12px">
     ${yn ? `<select class="ctl ce-val" style="flex:0 0 90px">
         <option value="Y" ${val==='Y'?'selected':''}>Y（是）</option>
         <option value="N" ${val!=='Y'?'selected':''}>N（否）</option></select>`
-      : `<input class="ctl ce-val" value="${esc(val)}" placeholder="值" style="flex:1;font-family:var(--mono);font-size:12px">`}
+      : `<input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl ce-val" value="${esc(val)}" placeholder="值" style="flex:1;font-family:var(--mono);font-size:12px">`}
     <button class="icon-btn ce-del" title="删除该指令">${icon('i-trash',13)}</button>
     <div class="hint" style="flex:1;min-width:160px">${meta ? esc(meta[1]) : ''}</div>
   </div>`;
@@ -5393,7 +5393,7 @@ function renderProfiles() {
     openModal(`<h3>方案「${esc(name)}」另存副本</h3>
       <div class="mb hint">完整复制 fwknopd.conf 与 access.conf 快照为新方案，不动当前生效配置；备注自动标注来源。</div>
       <div class="fg"><label>副本名称</label>
-        <input class="ctl" id="pdup-name" value="${esc(name)}-副本" maxlength="64" style="width:100%">
+        <input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="pdup-name" value="${esc(name)}-副本" maxlength="64" style="width:100%">
         <div class="auth-hint" id="pdup-hint"></div>
         <div class="tip">只能包含字母、数字、点、下划线、连字符；已存在的名称会被拒绝（不覆盖）。</div></div>
       <div class="mf"><button class="btn ghost" id="pdup-cancel">取消</button>
