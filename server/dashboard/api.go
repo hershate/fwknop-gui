@@ -227,6 +227,11 @@ func handleAuditDownload(w http.ResponseWriter, r *http.Request) {
 	/* 文件名带服务器时间戳：多次导出互不覆盖，便于归档排查 */
 	w.Header().Set("Content-Disposition",
 		fmt.Sprintf(`attachment; filename="%s"`, name))
+	/* Content-Length 让浏览器下载管理器显示真实进度条与 ETA——大审计文件
+	   （数百 MB）chunked 无总长时只剩「已下载 X MB，大小未知」的盲等 */
+	if st, serr := f.Stat(); serr == nil {
+		w.Header().Set("Content-Length", strconv.FormatInt(st.Size(), 10))
+	}
 	io.Copy(w, f)
 }
 

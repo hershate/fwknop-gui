@@ -157,5 +157,9 @@ func handleOpLogDownload(w http.ResponseWriter, r *http.Request) {
 	/* 文件名带服务器时间戳：多次导出互不覆盖（与审计导出同规） */
 	w.Header().Set("Content-Disposition",
 		`attachment; filename="dashboard_ops_`+time.Now().Format("20060102-150405")+`.jsonl"`)
+	/* Content-Length 给浏览器真实下载进度（与审计下载同规） */
+	if st, serr := f.Stat(); serr == nil {
+		w.Header().Set("Content-Length", strconv.FormatInt(st.Size(), 10))
+	}
 	io.Copy(w, f)
 }
