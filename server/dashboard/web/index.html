@@ -1434,6 +1434,8 @@ function applyTheme(t, persist) {
   document.documentElement.setAttribute('data-theme', t);
   $('#theme-lab').textContent = t === 'dark' ? '浅色' : '深色';
   $('#theme-btn use').setAttribute('href', t === 'dark' ? '#i-sun' : '#i-moon');
+  /* 读屏语义：按钮角色是「切换到…」，aria-pressed 表达当前是否暗色 */
+  $('#theme-btn').setAttribute('aria-pressed', t === 'dark' ? 'true' : 'false');
   if (persist !== false) localStorage.setItem('dash_theme', t);
 }
 $('#theme-btn').onclick = () =>
