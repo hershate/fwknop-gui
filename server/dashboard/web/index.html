@@ -5699,6 +5699,10 @@ function openModal(html, wide) {
   modalGuard = null;
   modalPrevFocus = document.activeElement;
   root.innerHTML = `<div class="modal" role="dialog" aria-modal="true" ${wide ? 'style="width:min(760px,94vw)"' : ''}>${html}</div>`;
+  /* 读屏报标题：aria-labelledby 统一挂接弹窗内首个 h3（各调用方 HTML 均以
+     h3 开头，无需逐处改造）；无 h3 时退化为仅「对话框」语义 */
+  const mh = root.querySelector('.modal h3');
+  if (mh) { if (!mh.id) mh.id = 'modal-title'; root.querySelector('.modal').setAttribute('aria-labelledby', mh.id); }
   root.classList.add('show');
   /* 背景滚动锁定：滚轮不再穿透到弹窗后面的页面（宽表格尤其容易误滚） */
   document.body.style.overflow = 'hidden';
