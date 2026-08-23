@@ -694,6 +694,12 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <button class="btn small" id="show-add"><svg width="14" height="14"><use href="#i-plus"/></svg>签发新凭证</button>
               </div>
             </div>
+            <div id="users-batch-bar" style="display:none;padding:8px 16px;background:var(--accent-soft);border-top:1px solid var(--line);align-items:center;gap:10px;flex-wrap:wrap">
+              <span id="users-sel-count" style="font-size:12.5px"></span>
+              <button class="btn ghost small" id="users-sel-all">全选当前列表</button>
+              <button class="btn ghost small" id="users-sel-clear">取消选择</button>
+              <button class="btn danger small" id="users-batch-rm" style="margin-left:auto"><svg width="13" height="13"><use href="#i-trash"/></svg>批量撤销</button>
+            </div>
             <div class="body" id="users-body"><div class="skel" style="height:80px"></div></div>
           </div>
         </div>
@@ -2453,6 +2459,12 @@ function renderUsers() {
     return;
   }
   const all = d.stanzas || [];
+  /* 批量撤销选择集：剔除已不存在的授权名（撤销/外部改动后防残留），刷新批量条 */
+  if (S.usersSel) {
+    const live = new Set(all.map(s => s.name || ('授权 #' + s.index)));
+    [...S.usersSel].forEach(n => { if (!live.has(n)) S.usersSel.delete(n); });
+  }
+  updateUsersBatchBar();
   const q = (S.usersQuery || '').toLowerCase();
   const st = q ? all.filter(s =>
     (s.name||'').toLowerCase().includes(q) ||
@@ -2509,7 +2521,8 @@ function renderUsers() {
           <div class="hint">stanza 第 ${s.index} 个 · 第 ${s.start_line}–${s.end_line} 行</div></div>
         </div>
         <div class="tools">${S.writeEnabled ?
-          `<button class="btn ghost small" data-edit="${s.index}">${icon('i-pencil',13)}编辑</button>
+          `<input type="checkbox" class="usr-sel" data-selname="${esc(name)}" ${S.usersSel && S.usersSel.has(name) ? 'checked' : ''} title="选择以批量撤销" style="width:auto;margin-right:2px">
+          <button class="btn ghost small" data-edit="${s.index}">${icon('i-pencil',13)}编辑</button>
            <button class="btn ghost small" data-dup="${s.index}" title="按该授权的安全选项预填签发表单（名称留空待填）">${icon('i-copy',13)}签发类似</button>
            <button class="btn ghost small" data-rm="${esc(name)}">${icon('i-trash',13)}撤销</button>` : ''}</div>
       </div>
@@ -2528,6 +2541,12 @@ function renderUsers() {
   }).join('') + disHtml;
   }
   $$('#users-body [data-edit]').forEach(b => b.onclick = () => openStanzaEditor(+b.dataset.edit));
+  /* 批量撤销勾选：仅更新选择集与批量条，不重渲染（避免滚动丢失） */
+  $$('#users-body .usr-sel').forEach(c => c.onchange = () => {
+    if (!S.usersSel) S.usersSel = new Set();
+    if (c.checked) S.usersSel.add(c.dataset.selname); else S.usersSel.delete(c.dataset.selname);
+    updateUsersBatchBar();
+  });
   /* 签发类似：按现有授权的安全选项预填签发表单，名称留空聚焦待填 */
   $$('#users-body [data-dup]').forEach(b => b.onclick = () => {
     const s = ((S.users && S.users.stanzas) || []).find(x => x.index === +b.dataset.dup);
@@ -2594,6 +2613,51 @@ function renderUsers() {
       });
   });
 }
+
+/* 批量撤销操作条：与 TOFU 批量条同一模式；选择集仅存内存（刷新即清空） */
+function updateUsersBatchBar() {
+  const n = S.usersSel ? S.usersSel.size : 0;
+  const bar = $('#users-batch-bar');
+  if (!bar) return;
+  bar.style.display = n && S.writeEnabled ? 'flex' : 'none';
+  $('#users-sel-count').textContent = n ? `已选 ${n} 个授权` : '';
+}
+$('#users-sel-all').onclick = () => {
+  if (!S.usersSel) S.usersSel = new Set();
+  $$('#users-body .usr-sel').forEach(c => { c.checked = true; S.usersSel.add(c.dataset.selname); });
+  updateUsersBatchBar();
+};
+$('#users-sel-clear').onclick = () => { S.usersSel = new Set(); renderUsers(); };
+$('#users-batch-rm').onclick = () => {
+  const names = [...(S.usersSel || [])];
+  if (!names.length) return;
+  /* 活跃预警：近期有敲门记录的授权在确认框中单独标出，防止误撤在用授权 */
+  const active = names.filter(n => {
+    const s = ((S.users && S.users.stanzas) || []).find(x => (x.name || ('授权 #' + x.index)) === n);
+    return s && s.require_username && (S.events || []).some(e => e.user === s.require_username);
+  });
+  confirmDialog('批量撤销授权',
+    `将逐个撤销以下 <b>${names.length}</b> 个授权（注释禁用 + 自动备份 + 热加载，<b>立即失效</b>、可随时恢复）：
+     <div class="mono" style="margin:8px 0;max-height:20vh;overflow:auto;font-size:12.5px">${names.map(esc).join('<br>')}</div>
+     ${active.length ? `<span style="color:var(--amber)">⚠ 其中 ${active.length} 个近期有敲门记录：${active.map(esc).join('、')}</span><br>` : ''}
+     确定继续吗？`,
+    `撤销 ${names.length} 个授权`, async () => {
+      const btn = $('#users-batch-rm'); btn.disabled = true;
+      const ok = [], fail = [];
+      for (const nm of names) {  /* 逐个提交：复用单撤销服务端链路（备份+预检+SIGHUP） */
+        try {
+          const fd = new FormData(); fd.append('name', nm);
+          const r = await api('/api/admin/rm', { method:'POST', body: fd });
+          if (r.error) fail.push(`${nm}：${r.error}`); else ok.push(nm);
+        } catch (e) { fail.push(`${nm}：网络错误`); }
+      }
+      btn.disabled = false;
+      S.usersSel = new Set();
+      loadUsers(); loadTOFU();
+      if (fail.length) infoModal('批量撤销 — 部分失败', `成功 ${ok.length} 个，失败 ${fail.length} 个：\n` + fail.join('\n'), true);
+      toast(`批量撤销完成：成功 ${ok.length} 个${fail.length ? `，失败 ${fail.length} 个` : ''}`, fail.length ? 'err' : 'ok', 5000);
+    });
+};
 
 /* 签发凭证 */
 $('#show-add').onclick = () => {
