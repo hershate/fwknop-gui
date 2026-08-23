@@ -1253,10 +1253,11 @@ function enterApp() {
   $('#auth-gate').style.display = 'none';
   $('#app').style.display = '';
   /* URL hash 深链接：刷新/分享链接回到原页面（#events~bad~q=… 还原筛选现场） */
-  const { page: h, bad, q } = parseEvHash();
+  const { page: h, bad, q, f, t } = parseEvHash();
   if (PAGE_KEYS.includes(h)) S.page = h;
   if (h === 'events') {
-    if (bad) S.evFilter = 'bad';
+    S.evFilter = evHashFilter(bad, f);
+    if (EV_HASH_TIMES.includes(t)) { S.evTime = t; const ts = $('#ev-time'); if (ts) ts.value = t; }
     if (q) { S.evQuery = q; const si = $('#event-search'); if (si) si.value = q; }
   }
   showPage(S.page);
@@ -1601,22 +1602,30 @@ applyTheme(localStorage.getItem('dash_theme') || (sysThemeMQ.matches ? 'light' :
    replaceState 同步（不产生历史垃圾），前进/后退/直接访问均能还原筛选 */
 function parseEvHash() {
   const parts = location.hash.replace('#', '').split('~');
-  let bad = false, q = '';
+  let bad = false, q = '', f = '', t = '';
   for (const seg of parts.slice(1)) {
     if (seg === 'bad') bad = true;
     else if (seg.startsWith('q=')) { try { q = decodeURIComponent(seg.slice(2)); } catch (e) {} }
+    else if (seg.startsWith('f=')) f = seg.slice(2);
+    else if (seg.startsWith('t=')) t = seg.slice(2);
   }
-  return { page: parts[0], bad, q };
+  return { page: parts[0], bad, q, f, t };
 }
 function evHashFor(p) {
   if (p !== 'events') return '#' + p;
-  /* 事件页深链携带筛选状态：~bad（仅看异常）与 ~q=（搜索词），
-     「复制视图链接」/刷新可完整还原排查现场 */
+  /* 事件页深链携带筛选状态：~bad（仅看异常）、~f=（类型芯片）、~t=（预设时间
+     范围）与 ~q=（搜索词），「复制视图链接」/刷新可完整还原排查现场；
+     自定义时间区间是具体时刻，不随链接分享（还原时已过期），故只带预设档 */
   let h = '#events';
   if (S.evFilter === 'bad') h += '~bad';
+  else if (S.evFilter && S.evFilter !== 'all') h += '~f=' + S.evFilter;
+  if (S.evTime && S.evTime !== 'all' && S.evTime !== 'custom') h += '~t=' + S.evTime;
   if (S.evQuery) h += '~q=' + encodeURIComponent(S.evQuery);
   return h;
 }
+/* 深链恢复筛选时的合法值白名单（hash 可手改，非法值落回默认） */
+const EV_HASH_TIMES = ['5m', '1h', 'today'];
+function evHashFilter(bad, f) { return bad ? 'bad' : (EVT_ORDER.includes(f) ? f : 'all'); }
 
 function showPage(p) {
   if (S.page === 'config' && p !== 'config' && !confGuardLeave()) return;
@@ -1697,7 +1706,7 @@ const PAGE_SEARCH = { events:'#event-search', users:'#users-search', tofu:'#tofu
    不会重复 pushState）；配置页未保存修改被 confGuardLeave 拦截时，把 hash
    拨回当前页保持 URL 与页面一致 */
 window.addEventListener('popstate', () => {
-  const { page: h, bad, q } = parseEvHash();
+  const { page: h, bad, q, f, t } = parseEvHash();
   /* 弹窗打开时浏览器后退：消费在「关弹窗」上而非切页（与 Esc 行为一致）；
      未保存修改的守卫拒绝关闭时，拨回 hash 中止导航 */
   if ($('#modal-root').classList.contains('show')) {
@@ -1705,11 +1714,14 @@ window.addEventListener('popstate', () => {
     history.pushState(null, '', evHashFor(S.page));
     return;
   }
-  /* 页相同但筛选标记不同（#events ↔ #events~bad / ~q= 变化的后退/前进）也要响应 */
+  /* 页相同但筛选标记不同（#events ↔ ~bad / ~f= / ~t= / ~q= 变化的后退/前进）也要响应 */
+  const hf = evHashFilter(bad, f);
+  const ht = EV_HASH_TIMES.includes(t) ? t : 'all';
   if (!PAGE_KEYS.includes(h) || (h === S.page && (h !== 'events' ||
-      (bad === (S.evFilter === 'bad') && q === (S.evQuery || ''))))) return;
+      (hf === S.evFilter && ht === (S.evTime === 'custom' ? 'custom' : S.evTime || 'all') && q === (S.evQuery || ''))))) return;
   if (h === 'events') {
-    S.evFilter = bad ? 'bad' : 'all'; S.evPage = 0;
+    S.evFilter = hf; S.evPage = 0;
+    if (EV_HASH_TIMES.includes(t)) { S.evTime = t; const ts = $('#ev-time'); if (ts) ts.value = t; $('#ev-custom').style.display = 'none'; }
     S.evQuery = q; const si = $('#event-search'); if (si) si.value = q;
   }
   const before = S.page;
@@ -2555,7 +2567,7 @@ function updateEvActiveStrip() {
   el.innerHTML = '<span class="hint" style="font-size:11.5px">筛选中：</span>' +
     parts.map(([k, label]) => `<span class="tag hl" style="cursor:pointer" data-rmf="${k}" title="${esc(label)}（点击移除此筛选）">${esc(label)} ✕</span>`).join('') +
     backBtn +
-    '<button class="btn ghost small" id="ev-copylink" style="padding:2px 8px;font-size:11.5px" title="复制当前事件视图的链接（含「仅看异常」与搜索词），发给同事即见同一画面">复制视图链接</button>' +
+    '<button class="btn ghost small" id="ev-copylink" style="padding:2px 8px;font-size:11.5px" title="复制当前事件视图的链接（含类型筛选/预设时间范围/搜索词），发给同事即见同一画面">复制视图链接</button>' +
     '<button class="btn ghost small" id="ev-clear-all" style="padding:2px 8px;font-size:11.5px">全部清除</button>';
   /* 复制当前视图链接：地址栏 hash 已随筛选同步（~bad），直接取 location.href */
   $('#ev-copylink').onclick = () => copyText(location.href, '视图链接 ');
