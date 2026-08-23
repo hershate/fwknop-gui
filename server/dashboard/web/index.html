@@ -1560,8 +1560,17 @@ $('#pw-change-btn').onclick = async () => {
 function api(path, opts) {
   opts = opts || {};
   opts.headers = Object.assign({}, opts.headers);
-  if ((opts.method || 'GET').toUpperCase() !== 'GET') opts.headers['X-Fwknop-Request'] = '1';
+  const isGet = (opts.method || 'GET').toUpperCase() === 'GET';
+  if (!isGet) opts.headers['X-Fwknop-Request'] = '1';
+  /* 前端请求超时：服务器接受连接但永不响应（进程 hang / 代理死连接）时裸 fetch
+     会永远 pending——轮询 allSettled 不 settle（退避失效）、刷新钮一直转、
+     connFail 不增长（断连指示不亮），面板「看起来正常」但数据已不新鲜。
+     GET 12s（远大于正常轮询响应）；写操作 20s（服务端 runAdmin 自身 15s 超时兜底） */
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), isGet ? 12000 : 20000);
+  opts.signal = ac.signal;
   return fetch(path, opts).then(async r => {
+    clearTimeout(timer);
     if (r.status === 401) {
       let needsSetup = false;
       try { needsSetup = !!(await r.clone().json()).needs_setup; } catch (e) {}
@@ -1575,11 +1584,17 @@ function api(path, opts) {
       /* 写操作失败即时可见：很多调用点 catch 后只做状态复位，服务端
          的错误文本（如「缺少名称」「配置预检未通过」）不能静默吞掉。
          GET 轮询失败由断连指示统一表达，不逐次弹窗。 */
-      if ((opts.method || 'GET').toUpperCase() !== 'GET')
+      if (!isGet)
         toast('操作失败（HTTP ' + r.status + '）：' + msg, 'err');
       throw new Error('HTTP ' + r.status + '：' + msg);
     }
     return r.json();
+  }).catch(err => {
+    clearTimeout(timer);
+    /* 中止统一翻译为中文超时错误：各调用点 catch 后按普通断连处理
+       （connFail 增长 → 断连指示 → 退避），文案可读 */
+    if (err && err.name === 'AbortError') throw new Error('请求超时（服务器无响应）');
+    throw err;
   });
 }
 
