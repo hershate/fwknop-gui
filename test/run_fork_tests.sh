@@ -292,6 +292,12 @@ if [ -x "$GOBIN" ]; then
         fi
         wget -qO- --header="$TK" http://127.0.0.1:18099/api/events 2>/dev/null | grep -q '"event":"open"' \
             && ok "面板 /api/events 读取审计日志" || bad "面板 events API"
+        wget -qO- --header="$TK" 'http://127.0.0.1:18099/api/events?since=9999999999' 2>/dev/null \
+            | grep -q '^\[\]' \
+            && ok "事件增量拉取：未来时刻 since 返回空" || bad "since 增量过滤"
+        wget -qO- --header="$TK" 'http://127.0.0.1:18099/api/events?since=1' 2>/dev/null \
+            | grep -q '"event":"open"' \
+            && ok "事件增量拉取：since=1 返回全量" || bad "since 全量"
         wget -qO- http://127.0.0.1:18099/ 2>/dev/null | grep -q '<title>fwknop 运维面板</title>' \
             && ok "面板提供内嵌 UI（zh-CN）" || bad "面板 UI"
         wget -qO- http://127.0.0.1:18099/ 2>/dev/null | grep -q '首次启动初始化' \

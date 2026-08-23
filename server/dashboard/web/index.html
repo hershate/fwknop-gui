@@ -2038,6 +2038,10 @@ $('#status-cards').addEventListener('click', ev => {
       try {
         const r = await api('/api/admin/audit/clear', { method: 'POST' });
         if (r.ok) {
+          /* 增量轮询模式下必须重置本地事件缓存：否则 since 水位悬空，
+             清空后的空审计文件永远不会把旧事件替换下去 */
+          S.events = []; S.evNewest = 0; S.evPrevNewest = 0;
+          if (S.evExpanded) S.evExpanded.clear();
           /* 回执弹窗：给出备份文件名与面板内下载入口，闭环「清理后取回」 */
           const fn = (r.backup || '').split('/').pop();
           openModal(`<h3>审计日志已清理</h3>
@@ -2210,8 +2214,20 @@ function renderSummary() {
 /* ==================== 事件页 ==================== */
 async function loadEvents() {
   try {
-    const d = await api('/api/events');
-    S.events = d || [];
+    /* 增量轮询：已知最新时刻作 since 参数（含边界秒，服务端返回 >=since），
+       按全字段复合键去重合并，封顶与服务端缓存一致；稳态下每 5 秒只传
+       增量几条而非全量 500 条 */
+    const evKey = e => [e.time, e.event, e.user || '', e.src_ip || '', e.device_id || '',
+      e.spa_port || 0, e.target_port || 0, e.stanza ?? '', e.reason || ''].join('|');
+    const since = (S.events && S.events.length && S.events[0].time) || 0;
+    const d = await api('/api/events' + (since ? '?since=' + since : ''));
+    if (since && d) {
+      const seen = new Set(S.events.map(evKey));
+      const fresh = d.filter(e => !seen.has(evKey(e)));
+      S.events = fresh.concat(S.events).slice(0, 500);
+    } else {
+      S.events = d || [];
+    }
     /* 新事件检测：停在非第一页或带筛选时提示「有 N 条新事件」 */
     const newest = (S.events[0] && S.events[0].time) || 0;
     if (S.evNewest && newest > S.evNewest) {

@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -124,8 +125,25 @@ func auditBackupStat() map[string]interface{} {
 
 func handleEvents(w http.ResponseWriter, r *http.Request) {
 	evs := readAuditTail(500)
+	/* 增量拉取：?since=<epoch> 只返回该时刻（含）之后的事件。前端轮询带
+	   上已知最新时刻，稳态下响应近乎为空；边界秒事件可能重发，前端按
+	   复合键去重合并（同秒洪水场景靠完整字段键区分） */
+	if s := r.URL.Query().Get("since"); s != "" {
+		if since, err := strconv.ParseInt(s, 10, 64); err == nil && since > 0 {
+			var inc []AuditEvent
+			for _, e := range evs {
+				if e.Time >= since {
+					inc = append(inc, e)
+				}
+			}
+			evs = inc
+		}
+	}
 	// newest first for display
 	sort.Slice(evs, func(i, j int) bool { return evs[i].Time > evs[j].Time })
+	if evs == nil {
+		evs = []AuditEvent{} // 增量过滤常为空：保证输出 [] 而非 null（前端按数组处理）
+	}
 	writeJSON(w, evs)
 }
 
