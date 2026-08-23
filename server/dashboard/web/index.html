@@ -4962,6 +4962,19 @@ function openStanzaEditor(index) {
         return;
       }
     }
+    /* 交叉校验：同一端口同时出现在开放与禁止列表时，按 access.conf 语义
+       RESTRICT_PORTS 优先——开放项成死配置，多为笔误，保存前拦截 */
+    const portSet = v => new Set(v.split(',').map(x => x.trim().toLowerCase()).filter(Boolean));
+    const openEl = document.querySelector('#modal-root [data-sf="OPEN_PORTS"]');
+    const rstEl = document.querySelector('#modal-root [data-sf="RESTRICT_PORTS"]');
+    if (openEl && rstEl && openEl.value.trim() && rstEl.value.trim()) {
+      const both = [...portSet(openEl.value)].filter(p => portSet(rstEl.value).has(p));
+      if (both.length) {
+        toast(`端口 ${both.join('、')} 同时在开放与禁止列表中：禁止优先，开放项不会生效，请修正其一`, 'err', 6000);
+        rstEl.focus();
+        return;
+      }
+    }
     /* 跨配置校验（与签发卡片同源）：TOTP 范围超出 PCAP_PORT_RANGE 的改动
        保存后敲门会静默丢失，保存前拦截；配置未加载时先懒加载再判定 */
     const rangeEl = document.querySelector('#modal-root [data-sf="TOTP_PORT_RANGE"]');
