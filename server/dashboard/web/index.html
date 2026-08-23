@@ -142,6 +142,7 @@ select.ctl, input.ctl {
 .btn:active { transform:scale(.97); }
 .btn.ghost { background:var(--panel); color:var(--text); border:1px solid var(--border); }
 .btn.ghost:hover { border-color:var(--accent); color:var(--accent); }
+.btn.ghost.on { border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
 .btn.danger { background:var(--red); }
 .btn.small { padding:5px 11px; font-size:12px; }
 .btn[disabled] { opacity:.55; cursor:not-allowed; }
@@ -941,6 +942,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <h2>编辑 fwknopd.conf</h2><span class="sub">保存前自动预检（fwknopd --exit-parse-config），通过后备份并热加载 · <span style="color:var(--amber)">▎</span>已修改 <span style="color:var(--green)">▎</span>新增</span>
             <div class="tools">
               <input class="ctl" id="conf-filter" placeholder="过滤指令名…" title="按指令名过滤编辑行（大小写不敏感；快捷键 / 在编辑器打开时聚焦此处）" style="width:150px;padding:4px 8px;font-size:12.5px"><span class="hint" id="conf-filter-n" style="font-size:11.5px"></span>
+              <button class="btn ghost small" id="conf-only-changed" title="只显示本次编辑中已修改/新增的行（大配置保存前快速复核改动面）" aria-pressed="false">仅看修改</button>
               <button class="btn ghost small" id="conf-add-row"><svg width="14" height="14"><use href="#i-plus"/></svg>新增指令</button>
               <button class="btn ghost small" id="conf-raw-edit">原文编辑</button>
               <button class="btn ghost small" id="conf-discard" title="放弃全部未保存修改，恢复为已保存的配置">放弃修改</button>
@@ -4936,8 +4938,7 @@ function renderConfEditor() {
       confRows.splice(i, 1); markConfDirty(); renderConfEditor();
     });
     markConfRows();
-    const fq = $('#conf-filter');
-    if (fq && fq.value.trim()) fq.dispatchEvent(new Event('input'));  /* 重渲染后过滤状态保持 */
+    applyConfFilter();  /* 重渲染后过滤状态（指令名 × 仅看修改）保持 */
   }
 }
 
@@ -4947,6 +4948,10 @@ $('#conf-edit-btn').onclick = () => {
   $('#conf-editor').style.display = confEditing ? '' : 'none';
   if (confEditing) {
     clearConfDirty();
+    /* 每次打开编辑器复位「仅看修改」：新会话从完整视图开始 */
+    confOnlyChanged = false;
+    const oc = $('#conf-only-changed');
+    oc.classList.remove('on'); oc.textContent = '仅看修改'; oc.setAttribute('aria-pressed', 'false');
     confRows = ((S.config && S.config.entries) || []).map(e => [e.key, e.value]);
     confOrig = Object.fromEntries(confRows.map(([k, v]) => [k, v]));
     $('#conf-raw-area').value = (S.config && S.config.raw) || '';
@@ -4986,24 +4991,38 @@ $('#conf-add-row').onclick = () => {
   }
 };
 /* 指令名即时过滤：只隐藏不匹配行，不影响数据 */
-$('#conf-filter').oninput = e => {
-  const q = e.target.value.trim().toUpperCase();
+/* 编辑器行过滤：指令名子串 × 「仅看修改」两个维度叠加 */
+let confOnlyChanged = false;
+function applyConfFilter() {
+  const q = $('#conf-filter').value.trim().toUpperCase();
   let hit = 0, total = 0;
   $$('#conf-edit-rows > div').forEach(row => {
     const ki = row.querySelector('.ce-key');
     if (!ki) return;
     total++;
-    const show = !q || ki.value.toUpperCase().includes(q);
+    const show = (!q || ki.value.toUpperCase().includes(q)) &&
+      (!confOnlyChanged || row.classList.contains('ce-mod') || row.classList.contains('ce-new'));
     row.style.display = show ? '' : 'none';
     if (show) hit++;
   });
   /* 匹配计数即时可见：过滤无结果时一眼确认是指令不存在而非渲染异常 */
   const cn = $('#conf-filter-n');
-  if (cn) cn.textContent = q ? `匹配 ${hit}/${total}` : '';
+  if (cn) cn.textContent = (q || confOnlyChanged) ? `匹配 ${hit}/${total}` : '';
+}
+$('#conf-filter').oninput = applyConfFilter;
+$('#conf-only-changed').onclick = () => {
+  confOnlyChanged = !confOnlyChanged;
+  const b = $('#conf-only-changed');
+  b.classList.toggle('on', confOnlyChanged);
+  b.textContent = confOnlyChanged ? '查看全部' : '仅看修改';
+  b.setAttribute('aria-pressed', confOnlyChanged ? 'true' : 'false');
+  applyConfFilter();
 };
 /* 任何键/值输入都标记为未保存（容器上委托，重渲染不失效） */
 $('#conf-edit-rows').addEventListener('input', ev => {
   markConfDirty(); markConfRows();
+  /* 「仅看修改」开启时，改回原值的行应即时从视图撤下（ce-mod 类刚被摘掉） */
+  if (confOnlyChanged) applyConfFilter();
   /* 指令名改动时同步刷新行内说明：新增指令行键入/点选已知指令后，
      右侧说明不再是空白或上一个键的残留 */
   if (ev.target && ev.target.classList && ev.target.classList.contains('ce-key')) {
