@@ -1826,7 +1826,7 @@ document.addEventListener('touchend', e => {
 
 /* .cp-cell 点击复制、.tmtoggle 时间列切换、分组折叠头等全局键盘可达：模板
    生成点多，用 MutationObserver 统一补 tabindex，Enter/空格经事件委托触发其 click */
-const KB_CLICK_SEL = '.cp-cell, .tmtoggle, .evh-hot, .sum-link, .ratiobad-seg, .conf-grp, #dis-toggle, [data-pg], [data-rmf], #daemon-pill, #conn-box, #nav-ev-badge, #nav-conf-dot, #sess-ttl';
+const KB_CLICK_SEL = '.cp-cell, .tmtoggle, .evh-hot, .sum-link, .ratiobad-seg, .conf-grp, #dis-toggle, [data-pg], [data-rmf], [data-evf], #daemon-pill, #conn-box, #nav-ev-badge, #nav-conf-dot, #sess-ttl';
 new MutationObserver(muts => {
   for (const m of muts) m.addedNodes.forEach(n => {
     if (n.nodeType !== 1) return;
@@ -3087,7 +3087,7 @@ function renderEvents() {
         e.spa_port || 0, e.target_port || 0, e.stanza ?? '', e.reason || ''].join('|'));
       return `<tr class="ev-click${BAD_EVTS.includes(e.event) ? ' ev-bad' : ''}${fresh9 ? ' ev-fresh' : ''}" data-key="${esc(key)}" tabindex="0" role="button" aria-expanded="${open?'true':'false'}" title="点击或 Enter 展开/收起完整详情">
         <td class="mono tmtoggle" title="${S.evTimeAbs ? '相对：' + fmtAgo(e.time) : fmtAbs(e.time)} · 点击切换时间制式" style="white-space:nowrap;color:var(--muted);cursor:pointer">${S.evTimeAbs ? fmtAbs(e.time) : fmtAgo(e.time)}</td>
-        <td><span class="badge ${m.cls}" title="审计事件类型：${e.event}">${m.label}</span></td>
+        <td>${e.event ? `<span class="badge ${m.cls}" data-evf="${esc(e.event)}" style="cursor:pointer" title="点击筛选该类型全部事件 · 审计事件类型：${esc(e.event)}">${m.label}</span>` : `<span class="badge ${m.cls}" title="审计记录缺失事件类型字段">${m.label}</span>`}</td>
         <td>${e.user ? `<span class="cp-cell" data-cp="${esc(e.user)}" title="点击复制用户名">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" data-lk="user" title="查看该用户的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
         <td class="mono">${e.device_id ? `<span class="cp-cell" data-cp="${esc(e.device_id)}" title="点击复制完整指纹：${esc(e.device_id)}">${esc(e.device_id.slice(0,14))}…</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" data-lk="dev" title="查看该设备的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
         <td class="mono">${e.src_ip ? `<span class="cp-cell" data-cp="${esc(e.src_ip)}" title="点击复制来源 IP">${esc(e.src_ip)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.src_ip)}" data-lk="ip" title="查看该 IP 的全部事件">${icon('i-search',12)}</button>` : '—'}</td>
@@ -3096,6 +3096,14 @@ function renderEvents() {
         <td class="hint">${e.reason ? `<span class="cp-cell" data-reasonq="${esc(e.reason)}" title="点击按原因「${esc(e.reason)}」筛选">${esc(reasonZh(e.reason))}</span>` : esc(reasonZh(e.reason))}</td>
       </tr>${detail}`;
     }).join('');
+    /* 行内徽章点击 = 按该类型筛选（与类型芯片同一状态；stopPropagation
+       防触发行展开）。看到一条 reject 点徽章即看全部 reject，省一步找芯片 */
+    $$('#events-body [data-evf]').forEach(c => c.onclick = ev => {
+      ev.stopPropagation();
+      S.evFilter = c.dataset.evf; S.evPage = 0;
+      renderEvents();
+      toast(`已按类型筛选：${evMeta(c.dataset.evf).label}`, 'ok', 1500);
+    });
     $$('#events-body [data-portq]').forEach(c => c.onclick = ev => {
       ev.stopPropagation();
       S.evQuery = c.dataset.portq; S.evPage = 0;
