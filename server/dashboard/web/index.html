@@ -2151,6 +2151,9 @@ function updateDocTitle() {
   const pg = (typeof PAGE_TITLES !== 'undefined' && PAGE_TITLES[S.page]) || '';
   document.title = (bad ? `(${bad} 异常) ` : '') + (un ? `[${un > 99 ? '99+' : un} 通知] ` : '') +
     (pg ? pg + ' · ' : '') + 'fwknop 运维面板';
+  /* 概览快速操作同步标注：不用切到事件页就知道有几条异常 */
+  const qb = $('#qa-bad');
+  if (qb) qb.innerHTML = `<svg width="14" height="14"><use href="#i-warn"/></svg>仅看异常事件${bad ? `（${bad}）` : ''}`;
   /* 侧栏导航徽标：不在事件页时也能感知异常；正在事件页则视为已知悉 */
   const nb = $('#nav-ev-badge');
   if (nb) {
