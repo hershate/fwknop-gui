@@ -674,7 +674,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <button class="btn ghost small" id="ev-preset-24h" title="填充为「此刻往前 24 小时」" style="padding:4px 8px;font-size:11.5px">最近 24h</button>
                 <button class="btn ghost small" id="ev-preset-yday" title="填充为「昨天 00:00 至今天 00:00」" style="padding:4px 8px;font-size:11.5px">昨日全天</button>
               </span>
-              <span class="srch-wrap"><input class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口…（支持 user:/ip:/dev:/port: 前缀）" title="全字段子串匹配；前缀语法精确限定字段：user:admin、ip:192.168、dev:指纹前缀、port:22（SPA 与目标端口都匹配）" style="width:270px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+              <span class="srch-wrap"><input class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口…（支持 user:/ip:/dev:/port: 前缀）" title="全字段子串匹配；空格分隔多关键词为 AND（如「admin 22」）；前缀语法精确限定字段：user:admin、ip:192.168、dev:指纹前缀、port:22（SPA 与目标端口都匹配）" style="width:270px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
               <button class="btn ghost small" id="ev-density" title="切换表格行密度（紧凑模式一屏看更多事件）">紧凑</button>
               <button class="btn ghost small" id="ev-expand-all" title="展开/收起当前页全部事件详情（对比多条事件字段用）">展开全部</button>
               <button class="btn ghost small" id="ev-notify" title="后台标签页收到异常事件时弹桌面通知（需浏览器授权）"><svg width="14" height="14"><use href="#i-bell"/></svg>异常桌面通知</button>
@@ -2422,17 +2422,16 @@ function filteredEvents() {
       }[pm[1].toLowerCase()];
       evs = evs.filter(e => String(field(e)).toLowerCase().includes(v));
     } else {
-      const q = S.evQuery.toLowerCase();
-      evs = evs.filter(e =>
-        (e.user||'').toLowerCase().includes(q) ||
-        (e.src_ip||'').toLowerCase().includes(q) ||
-        (e.device_id||'').toLowerCase().includes(q) ||
-        (e.reason||'').toLowerCase().includes(q) ||
+      /* 空格分隔多关键词 = AND（「admin 22」= 同时含两者的事件）；单词行为与
+         原有全字段子串一致。拼接小写干草堆一次判断，避免逐字段重复扫描 */
+      const terms = S.evQuery.toLowerCase().split(/\s+/).filter(Boolean);
+      evs = evs.filter(e => {
+        const hay = [e.user, e.src_ip, e.device_id, e.reason, reasonZh(e.reason),
+          evMeta(e.event).label, e.spa_port, e.target_port]
+          .map(x => String(x ?? '').toLowerCase()).join('\n');
         /* 中文可读文案同样可搜：用户按界面所见的词（如「重放」）检索 */
-        (reasonZh(e.reason)||'').toLowerCase().includes(q) ||
-        (evMeta(e.event).label||'').toLowerCase().includes(q) ||
-        String(e.spa_port||'').includes(q) ||
-        String(e.target_port||'').includes(q));
+        return terms.every(t => hay.includes(t));
+      });
     }
   }
   return evs;
