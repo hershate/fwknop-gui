@@ -1048,7 +1048,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
         </div>
         <div class="card">
           <div class="head"><h2>配置方案</h2><span class="sub" id="profiles-sub">一键切换整套服务端配置</span>
-            <div class="tools"><span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="pf-search" placeholder="搜索方案名 / 备注…" title="按方案名或备注过滤（快捷键 / 聚焦；Esc 清空）" style="width:190px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="pf-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span></div></div>
+            <div class="tools"><span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="pf-search" placeholder="搜索方案名 / 备注 / 当前…" title="按方案名或备注过滤，搜「当前」定位生效中方案（快捷键 / 聚焦；Esc 清空）" style="width:190px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="pf-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span></div></div>
           <div class="body" id="profiles-body"><div class="skel" style="height:80px"></div></div>
         </div>
       </section>
@@ -6705,9 +6705,11 @@ async function loadProfiles() {
 function renderProfiles() {
   const d = S.profiles; if (!d) return;
   const all = d.profiles || [];
-  /* 方案名/备注过滤（与 用户/TOFU 页搜索同范式，词跨刷新记忆） */
+  /* 方案名/备注过滤（与 用户/TOFU 页搜索同范式，词跨刷新记忆）；
+     状态词「当前生效」同样可搜（界面所见标签即可检索，与 占位/悬空/异常 同一心智） */
   const q = (S.pfQuery || '').toLowerCase();
-  const ps = q ? all.filter(p => (p.name || '').toLowerCase().includes(q) || (p.note || '').toLowerCase().includes(q)) : all;
+  const ps = q ? all.filter(p => (p.name || '').toLowerCase().includes(q) || (p.note || '').toLowerCase().includes(q) ||
+    (p.current && '当前生效'.includes(q))) : all;
   /* 当前生效方案置顶（Array.sort 稳定，其余保持服务端按保存时间倒序），
      方案多时一眼定位「现在跑的是哪套」 */
   ps.sort((a, b) => (b.current ? 1 : 0) - (a.current ? 1 : 0));
