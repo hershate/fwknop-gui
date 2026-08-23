@@ -674,7 +674,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <button class="btn ghost small" id="ev-preset-24h" title="填充为「此刻往前 24 小时」" style="padding:4px 8px;font-size:11.5px">最近 24h</button>
                 <button class="btn ghost small" id="ev-preset-yday" title="填充为「昨天 00:00 至今天 00:00」" style="padding:4px 8px;font-size:11.5px">昨日全天</button>
               </span>
-              <span class="srch-wrap"><input class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口…" style="width:230px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+              <span class="srch-wrap"><input class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口…（支持 user:/ip:/dev:/port: 前缀）" title="全字段子串匹配；前缀语法精确限定字段：user:admin、ip:192.168、dev:指纹前缀、port:22（SPA 与目标端口都匹配）" style="width:270px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
               <button class="btn ghost small" id="ev-density" title="切换表格行密度（紧凑模式一屏看更多事件）">紧凑</button>
               <button class="btn ghost small" id="ev-notify" title="后台标签页收到异常事件时弹桌面通知（需浏览器授权）"><svg width="14" height="14"><use href="#i-bell"/></svg>异常桌面通知</button>
               <button class="btn ghost small" id="ev-csv" title="把当前筛选结果导出为 CSV（可用表格软件打开）"><svg width="14" height="14"><use href="#i-download"/></svg>导出筛选 CSV</button>
@@ -2384,17 +2384,32 @@ function filteredEvents() {
   if (S.evFilter === 'bad') evs = evs.filter(e => BAD_EVTS.includes(e.event));
   else if (S.evFilter !== 'all') evs = evs.filter(e => e.event === S.evFilter);
   if (S.evQuery) {
-    const q = S.evQuery.toLowerCase();
-    evs = evs.filter(e =>
-      (e.user||'').toLowerCase().includes(q) ||
-      (e.src_ip||'').toLowerCase().includes(q) ||
-      (e.device_id||'').toLowerCase().includes(q) ||
-      (e.reason||'').toLowerCase().includes(q) ||
-      /* 中文可读文案同样可搜：用户按界面所见的词（如「重放」）检索 */
-      (reasonZh(e.reason)||'').toLowerCase().includes(q) ||
-      (evMeta(e.event).label||'').toLowerCase().includes(q) ||
-      String(e.spa_port||'').includes(q) ||
-      String(e.target_port||'').includes(q));
+    const raw = S.evQuery.trim();
+    /* 字段前缀语法：user:/ip:/dev:/port: 限定只匹配对应字段（如 user:admin、
+       port:22），避免子串跨字段误命中；无前缀维持原有全字段子串匹配 */
+    const pm = raw.match(/^(user|ip|dev|port):(.*)$/i);
+    if (pm && pm[2].trim()) {
+      const v = pm[2].trim().toLowerCase();
+      const field = {
+        user: e => e.user || '',
+        ip:   e => e.src_ip || '',
+        dev:  e => e.device_id || '',
+        port: e => String(e.spa_port || '') + ' ' + String(e.target_port || ''),
+      }[pm[1].toLowerCase()];
+      evs = evs.filter(e => String(field(e)).toLowerCase().includes(v));
+    } else {
+      const q = S.evQuery.toLowerCase();
+      evs = evs.filter(e =>
+        (e.user||'').toLowerCase().includes(q) ||
+        (e.src_ip||'').toLowerCase().includes(q) ||
+        (e.device_id||'').toLowerCase().includes(q) ||
+        (e.reason||'').toLowerCase().includes(q) ||
+        /* 中文可读文案同样可搜：用户按界面所见的词（如「重放」）检索 */
+        (reasonZh(e.reason)||'').toLowerCase().includes(q) ||
+        (evMeta(e.event).label||'').toLowerCase().includes(q) ||
+        String(e.spa_port||'').includes(q) ||
+        String(e.target_port||'').includes(q));
+    }
   }
   return evs;
 }
