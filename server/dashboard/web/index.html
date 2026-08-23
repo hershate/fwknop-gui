@@ -937,6 +937,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <button class="btn ghost small" id="copy-import" title="复制完整导入命令 fwknop import '<URI>'（客户端终端直接粘贴执行）"><svg width="13" height="13"><use href="#i-copy"/></svg>复制导入命令</button>
                 <button class="btn ghost small" id="dl-cred" title="下载明文 cred.json 凭证文件（fwknop import cred.json 导入）；含全部密钥材料，请妥善保管"><svg width="13" height="13"><use href="#i-download"/></svg>下载 cred.json</button>
                 <button class="btn ghost small" id="add-goto-user" style="display:none" title="在授权列表中定位刚签发的授权"><svg width="13" height="13"><use href="#i-users"/></svg>查看该授权</button>
+                <button class="btn ghost small" id="add-goto-events" style="display:none" title="在事件页按该授权过滤（stanza: 前缀），盯客户端导入后首次敲门的结果（成功/被拒原因）——签发闭环的下一步"><svg width="13" height="13"><use href="#i-search"/></svg>盯首次敲门</button>
               </div>
               <div id="add-qr-box" style="display:none"></div>
               <div class="hint" id="add-uri-hint" style="display:none;margin-top:6px">客户端导入方式任选其一：手机扫上方二维码 · <code>fwknop import '&lt;URI&gt;'</code> · <code>fwknop import cred.json</code> · <code>fwknop import qr.png</code>（上方下载的二维码图片）</div>
@@ -4725,13 +4726,22 @@ $('#add-form').addEventListener('submit', async ev => {
       copyText(seg.join('\n'), 'stanza 段 ');
     };
     const gu = $('#add-goto-user');
+    const ge = $('#add-goto-events');
     if (!r.error && f.apply.checked) {
       gu.style.display = '';
       gu.onclick = () => {
         S.usersQuery = nm; $('#users-search').value = nm;
         showPage('users');
       };
-    } else gu.style.display = 'none';
+      /* 签发闭环下一步：分发后盯客户端首次敲门的结果。按授权维度过滤
+         （与授权卡片「查事件」同一 stanza: 前缀口径，未设用户名的授权也覆盖） */
+      ge.style.display = '';
+      ge.onclick = () => {
+        S.evQuery = 'stanza:' + nm; S.evPage = 0; S.evFilter = 'all';
+        $('#event-search').value = S.evQuery;
+        showPage('events');
+      };
+    } else { gu.style.display = 'none'; ge.style.display = 'none'; }
     if (r.error) { toast('签发失败：' + esc(r.error), 'err', 6000); $('#add-next').style.display = 'none'; }
     else {
       toast(f.apply.checked
