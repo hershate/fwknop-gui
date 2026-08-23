@@ -4307,6 +4307,8 @@ function collectDiag() {
     'fwknop 运维面板诊断信息',
     '面板版本: v' + (d ? d.version : '?'),
     'SPA 协议: 4.0.0',
+    '面板监听: ' + (d && d.panel ? d.panel.listen_addr : '?'),
+    '运行目录: ' + (d && d.panel ? d.panel.run_dir : '?'),
     'fwknopd: ' + (d && d.daemon && d.daemon.alive ? `运行中 PID ${d.daemon.pid}` : '未运行'),
     '写操作: ' + (d && d.write_enabled ? '管理模式' : '只读'),
     '服务器时间: ' + (d && d.now ? fmtAbs(d.now) : '?') + `（浏览器偏差 ${drift}s）`,
@@ -4335,6 +4337,13 @@ function renderAbout() {
   const rows = [
     ['面板版本', 'v' + (d ? d.version : '…')],
     ['SPA 协议版本', '4.0.0'],
+    /* 面板自身运行参数：多实例部署时确认「看的是哪个面板」；路径可点击复制 */
+    ...(d && d.panel ? [[
+      '面板运行',
+      `监听 <span class="cp-cell" data-cp="${esc(d.panel.listen_addr)}" title="点击复制监听地址">${esc(d.panel.listen_addr)}</span> · ` +
+      `运行目录 <span class="cp-cell" data-cp="${esc(d.panel.run_dir)}" title="点击复制运行目录">${esc(d.panel.run_dir)}</span>` +
+      (d.write_enabled ? '' : ' · <span style="color:var(--amber)">只读模式</span>'),
+    ]] : []),
     ['服务器时间', d && d.now ? `${fmtAbs(d.now)}${clockWarn ? '' : ' <span class="hint">（时钟正常）</span>'}` : '—'],
     ['管理工具状态', d && d.admin_tool && d.admin_tool.status ? esc(d.admin_tool.status).replace(/\n/g, '<br>') : '—'],
     ['审计日志', frow(F.audit)],

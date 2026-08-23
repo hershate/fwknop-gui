@@ -75,6 +75,13 @@ func handleOverview(w http.ResponseWriter, r *http.Request) {
 		"version":       version,
 		"write_enabled": cfg.EnableWrite,
 		"now":           time.Now().Unix(),
+		/* 面板自身运行参数：多实例/多端口部署时「我看的到底是哪个面板」
+		   是排障第一步，关于页展示并随诊断信息打包 */
+		"panel": map[string]interface{}{
+			"listen_addr": cfg.Addr,
+			"run_dir":     cfg.RunDir,
+			"profile_dir": cfg.ProfileDir,
+		},
 		"daemon": map[string]interface{}{
 			"pid":      pid,
 			"alive":    alive,
