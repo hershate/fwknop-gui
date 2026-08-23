@@ -3595,8 +3595,10 @@ const evRangeSwap = () => {
     toast('起始时间晚于截止时间，已自动交换', 'ok', 2500);
   }
 };
-$('#ev-from').onchange = e => { S.evFrom = e.target.value; evRangeSwap(); S.evPage = 0; renderEvents(); };
-$('#ev-to').onchange = e => { S.evTo = e.target.value; evRangeSwap(); S.evPage = 0; renderEvents(); };
+/* 手动改起止/点预设即不再是「钻取视图」：清钻取栈（与时间下拉手选同规，
+   见上 S.evHeatStack = []），否则「↩ 上级视图」会静默吞掉手改的区间 */
+$('#ev-from').onchange = e => { S.evFrom = e.target.value; S.evHeatStack = []; evRangeSwap(); S.evPage = 0; renderEvents(); };
+$('#ev-to').onchange = e => { S.evTo = e.target.value; S.evHeatStack = []; evRangeSwap(); S.evPage = 0; renderEvents(); };
 /* 自定义区间快捷预设：datetime-local 逐格点选繁琐，常见区间一键填充 */
 const pad2 = n => String(n).padStart(2, '0');
 const dtLocal = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
@@ -3605,8 +3607,9 @@ function fillEvRange(from, to) {
   $('#ev-from').value = S.evFrom; $('#ev-to').value = S.evTo;
   S.evPage = 0; renderEvents();
 }
-$('#ev-preset-24h').onclick = () => { const now = new Date(); fillEvRange(new Date(now.getTime() - 86400000), now); };
+$('#ev-preset-24h').onclick = () => { S.evHeatStack = []; const now = new Date(); fillEvRange(new Date(now.getTime() - 86400000), now); };
 $('#ev-preset-yday').onclick = () => {
+  S.evHeatStack = [];
   const now = new Date();
   const today0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   /* 截止端含到该分钟 59 秒（timeFilteredEvents +59）：填昨日 23:59 正好覆盖
