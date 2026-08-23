@@ -1079,6 +1079,11 @@ function focusWithin(sel) {
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icon = (n, sz) => `<svg width="${sz||16}" height="${sz||16}"><use href="#i-${n}"/></svg>`;
+/* localStorage 安全写：隐私模式/存储配额满时 setItem 抛异常，裸调用会让
+   整个事件处理器中断（开关看似点了没反应）。统一吞掉——偏好丢失可接受，
+   功能中断不可接受。读侧 getItem 不抛配额错，沿用内联 try 风格 */
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 
 /* 通知历史：toast 入档（合并重发的累计计数同步到历史），侧栏铃铛可追溯 */
 try { S.notifLog = JSON.parse(sessionStorage.getItem('fwknop-notif-log') || '[]'); } catch (e) { S.notifLog = []; }
@@ -1643,8 +1648,8 @@ function applyTheme(mode, persist) {
   const mc = $('#meta-theme-color');
   if (mc) mc.content = t === 'dark' ? '#0d1220' : '#f3f5fb';
   if (persist !== false) {
-    if (mode === 'auto') localStorage.removeItem('dash_theme');
-    else localStorage.setItem('dash_theme', mode);
+    if (mode === 'auto') lsDel('dash_theme');
+    else lsSet('dash_theme', mode);
   }
 }
 $('#theme-btn').onclick = () => applyTheme({ auto: 'dark', dark: 'light', light: 'auto' }[themeMode()]);
@@ -2504,11 +2509,11 @@ $('#ev-notify').onclick = async () => {
       if (p !== 'granted') { toast('未获得通知权限，可在浏览器站点设置中开启', 'err', 5000); return; }
     }
     S.evNotify = true;
-    localStorage.setItem('fwknop-ev-notify', '1');
+    lsSet('fwknop-ev-notify', '1');
     toast('已开启：标签页在后台时，新异常事件将弹桌面通知', 'ok', 4000);
   } else {
     S.evNotify = false;
-    localStorage.removeItem('fwknop-ev-notify');
+    lsDel('fwknop-ev-notify');
     toast('已关闭异常桌面通知', 'ok', 1500);
   }
   syncEvNotifyBtn();
@@ -2524,7 +2529,7 @@ function initDensityToggle(btnSel, bodySel, key) {
   btn.onclick = () => {
     const on = tb.classList.toggle('dense');
     sync(on);
-    localStorage.setItem(key, on ? '1' : '');
+    lsSet(key, on ? '1' : '');
   };
 }
 initDensityToggle('#ev-density', '#events-body', 'fwknop-ev-dense');
@@ -2538,7 +2543,7 @@ initDensityToggle('#tofu-density', '#tofu-body', 'fwknop-tofu-dense');
   btn.onclick = () => {
     const on = document.body.classList.toggle('users-dense');
     sync(on);
-    localStorage.setItem('fwknop-users-dense', on ? '1' : '');
+    lsSet('fwknop-users-dense', on ? '1' : '');
   };
 }
 
@@ -2962,7 +2967,7 @@ function renderEvents() {
     $$('#events-body .tmtoggle').forEach(c => c.onclick = ev => {
       ev.stopPropagation();
       S.evTimeAbs = !S.evTimeAbs;
-      localStorage.setItem('fwknop-ev-timeabs', S.evTimeAbs ? '1' : '');
+      lsSet('fwknop-ev-timeabs', S.evTimeAbs ? '1' : '');
       renderEvents();
     });
     /* stanza 反查：S.users 仅在访问用户页后才加载，事件页直接点反查需先懒加载，
@@ -3089,7 +3094,7 @@ function renderEvents() {
   };
   $('#ev-per').onchange = e => {
     S.evPer = +e.target.value; S.evPage = 0;
-    localStorage.setItem('fwknop-ev-per', String(S.evPer));
+    lsSet('fwknop-ev-per', String(S.evPer));
     renderEvents(); scrollEvTop();
   };
   /* 「仅看异常」状态与 URL hash 同步（芯片点击/b 键/重置都会走到这里）：
@@ -3634,7 +3639,7 @@ function renderCustomTpls() {
       confirmDialog('删除自定义模板', `确定删除模板「<b>${esc(name)}</b>」吗？已签发的授权不受影响。`, '删除', () => {
         const m = loadCustomTpls();
         delete m[name];
-        localStorage.setItem(CUSTOM_TPL_KEY, JSON.stringify(m));
+        lsSet(CUSTOM_TPL_KEY, JSON.stringify(m));
         renderCustomTpls();
         toast(`模板「${name}」已删除`, 'ok', 1500);
       }, true);
@@ -3669,7 +3674,7 @@ $('#tpl-save').onclick = () => {
       tofuTimeout: f['tofu-timeout'].value.trim(), portMatch: f['require-totp-port-match'].checked,
       fwTimeout: f['fw-timeout'].value.trim(),
     };
-    localStorage.setItem(CUSTOM_TPL_KEY, JSON.stringify(m));
+    lsSet(CUSTOM_TPL_KEY, JSON.stringify(m));
     closeModal();
     renderCustomTpls();
     toast(overwrite ? `模板「${name}」已覆盖更新` : `模板「${name}」已保存，点击芯片即可一键填充`, 'ok');
@@ -3776,7 +3781,7 @@ function renderServerHistory() {
 }
 $('#srv-hist-manage').onclick = () => { S.srvHistOpen = !S.srvHistOpen; renderServerHistory(); };
 $('#srv-hist-clear').onclick = () => {
-  localStorage.removeItem(SRV_HIST_KEY);
+  lsDel(SRV_HIST_KEY);
   renderServerHistory();
   toast('服务器地址历史已清空', 'ok', 1500);
 };
@@ -3793,7 +3798,7 @@ function saveAddDraft() {
   const act = $('.tpl-chip.active');
   if (act) d._tpl = act.dataset.tpl;  /* 模板选择状态一并入草稿 */
   d._ts = Math.floor(Date.now() / 1000);  /* 保存时刻：恢复条上展示草稿年龄 */
-  localStorage.setItem(ADD_DRAFT_KEY, JSON.stringify(d));
+  lsSet(ADD_DRAFT_KEY, JSON.stringify(d));
 }
 function loadAddDraft() {
   let d;
@@ -3835,7 +3840,7 @@ function loadAddDraft() {
   }
   syncTotpFields(); syncFpFields();  /* 恢复/新建后同步 TOTP 关联字段可用态 */
 }
-function clearAddDraft() { localStorage.removeItem(ADD_DRAFT_KEY); }
+function clearAddDraft() { lsDel(ADD_DRAFT_KEY); }
 $('#add-form').addEventListener('input', saveAddDraft);
 $('#add-form').addEventListener('change', saveAddDraft);
 
@@ -4188,7 +4193,7 @@ $('#add-form').addEventListener('submit', async ev => {
         ? `凭证「${nm}」已签发并写入 access.conf（已热加载），请复制授权 URI 分发给用户`
         : `凭证「${nm}」已签发（未写入配置），请立即复制授权 URI 分发给用户`, 'ok', 6000);
       clearAddDraft();
-      if (f.server.value.trim()) { localStorage.setItem('fwknop-last-server', f.server.value.trim()); pushServerHistory(f.server.value.trim()); }
+      if (f.server.value.trim()) { lsSet('fwknop-last-server', f.server.value.trim()); pushServerHistory(f.server.value.trim()); }
       f.reset();  /* 清空表单便于连续签发下一位用户（结果区不受影响） */
       syncTotpFields(); syncFpFields();
       $$('.tpl-chip').forEach(c => c.classList.remove('active'));
@@ -4441,7 +4446,7 @@ $$('.th-sort').forEach(th => th.onclick = () => {
   const k = th.dataset.tsort;
   if (S.tofuSort && S.tofuSort.key === k) S.tofuSort.dir = -S.tofuSort.dir;
   else S.tofuSort = { key: k, dir: 1 };
-  localStorage.setItem('fwknop-tofu-sort', JSON.stringify(S.tofuSort));
+  lsSet('fwknop-tofu-sort', JSON.stringify(S.tofuSort));
   renderTOFU();
 });
 /* 排序表头键盘可达：Enter/空格触发同一排序逻辑（th 非原生可交互元素） */
@@ -4478,7 +4483,7 @@ try {
 $('#users-sort').value = S.usersSort;
 $('#users-sort').onchange = e => {
   S.usersSort = e.target.value;
-  localStorage.setItem('fwknop-users-sort', S.usersSort);
+  lsSet('fwknop-users-sort', S.usersSort);
   renderUsers();
 };
 
@@ -4629,7 +4634,7 @@ function renderConfig() {
   $$('#config-body .conf-grp').forEach(h => h.onclick = () => {
     const g = h.dataset.grp;
     if (S.confCollapsed.has(g)) S.confCollapsed.delete(g); else S.confCollapsed.add(g);
-    localStorage.setItem('fwknop-conf-groups', JSON.stringify([...S.confCollapsed]));
+    lsSet('fwknop-conf-groups', JSON.stringify([...S.confCollapsed]));
     renderConfig();
   });
   /* 重渲染后查找状态保持 */
@@ -4680,12 +4685,12 @@ $('#conf-view-filter').oninput = e => {
 /* 分组批量展开/收起（选择持久化与单组切换共用同一存储） */
 $('#conf-expand-all').onclick = () => {
   S.confCollapsed = new Set();
-  localStorage.setItem('fwknop-conf-groups', '[]');
+  lsSet('fwknop-conf-groups', '[]');
   renderConfig();
 };
 $('#conf-collapse-all').onclick = () => {
   S.confCollapsed = new Set(CONF_GROUP_ORDER.filter(g => $('[data-grp="' + g + '"]')));
-  localStorage.setItem('fwknop-conf-groups', JSON.stringify([...S.confCollapsed]));
+  lsSet('fwknop-conf-groups', JSON.stringify([...S.confCollapsed]));
   renderConfig();
 };
 $('#raw-toggle').onclick = () => {
