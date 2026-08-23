@@ -2487,7 +2487,9 @@ function sparkline(key) {
     const tm = new Date((h[i+1].t)*1000).toLocaleTimeString('zh-CN', { hour12:false });
     return `<circle cx="${x}" cy="${y}" r="4" fill="transparent"><title>${tm} 新增 ${v} 条</title></circle>`;
   }).join('');
-  return `<svg class="spark" width="${w}" height="${hh}" viewBox="0 0 ${w} ${hh}" style="pointer-events:auto">
+  /* 读屏纯装饰：趋势点数据已在计数数字与 hover 点 title 里，aria-hidden
+     避免读屏把 polyline 路径报成无意义图形序列 */
+  return `<svg class="spark" width="${w}" height="${hh}" viewBox="0 0 ${w} ${hh}" style="pointer-events:auto" aria-hidden="true">
     <polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="1.6"
       stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>${dots}</svg>`;
 }
@@ -4649,7 +4651,10 @@ async function renderUriQr(uri, box, name) {
         <span class="hint" style="font-size:11.5px;line-height:1.6">手机客户端扫码录入，或下载 PNG 后<br><code>fwknop import ${esc((name || 'fwknop').replace(/[^\w.-]/g, '_'))}-qr.png</code></span>
       </div></div>`;
     const svgEl = box.querySelector('svg');
-    if (svgEl) { svgEl.setAttribute('width', '164'); svgEl.setAttribute('height', '164'); }
+    /* 读屏语义：二维码是有意义图形（非装饰图标），标注 role/aria-label
+       否则读屏只能报「空图形」 */
+    if (svgEl) { svgEl.setAttribute('width', '164'); svgEl.setAttribute('height', '164');
+      svgEl.setAttribute('role', 'img'); svgEl.setAttribute('aria-label', '授权二维码（手机扫码导入凭证）'); }
     box.querySelector('[data-qrpng]').onclick = () => downloadQrPng(svgEl, name);
   } catch (e) { box.innerHTML = ''; }
 }
