@@ -2180,14 +2180,18 @@ function renderEventChips() {
   /* 异常占比条：当前时间窗内 正常 vs 异常 的直观比例 */
   const total = counts.all, bad = counts.bad || 0, ok = total - bad;
   const pct = total ? Math.round(bad * 1000 / total) / 10 : 0;
+  /* 异常段悬停显示构成明细（重放/拒绝/指纹未知…），点击直达「仅看异常」 */
+  const badBreak = BAD_EVTS.map(k => counts[k] ? `${evMeta(k).label} ${counts[k]} 条` : '').filter(Boolean).join('，');
   $('#event-ratio').innerHTML = total ? `
     <div style="display:flex;align-items:center;gap:10px">
       <div style="flex:1;height:8px;border-radius:5px;overflow:hidden;display:flex;background:var(--panel-2)">
         ${ok ? `<div style="width:${ok*100/total}%;background:var(--green)" title="正常 ${ok} 条"></div>` : ''}
-        ${bad ? `<div style="width:${bad*100/total}%;background:var(--red)" title="异常 ${bad} 条"></div>` : ''}
+        ${bad ? `<div data-ratiobad="1" style="width:${bad*100/total}%;background:var(--red);cursor:pointer" title="异常 ${bad} 条：${badBreak}（点击仅看异常）"></div>` : ''}
       </div>
       <span class="hint" style="white-space:nowrap;font-size:11.5px">异常 <b style="color:${bad?'var(--red)':'var(--green)'}">${pct}%</b>（${bad}/${total}）</span>
     </div>` : '';
+  const rb = $('#event-ratio [data-ratiobad]');
+  if (rb) rb.onclick = () => { S.evFilter = 'bad'; S.evPage = 0; renderEvents(); };
 }
 
 /* 来源/设备/用户排行：按当前时间窗聚合计数，点击芯片按该值筛选（再点
