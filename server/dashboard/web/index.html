@@ -2242,7 +2242,7 @@ function renderStatusCards() {
   if (qa) {
     const a0 = F.audit;
     qa.innerHTML = `<svg width="14" height="14"><use href="#i-download"/></svg>导出审计日志${a0 && a0.exists ? `（${fmtSize(a0.size)}）` : ''}`;
-    qa.title = a0 && a0.exists ? `下载完整审计日志（JSONL · ${fmtSize(a0.size)} · ${fmtAgo(a0.mtime)}更新）` : '审计日志文件不存在';
+    qa.title = a0 && a0.exists ? `下载完整审计日志（JSONL · ${fmtSize(a0.size)} · 更新于 ${fmtAbs(a0.mtime)}）` : '审计日志文件不存在';
   }
   const cards = [
     { ic:'server', c: d.daemon.alive ? 'var(--green)' : 'var(--red)',
