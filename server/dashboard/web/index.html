@@ -641,7 +641,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <div class="warn-strip" id="svc-down-strip" style="display:none">
               <svg width="15" height="15"><use href="#i-warn"/></svg>
               <div>fwknopd <b>当前未运行</b>，面板各页将没有新数据。可直接点「启动」（启动前自动强制预检配置）；若启动失败，先点「校验配置」查看具体原因。
-                <div style="margin-top:6px;display:flex;gap:8px"><button class="btn small" id="svc-down-start" style="background:var(--green)"><svg width="13" height="13"><use href="#i-play"/></svg>立即启动</button><button class="btn ghost small" id="svc-down-validate"><svg width="13" height="13"><use href="#i-check"/></svg>立即校验配置</button></div>
+                <div style="margin-top:6px;display:flex;gap:8px"><button class="btn small" id="svc-down-start" style="background:var(--green)" title="立即启动 fwknopd（启动前自动强制预检配置）"><svg width="13" height="13"><use href="#i-play"/></svg>立即启动</button><button class="btn ghost small" id="svc-down-validate" title="立即运行配置预检并查看具体原因"><svg width="13" height="13"><use href="#i-check"/></svg>立即校验配置</button></div>
               </div>
             </div>
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
@@ -4717,8 +4717,16 @@ $('#svc-validate').onclick = async () => {
   } catch (e) {}
 };
 /* 引导条里的「立即校验配置」复用主按钮逻辑 */
-$('#svc-down-validate').onclick = () => $('#svc-validate').click();
-$('#svc-down-start').onclick = () => $('#svc-start').click();  /* 横幅内直达，与主按钮同一链路（含预检） */
+/* 横幅按钮转发到主按钮；主按钮在服务操作执行中被禁用，此时转发是静默无效点击，
+   故先检查禁用态并给出反馈，避免「点了没反应」 */
+$('#svc-down-validate').onclick = () => {
+  if ($('#svc-validate').disabled) { toast('有服务操作正在执行，请稍候', 'err', 1500); return; }
+  $('#svc-validate').click();
+};
+$('#svc-down-start').onclick = () => {  /* 横幅内直达，与主按钮同一链路（含预检） */
+  if ($('#svc-start').disabled) { toast('有服务操作正在执行，请稍候', 'err', 1500); return; }
+  $('#svc-start').click();
+};
 $('#svc-fwlist').onclick = async () => {
   try {
     const r = await api('/api/service/fwrules');
