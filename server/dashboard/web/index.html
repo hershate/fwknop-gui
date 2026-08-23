@@ -5155,6 +5155,9 @@ async function loadProfiles() {
 function renderProfiles() {
   const d = S.profiles; if (!d) return;
   const ps = d.profiles || [];
+  /* 当前生效方案置顶（Array.sort 稳定，其余保持服务端按保存时间倒序），
+     方案多时一眼定位「现在跑的是哪套」 */
+  ps.sort((a, b) => (b.current ? 1 : 0) - (a.current ? 1 : 0));
   $('#profiles-sub').textContent = `${ps.length} 个方案 · 存放于 ${d.dir}`;
   if (!ps.length) {
     $('#profiles-body').innerHTML = `<div class="empty">${icon('i-archive',40)}
