@@ -95,6 +95,8 @@ code, pre, .mono { font-family:var(--mono); }
   transition:all var(--trans);
 }
 .icon-btn:hover { color:var(--text); border-color:var(--accent); }
+.icon-btn[disabled] { opacity:.4; cursor:not-allowed; }
+.icon-btn[disabled]:hover { color:var(--muted); border-color:var(--border); }
 .icon-btn svg { width:15px; height:15px; }
 
 #main { flex:1; min-width:0; display:flex; flex-direction:column; }
@@ -2380,9 +2382,18 @@ function renderEvents() {
         <td colspan="8"><div class="ev-kv">
           <div><div class="k">时间</div><div class="v"><span class="cp-cell" data-cp="${fmtAbs(e.time)}" title="点击复制绝对时间">${fmtAbs(e.time)}</span>（${fmtAgo(e.time)}）</div></div>
           <div><div class="k">事件类型</div><div class="v">${esc(e.event||'—')}（${m.label}）${e.event ? `<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-evtype="${esc(e.event)}" title="筛选该类型的全部事件">${icon('i-search',12)}</button>` : ''}</div></div>
-          <div><div class="k">授权索引（stanza）</div><div class="v">${e.stanza ?? '—'}${e.stanza != null ? `<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-evstanza="${e.stanza}" title="在用户与授权页查看该 stanza">${icon('i-users',12)}</button>` : ''}</div></div>
+          <div><div class="k">授权索引（stanza）</div><div class="v">${e.stanza ?? '—'}${(() => { if (e.stanza == null) return '';
+            const stz = (S.users && S.users.stanzas) || null;
+            /* S.users 未加载时不预判（保持可点，点击时懒加载）；已加载且查无此 stanza → 禁用并说明 */
+            if (stz && !stz.some(s => s.index === e.stanza))
+              return `<button class="icon-btn" style="padding:2px 5px;margin-left:4px" disabled title="该 stanza 已不在当前配置（可能已撤销），无法反查">${icon('i-users',12)}</button>`;
+            return `<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-evstanza="${e.stanza}" title="在用户与授权页查看该 stanza">${icon('i-users',12)}</button>`; })()}</div></div>
           <div><div class="k">用户</div><div class="v">${e.user?`<span class="cp-cell" data-cp="${esc(e.user)}">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" title="查看该用户的全部事件">${icon('i-search',12)}</button>`:'—'}</div></div>
-          <div><div class="k">设备指纹（完整）</div><div class="v">${e.device_id?`<span class="cp-cell" data-cp="${esc(e.device_id)}">${esc(e.device_id)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" title="查看该设备的全部事件">${icon('i-search',12)}</button><button class="icon-btn" style="padding:2px 5px;margin-left:2px" data-devtofu="${esc(e.device_id)}" title="查该设备的 TOFU 绑定状态">${icon('i-fp',12)}</button>`:'—'}</div></div>
+          <div><div class="k">设备指纹（完整）</div><div class="v">${e.device_id?`<span class="cp-cell" data-cp="${esc(e.device_id)}">${esc(e.device_id)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" title="查看该设备的全部事件">${icon('i-search',12)}</button>${(() => { const bd = S.tofu && S.tofu.bindings;
+            /* TOFU 数据已加载且查无绑定 → 禁用反查按钮并说明；未加载保持可点（跳转后 tofu 页自会加载） */
+            if (bd && !bd.some(x => x.device_id === e.device_id))
+              return `<button class="icon-btn" style="padding:2px 5px;margin-left:2px" disabled title="该设备当前无 TOFU 绑定（可能已解绑或从未绑定）">${icon('i-fp',12)}</button>`;
+            return `<button class="icon-btn" style="padding:2px 5px;margin-left:2px" data-devtofu="${esc(e.device_id)}" title="查该设备的 TOFU 绑定状态">${icon('i-fp',12)}</button>`; })()}`:'—'}</div></div>
           <div><div class="k">来源 IP</div><div class="v">${e.src_ip?`<span class="cp-cell" data-cp="${esc(e.src_ip)}">${esc(e.src_ip)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.src_ip)}" title="查看该 IP 的全部事件">${icon('i-search',12)}</button>`:'—'}</div></div>
           <div><div class="k">SPA 端口</div><div class="v">${e.spa_port?`<span class="cp-cell" data-portq="${e.spa_port}" title="点击按 SPA 端口 ${e.spa_port} 筛选">${e.spa_port}</span>`:'—'}</div></div>
           <div><div class="k">目标端口</div><div class="v">${e.target_port?`<span class="cp-cell" data-portq="${e.target_port}" title="点击按目标端口 ${e.target_port} 筛选">${e.target_port}</span>`:'—'}</div></div>
@@ -2431,14 +2442,17 @@ function renderEvents() {
       localStorage.setItem('fwknop-ev-timeabs', S.evTimeAbs ? '1' : '');
       renderEvents();
     });
-    $$('#events-body [data-evstanza]').forEach(b => b.onclick = ev => {
+    /* stanza 反查：S.users 仅在访问用户页后才加载，事件页直接点反查需先懒加载，
+       否则会把仍存在的授权误报为「已不存在」；查找统一按 index 字段（与摘要一致） */
+    $$('#events-body [data-evstanza]').forEach(b => b.onclick = async ev => {
       ev.stopPropagation();
-      const st = (S.users && S.users.stanzas) || [];
-      const tgt = st[+b.dataset.evstanza - 1];
+      if (!S.users) { try { await loadUsers(); } catch (_) { /* loadUsers 内部已提示 */ } }
+      const idx = +b.dataset.evstanza;
+      const tgt = ((S.users && S.users.stanzas) || []).find(s => s.index === idx);
       S.usersQuery = tgt ? (tgt.name || '') : '';
       $('#users-search').value = S.usersQuery;
       showPage('users');
-      toast(tgt ? `已定位授权「${tgt.name || ('#' + b.dataset.evstanza)}」` : '该 stanza 已不存在于当前配置', tgt ? 'ok' : 'err', 2000);
+      toast(tgt ? `已定位授权「${tgt.name || ('#' + idx)}」` : '该 stanza 已不存在于当前配置（可能已撤销）', tgt ? 'ok' : 'err', 2000);
     });
     $$('#events-body [data-evub]').forEach(b => b.onclick = ev => {
       ev.stopPropagation();
