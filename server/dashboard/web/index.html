@@ -2629,8 +2629,7 @@ $('#ev-new-pill').onclick = () => {
 
 /* 标签页标题显示最近 15 分钟异常事件数 + 未读通知数，后台标签也能感知 */
 function updateDocTitle() {
-  const now = Date.now() / 1000;
-  const bad = (S.events || []).filter(e => BAD_EVTS.includes(e.event) && now - (e.time || 0) < 900).length;
+  const bad = countRecentBad();
   const un = S.notifUnread || 0;
   const pg = (typeof PAGE_TITLES !== 'undefined' && PAGE_TITLES[S.page]) || '';
   document.title = (bad ? `(${bad} 异常) ` : '') + (un ? `[${un > 99 ? '99+' : un} 错误] ` : '') +
@@ -2655,6 +2654,13 @@ $('#nav-ev-badge').onclick = ev => {
 
 /* 异常事件集合：「仅看异常」快捷筛选用 */
 const BAD_EVTS = ['reject','replay','unknown_fingerprint','port_mismatch','aged'];
+/* 近 15 分钟异常计数：标签页标题/侧栏徽标/快速操作标注/诊断信息共用同一口径，
+   单点定义防窗口值漂移（此前 900 硬编码在两处独立 filter 中） */
+const BAD_WINDOW_S = 900;
+function countRecentBad() {
+  const now = Date.now() / 1000;
+  return (S.events || []).filter(e => BAD_EVTS.includes(e.event) && now - (e.time || 0) < BAD_WINDOW_S).length;
+}
 
 /* 审计 reason 中文可读化（与服务端 incoming_spa.c 的文案一一对应） */
 function reasonZh(r) {
@@ -4806,7 +4812,7 @@ function collectDiag() {
     fstat('TOFU 状态', F.tofu), fstat('授权配置', F.access_conf), fstat('服务配置', F.fwknopd_conf),
     /* 备份堆积与近期异常是远程排障高频追问项，一并打包 */
     '审计备份: ' + (d && d.audit_backups ? `${d.audit_backups.count} 个（${fmtSize(d.audit_backups.size)}）` : '—'),
-    '近 15 分钟异常事件: ' + (S.events || []).filter(e => BAD_EVTS.includes(e.event) && (Date.now() / 1000 - (e.time || 0)) < 900).length + ' 条',
+    '近 15 分钟异常事件: ' + countRecentBad() + ' 条',
   ].join('\n');
 }
 function renderAbout() {
