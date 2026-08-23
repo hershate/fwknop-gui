@@ -5884,14 +5884,36 @@ $('#conf-save').onclick = async () => {
         return;
       }
     }
-    const lines = [];
+    const editRows = [];
     $$('#conf-edit-rows > div').forEach(row => {
       const k = row.querySelector('.ce-key').value.trim();
       const v = row.querySelector('.ce-val').value.trim();
-      if (k) lines.push(v ? k + ' ' + v : k);
+      if (k) editRows.push([k, v]);
     });
-    if (!lines.length) { toast('配置不能为空', 'err'); return; }
-    payload = { mode:'structured', lines };
+    if (!editRows.length) { toast('配置不能为空', 'err'); return; }
+    /* 注释保留合并：以加载时原文为底逐行改写——指令行按编辑器状态就地
+       替换/删除，注释、空行与 % 行原样保留，新增指令（含模板追加）落末尾。
+       此前结构化保存把整个文件重写为纯指令集，发行版配置里的大量说明
+       注释与用户自注在第一次保存后静默丢失（仅剩 .bak 备份可寻回）。
+       raw 被服务端截断（>128KB）时回退旧 lines 模式（无原文可合并） */
+    const raw0 = (S.config && S.config.raw) || '';
+    if (raw0 && !raw0.endsWith('# ... (文件过大，已截断)')) {
+      const remain = editRows.map(r => r.slice());
+      const out = [];
+      raw0.split('\n').forEach(ln => {
+        const p = ln.trim();
+        if (!p || p.startsWith('#') || p.startsWith('%')) { out.push(ln); return; }
+        const key = p.split(/[ \t]/)[0];
+        const i = remain.findIndex(r => r[0] === key);
+        if (i < 0) return;  /* 编辑器中已删除的指令行不输出 */
+        const [k, v] = remain.splice(i, 1)[0];
+        out.push(v ? k + ' ' + v : k);  /* 空值保留裸指令行（parse.go 同规） */
+      });
+      remain.forEach(([k, v]) => out.push(v ? k + ' ' + v : k));
+      payload = { mode:'raw', raw: out.join('\n') };
+    } else {
+      payload = { mode:'structured', lines: editRows.map(([k, v]) => v ? k + ' ' + v : k) };
+    }
   }
   /* 反向跨配置校验：收窄/修改 PCAP_PORT_RANGE 可能使现有授权的 TOTP 范围
      越界（敲门静默丢失）。保存前在确认框中列出受影响授权，由运维确认。
@@ -5911,7 +5933,19 @@ $('#conf-save').onclick = async () => {
     if (bad.length) pcapWarn = `<br><br><span style="color:var(--amber)">⚠ 授权 ${bad.map(s => `<b>${esc(s.name || ('#' + s.index))}</b>（${esc(s.port_range)}）`).join('、')}
       的 TOTP 端口范围超出新的监听范围 ${esc(newPcap)}，保存后这些授权的敲门将无法被捕获。</span>`;
   }
-  confirmDialog('保存 fwknopd.conf', '保存流程：<b>预检 → 备份 → 原子替换 → 热加载</b>。预检不通过则不会落盘。' + pcapWarn + '确定保存吗？', '保存',
+  /* 保存确认内嵌本次改动 diff（复用方案预览的 renderDiff）：高危落盘操作
+     确认前一屏看清「改了什么」，替代此前只有流程说明的盲确认 */
+  const curRaw = (S.config && S.config.raw) || '';
+  const newText = payload.mode === 'raw' ? payload.raw : payload.lines.join('\n') + '\n';
+  /* 零改动直返：改回原文的场景不再产生无意义的备份、预检与热加载 */
+  if (curRaw && !lineDiff(newText, curRaw).some(([op, l]) => l.trim() !== '')) {
+    toast('没有需要保存的改动（与当前生效配置一致）', 'ok', 2500);
+    return;
+  }
+  const diffHtml = curRaw
+    ? '<div class="form-sec" style="margin-top:10px">本次改动（相对当前生效配置）</div>' + renderDiff(newText, curRaw)
+    : '';
+  confirmDialog('保存 fwknopd.conf', '保存流程：<b>预检 → 备份 → 原子替换 → 热加载</b>。预检不通过则不会落盘。' + pcapWarn + diffHtml + '<div style="margin-top:8px">确定保存吗？</div>', '保存',
     async () => {
       try {
         const r = await api('/api/config/fwknopd', { method:'POST',
