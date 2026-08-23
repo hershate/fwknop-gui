@@ -3045,7 +3045,7 @@ function renderUsers() {
         <span style="color:var(--muted)">${icon('i-lock',15)}</span>
         <b>${esc(x.name || '（未知）')}</b>
         <span class="hint">第 ${x.start_line}–${x.end_line} 行 · 已注释禁用${x.disabled_at ? ' · 禁用于 ' + esc(x.disabled_at) : ''}</span>
-        ${S.writeEnabled ? `<button class="btn ghost small" style="margin-left:auto" data-enable="${esc(x.name)}">${icon('i-play',13)}恢复</button>` : ''}
+        ${S.writeEnabled ? `<button class="btn ghost small" style="margin-left:auto" data-enable="${esc(x.name)}" title="恢复该授权：去掉注释并热加载，重新生效">${icon('i-play',13)}恢复</button>` : ''}
       </div>`).join('')}
       </div>
     </div>` : '';
@@ -3072,9 +3072,9 @@ function renderUsers() {
         </div>
         <div class="tools">${S.writeEnabled ?
           `<input type="checkbox" class="usr-sel" data-selname="${esc(name)}" ${S.usersSel && S.usersSel.has(name) ? 'checked' : ''} title="选择以批量撤销" style="width:auto;margin-right:2px">
-          <button class="btn ghost small" data-edit="${s.index}">${icon('i-pencil',13)}编辑</button>
+          <button class="btn ghost small" data-edit="${s.index}" title="编辑该授权的非密钥指令（来源/端口/超时等），保存前自动预检并备份">${icon('i-pencil',13)}编辑</button>
            <button class="btn ghost small" data-dup="${s.index}" title="按该授权的安全选项预填签发表单（名称留空待填）">${icon('i-copy',13)}签发类似</button>
-           <button class="btn ghost small" data-rm="${esc(name)}">${icon('i-trash',13)}撤销</button>` : ''}</div>
+           <button class="btn ghost small" data-rm="${esc(name)}" title="撤销该授权：注释禁用其 stanza 并热加载（可在下方「已禁用的授权」区恢复）">${icon('i-trash',13)}撤销</button>` : ''}</div>
       </div>
       <div class="body" style="padding-top:6px">
         ${s.changeme ? `<div class="warn-strip">${icon('i-warn',15)}<div>该授权仍包含 <code>__CHANGEME__</code> 占位密钥，<b>无法正常工作</b>，请撤销后重新签发。</div></div>` : ''}
