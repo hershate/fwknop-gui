@@ -3563,7 +3563,7 @@ $('#tofu-batch-unbind').onclick = () => {
       btn.disabled = false;
       btn.innerHTML = '<svg width="13" height="13"><use href="#i-trash"/></svg>批量解绑';
       S.tofuSel = new Set();
-      toast(`批量解绑完成：成功 ${ok} 台${fail ? `，失败 ${fail} 台` : ''}。设备将在 TOFU 宽限期内下次敲门时自动重新绑定`, fail ? 'err' : 'ok', 8000);
+      toast(`批量解绑完成：成功 ${ok} 台${fail ? `，失败 ${fail} 台` : ''}。若授权启用了 TOFU 宽限期，设备下次敲门会自动重新绑定；否则需加入指纹白名单`, fail ? 'err' : 'ok', 8000);
       loadTOFU();
     });
 };
