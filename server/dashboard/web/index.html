@@ -1490,20 +1490,9 @@ $$('.pw-eye').forEach(b => b.onclick = () => {
   b.title = shown ? '隐藏密码' : '显示密码';
 });
 
-/* 初始化页实时校验提示：长度 + 两次一致 */
-function updateSetupHint() {
-  const p1 = $('#setup-pw1').value, p2 = $('#setup-pw2').value, el = $('#setup-pw-hint');
-  if (!p1 && !p2) { el.textContent = ''; el.className = 'auth-hint'; return; }
-  const parts = [];
-  parts.push(p1.length >= 8 ? '✓ 长度达标' : '✗ 至少 8 位');
-  if (p2) parts.push(p1 === p2 ? '✓ 两次输入一致' : '✗ 两次输入不一致');
-  const allOk = p1.length >= 8 && p2 && p1 === p2;
-  el.textContent = parts.join('　·　');
-  el.className = 'auth-hint ' + (allOk ? 'ok' : 'no');
-}
-$('#setup-pw1').addEventListener('input', updateSetupHint);
-$('#setup-pw2').addEventListener('input', updateSetupHint);
-
+/* 初始化页实时校验提示：长度 + 两次一致 + 强度（setupPwCheck 全量承担；
+   历史上曾并存的 updateSetupHint 与它绑同一对输入、写同一提示元素，
+   后注册者每击键覆盖前者输出，强度指示从未得见——已移除旧版） */
 $('#logout-btn').onclick = () => {
   const doLogout = async () => {
     try { await fetch('/api/logout', { method:'POST', headers:{'X-Fwknop-Request':'1'} }); } catch (e) {}
