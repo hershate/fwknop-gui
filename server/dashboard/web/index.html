@@ -1835,7 +1835,8 @@ function renderStatusCards() {
   const cards = [
     { ic:'server', c: d.daemon.alive ? 'var(--green)' : 'var(--red)',
       bg: d.daemon.alive ? 'var(--green-soft)' : 'var(--red-soft)',
-      k:'服务进程', v: d.daemon.alive ? `运行中 <small>PID ${d.daemon.pid}</small>` : '未运行' },
+      k:'服务进程', v: d.daemon.alive ? `运行中 <small>PID ${d.daemon.pid}</small>` : '未运行',
+      tip: d.daemon.alive ? 'fwknopd 正在处理 SPA 敲门' : 'fwknopd 未运行：敲门不会被处理，可用上方「立即启动」（含配置预检）' },
     (() => { /* 审计日志卡：体积过大时分档警示；管理模式下给「清理」入口；备份堆积可见 */
       const a = F.audit;
       const MB = 1048576;
@@ -1857,7 +1858,9 @@ function renderStatusCards() {
         v:`正常 <small>${fmtSize(a.size)} · ${fmtAgo(a.mtime)}更新${bakNote}</small>${clr}` };
     })(),
     { ic:'bolt', c:'var(--amber)', bg:'var(--amber-soft)', k:'指标文件',
-      v: F.metrics && F.metrics.exists ? `正常 <small>${fmtAgo(F.metrics.mtime)}更新</small>` : '缺失' },
+      v: F.metrics && F.metrics.exists ? `正常 <small>${fmtAgo(F.metrics.mtime)}更新</small>` : '缺失',
+      tip: F.metrics && F.metrics.exists ? 'fwknopd 周期重写的 Prometheus 指标，概览计数卡的数据源'
+        : '指标文件不存在：检查 fwknopd.conf 的 ENABLE_AUDIT 是否为 N，或 fwknopd 尚未运行' },
     { ic:'key', c: d.write_enabled ? 'var(--amber)' : 'var(--muted)',
       bg: d.write_enabled ? 'var(--amber-soft)' : 'var(--panel-2)', k:'写操作模式',
       v: d.write_enabled ? '管理模式 <small>默认启用</small>' : '只读 <small>-read-only</small>' },
