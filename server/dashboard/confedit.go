@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 )
@@ -427,6 +428,8 @@ func listProfiles() []Profile {
 			fileEq(filepath.Join(dir, "access.conf"), cfg.AccessConf)
 		out = append(out, p)
 	}
+	/* 最新保存的排最前（ReadDir 只有目录名字典序）；无 meta 的旧方案按 0 沉底 */
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Created > out[j].Created })
 	return out
 }
 
