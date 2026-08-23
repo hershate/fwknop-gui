@@ -46,7 +46,14 @@ func logOp(r *http.Request, op, detail string, ok bool) {
 	}
 	opLogMu.Lock()
 	defer opLogMu.Unlock()
-	f, err := os.OpenFile(opLogPath(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	p := opLogPath()
+	/* 单代轮转：持续爆破登录时失败记录日积月累（锁定桶有界但不为零），
+	   超 8MB 整体改名 .bak 重头开始（旧 .bak 被覆盖，保留最近一代）。
+	   取舍：操作日志定位是「近期追溯」而非永久档案，单代足够且零维护 */
+	if st, serr := os.Stat(p); serr == nil && st.Size() > 8*1024*1024 {
+		os.Rename(p, p+".bak")
+	}
+	f, err := os.OpenFile(p, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return
 	}

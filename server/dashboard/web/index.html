@@ -1053,7 +1053,11 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
         </div>
         <div class="card">
           <div class="head"><h2>面板操作日志</h2><span class="sub" id="oplog-sub">管理面审计：签发 / 撤销 / 配置保存 / 服务控制 / 登录等</span>
-            <div class="tools"><a class="btn ghost small" id="oplog-dl" href="/api/oplog/download" download title="下载完整面板操作日志（JSONL，文件名带服务器时间戳）"><svg width="13" height="13"><use href="#i-download"/></svg>导出</a></div></div>
+            <div class="tools"><select class="ctl" id="oplog-filter" title="按类别过滤操作记录；「仅看失败」聚焦被拒/失败动作（排查爆破与误操作）" style="padding:3px 6px;font-size:12px">
+              <option value="all">全部</option><option value="fail">仅看失败</option>
+              <option value="acct">账户（登录/注销/改密）</option><option value="stanza">授权（签发/撤销/编辑等）</option>
+              <option value="conf">配置与方案</option><option value="svc">服务与审计</option>
+            </select><a class="btn ghost small" id="oplog-dl" href="/api/oplog/download" download title="下载完整面板操作日志（JSONL，文件名带服务器时间戳）"><svg width="13" height="13"><use href="#i-download"/></svg>导出</a></div></div>
           <div class="body" id="oplog-body"><div class="skel" style="height:60px"></div></div>
         </div>
         <div class="card">
@@ -5157,12 +5161,27 @@ async function loadOpLog() {
 }
 function renderOpLog() {
   const d = S.oplog; if (!d) return;
-  const es = (d.entries || []).slice().reverse();  /* 新→旧，与事件页同向 */
-  $('#oplog-sub').textContent = `管理面审计：签发 / 撤销 / 配置保存 / 服务控制 / 登录等 · 最近 ${es.length} 条 · 日志文件 ${fmtSize(d.size || 0)}`;
+  const all = (d.entries || []).slice().reverse();  /* 新→旧，与事件页同向 */
+  /* 类别过滤：爆破刷屏（锁定桶有界但持续尝试每天仍可观）时真实操作不被
+     淹没；「仅看失败」聚焦被拒/失败动作，排查爆破与误操作的第一入口 */
+  const catOf = op => {
+    if (/^(登录|注销|初始化面板|修改密码)/.test(op)) return 'acct';
+    if (/^(签发|撤销|恢复|编辑授权|重发授权|解绑)/.test(op)) return 'stanza';
+    if (/^(保存 fwknopd\.conf|方案：)/.test(op)) return 'conf';
+    return 'svc';  /* 服务控制：* / 清理审计日志 / 删除审计备份 */
+  };
+  const f = S.oplogFilter || 'all';
+  const es = f === 'all' ? all : (f === 'fail' ? all.filter(e => !e.ok) : all.filter(e => catOf(e.op) === f));
+  const failN = all.filter(e => !e.ok).length;
+  $('#oplog-sub').textContent = `管理面审计：签发 / 撤销 / 配置保存 / 服务控制 / 登录等 · 显示 ${es.length}/${all.length} 条` +
+    (failN ? ` · ${failN} 次失败` : '') + ` · 日志文件 ${fmtSize(d.size || 0)}`;
   const dl = $('#oplog-dl');
   if (dl) dl.style.display = d.size ? '' : 'none';  /* 空文件不提供无意义下载 */
   if (!es.length) {
-    $('#oplog-body').innerHTML = `<div class="empty">${icon('i-list',40)}
+    $('#oplog-body').innerHTML = all.length
+      ? `<div class="empty">${icon('i-list',40)}<div class="t">该类别下暂无记录</div>
+        <div class="d">最近 ${all.length} 条操作均不在当前过滤类别内，切换上方过滤器查看</div></div>`
+      : `<div class="empty">${icon('i-list',40)}
       <div class="t">暂无操作记录</div>
       <div class="d">面板操作日志从本次升级起开始记录：签发 / 撤销 / 解绑 / 配置保存 / 方案操作 / 服务控制 / 登录注销 / 修改密码都会入档（JSONL，0600）</div></div>`;
     return;
@@ -5177,6 +5196,7 @@ function renderOpLog() {
       <td>${e.ok ? '<span style="color:var(--green)" title="成功">✓</span>' : '<span style="color:var(--red)" title="失败/被拒">✗</span>'}</td>
     </tr>`).join('')}</tbody></table></div>`;
 }
+$('#oplog-filter').onchange = e => { S.oplogFilter = e.target.value; renderOpLog(); };
 function renderAbout() {
   const d = S.overview;
   const F = (d && d.files) || {};
