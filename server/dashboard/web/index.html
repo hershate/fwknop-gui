@@ -934,7 +934,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="head">
             <h2>编辑 fwknopd.conf</h2><span class="sub">保存前自动预检（fwknopd --exit-parse-config），通过后备份并热加载 · <span style="color:var(--amber)">▎</span>已修改 <span style="color:var(--green)">▎</span>新增</span>
             <div class="tools">
-              <input class="ctl" id="conf-filter" placeholder="过滤指令名…" style="width:150px;padding:4px 8px;font-size:12.5px"><span class="hint" id="conf-filter-n" style="font-size:11.5px"></span>
+              <input class="ctl" id="conf-filter" placeholder="过滤指令名…" title="按指令名过滤编辑行（大小写不敏感；快捷键 / 在编辑器打开时聚焦此处）" style="width:150px;padding:4px 8px;font-size:12.5px"><span class="hint" id="conf-filter-n" style="font-size:11.5px"></span>
               <button class="btn ghost small" id="conf-add-row"><svg width="14" height="14"><use href="#i-plus"/></svg>新增指令</button>
               <button class="btn ghost small" id="conf-raw-edit">原文编辑</button>
               <button class="btn ghost small" id="conf-discard" title="放弃全部未保存修改，恢复为已保存的配置">放弃修改</button>
@@ -4497,8 +4497,8 @@ function renderAbout() {
       TOTP 动态口令严格依赖双方时钟一致，偏差过大会导致合法敲门被判定超时，请校准 NTP。</div></div>`;
   }
   const rows = [
-    ['面板版本', 'v' + (d ? d.version : '…')],
-    ['SPA 协议版本', '4.0.0'],
+    ['面板版本', `<span class="cp-cell" data-cp="v${d ? d.version : ''}" title="点击复制版本号（报障时随附）">v${d ? d.version : '…'}</span>`],
+    ['SPA 协议版本', '<span class="cp-cell" data-cp="4.0.0" title="点击复制协议版本">4.0.0</span>'],
     /* 面板自身运行参数：多实例部署时确认「看的是哪个面板」；路径可点击复制 */
     ...(d && d.panel ? [[
       '面板运行',
