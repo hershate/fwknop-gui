@@ -1524,8 +1524,14 @@ function restartTimer() {
   if (S.auto) S.timer = setInterval(refreshNow, S.ivl);
   $('#foot-ivl').textContent = S.ivl / 1000;
 }
-$('#auto-sw').onchange = e => { S.auto = e.target.checked; restartTimer(); };
-$('#ivl-sel').onchange = e => { S.ivl = +e.target.value; restartTimer(); };
+$('#auto-sw').onchange = e => { S.auto = e.target.checked; try { localStorage.setItem('fwknop-auto', S.auto ? '1' : '0'); } catch (e2) {} restartTimer(); };
+$('#ivl-sel').onchange = e => { S.ivl = +e.target.value; try { localStorage.setItem('fwknop-ivl', String(S.ivl)); } catch (e2) {} restartTimer(); };
+/* 自动刷新开关/间隔持久化：与事件筛选等偏好一致，刷新页面后恢复 */
+try {
+  if (localStorage.getItem('fwknop-auto') === '0') { S.auto = false; $('#auto-sw').checked = false; }
+  const pv = +(localStorage.getItem('fwknop-ivl') || 0);
+  if ([3000, 5000, 10000, 30000].includes(pv)) { S.ivl = pv; $('#ivl-sel').value = String(pv); }
+} catch (e) {}
 $('#daemon-pill').onclick = () => {
   const go = () => $('#svc-card').scrollIntoView({ behavior:'smooth', block:'start' });
   if (S.page === 'overview') go(); else { showPage('overview'); setTimeout(go, 60); }
