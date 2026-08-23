@@ -1698,7 +1698,7 @@ document.addEventListener('touchend', e => {
 
 /* .cp-cell 点击复制、.tmtoggle 时间列切换、分组折叠头等全局键盘可达：模板
    生成点多，用 MutationObserver 统一补 tabindex，Enter/空格经事件委托触发其 click */
-const KB_CLICK_SEL = '.cp-cell, .tmtoggle, .evh-hot, .sum-link, .ratiobad-seg, .conf-grp, #dis-toggle';
+const KB_CLICK_SEL = '.cp-cell, .tmtoggle, .evh-hot, .sum-link, .ratiobad-seg, .conf-grp, #dis-toggle, [data-pg]';
 new MutationObserver(muts => {
   for (const m of muts) m.addedNodes.forEach(n => {
     if (n.nodeType !== 1) return;
@@ -2156,7 +2156,7 @@ function renderStatusCards() {
       tip: 'access.conf 中的 stanza 计数（生效 / 已注释禁用）；点击查看「用户与授权」明细' },
   ];
   $('#status-cards').innerHTML = cards.map(c => `
-    <div class="stat-card"${c.pg ? ` data-pg="${c.pg}"` : ''}${c.tip ? ` title="${c.tip}"` : ''}>
+    <div class="stat-card"${c.pg ? ` data-pg="${c.pg}" role="button"` : ''}${c.tip ? ` title="${c.tip}"` : ''}>
       <div class="ic" style="color:${c.c};background:${c.bg}">${icon(c.ic, 19)}</div>
       <div><div class="k">${c.k}</div><div class="v">${c.v}</div></div>
     </div>`).join('');
