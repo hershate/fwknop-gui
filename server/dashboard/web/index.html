@@ -650,7 +650,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <span class="hint">至</span>
                 <input type="datetime-local" class="ctl" id="ev-to" title="截止时间" style="padding:4px 6px;font-size:12px">
               </span>
-              <span class="srch-wrap"><input class="ctl" id="event-search" list="ev-hist" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口…" style="width:230px"><datalist id="ev-hist"></datalist><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+              <span class="srch-wrap"><input class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口…" style="width:230px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
               <button class="btn ghost small" id="ev-density" title="切换表格行密度（紧凑模式一屏看更多事件）">紧凑</button>
               <button class="btn ghost small" id="ev-notify" title="后台标签页收到异常事件时弹桌面通知（需浏览器授权）"><svg width="14" height="14"><use href="#i-bell"/></svg>异常桌面通知</button>
               <button class="btn ghost small" id="ev-csv" title="把当前筛选结果导出为 CSV（可用表格软件打开）"><svg width="14" height="14"><use href="#i-download"/></svg>导出筛选 CSV</button>
@@ -2370,25 +2370,31 @@ function renderEvents() {
   };
 }
 $('#event-search').oninput = e => { S.evQuery = e.target.value.trim(); S.evPage = 0; renderEvents(); };
-/* 事件搜索历史：Enter/失焦时记录非空关键词（≥2 字符，最多 8 条，去重置顶），
-   datalist 下拉建议——反复排查同一 IP/用户/原因时免重输；芯片点击等程序化
-   赋值不记录 */
-const EV_HIST_KEY = 'fwknop-ev-hist';
-function evHist() { try { return JSON.parse(localStorage.getItem(EV_HIST_KEY) || '[]'); } catch (e) { return []; } }
-function renderEvHist() {
-  $('#ev-hist').innerHTML = evHist().map(h => `<option value="${esc(h)}"></option>`).join('');
+/* 搜索历史通用组件：Enter/失焦时记录非空关键词（≥2 字符，最多 8 条、去重
+   置顶），datalist 下拉直接点选；排行芯片等程序化赋值不记录，只收主动输入。
+   事件 / 用户 / TOFU 三页复用（事件页沿用上一轮 key 不丢既有历史） */
+function attachSearchHistory(input, key) {
+  const dl = document.createElement('datalist');
+  dl.id = key + '-dl';
+  input.setAttribute('list', dl.id);
+  input.insertAdjacentElement('afterend', dl);
+  const read = () => { try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { return []; } };
+  const render = () => { dl.innerHTML = read().map(h => `<option value="${esc(h)}"></option>`).join(''); };
+  const push = q => {
+    q = (q || '').trim();
+    if (q.length < 2) return;
+    const h = read().filter(x => x !== q);
+    h.unshift(q);
+    try { localStorage.setItem(key, JSON.stringify(h.slice(0, 8))); } catch (e) {}
+    render();
+  };
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') push(e.target.value); });
+  input.addEventListener('blur', () => push(input.value));
+  render();
 }
-function pushEvHist(q) {
-  q = (q || '').trim();
-  if (q.length < 2) return;
-  const h = evHist().filter(x => x !== q);
-  h.unshift(q);
-  try { localStorage.setItem(EV_HIST_KEY, JSON.stringify(h.slice(0, 8))); } catch (e) {}
-  renderEvHist();
-}
-$('#event-search').addEventListener('keydown', e => { if (e.key === 'Enter') pushEvHist(e.target.value); });
-$('#event-search').addEventListener('blur', () => pushEvHist($('#event-search').value));
-renderEvHist();
+attachSearchHistory($('#event-search'), 'fwknop-ev-hist');
+attachSearchHistory($('#users-search'), 'fwknop-hist-users');
+attachSearchHistory($('#tofu-search'), 'fwknop-hist-tofu');
 $('#ev-time').onchange = e => {
   S.evTime = e.target.value; S.evPage = 0;
   $('#ev-custom').style.display = S.evTime === 'custom' ? 'inline-flex' : 'none';
