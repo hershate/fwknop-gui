@@ -2137,26 +2137,30 @@ function renderStatusCards() {
       const bakNote = bk.count ? (bkHeavy
         ? ` · <span style="color:var(--amber)" title="审计备份堆积占用磁盘：可到关于页逐个下载或删除">备份 ×${bk.count}（${fmtSize(bk.size)}）⚠ 建议清理</span>`
         : ` · 备份 ×${bk.count}（${fmtSize(bk.size)}）`) : '';
-      if (!a || !a.exists) return { ic:'activity', c:'var(--blue)', bg:'var(--blue-soft)', k:'审计日志',
+      if (!a || !a.exists) return { ic:'activity', c:'var(--blue)', bg:'var(--blue-soft)', k:'审计日志', pg:'about',
+        tip: '审计日志文件不存在；点击查看「关于」页文件状态与备份',
         v: bk.count ? `已清空 <small>${bkHeavy ? '<span style="color:var(--amber)">' : ''}备份 ×${bk.count}（${fmtSize(bk.size)}）${bkHeavy ? ' ⚠ 建议清理</span>' : ''}，可从关于页或清理回执下载</small>` : '缺失' };
       const clr = (S.writeEnabled && a.size > 0)
         ? ` <button class="btn ghost small" data-audclear="${a.size}" style="padding:2px 8px;font-size:11.5px" title="备份为 .bak-时间戳 文件后清空审计日志">清理</button>` : '';
-      if (a.size > 200*MB) return { ic:'activity', c:'var(--red)', bg:'var(--red-soft)', k:'审计日志',
+      if (a.size > 200*MB) return { ic:'activity', c:'var(--red)', bg:'var(--red-soft)', k:'审计日志', pg:'about',
+        tip: '审计日志过大：点击查看「关于」页导出/备份入口',
         v:`过大 <small>${fmtSize(a.size)} · 建议立即导出后清理，过大文件拖慢事件页${bakNote}</small>${clr}` };
-      if (a.size > 50*MB) return { ic:'activity', c:'var(--amber)', bg:'var(--amber-soft)', k:'审计日志',
+      if (a.size > 50*MB) return { ic:'activity', c:'var(--amber)', bg:'var(--amber-soft)', k:'审计日志', pg:'about',
+        tip: '审计日志偏大：点击查看「关于」页导出/备份入口',
         v:`偏大 <small>${fmtSize(a.size)} · 建议导出后清理${bakNote}</small>${clr}` };
-      return { ic:'activity', c:'var(--blue)', bg:'var(--blue-soft)', k:'审计日志',
+      return { ic:'activity', c:'var(--blue)', bg:'var(--blue-soft)', k:'审计日志', pg:'about',
+        tip: '审计日志正常；点击查看「关于」页文件状态与备份',
         v:`正常 <small>${fmtSize(a.size)} · ${fmtAgo(a.mtime)}更新${bakNote}</small>${clr}` };
     })(),
-    { ic:'bolt', c:'var(--amber)', bg:'var(--amber-soft)', k:'指标文件',
+    { ic:'bolt', c:'var(--amber)', bg:'var(--amber-soft)', k:'指标文件', pg:'about',
       v: F.metrics && F.metrics.exists ? `正常 <small>${fmtAgo(F.metrics.mtime)}更新</small>` : '缺失',
-      tip: F.metrics && F.metrics.exists ? 'fwknopd 周期重写的 Prometheus 指标，概览计数卡的数据源'
-        : '指标文件不存在：检查 fwknopd.conf 的 ENABLE_AUDIT 是否为 N，或 fwknopd 尚未运行' },
+      tip: (F.metrics && F.metrics.exists ? 'fwknopd 周期重写的 Prometheus 指标，概览计数卡的数据源'
+        : '指标文件不存在：检查 fwknopd.conf 的 ENABLE_AUDIT 是否为 N，或 fwknopd 尚未运行') + '；点击查看「关于」页文件状态' },
     { ic:'key', c: d.write_enabled ? 'var(--amber)' : 'var(--muted)',
-      bg: d.write_enabled ? 'var(--amber-soft)' : 'var(--panel-2)', k:'写操作模式',
+      bg: d.write_enabled ? 'var(--amber-soft)' : 'var(--panel-2)', k:'写操作模式', pg:'about',
       v: d.write_enabled ? '管理模式 <small>默认启用</small>' : '只读 <small>-read-only</small>',
-      tip: d.write_enabled ? '可执行签发/撤销/解绑/配置编辑/服务控制等写操作'
-        : '当前只读：所有写操作被服务端拒绝；去掉 -read-only 重启面板可启用管理模式' },
+      tip: (d.write_enabled ? '可执行签发/撤销/解绑/配置编辑/服务控制等写操作'
+        : '当前只读：所有写操作被服务端拒绝；去掉 -read-only 重启面板可启用管理模式') + '；点击查看「关于」页安全说明' },
     { ic:'cfg', c: d.admin_tool && d.admin_tool.available ? 'var(--teal)' : 'var(--red)',
       bg: d.admin_tool && d.admin_tool.available ? 'var(--teal-soft)' : 'var(--red-soft)', k:'管理工具',
       v: d.admin_tool && d.admin_tool.available ? 'fwknopd-admin 可用' : 'fwknopd-admin 不可用',
