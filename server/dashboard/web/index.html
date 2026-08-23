@@ -3194,6 +3194,7 @@ function saveAddDraft() {
   ADD_CHECKS.forEach(k => { d[k] = f[k].checked; });
   const act = $('.tpl-chip.active');
   if (act) d._tpl = act.dataset.tpl;  /* 模板选择状态一并入草稿 */
+  d._ts = Math.floor(Date.now() / 1000);  /* 保存时刻：恢复条上展示草稿年龄 */
   localStorage.setItem(ADD_DRAFT_KEY, JSON.stringify(d));
 }
 function loadAddDraft() {
@@ -3211,7 +3212,7 @@ function loadAddDraft() {
   }
   if (ADD_FIELDS.some(k => d[k])) {
     const strip = $('#add-draft-strip');
-    strip.innerHTML = `${icon('i-info',15)}<div>已恢复上次未提交的签发草稿。</div>
+    strip.innerHTML = `${icon('i-info',15)}<div>已恢复上次未提交的签发草稿${d._ts ? `（保存于 ${fmtAgo(d._ts)}）` : ''}。</div>
       <button type="button" class="btn ghost small" id="add-draft-clear" style="margin-left:auto">清空表单</button>`;
     strip.style.display = '';
     $('#add-draft-clear').onclick = () => {
