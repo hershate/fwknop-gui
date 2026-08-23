@@ -2261,11 +2261,16 @@ function tickSessTtl() {
 }
 setInterval(tickSessTtl, 30000);
 tickSessTtl();
-/* 会话过期后红字即按钮：点击直达登录页（无需先找注销按钮）；未过期时点击无效 */
+/* 会话过期后红字即按钮：点击直达登录页（无需先找注销按钮）；未过期时点击
+   报确切到期时刻——元素在 KB_CLICK_SEL 键盘可达，点击不应是无反馈死路 */
 $('#sess-ttl').style.cursor = 'pointer';
-$('#sess-ttl').title = '会话过期后点击此处重新登录';
+$('#sess-ttl').title = '点击查看会话到期的确切时刻；会话过期后点击此处重新登录';
 $('#sess-ttl').onclick = () => {
-  if (!S.sessionExp || S.sessionExp - Date.now() / 1000 > 0) return;
+  if (!S.sessionExp) return;
+  if (S.sessionExp - Date.now() / 1000 > 0) {
+    toast('会话仍有效，将于 ' + fmtAbs(S.sessionExp) + ' 过期', 'ok', 2500);
+    return;
+  }
   $('#logout-btn').click();  /* 复用注销链路：清服务端会话 + 回登录页 */
 };
 
