@@ -1084,6 +1084,10 @@ const icon = (n, sz) => `<svg width="${sz||16}" height="${sz||16}"><use href="#i
    功能中断不可接受。读侧 getItem 不抛配额错，沿用内联 try 风格 */
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
+/* JS 平滑滚动同样尊重系统「减弱动效」偏好：CSS 的 prefers-reduced-motion 块
+   管不到 scrollTo/scrollIntoView 的 behavior 参数，前庭敏感用户会被平滑滚动
+   晃到。所有滚动调用统一走 SB()，每次调用时查询（偏好运行中切换也即时生效） */
+const SB = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
 
 /* 通知历史：toast 入档（合并重发的累计计数同步到历史），侧栏铃铛可追溯 */
 try { S.notifLog = JSON.parse(sessionStorage.getItem('fwknop-notif-log') || '[]'); } catch (e) { S.notifLog = []; }
@@ -1950,7 +1954,7 @@ $('#kbd-btn').onclick = showKbdHelp;
 window.addEventListener('scroll', () => {
   $('#to-top').style.display = window.scrollY > 400 ? 'inline-flex' : 'none';
 }, { passive: true });
-$('#to-top').onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+$('#to-top').onclick = () => window.scrollTo({ top: 0, behavior: SB() });
 
 /* ==================== 自动刷新 ==================== */
 function restartTimer() {
@@ -1969,7 +1973,7 @@ try {
   if ([3000, 5000, 10000, 30000, 60000].includes(pv)) { S.ivl = pv; $('#ivl-sel').value = String(pv); }
 } catch (e) {}
 $('#daemon-pill').onclick = () => {
-  const go = () => $('#svc-card').scrollIntoView({ behavior:'smooth', block:'start' });
+  const go = () => $('#svc-card').scrollIntoView({ behavior: SB(), block:'start' });
   if (S.page === 'overview') go(); else { showPage('overview'); setTimeout(go, 60); }
 };
 $('#refresh-btn').onclick = () => {
@@ -2404,7 +2408,7 @@ function renderSummary() {
       return ['指标生成时间',
         t.toLocaleTimeString('zh-CN',{hour12:false}) +
           (stale ? ' <span style="color:var(--amber)" title="指标超过 5 分钟未更新，fwknopd 可能未在运行或审计输出被关闭；点击直达服务控制">⚠ 陈旧 · 去服务控制 ↓</span>' : ''),
-        stale ? () => $('#svc-card').scrollIntoView({ behavior:'smooth', block:'start' }) : null];
+        stale ? () => $('#svc-card').scrollIntoView({ behavior: SB(), block:'start' }) : null];
     })(),
   ];
   $('#summary-body').innerHTML = `<div class="form-grid">` + rows.map(([k,v], i) =>
@@ -3043,7 +3047,7 @@ function renderEvents() {
         /* 展开后详情可能落在视口下方：滚入视野（nearest 不打扰已可见的行） */
         if (S.evExpanded.has(k)) {
           const det = document.querySelector(`tr[data-detail="${CSS.escape(k)}"]`);
-          if (det) det.scrollIntoView({ behavior:'smooth', block:'nearest' });
+          if (det) det.scrollIntoView({ behavior: SB(), block:'nearest' });
         }
       };
       tr.onclick = ev => {
@@ -3089,7 +3093,7 @@ function renderEvents() {
     const tw = document.querySelector('#page-events .tb-wrap');
     if (!tw) return;
     const y = tw.getBoundingClientRect().top + window.scrollY - 56;  /* 56 ≈ 吸附顶栏高 + 间隙 */
-    if (window.scrollY > y) window.scrollTo({ top: y, behavior: 'smooth' });
+    if (window.scrollY > y) window.scrollTo({ top: y, behavior: SB() });
   };
   if (pv) pv.onclick = () => { S.evPage--; renderEvents(); scrollEvTop(); };
   if (nx) nx.onclick = () => { S.evPage++; renderEvents(); scrollEvTop(); };
@@ -3336,7 +3340,7 @@ function renderUsers() {
     if (ea) ea.onclick = () => {
       const c = $('#add-card');
       if (c.style.display === 'none') $('#show-add').click();  /* 展开（含草稿恢复/滚动定位） */
-      else c.scrollIntoView({ behavior:'smooth', block:'start' });
+      else c.scrollIntoView({ behavior: SB(), block:'start' });
     };
   } else {
   $('#users-body').innerHTML = st.map(s => {
@@ -3512,7 +3516,7 @@ $('#show-add').onclick = () => {
   if (c.style.display !== 'none') {
     renderServerHistory(); renderCustomTpls(); loadAddDraft();
     if (!S.config) loadConfig();  /* 端口范围跨配置校验需要 PCAP_PORT_RANGE */
-    c.scrollIntoView({ behavior:'smooth', block:'start' });
+    c.scrollIntoView({ behavior: SB(), block:'start' });
     setTimeout(() => $('#add-form').name.focus(), 250);  /* 展开后聚焦第一必填项（等滚动落定） */
   }
 };
@@ -4140,7 +4144,7 @@ $('#add-form').addEventListener('submit', async ev => {
     const r = await api('/api/admin/add', { method:'POST', body: fd });
     $('#add-result').style.display = '';
     /* 长表单下结果区可能在视口外：平滑滚动定位 + 闪烁提示 */
-    $('#add-result').scrollIntoView({ behavior:'smooth', block:'nearest' });
+    $('#add-result').scrollIntoView({ behavior: SB(), block:'nearest' });
     $('#add-result').classList.remove('flash-prefill');
     void $('#add-result').offsetWidth;
     $('#add-result').classList.add('flash-prefill');
@@ -4216,7 +4220,7 @@ $('#add-form').addEventListener('submit', async ev => {
 /* 「再签一个」：收起结果区，平滑滚动回表单顶部并聚焦名称框（批量签发场景） */
 $('#add-next').onclick = () => {
   $('#add-result').style.display = 'none';
-  $('#add-form').name.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  $('#add-form').name.scrollIntoView({ behavior: SB(), block: 'center' });
   $('#add-form').name.focus();
 };
 
@@ -4660,7 +4664,7 @@ function renderConfig() {
         return ki && ki.value.trim() === b.dataset.ceEdit;
       });
       if (!tgt) { toast('编辑器中未找到该指令', 'err', 2500); return; }
-      tgt.scrollIntoView({ behavior:'smooth', block:'center' });
+      tgt.scrollIntoView({ behavior: SB(), block:'center' });
       const vi = tgt.querySelector('.ce-val');
       if (vi) setTimeout(() => vi.focus(), 200);  /* 等滚动落定 */
     }, 50);
@@ -5273,7 +5277,7 @@ $('#conf-edit-btn').onclick = () => {
     $('#conf-raw-area').value = (S.config && S.config.raw) || '';
     $('#conf-save-out').style.display = 'none';
     renderConfEditor();
-    $('#conf-editor').scrollIntoView({ behavior:'smooth', block:'start' });
+    $('#conf-editor').scrollIntoView({ behavior: SB(), block:'start' });
   }
 };
 /* 未保存圆点点击直达编辑器（阻止冒泡到导航按钮；编辑器已开则只切页） */
@@ -5301,7 +5305,7 @@ $('#conf-add-row').onclick = () => {
   const rows = $$('#conf-edit-rows > div');
   const last = rows[rows.length - 1];
   if (last) {
-    last.scrollIntoView({ behavior:'smooth', block:'center' });
+    last.scrollIntoView({ behavior: SB(), block:'center' });
     const ki = last.querySelector('.ce-key');
     if (ki) setTimeout(() => ki.focus(), 200);  /* 等滚动落定 */
   }
@@ -5408,7 +5412,7 @@ $$('[data-ctpl]').forEach(chip => {
     return ki && tplKeys.has(ki.value.trim());
   });
   hitRows.forEach(r => { r.classList.add('flash-prefill'); setTimeout(() => r.classList.remove('flash-prefill'), 1600); });
-  if (hitRows[0]) hitRows[0].scrollIntoView({ behavior:'smooth', block:'center' });
+  if (hitRows[0]) hitRows[0].scrollIntoView({ behavior: SB(), block:'center' });
   toast(`模板已合并（更新 ${upd} 项、新增 ${add} 项），点击右上角「保存」生效`, 'ok', 5000);
   };
 });
