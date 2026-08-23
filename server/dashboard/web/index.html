@@ -627,6 +627,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <div class="hint" id="svc-hint" style="margin-top:10px"></div>
           </div>
         </div>
+        <div id="ov-clock-warn"></div>
         <div class="grid-status" id="status-cards"><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div></div>
         <div class="card">
           <div class="body" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:13px 20px">
@@ -1808,6 +1809,15 @@ async function loadOverview() {
 
 function renderStatusCards() {
   const d = S.overview; if (!d) return;
+  /* 时钟偏差警示提到概览顶部：TOTP 敲门严格依赖客户端/服务器/浏览器时钟
+     一致，偏差 >60s 会在事件页表现为「过期」拒绝，根因却不在事件里 */
+  const cw = $('#ov-clock-warn');
+  if (cw) {
+    const drift = d.now ? Math.round(Date.now() / 1000 - d.now) : 0;
+    cw.innerHTML = Math.abs(drift) > 60 ? `<div class="warn-strip" style="margin-bottom:12px">${icon('i-warn',15)}<div>
+      浏览器与服务器时钟偏差约 <b>${Math.abs(drift)}</b> 秒（${drift > 0 ? '浏览器快' : '服务器快'}）。
+      TOTP 动态口令严格依赖双方时钟一致，偏差过大会导致合法敲门被判超时，请校准 NTP。</div></div>` : '';
+  }
   const F = d.files || {};
   /* 快速操作「导出审计日志」实时标注当前文件大小与更新时间，下载前即有预期 */
   const qa = $('#qa-audit');
