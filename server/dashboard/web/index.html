@@ -2789,6 +2789,28 @@ function loadCustomTpls() {
 }
 function allTpl(key) { return ADD_TEMPLATES[key] || loadCustomTpls()[key]; }
 
+/* 模板高亮一致性：手动改值或「签发类似」预填后，若表单与高亮模板不再完全
+   一致则撤下高亮与描述——否则高亮会误导为「当前配置=该模板」 */
+function tplMatches(t) {
+  const f = $('#add-form');
+  return f.access.value.trim() === (t.access || '') &&
+    f.totp.checked === !!t.totp &&
+    f['port-range'].value.trim() === (t.portRange || '') &&
+    f['require-fingerprint'].checked === !!t.fingerprint &&
+    f['tofu-timeout'].value.trim() === (t.tofuTimeout || '') &&
+    f['require-totp-port-match'].checked === !!t.portMatch &&
+    f['fw-timeout'].value.trim() === (t.fwTimeout || '');
+}
+function syncTplActive() {
+  const act = $('.tpl-chip.active');
+  if (!act) return;
+  const t = allTpl(act.dataset.tpl);
+  if (t && !tplMatches(t)) {
+    act.classList.remove('active');
+    $('#tpl-desc').textContent = '';
+  }
+}
+
 function applyAddTemplate(key, chip) {
   const t = allTpl(key);
   if (!t) return;
@@ -3074,6 +3096,7 @@ $('#add-sec-toggle').addEventListener('keydown', e => {
 });
 ['input', 'change'].forEach(ev => $('#add-form').addEventListener(ev, () => {
   if ($('#add-sec-body').style.display === 'none') $('#add-sec-summary').textContent = addSecSummary();
+  syncTplActive();
 }));
 setAddSecCollapsed(localStorage.getItem('fwknop-add-sec') === '1');
 
