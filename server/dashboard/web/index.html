@@ -3736,7 +3736,7 @@ function renderTOFU() {
     renderTOFU();
     toast(`已选中 ${orphanN} 条悬空绑定，点击「批量解绑」完成清理`, 'ok', 5000);
   };
-  $('#tofu-file').textContent = d.file.exists ? `状态文件更新于 ${fmtAgo(d.file.mtime)}` : '状态文件不存在';
+  $('#tofu-file').textContent = d.file.exists ? `状态文件更新于 ${fmtAgo(d.file.mtime)}` : '状态文件不存在（首个设备完成 TOFU 绑定后自动创建）';
   if (!bs.length) {
     /* 无绑定但近期有指纹未知拒绝：提示可能 TOFU 未启用/宽限已过，并给反查入口 */
     const now = Date.now() / 1000;
