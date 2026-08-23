@@ -676,6 +676,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               </span>
               <span class="srch-wrap"><input class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口…（支持 user:/ip:/dev:/port: 前缀）" title="全字段子串匹配；前缀语法精确限定字段：user:admin、ip:192.168、dev:指纹前缀、port:22（SPA 与目标端口都匹配）" style="width:270px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
               <button class="btn ghost small" id="ev-density" title="切换表格行密度（紧凑模式一屏看更多事件）">紧凑</button>
+              <button class="btn ghost small" id="ev-expand-all" title="展开/收起当前页全部事件详情（对比多条事件字段用）">展开全部</button>
               <button class="btn ghost small" id="ev-notify" title="后台标签页收到异常事件时弹桌面通知（需浏览器授权）"><svg width="14" height="14"><use href="#i-bell"/></svg>异常桌面通知</button>
               <button class="btn ghost small" id="ev-csv" title="把当前筛选结果导出为 CSV（可用表格软件打开）"><svg width="14" height="14"><use href="#i-download"/></svg>导出筛选 CSV</button>
               <a class="btn ghost small" href="/api/audit/download" download title="下载完整审计日志（JSONL）"><svg width="14" height="14"><use href="#i-download"/></svg>导出原始</a>
@@ -2257,6 +2258,17 @@ function initDensityToggle(btnSel, bodySel, key) {
 initDensityToggle('#ev-density', '#events-body', 'fwknop-ev-dense');
 initDensityToggle('#tofu-density', '#tofu-body', 'fwknop-tofu-dense');
 
+/* 展开全部/收起本页：对比多条事件字段时免去逐行点击；按钮文案随状态切换
+   （renderEvents 末尾同步），操作范围只限当前页行，避免误收其他页的展开 */
+$('#ev-expand-all').onclick = () => {
+  if (!S.evExpanded) S.evExpanded = new Set();
+  const keys = $$('#events-body tr.ev-click').map(tr => tr.dataset.key);
+  if (!keys.length) return;
+  const allOpen = keys.every(k => S.evExpanded.has(k));
+  keys.forEach(k => { if (allOpen) S.evExpanded.delete(k); else S.evExpanded.add(k); });
+  renderEvents();
+};
+
 $('#ev-new-pill').onclick = () => {
   S.evPage = 0; S.evFilter = 'all'; S.evQuery = ''; $('#event-search').value = '';
   $('#ev-new-pill').style.display = 'none';
@@ -2774,6 +2786,13 @@ function renderEvents() {
   if (S.page === 'events') {
     const want = evHashFor('events');
     if (location.hash !== want) history.replaceState(null, '', want);
+  }
+  /* 「展开全部」按钮文案随当前页展开状态切换 */
+  const xa = $('#ev-expand-all');
+  if (xa) {
+    const keys = $$('#events-body tr.ev-click').map(tr => tr.dataset.key);
+    const allOpen = keys.length > 0 && keys.every(k => S.evExpanded && S.evExpanded.has(k));
+    xa.textContent = allOpen ? '收起本页' : '展开全部';
   }
 }
 $('#event-search').oninput = e => { S.evQuery = e.target.value.trim(); S.evPage = 0; renderEvents(); };
