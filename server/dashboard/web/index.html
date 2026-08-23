@@ -1239,6 +1239,29 @@ $('#login-btn').onclick = submitLogin;
 $('#setup-pw2').addEventListener('keydown', e => { if (e.key === 'Enter') submitSetup(); });
 $('#login-pw').addEventListener('keydown', e => { if (e.key === 'Enter') submitLogin(); });
 
+/* 初始化密码实时反馈：长度/一致性即时可见，附简易强度评估（长度+字符类），
+   避免提交后才报错往返 */
+const pwStrength = v => {
+  let s = 0;
+  if (v.length >= 8) s++;
+  if (v.length >= 12) s++;
+  if (/[a-z]/.test(v) && /[A-Z]/.test(v)) s++;
+  if (/\d/.test(v)) s++;
+  if (/[^a-zA-Z0-9]/.test(v)) s++;
+  return s <= 2 ? ['弱', 'var(--red)'] : s <= 3 ? ['中', 'var(--amber)'] : ['强', 'var(--green)'];
+};
+const setupPwCheck = () => {
+  const pw1 = $('#setup-pw1').value, pw2 = $('#setup-pw2').value, el = $('#setup-pw-hint');
+  if (!pw1 && !pw2) { el.innerHTML = ''; return; }
+  const [lab, col] = pwStrength(pw1);
+  const parts = [pw1.length >= 8 ? ['✓ 长度达标', 'var(--green)'] : ['✗ 至少 8 位', 'var(--red)']];
+  if (pw2) parts.push(pw1 === pw2 ? ['✓ 两次一致', 'var(--green)'] : ['✗ 两次不一致', 'var(--red)']);
+  parts.push([`强度：${lab}`, col]);
+  el.innerHTML = parts.map(([t, c]) => `<span style="color:${c}">${t}</span>`).join(' · ');
+};
+$('#setup-pw1').addEventListener('input', setupPwCheck);
+$('#setup-pw2').addEventListener('input', setupPwCheck);
+
 /* Caps Lock 警示：密码框内大写锁定开启时提示（登录失败最常见诱因之一）。
    显隐切换会把 type 改成 text，故按元素 id 绑定而非 type 选择器。 */
 ['setup-pw1', 'setup-pw2', 'login-pw'].forEach(id => {
