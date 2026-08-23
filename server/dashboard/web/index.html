@@ -5301,7 +5301,7 @@ function renderProfiles() {
     inp.focus(); inp.select();
     const check = () => {
       const v = inp.value.trim();
-      const bad = v && !/^[A-Za-z0-9._-]{1,64}$/.test(v);
+      const bad = v && !pfNameOK(v);
       const dup = S.profiles && ((S.profiles.profiles) || []).some(p => p.name === v);
       hint.textContent = !v ? '' : bad ? '名称含非法字符' : dup ? '已存在同名方案' : '';
       hint.style.color = 'var(--red)';
@@ -5337,10 +5337,14 @@ function renderProfiles() {
   });
 }
 
-/* 方案名查重：同名方案会被静默覆盖（saveProfile 直接 MkdirAll+copyFile），保存前预警 */
+/* 方案名查重：同名方案会被静默覆盖（saveProfile 直接 MkdirAll+copyFile），保存前预警；
+   字符集与服务端 profileNameRe 同源（confedit.go），非法格式即时拦截免走确认框 */
+const PF_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+function pfNameOK(v) { return PF_NAME_RE.test(v); }
 $('#pf-name').addEventListener('input', () => {
   const v = $('#pf-name').value.trim(), el = $('#pf-name-hint');
   if (!v) { el.textContent = ''; el.className = 'auth-hint'; return; }
+  if (!pfNameOK(v)) { fmtHint(el, false, '', '⚠ 方案名需以字母/数字开头，仅含字母、数字、. _ -（≤64 字符）'); return; }
   const dup = ((S.profiles && S.profiles.profiles) || []).find(x => x.name === v);
   if (dup) fmtHint(el, false, '', `⚠ 将覆盖现有方案「${v}」${dup.created ? '（保存于 ' + fmtAbs(dup.created) + '）' : ''}`);
   else fmtHint(el, true, '✓ 新方案名', '');
@@ -5365,6 +5369,7 @@ $('#pf-autoname').onclick = () => {
 $('#pf-save').onclick = () => {
   const name = $('#pf-name').value.trim(), note = $('#pf-note').value.trim();
   if (!name) { toast('请填写方案名', 'err'); return; }
+  if (!pfNameOK(name)) { toast('方案名需以字母/数字开头，仅含字母、数字、. _ -（≤64 字符）', 'err'); $('#pf-name').focus(); return; }
   const dup = ((S.profiles && S.profiles.profiles) || []).some(x => x.name === name);
   confirmDialog('保存配置方案', `把当前 fwknopd.conf + access.conf 快照保存为方案「<b>${esc(name)}</b>」？${dup ? '<br><b style="color:var(--red)">同名方案已存在，其快照将被覆盖！</b>' : ''}`, '保存',
     async () => {
