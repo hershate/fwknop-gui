@@ -6010,6 +6010,7 @@ function openStanzaEditor(index) {
     <div class="mb">仅可编辑非密钥指令；密钥与指纹白名单保持不变。保存前自动预检，原文件自动备份。</div>
     <div class="form-grid" style="max-height:52vh;overflow-y:auto;padding-right:6px">${rows}</div>
     <div class="hint" id="se-diff" style="margin-top:10px;font-size:12px;line-height:1.8" aria-live="polite"></div>
+    <div class="hint" id="se-err" role="alert" style="display:none;color:var(--red);margin-top:8px;font-size:12.5px;white-space:pre-wrap;max-height:120px;overflow:auto"></div>
     <div class="mf" style="margin-top:16px">
       <button class="btn ghost" id="se-cancel">取消</button>
       <button class="btn" id="se-save" title="保存并热加载生效（Ctrl/⌘+S）">${icon('i-save',14)}保存并生效</button>
@@ -6179,18 +6180,34 @@ function openStanzaEditor(index) {
     if (fields.REQUIRE_FINGERPRINT !== 'Y') fields.FINGERPRINT_TOFU_TIMEOUT = '';
     if (!s.has_totp) { fields.TOTP_PORT_RANGE = ''; fields.REQUIRE_TOTP_PORT_MATCH = ''; }
     $('#se-save').disabled = true;
+    const eb0 = $('#se-err'); if (eb0) eb0.style.display = 'none';  /* 重试时收起上次错误 */
     try {
       const r = await api('/api/config/stanza', { method:'POST',
         headers:{'Content-Type':'application/json'},
         /* 序号移位防护：带上打开编辑器时的授权身份，服务端发现列表已变化
            （并发增删致序号移位）会拒绝保存，防止编辑落到错误的 stanza 上 */
         body: JSON.stringify({ index, fields, expect_name: s.name || '', expect_source: s.source || '' }) });
+      if (r.error) {
+        /* 保存被拒不丢现场：此前失败即 closeModal + infoModal，11 个字段的
+           修改随编辑器 DOM 一起销毁（infoModal 复用同一 modal-root 也保不住），
+           网络层失败反而因 catch 路径保得住——行为倒挂。改为编辑器内联报错：
+           预检类失败修正后直接重试；序号移位冲突需重开编辑器（expect 身份已
+           过期），但值留在表单里可抄录，不再静默消失 */
+        const eb = $('#se-err');
+        if (eb) {
+          eb.style.display = '';
+          eb.textContent = '保存失败：' + (r.output ? r.output.slice(-600) + '\n' : '') + r.error +
+            (/授权列表已变化/.test(r.error)
+              ? '\n授权列表已在编辑期间变化：请抄录修改内容后关闭编辑器，重新打开再试（列表已为您刷新）。'
+              : '\n修改内容仍在表单中，修正后可直接重试。');
+        }
+        $('#se-save').disabled = false;
+        if (/授权列表已变化/.test(r.error)) loadUsers();
+        return;
+      }
       modalGuard = null;
       closeModal();
-      if (r.error) { toast('保存失败', 'err'); infoModal('编辑授权 — 失败', r.output + '\n' + r.error, true);
-        /* 序号移位冲突：授权列表已过期，立刻重拉，避免重开编辑器再撞同一冲突 */
-        if (/授权列表已变化/.test(r.error)) loadUsers(); }
-      else { toast('授权已更新', 'ok'); loadUsers(); }
+      toast('授权已更新', 'ok'); loadUsers();
     } catch (e) { $('#se-save').disabled = false; }
   };
 }
