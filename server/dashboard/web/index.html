@@ -1351,6 +1351,13 @@ async function copyText(t, label) {
   }
 }
 
+/* 下载文件名片段清洗（Unicode 感知）：保留各文字体系的字母与数字——旧
+   [^\w.-] 只认 ASCII，把中文搜索词/授权名整段坍缩成下划线（「异常」→ __、
+   「测试」→ __），导出文件并排无法区分、引导文案里的文件名也与实际不符；
+   非法字符连续段折叠为一个 _（含空白，shell 友好）。禁符口径：路径分隔、
+   Windows 保留符号与控制符全部落在 \p{L}\p{N}._- 之外，天然剔除 */
+const safeFileName = s => String(s || '').replace(/[^\p{L}\p{N}._-]+/gu, '_');
+
 /* ==================== 鉴权门（初始化 / 登录） ==================== */
 function showAuthView(which) {
   $('#auth-gate').style.display = '';
@@ -3729,7 +3736,7 @@ $('#ev-csv').onclick = async () => {
   /* 文件名携带筛选上下文：类型芯片 + 时间窗 + 搜索词（安全字符化），多文件并排可区分 */
   const tag = [S.evFilter !== 'all' ? S.evFilter : '',
     S.evTime && S.evTime !== 'all' ? S.evTime : '',
-    S.evQuery ? S.evQuery.replace(/[^\w.-]/g, '_').slice(0, 24) : '']
+    S.evQuery ? safeFileName(S.evQuery).slice(0, 24) : '']
     .filter(Boolean).join('_');
   a.download = 'fwknop_events_' + (tag ? tag + '_' : '') +
     new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.csv';
@@ -4825,7 +4832,7 @@ function uriToCredJson(uri) {
 function downloadCredJson(uri) {
   const json = uriToCredJson(uri);
   if (!json) { toast('URI 解析失败，无法生成 cred.json', 'err'); return; }
-  const name = ((uri.match(/[?&]name=([^&]*)/) || [])[1] || 'fwknop').replace(/[^\w.-]/g, '_');
+  const name = safeFileName((uri.match(/[?&]name=([^&]*)/) || [])[1] || 'fwknop');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([json + '\n'], { type: 'application/json' }));
   a.download = name + '.cred.json';
@@ -4849,7 +4856,7 @@ async function renderUriQr(uri, box, name) {
       <div style="background:#fff;padding:8px;border-radius:8px;line-height:0;flex:0 0 auto">${r.svg}</div>
       <div style="display:flex;flex-direction:column;gap:6px;min-width:180px">
         <button class="btn ghost small" data-qrpng style="align-self:flex-start" title="把二维码栅格化为 PNG 下载（客户端 fwknop import qr.png 导入；含密钥材料请妥善保管）">${icon('i-download',12)} 下载 PNG</button>
-        <span class="hint" style="font-size:11.5px;line-height:1.6">手机客户端扫码录入，或下载 PNG 后<br><code>fwknop import ${esc((name || 'fwknop').replace(/[^\w.-]/g, '_'))}-qr.png</code></span>
+        <span class="hint" style="font-size:11.5px;line-height:1.6">手机客户端扫码录入，或下载 PNG 后<br><code>fwknop import ${esc(safeFileName(name || 'fwknop'))}-qr.png</code></span>
       </div></div>`;
     const svgEl = box.querySelector('svg');
     /* 读屏语义：二维码是有意义图形（非装饰图标），标注 role/aria-label
@@ -4883,7 +4890,7 @@ function downloadQrPng(svgEl, name) {
     URL.revokeObjectURL(url);
     const a = document.createElement('a');
     a.href = c.toDataURL('image/png');
-    a.download = (name || 'fwknop').replace(/[^\w.-]/g, '_') + '-qr.png';
+    a.download = safeFileName(name || 'fwknop') + '-qr.png';
     a.click();
     toast('已下载二维码 PNG（含密钥材料，请妥善保管）', 'ok');
   };
@@ -5338,7 +5345,7 @@ $('#tofu-csv').onclick = async () => {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   /* 文件名携带搜索上下文，多文件并排可区分 */
-  const tag = S.tofuQuery ? S.tofuQuery.replace(/[^\w.-]/g, '_').slice(0, 24) : '';
+  const tag = S.tofuQuery ? safeFileName(S.tofuQuery).slice(0, 24) : '';
   a.download = 'fwknop_tofu_' + (tag ? tag + '_' : '') +
     new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.csv';
   a.click();
@@ -5392,7 +5399,7 @@ $('#users-csv').onclick = async () => {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   /* 文件名携带搜索上下文，多文件并排可区分 */
-  const tag = S.usersQuery ? S.usersQuery.replace(/[^\w.-]/g, '_').slice(0, 24) : '';
+  const tag = S.usersQuery ? safeFileName(S.usersQuery).slice(0, 24) : '';
   a.download = 'fwknop_stanzas_' + (tag ? tag + '_' : '') +
     new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.csv';
   a.click();
@@ -5826,7 +5833,7 @@ $('#oplog-csv').onclick = () => {
   a.href = URL.createObjectURL(blob);
   /* 文件名携带筛选上下文（类别 + 搜索词），多文件并排可区分 */
   const f = S.oplogFilter || 'all';
-  const tag = [f !== 'all' ? f : '', S.oplogQuery ? S.oplogQuery.replace(/[^\w.-]/g, '_').slice(0, 24) : '']
+  const tag = [f !== 'all' ? f : '', S.oplogQuery ? safeFileName(S.oplogQuery).slice(0, 24) : '']
     .filter(Boolean).join('_');
   a.download = 'fwknop_oplog_' + (tag ? tag + '_' : '') +
     new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.csv';
