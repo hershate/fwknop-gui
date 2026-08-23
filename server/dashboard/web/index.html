@@ -2295,10 +2295,15 @@ function renderStatusCards() {
       TOTP 动态口令严格依赖双方时钟一致，偏差过大会导致合法敲门被判超时，请校准 NTP。</div></div>` : '';
     /* 非回环监听警示提升到概览顶部（此前仅「关于」页展示）：明文 HTTP + 密码
        登录绑到全网卡会把凭证暴露给链路嗅探——不点进关于页的 operator 也该在
-       进门第一眼看到这条安全态势 */
+       进门第一眼看到这条安全态势。
+       可消除：推荐拓扑本身就是「非回环 + TLS 反代」，已按建议部署的运维会被
+       永久误报条训练出告警盲。按监听地址记忆消除——换地址即重新浮现 */
     const la = d.panel && d.panel.listen_addr;
-    if (la && !panelLoopback(la)) warnHtml += `<div class="warn-strip" style="margin-bottom:12px">${icon('i-warn',15)}<div>
-      面板当前监听 <b>${esc(la)}</b>（非本机回环）。面板本身为明文 HTTP，远程访问会把登录凭证暴露给链路嗅探，请置于带 TLS 的反向代理之后，或改回 <code>127.0.0.1</code> 监听。</div></div>`;
+    let laDismissed = '';
+    try { laDismissed = localStorage.getItem('fwknop-warn-loopback-dismissed') || ''; } catch (e1) {}
+    if (la && !panelLoopback(la) && laDismissed !== la) warnHtml += `<div class="warn-strip" style="margin-bottom:12px">${icon('i-warn',15)}<div style="flex:1">
+      面板当前监听 <b>${esc(la)}</b>（非本机回环）。面板本身为明文 HTTP，远程访问会把登录凭证暴露给链路嗅探，请置于带 TLS 的反向代理之后，或改回 <code>127.0.0.1</code> 监听。
+      <button class="btn ghost small" id="ov-loopback-dismiss" style="margin-left:8px;padding:1px 8px;font-size:11.5px" title="已置于 TLS 反向代理之后，不再为此监听地址显示本警示（换地址会重新提示）">已加 TLS，不再提示</button></div></div>`;
     /* 面板开启期间的登录失败（他人正在尝试密码）：此前只能在关于页 oplog
        或下次登录 toast 察觉——概览轮询自带计数，进门即见；直达 oplog 核查来源 */
     if ((d.auth_fail_15m || 0) > 0) warnHtml += `<div class="warn-strip" style="margin-bottom:12px;border-color:var(--red)">${icon('i-warn',15)}<div style="flex:1">
@@ -2309,6 +2314,12 @@ function renderStatusCards() {
     if (afg) afg.onclick = () => {
       S.oplogQuery = '登录失败'; const os2 = $('#oplog-search'); if (os2) os2.value = '登录失败';
       showPage('about');
+    };
+    const lbd = $('#ov-loopback-dismiss');
+    if (lbd) lbd.onclick = () => {
+      try { localStorage.setItem('fwknop-warn-loopback-dismissed', la); } catch (e2) {}
+      renderStatusCards();  /* 立即摘条，不等下一轮轮询 */
+      toast('已隐藏该监听地址的非回环警示（换地址会重新提示）');
     };
   }
   /* 首次运行引导：0 授权（含已禁用也为 0，即从未配置过）时显示三步上线
