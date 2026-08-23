@@ -1721,6 +1721,12 @@ document.addEventListener('keydown', ev => {
   if (el) { ev.preventDefault(); el.click(); }
 });
 
+/* number 输入聚焦时滚轮会静默改值（跳页框误触常见），滚动即失焦防误改 */
+document.addEventListener('wheel', () => {
+  const a = document.activeElement;
+  if (a && a.type === 'number') a.blur();
+}, { passive: true });
+
 /* 全局快捷键：1-7 切页，/ 聚焦当前页搜索，r 手动刷新，Esc 关闭弹窗。
    输入框/下拉聚焦时或弹窗打开（除 Esc 外）不触发。 */
 const PAGE_KEYS = ['overview','events','users','tofu','config','profiles','about'];
