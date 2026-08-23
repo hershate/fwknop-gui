@@ -3104,6 +3104,8 @@ function renderEvents() {
             }
             if (/^aged_\d+s$/.test(r))
               return `<div style="grid-column:1/-1"><button class="btn ghost small" data-tip-conf="MAX_SPA_PACKET_AGE" title="跳到服务配置编辑器并定位该指令">${icon('i-cfg',12)} 定位 MAX_SPA_PACKET_AGE</button></div>`;
+            if (r === 'fingerprint_required_but_missing')
+              return `<div style="grid-column:1/-1"><button class="btn ghost small" data-tip-legacy="1" title="跳到签发卡片并套用「兼容 v3 旧客户端」模板（无指纹要求），为旧客户端另签过渡授权">${icon('i-plus',12)} 签发 v3 过渡授权</button></div>`;
             return ''; })()}
           <div style="align-self:end"><button class="btn ghost small" data-evjson="${esc(key)}" title="复制该事件的完整 JSON（排障/上报用）">${icon('i-copy',12)} 复制原始 JSON</button>
           <button class="btn ghost small" data-evsum="${esc(key)}" title="复制一行中文摘要（聊天/工单用）">${icon('i-copy',12)} 复制摘要</button>
@@ -3190,6 +3192,21 @@ function renderEvents() {
         const fi = document.querySelector('[data-sf="FINGERPRINT_TOFU_TIMEOUT"]');
         if (fi) { fi.focus(); fi.scrollIntoView({ block:'nearest' }); }
       }, 50);
+    });
+    /* 排障建议动作：签发 v3 过渡授权——跳用户页 + 展开签发卡 + 套用 legacy
+       模板（无指纹要求），名称留空聚焦待填；与「签发类似」语义互补：这里
+       要的是去掉指纹而非复制原授权的安全选项 */
+    $$('#events-body [data-tip-legacy]').forEach(b => b.onclick = ev => {
+      ev.stopPropagation();
+      showPage('users');
+      setTimeout(() => {
+        if ($('#add-card').style.display === 'none') $('#show-add').click();
+        const chip = document.querySelector('.tpl-chip[data-tpl="legacy"]');
+        if (chip) chip.click();
+        const nf = $('#add-form').name;
+        if (nf) nf.focus();
+        toast('已按「兼容 v3 旧客户端」模板预填，填写名称后签发即可', 'ok', 4000);
+      }, 60);
     });
     /* 排障建议动作：定位 MAX_SPA_PACKET_AGE——与配置视图行「编辑定位」同链路
        （开编辑器 → 清过滤 → 滚动 → 聚焦值框） */
