@@ -2457,7 +2457,7 @@ function renderUsers() {
       <div class="head" style="border-bottom:0;padding-bottom:8px">
         <div style="display:flex;align-items:center;gap:10px">
           <div class="ic" style="width:34px;height:34px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center">${icon('i-users',17)}</div>
-          <div><div style="font-weight:700">${esc(name)}</div>
+          <div><div style="font-weight:700"><span class="cp-cell" data-cp="${esc(name)}" title="点击复制授权名称（CLI：fwknopd-admin user rm 等用）">${esc(name)}</span></div>
           <div class="hint">stanza 第 ${s.index} 个 · 第 ${s.start_line}–${s.end_line} 行</div></div>
         </div>
         <div class="tools">${S.writeEnabled ?
@@ -2479,6 +2479,7 @@ function renderUsers() {
   }).join('') + disHtml;
   }
   $$('#users-body [data-edit]').forEach(b => b.onclick = () => openStanzaEditor(+b.dataset.edit));
+  $$('#users-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, '授权名称 '));
   /* 最近事件按钮：直达事件页该用户筛选 */
   $$('#users-body [data-tofu-q]').forEach(b => b.onclick = () => {
     S.tofuQuery = b.dataset.tofuQ; const ts = $('#tofu-search'); if (ts) ts.value = S.tofuQuery;
