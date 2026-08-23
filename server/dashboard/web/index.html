@@ -6677,8 +6677,11 @@ $('#conf-save').onclick = async () => {
      确认前一屏看清「改了什么」，替代此前只有流程说明的盲确认 */
   const curRaw = (S.config && S.config.raw) || '';
   const newText = payload.mode === 'raw' ? payload.raw : payload.lines.join('\n') + '\n';
-  /* 零改动直返：改回原文的场景不再产生无意义的备份、预检与热加载 */
-  if (curRaw && !lineDiff(newText, curRaw).some(([op, l]) => l.trim() !== '')) {
+  /* 零改动直返：改回原文的场景不再产生无意义的备份、预检与热加载。
+     lineDiff 护栏返回 null（超大文件）时按「有改动」继续走确认流程——
+     宁多一次确认，不可误判零改动吞掉保存 */
+  const ld0 = curRaw ? lineDiff(newText, curRaw) : null;
+  if (curRaw && ld0 && !ld0.some(([op, l]) => l.trim() !== '')) {
     toast('没有需要保存的改动（与当前生效配置一致）', 'ok', 2500);
     return;
   }
@@ -6710,6 +6713,10 @@ $('#conf-save').onclick = async () => {
 function lineDiff(oldText, newText) {
   const a = oldText.split('\n'), b = newText.split('\n');
   const n = a.length, m = b.length;
+  /* 病态输入护栏：LCS 全矩阵 O(n·m) 内存（Uint16×(n+1)(m+1)），万行级
+     access.conf 会分配数百 MB 冻结标签页。超阈值返回 null（不可静默返回
+     空 diff——「完全一致」假象会让方案切换确认误报「无实际配置变更」） */
+  if (n * m > 9000000) return null;
   const dp = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
   for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
     dp[i][j] = a[i] === b[j] ? dp[i+1][j+1] + 1 : Math.max(dp[i+1][j], dp[i][j+1]);
@@ -6725,7 +6732,11 @@ function lineDiff(oldText, newText) {
   return ops;
 }
 function renderDiff(pre, cur) {
-  const ops = lineDiff(pre, cur).filter(([op, l]) => l.trim() !== '');
+  const ops0 = lineDiff(pre, cur);
+  /* 超大文件护栏命中：显式说明而非伪装「完全一致」（noDiff 判定串不含此句，
+     方案切换确认不会误报「无实际配置变更」） */
+  if (!ops0) return '<div class="hint" style="padding:4px 0">差异预览不可用（文件过大，不影响操作流程）</div>';
+  const ops = ops0.filter(([op, l]) => l.trim() !== '');
   if (!ops.length) return '<div class="hint" style="padding:4px 0">与当前配置完全一致</div>';
   /* 变更量摘要先行：方案切换/保存确认是高危复核场景，「+3/-1 行」与
      「+80/-75 行」的复核心态完全不同——先给量级再逐行读 */
