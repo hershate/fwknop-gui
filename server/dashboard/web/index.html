@@ -1931,6 +1931,12 @@ async function loadOverview() {
     $('#svc-down-strip').style.display = (!alive && S.writeEnabled) ? '' : 'none';
     if (!alive && !S.writeEnabled) $('#svc-hint').textContent = 'fwknopd 未运行；只读模式下请联系管理员启动服务';
     applyWriteGate();
+    /* 按进程状态启停按钮：未运行时 停止/重启/热加载 注定失败，运行中「启动」
+       无意义——直接禁用，省一次注定报错的往返（只读模式已被 writeGate 禁用） */
+    if (S.writeEnabled) {
+      ['svc-stop','svc-restart','svc-reload'].forEach(id => { $('#'+id).disabled = !alive; });
+      $('#svc-start').disabled = alive;
+    }
     if (S.page === 'overview') renderStatusCards();
     if (S.page === 'about') renderAbout();
   } catch (e) {
