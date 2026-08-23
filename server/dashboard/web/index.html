@@ -684,8 +684,8 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="tb-wrap">
             <table class="tb">
               <thead><tr>
-                <th>时间</th><th>事件</th><th>用户</th><th>设备指纹</th>
-                <th>来源 IP</th><th>SPA 端口</th><th>目标端口</th><th>说明</th>
+                <th title="点击单元格切换相对/绝对时间">时间</th><th>事件</th><th>用户</th><th title="客户端设备指纹（v4 协议 device_id）">设备指纹</th>
+                <th>来源 IP</th><th title="敲门包的目的端口：TOTP 跳变的落点，不是服务端口">SPA 端口</th><th title="请求放行的服务端口（OPEN_PORTS 白名单内）">目标端口</th><th>说明</th>
               </tr></thead>
               <tbody id="events-body"><tr><td colspan="8"><div class="skel" style="height:120px"></div></td></tr></tbody>
             </table>
