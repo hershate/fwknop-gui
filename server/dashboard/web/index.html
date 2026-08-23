@@ -1667,6 +1667,10 @@ const CLI_CHEATSHEET = [
     ["fwknop import '<URI>'", '导入授权 URI（面板签发结果可复制）'],
     ['fwknop import cred.json', '从凭证 JSON 文件导入'],
     ['fwknop import qr.png', '从二维码图片导入'],
+    ['fwknop setup', '交互式向导：生成 ~/.fwknoprc 客户端配置'],
+    ['fwknop knock <配置名>', '一键敲门（等价 fwknop -n <配置名> -R）'],
+    ['fwknop profile list', '列出 ~/.fwknoprc 中已保存的配置'],
+    ['fwknop lint', '检查客户端配置一致性（找错配置不用真敲门）'],
   ]],
   ['服务端管理（fwknopd-admin）', [
     ['fwknopd-admin user list', '列出全部授权（密钥掩码）'],
