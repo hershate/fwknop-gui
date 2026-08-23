@@ -1591,8 +1591,15 @@ function api(path, opts) {
     return r.json();
   }).catch(err => {
     clearTimeout(timer);
-    /* 中止统一翻译为中文超时错误：各调用点 catch 后按普通断连处理
-       （connFail 增长 → 断连指示 → 退避），文案可读 */
+    /* 网络层失败（连接拒绝/超时无响应）翻译为中文并对写操作兜底提示：大量写操作
+       调用点 catch(e){} 仅做按钮/状态复位，不弹就是「点了没反应」；批量场景的
+       相同消息由 toast 连发合并 ×N，不刷屏。HTTP 状态错误（!r.ok）与 401/403/429
+       已在上方分支各自处理，此处排除防双弹；GET 轮询失败由断连指示统一表达 */
+    let msg = (err && err.message) || '网络错误';
+    if (err && err.name === 'AbortError') msg = '请求超时（服务器无响应）';
+    else if (/failed to fetch|networkerror|load failed/i.test(msg)) msg = '网络连接失败（服务器不可达）';
+    if (!isGet && !['unauthorized', 'forbidden', 'rate-limited'].includes(msg) && !/^HTTP \d/.test(msg))
+      toast('请求失败：' + msg, 'err', 5000);
     if (err && err.name === 'AbortError') throw new Error('请求超时（服务器无响应）');
     throw err;
   });
