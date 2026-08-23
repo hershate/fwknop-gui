@@ -4519,7 +4519,10 @@ function renderAbout() {
       (d.write_enabled ? '' : ' · <span style="color:var(--amber)">只读模式</span>'),
     ]] : []),
     ['服务器时间', d && d.now ? `${fmtAbs(d.now)}${clockWarn ? '' : ' <span class="hint">（时钟正常）</span>'}` : '—'],
-    ['管理工具状态', d && d.admin_tool && d.admin_tool.status ? esc(d.admin_tool.status).replace(/\n/g, '<br>') : '—'],
+    ['管理工具状态', d && d.admin_tool && d.admin_tool.status
+      ? esc(d.admin_tool.status).replace(/\n/g, '<br>') +
+        ` <button class="icon-btn" style="padding:1px 6px;vertical-align:1px" data-adminstat="${esc(d.admin_tool.status)}" title="复制管理工具状态输出">${icon('i-copy',11)}</button>`
+      : '—'],
     ['审计日志', frow(F.audit)],
     ['指标文件', frow(F.metrics)],
     ['TOFU 状态', frow(F.tofu)],
@@ -4552,6 +4555,8 @@ function renderAbout() {
   $('#about-diag').onclick = () => copyText(collectDiag(), '诊断信息 ');
   /* 路径点击复制（键盘可达由全局 MutationObserver/委托覆盖） */
   $$('#about-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, '路径 '));
+  /* 管理工具状态输出一键复制（多行文本手选易漏行） */
+  $$('#about-body [data-adminstat]').forEach(b => b.onclick = () => copyText(b.dataset.adminstat, '管理工具状态 '));
   /* 审计备份删除：确认后删除并刷新（文件名服务端白名单校验） */
   $$('#about-body [data-rmbak]').forEach(b => b.onclick = () => {
     const n = b.dataset.rmbak;
