@@ -2185,8 +2185,16 @@ function updateEvActiveStrip() {
   if (S.evFilter && S.evFilter !== 'all')
     parts.push(['filter', '类型：' + (S.evFilter === 'bad' ? '仅看异常' : evMeta(S.evFilter).label)]);
   if (S.evQuery) parts.push(['q', '搜索：' + S.evQuery]);
-  if (S.evTime && S.evTime !== 'all')
-    parts.push(['time', '时间：' + ({ '5m':'最近 5 分钟', '1h':'最近 1 小时', today:'今日', custom:'自定义区间' }[S.evTime] || S.evTime)]);
+  if (S.evTime && S.evTime !== 'all') {
+    /* 自定义区间在标签上直接显示起止（去掉年份与 T 分隔符），
+       不用展开选择器回忆当前看的是哪段 */
+    let tl = { '5m':'最近 5 分钟', '1h':'最近 1 小时', today:'今日' }[S.evTime];
+    if (S.evTime === 'custom') {
+      const f = (S.evFrom || '').replace('T', ' ').slice(5), t2 = (S.evTo || '').replace('T', ' ').slice(5);
+      tl = `区间 ${f || '…'} ~ ${t2 || '…'}`;
+    }
+    parts.push(['time', '时间：' + (tl || S.evTime)]);
+  }
   if (!parts.length) { el.style.display = 'none'; return; }
   el.style.display = 'flex';
   /* 分布条钻取后的「上级视图」返回钮：逐级恢复钻取前的时间窗 */
