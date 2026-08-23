@@ -1600,8 +1600,11 @@ function api(path, opts) {
     else if (/failed to fetch|networkerror|load failed/i.test(msg)) msg = '网络连接失败（服务器不可达）';
     if (!isGet && !['unauthorized', 'forbidden', 'rate-limited'].includes(msg) && !/^HTTP \d/.test(msg))
       toast('请求失败：' + msg, 'err', 5000);
-    if (err && err.name === 'AbortError') throw new Error('请求超时（服务器无响应）');
-    throw err;
+    /* 打标记：api() 的错误语义已由 toast（写操作）或断连指示（GET 轮询）表达，
+       全局 unhandledrejection 兜底凭标记跳过，避免双重提示 */
+    const out = (err && err.name === 'AbortError') ? new Error('请求超时（服务器无响应）') : err;
+    try { out.apiHandled = true; } catch (e) {}  /* 防冻结错误对象 */
+    throw out;
   });
 }
 
@@ -5787,6 +5790,15 @@ $('#pf-save').onclick = () => {
    避免静默失效后「点了没反应」的无头排查 */
 window.addEventListener('error', ev => {
   try { toast('界面脚本错误：' + (ev.message || '未知错误'), 'err'); } catch (e) {}
+});
+/* Promise 未捕获拒绝同理：async 链路里漏接 catch 的异常不静默；
+   api() 抛出的错误已自行表达（toast/断连指示），凭 apiHandled 标记跳过防双弹 */
+window.addEventListener('unhandledrejection', ev => {
+  try {
+    const r = ev.reason;
+    if (r && r.apiHandled) return;
+    toast('界面异步异常：' + ((r && r.message) || String(r || '未知错误')), 'err');
+  } catch (e) {}
 });
 
 /* ==================== 启动 ==================== */
