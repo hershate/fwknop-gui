@@ -739,7 +739,8 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                   <label>SPA 服务器地址</label>
                   <input name="server" list="server-history" placeholder="例如 203.0.113.10 或 vpn.example.com">
                   <datalist id="server-history"></datalist>
-                  <div class="tip">写入客户端配置，客户端向该地址发 SPA 包<span id="srv-hist-ctl" style="display:none"> · <span id="srv-hist-n"></span> 条历史 <a href="javascript:void 0" id="srv-hist-clear" style="color:var(--faint)">清空</a></span></div>
+                  <div class="tip">写入客户端配置，客户端向该地址发 SPA 包<span id="srv-hist-ctl" style="display:none"> · <span id="srv-hist-n"></span> 条历史 <a href="javascript:void 0" id="srv-hist-manage" style="color:var(--accent)">管理</a> <a href="javascript:void 0" id="srv-hist-clear" style="color:var(--faint)">清空</a></span></div>
+                  <div id="srv-hist-chips" style="display:none;flex-wrap:wrap;gap:6px;margin-top:6px"></div>
                   <div class="auth-hint" id="add-server-hint"></div>
                 </div>
                 <div class="field">
@@ -2922,11 +2923,24 @@ function renderServerHistory() {
   let arr = [];
   try { arr = JSON.parse(localStorage.getItem(SRV_HIST_KEY) || '[]'); } catch (e) {}
   $('#server-history').innerHTML = arr.map(x => `<option value="${esc(x)}">`).join('');
-  /* 历史计数与清空入口（无历史时隐藏） */
+  /* 历史计数与清空入口（无历史时隐藏）；「管理」展开逐条芯片可单删 */
   const ctl = $('#srv-hist-ctl');
   ctl.style.display = arr.length ? '' : 'none';
   $('#srv-hist-n').textContent = arr.length;
+  const chips = $('#srv-hist-chips');
+  if (S.srvHistOpen && arr.length) {
+    chips.style.display = 'flex';
+    chips.innerHTML = arr.map(x => `<span class="chip" style="cursor:default">${esc(x)}<button class="icon-btn" data-srvdel="${esc(x)}" title="从历史中删除该条" style="padding:0 2px;margin-left:4px">${icon('i-x',10)}</button></span>`).join('');
+    $$('#srv-hist-chips [data-srvdel]').forEach(b => b.onclick = () => {
+      const arr2 = [];
+      try { JSON.parse(localStorage.getItem(SRV_HIST_KEY) || '[]').forEach(v => { if (v !== b.dataset.srvdel) arr2.push(v); }); } catch (e) {}
+      try { localStorage.setItem(SRV_HIST_KEY, JSON.stringify(arr2)); } catch (e) {}
+      renderServerHistory();
+      toast('已删除该条历史', 'ok', 1200);
+    });
+  } else chips.style.display = 'none';
 }
+$('#srv-hist-manage').onclick = () => { S.srvHistOpen = !S.srvHistOpen; renderServerHistory(); };
 $('#srv-hist-clear').onclick = () => {
   localStorage.removeItem(SRV_HIST_KEY);
   renderServerHistory();
