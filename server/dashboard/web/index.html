@@ -4661,6 +4661,14 @@ $('#conf-save-profile').onclick = () => {
 
 /* ==================== 关于 ==================== */
 /* 诊断信息打包（关于页按钮与概览快速操作共用）：排障高频追问的非敏感状态 */
+/* 回环判定：面板是明文 HTTP + 密码登录，非回环监听时凭证暴露给链路嗅探，
+   关于页与诊断信息需要显著提示（统一一份解析，IPv6 方括号/裸地址/省略主机均可） */
+function panelLoopback(la) {
+  la = String(la || '');
+  const m6 = la.match(/^\[(.*?)\]/);
+  const host = m6 ? m6[1] : (la.includes(':') ? la.slice(0, la.lastIndexOf(':')) : la);
+  return !!host && (host.startsWith('127.') || host === '::1' || host === 'localhost');
+}
 function collectDiag() {
   const d = S.overview;
   const F = (d && d.files) || {};
@@ -4670,7 +4678,8 @@ function collectDiag() {
     'fwknop 运维面板诊断信息',
     '面板版本: v' + (d ? d.version : '?'),
     'SPA 协议: 4.0.0',
-    '面板监听: ' + (d && d.panel ? d.panel.listen_addr : '?'),
+    '面板监听: ' + (d && d.panel ? d.panel.listen_addr : '?') +
+      (d && d.panel && d.panel.listen_addr && !panelLoopback(d.panel.listen_addr) ? '（⚠ 非回环，明文 HTTP 凭证可被嗅探）' : ''),
     '运行目录: ' + (d && d.panel ? d.panel.run_dir : '?'),
     '面板启动于: ' + (d && d.panel && d.panel.started ? fmtAbs(d.panel.started) : '?'),
     'fwknopd: ' + (d && d.daemon && d.daemon.alive ? `运行中 PID ${d.daemon.pid}` : '未运行'),
@@ -4701,6 +4710,14 @@ function renderAbout() {
     if (Math.abs(drift) > 60) clockWarn = `<div class="warn-strip" style="margin-bottom:12px">${icon('i-warn',15)}<div>
       浏览器与服务器时钟偏差约 <b>${Math.abs(drift)}</b> 秒（${drift > 0 ? '浏览器快' : '服务器快'}）。
       TOTP 动态口令严格依赖双方时钟一致，偏差过大会导致合法敲门被判定超时，请校准 NTP。</div></div>`;
+  }
+  /* 非回环监听警示：面板为明文 HTTP + 密码登录，绑到全网卡/外网地址会把凭证
+     暴露给链路嗅探；静态文档只说了默认回环，实际绑非回环时必须显著提示 */
+  let listenWarn = '';
+  if (d && d.panel && d.panel.listen_addr && !panelLoopback(d.panel.listen_addr)) {
+    listenWarn = `<div class="warn-strip" style="margin-bottom:12px">${icon('i-warn',15)}<div>
+      面板当前监听 <b>${esc(d.panel.listen_addr)}</b>（非本机回环）。面板本身为明文 HTTP，
+      远程访问会把登录凭证暴露给链路嗅探，请置于带 TLS 的反向代理之后，或改回 <code>127.0.0.1</code> 监听。</div></div>`;
   }
   const rows = [
     ['面板版本', `<span class="cp-cell" data-cp="v${d ? d.version : ''}" title="点击复制版本号（报障时随附）">v${d ? d.version : '…'}</span>`],
@@ -4740,7 +4757,7 @@ function renderAbout() {
       `<div class="hint" style="margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span>共 ${d.audit_backups.count} 个 · ${fmtSize(d.audit_backups.size)}${(d.audit_backups.count > 20 || (d.audit_backups.size || 0) > 100*1048576) ? ' · <span style="color:var(--amber)">⚠ 堆积较多，建议下载后清理以释放磁盘</span>' : ''}</span>${S.writeEnabled && d.audit_backups.count > 1 ? `<button class="btn ghost small" id="bak-rmall" style="padding:2px 8px;font-size:11.5px" title="逐个删除全部备份文件（逐个经服务端白名单校验，进度与结果弹通知）">${icon('i-trash',12)} 全部删除</button>` : ''}</div>`,
     ]] : []),
   ];
-  $('#about-body').innerHTML = clockWarn + `<table class="tb"><tbody>` + rows.map(([k,v]) =>
+  $('#about-body').innerHTML = clockWarn + listenWarn + `<table class="tb"><tbody>` + rows.map(([k,v]) =>
     `<tr><td style="width:150px;color:var(--muted)">${k}</td><td class="mono" style="font-size:12px">${v}</td></tr>`).join('') +
     `</tbody></table>
     <div style="margin-top:12px;text-align:right">
