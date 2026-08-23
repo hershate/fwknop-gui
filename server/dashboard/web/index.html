@@ -5386,6 +5386,7 @@ function openStanzaEditor(index) {
   openModal(`<h3>编辑授权「${esc(name)}」</h3>
     <div class="mb">仅可编辑非密钥指令；密钥与指纹白名单保持不变。保存前自动预检，原文件自动备份。</div>
     <div class="form-grid" style="max-height:52vh;overflow-y:auto;padding-right:6px">${rows}</div>
+    <div class="hint" id="se-diff" style="margin-top:10px;font-size:12px;line-height:1.8" aria-live="polite"></div>
     <div class="mf" style="margin-top:16px">
       <button class="btn ghost" id="se-cancel">取消</button>
       <button class="btn" id="se-save" title="保存并热加载生效（Ctrl/⌘+S）">${icon('i-save',14)}保存并生效</button>
@@ -5395,7 +5396,34 @@ function openStanzaEditor(index) {
   const seSave = $('#se-save');
   seSave.disabled = true;
   seSave.title = '尚未修改任何字段';
-  const seMarkDirty = () => { seDirty = true; seSave.disabled = false; seSave.title = '保存并热加载生效（Ctrl/⌘+S）'; };
+  const seMarkDirty = () => { seDirty = true; seSave.disabled = false; seSave.title = '保存并热加载生效（Ctrl/⌘+S）'; seDiffRender(); };
+  /* 实时改动清单（modal 内联，与 fwknopd.conf 保存确认的 diff 同一心智）：
+     单 modal-root 不支持确认框叠加（会顶掉编辑器丢现场），故把「保存前
+     看清改动」做成编辑过程中的常驻预览。口径与保存路径一致：含死配置
+     剥离（无指纹→宽限期按删除、无 TOTP 种子→跳变指令按删除） */
+  function seDiffRender() {
+    const box = $('#se-diff'); if (!box) return;
+    const fpOn = (document.querySelector('#modal-root [data-sf="REQUIRE_FINGERPRINT"]') || {}).checked;
+    const rows = [];
+    STANZA_FIELDS.forEach(f => {
+      const el = document.querySelector(`#modal-root [data-sf="${f.k}"]`);
+      if (!el) return;
+      const oldV = f.bool ? (f.get(s) ? 'Y' : '') : String(f.get(s) || '');
+      let newV = el.type === 'checkbox' ? (el.checked ? 'Y' : '') : el.value.trim();
+      if (f.k === 'FINGERPRINT_TOFU_TIMEOUT' && !fpOn) newV = '';
+      if ((f.k === 'TOTP_PORT_RANGE' || f.k === 'REQUIRE_TOTP_PORT_MATCH') && !s.has_totp) newV = '';
+      if (oldV === newV) return;
+      if (f.bool) rows.push(`${f.label}：${oldV === 'Y' ? '开启' : '关闭'} → ${newV === 'Y' ? '开启' : '关闭'}`);
+      else if (!oldV) rows.push(`${f.label}：新增「${newV}」`);
+      else if (!newV) rows.push(`${f.label}：删除（原「${oldV}」）`);
+      else rows.push(`${f.label}：「${oldV}」→「${newV}」`);
+    });
+    box.innerHTML = rows.length
+      ? `<span style="color:var(--accent)">将改动 ${rows.length} 项：</span><br>` + rows.map(r => '· ' + esc(r)).join('<br>')
+      : '';
+    /* 全部改回原值时回到「尚未修改」态（input 即脏的标志位过粗，以清单为准） */
+    if (!rows.length && seDirty) { seDirty = false; seSave.disabled = true; seSave.title = '尚未修改任何字段'; }
+  }
   /* 输入即校验（与签发卡片同一 V 规则、同一 auth-hint 样式）：不必等到点保存
      才发现格式错/端口重叠。保存时校验仍保留作双保险 */
   const sePortSet = v => new Set(v.split(',').map(x => x.trim().toLowerCase()).filter(Boolean));
