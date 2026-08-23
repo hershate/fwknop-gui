@@ -1361,6 +1361,10 @@ applyTheme(localStorage.getItem('dash_theme') || (sysThemeMQ.matches ? 'light' :
 /* ==================== 导航 ==================== */
 function showPage(p) {
   if (S.page === 'config' && p !== 'config' && !confGuardLeave()) return;
+  /* 滚动位置记忆：离开前保存，返回时恢复；首次到访滚到顶部
+     （长列表页来回切换不丢浏览位置，也不再继承上一页的尴尬滚动高度） */
+  if (!S.scrollMem) S.scrollMem = {};
+  if (S.page && S.page !== p) S.scrollMem[S.page] = window.scrollY;
   S.page = p;
   if (('#' + p) !== location.hash) history.replaceState(null, '', '#' + p);
   $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.page === p));
@@ -1369,6 +1373,9 @@ function showPage(p) {
   if (typeof updateDocTitle === 'function') updateDocTitle();
   $('#sidebar').classList.remove('open'); $('#scrim').classList.remove('show');
   refreshNow();
+  const memY = S.scrollMem[p];
+  if (memY) requestAnimationFrame(() => window.scrollTo(0, memY));
+  else window.scrollTo(0, 0);
 }
 $$('.nav-item').forEach(b => b.onclick = () => showPage(b.dataset.page));
 $('#burger').onclick = () => { $('#sidebar').classList.add('open'); $('#scrim').classList.add('show'); };
