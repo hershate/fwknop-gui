@@ -3551,12 +3551,15 @@ const STANZA_FIELDS = [
   { k:'REQUIRE_USERNAME',       label:'要求客户端用户名',   ph:'留空 = 不校验',                   get:s=>s.require_username,       tip:'SPA 包内嵌入的用户名必须匹配' },
   { k:'OPEN_PORTS',             label:'开放端口',           ph:'tcp/22,udp/53（留空 = 按包内请求）', get:s=>s.open_ports,            tip:'允许被敲开的端口白名单' },
   { k:'RESTRICT_PORTS',         label:'禁止端口',           ph:'留空 = 不限制',                   get:s=>s.restrict_ports,         tip:'即使请求也不开放的端口' },
-  { k:'FW_ACCESS_TIMEOUT',      label:'访问超时（秒）',     ph:'默认 30',                         get:s=>s.fw_access_timeout,      tip:'放行规则自动过期时间' },
+  { k:'FW_ACCESS_TIMEOUT',      label:'访问超时（秒）',     ph:'默认 30',                         get:s=>s.fw_access_timeout,      tip:'放行规则自动过期时间',
+    chips:[['30 秒','30'],['5 分钟','300'],['1 小时','3600'],['1 天','86400']] },
   { k:'MAX_FW_TIMEOUT',         label:'最大访问超时（秒）', ph:'默认 300',                        get:s=>s.max_fw_timeout,         tip:'客户端自定义超时的上限' },
   { k:'REQUIRE_SOURCE_ADDRESS', label:'强制包内真实 IP',    bool:true,                            get:s=>s.require_source_address, tip:'禁用 -s 伪造，客户端须解析真实外网 IP' },
-  { k:'TOTP_PORT_RANGE',        label:'TOTP 端口范围',      ph:'如 30000-60000',                  get:s=>s.port_range,             tip:'与客户端一致的跳变范围' },
+  { k:'TOTP_PORT_RANGE',        label:'TOTP 端口范围',      ph:'如 30000-60000',                  get:s=>s.port_range,             tip:'与客户端一致的跳变范围',
+    chips:[['30000-60000'],['40000-50000'],['10000-65000']] },
   { k:'REQUIRE_FINGERPRINT',    label:'要求设备指纹',       bool:true,                            get:s=>s.require_fingerprint,    tip:'v4 包必须携带 device_id 并通过白名单/TOFU' },
-  { k:'FINGERPRINT_TOFU_TIMEOUT', label:'TOFU 宽限期（秒）', ph:'留空 = 默认 86400',              get:s=>s.tofu_timeout ? String(s.tofu_timeout) : '', tip:'首用自动绑定的时间窗口' },
+  { k:'FINGERPRINT_TOFU_TIMEOUT', label:'TOFU 宽限期（秒）', ph:'留空 = 默认 86400',              get:s=>s.tofu_timeout ? String(s.tofu_timeout) : '', tip:'首用自动绑定的时间窗口',
+    chips:[['1 小时','3600'],['1 天','86400'],['7 天','604800'],['清空','']] },
   { k:'REQUIRE_TOTP_PORT_MATCH', label:'强制 TOTP 端口匹配', bool:true,                           get:s=>s.require_totp_port_match, tip:'端口本身作为一次性因子（需 TOTP 种子）' },
 ];
 
@@ -3568,7 +3571,9 @@ function openStanzaEditor(index) {
     <div class="field">
       ${f.bool
         ? `<label class="check-row"><input type="checkbox" data-sf="${f.k}" ${f.get(s) ? 'checked' : ''} style="width:auto"> ${f.label}</label>`
-        : `<label>${f.label}</label><input data-sf="${f.k}" value="${esc(f.get(s) || '')}" placeholder="${esc(f.ph || '')}">`}
+        : `<label>${f.label}</label><input data-sf="${f.k}" value="${esc(f.get(s) || '')}" placeholder="${esc(f.ph || '')}">
+           ${f.chips ? `<div class="tpl-row" style="margin-top:5px">${f.chips.map(c =>
+             `<button type="button" class="tpl-chip" data-sfc="${f.k}" data-v="${esc(c[1] || '')}">${esc(c[0])}</button>`).join('')}</div>` : ''}`}
       <div class="tip">${esc(f.tip || '')}</div>
     </div>`).join('');
   openModal(`<h3>编辑授权「${esc(name)}」</h3>
@@ -3580,6 +3585,14 @@ function openStanzaEditor(index) {
     </div>`, true);
   let seDirty = false;
   $('#modal-root').oninput = () => { seDirty = true; };  /* oninput 赋值覆盖，重复打开不累积监听器 */
+  /* 常用值芯片：与签发卡片同一交互（再点同值清除），点击计入脏标记 */
+  $$('#modal-root [data-sfc]').forEach(c => c.onclick = () => {
+    const inp = document.querySelector(`#modal-root [data-sf="${c.dataset.sfc}"]`);
+    if (!inp) return;
+    inp.value = (c.dataset.v && inp.value.trim() === c.dataset.v) ? '' : c.dataset.v;
+    seDirty = true;
+    inp.focus();
+  });
   modalGuard = () => !seDirty || confirm('授权编辑有未保存的修改，确定丢弃吗？');
   $('#se-cancel').onclick = closeModal;
   $('#se-save').onclick = async () => {
