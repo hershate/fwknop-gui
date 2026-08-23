@@ -654,10 +654,10 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
         <div class="card">
           <div class="body" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:13px 20px">
             <span class="hint">快速操作：</span>
-            <button class="btn ghost small" id="qa-add"><svg width="14" height="14"><use href="#i-plus"/></svg>签发新凭证</button>
-            <button class="btn ghost small" id="qa-bad"><svg width="14" height="14"><use href="#i-warn"/></svg>仅看异常事件</button>
+            <button class="btn ghost small" id="qa-add" title="跳到用户与授权页并展开签发新凭证表单"><svg width="14" height="14"><use href="#i-plus"/></svg>签发新凭证</button>
+            <button class="btn ghost small" id="qa-bad" title="跳到事件页并只看异常（括号内为最近 15 分钟异常数）"><svg width="14" height="14"><use href="#i-warn"/></svg>仅看异常事件</button>
             <button class="btn ghost small" id="qa-diag" title="一键打包版本/时钟/服务/文件等非敏感状态，贴给运维即可定位"><svg width="14" height="14"><use href="#i-copy"/></svg>复制诊断信息</button>
-            <button class="btn ghost small" id="qa-profile"><svg width="14" height="14"><use href="#i-archive"/></svg>保存配置方案</button>
+            <button class="btn ghost small" id="qa-profile" title="把当前 fwknopd.conf + access.conf 快照保存为命名方案（配置方案页管理）"><svg width="14" height="14"><use href="#i-archive"/></svg>保存配置方案</button>
             <a class="btn ghost small" id="qa-audit" href="/api/audit/download" download><svg width="14" height="14"><use href="#i-download"/></svg>导出审计日志</a>
           </div>
         </div>
@@ -1869,8 +1869,12 @@ function applyWriteGate() {
   /* 快速操作中的写动作在只读模式禁用（title 说明原因，鼠标悬停不困惑） */
   $('#qa-add').disabled = !on; $('#qa-profile').disabled = !on;
   const roTitle = '只读模式（-read-only）下不可用；去掉该参数重启后恢复';
-  $('#qa-add').title = on ? '' : roTitle;
-  $('#qa-profile').title = on ? '' : roTitle;
+  /* 保留静态语义说明：只读时追加原因，恢复时还原原标题（不再清空） */
+  ['qa-add','qa-profile'].forEach(id => {
+    const b = $('#'+id);
+    if (!b.dataset.otitle) b.dataset.otitle = b.title || '';
+    b.title = on ? b.dataset.otitle : (b.dataset.otitle ? b.dataset.otitle + '；' : '') + roTitle;
+  });
   /* 侧栏常驻「只读」徽章：模式随时可见，不靠各页提示零散表达 */
   $('#ro-badge').style.display = on ? 'none' : '';
   /* 徽章在 conn-box 内，拦截冒泡避免误触「点击重连」 */
