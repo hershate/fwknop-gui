@@ -4525,7 +4525,7 @@ function renderAbout() {
           ${S.writeEnabled ? `<button class="icon-btn" data-rmbak="${esc(n)}" title="删除该备份文件（不可恢复）">${icon('i-trash',12)}</button>` : ''}
         </div>`;
       }).join('') +
-      `<div class="hint" style="margin-top:4px">共 ${d.audit_backups.count} 个 · ${fmtSize(d.audit_backups.size)}${(d.audit_backups.count > 20 || (d.audit_backups.size || 0) > 100*1048576) ? ' · <span style="color:var(--amber)">⚠ 堆积较多，建议下载后清理以释放磁盘</span>' : ''}</div>`,
+      `<div class="hint" style="margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span>共 ${d.audit_backups.count} 个 · ${fmtSize(d.audit_backups.size)}${(d.audit_backups.count > 20 || (d.audit_backups.size || 0) > 100*1048576) ? ' · <span style="color:var(--amber)">⚠ 堆积较多，建议下载后清理以释放磁盘</span>' : ''}</span>${S.writeEnabled && d.audit_backups.count > 1 ? `<button class="btn ghost small" id="bak-rmall" style="padding:2px 8px;font-size:11.5px" title="逐个删除全部备份文件（逐个经服务端白名单校验，进度与结果弹通知）">${icon('i-trash',12)} 全部删除</button>` : ''}</div>`,
     ]] : []),
   ];
   $('#about-body').innerHTML = clockWarn + `<table class="tb"><tbody>` + rows.map(([k,v]) =>
@@ -4550,6 +4550,26 @@ function renderAbout() {
       } catch (e) {}
     });
   });
+  /* 备份批量清理：堆积场景免逐个确认；逐个复用单删端点（白名单校验不变） */
+  const rmAll = $('#bak-rmall');
+  if (rmAll) rmAll.onclick = () => {
+    const names = (d.audit_backups && d.audit_backups.names) || [];
+    confirmDialog('删除全部审计备份？',
+      `将永久删除 <b>${names.length}</b> 个备份（共 ${fmtSize(d.audit_backups.size)}），删除前请确认已下载或不再需要。`,
+      '全部删除', async () => {
+        toast('正在逐个删除备份…', 'ok', 1500);
+        let ok = 0, fail = 0;
+        for (const n of names) {
+          try {
+            const fd = new FormData(); fd.append('name', n);
+            const r = await api('/api/admin/audit/rmbak', { method:'POST', body: fd });
+            if (r.ok) ok++; else fail++;
+          } catch (e) { fail++; }
+        }
+        toast(fail ? `备份删除完成：成功 ${ok} 个、失败 ${fail} 个` : `已删除全部 ${ok} 个备份`, fail ? 'err' : 'ok', 5000);
+        loadOverview();
+      });
+  };
 }
 
 /* ==================== 通用模态 ==================== */
