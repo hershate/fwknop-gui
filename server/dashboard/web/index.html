@@ -3539,7 +3539,7 @@ function syncRangeChips() {
   $$('#range-chips [data-pr]').forEach(c =>
     c.classList.toggle('active', cur === c.dataset.pr));
 }
-$$('#range-chips [data-pr]').forEach(c => c.onclick = () => {
+$$('#range-chips [data-pr]').forEach(c => { c.title = '点击填充该范围，再点同一枚清除恢复默认'; c.onclick = () => {
   const f = $('#add-form');
   f['port-range'].value = (f['port-range'].value.trim() === c.dataset.pr) ? '' : c.dataset.pr;
   f['port-range'].dispatchEvent(new Event('input'));
@@ -3553,7 +3553,7 @@ function syncTofutoChips() {
   $$('#tofuto-chips [data-tfto]').forEach(c =>
     c.classList.toggle('active', cur === c.dataset.tfto && c.dataset.tfto !== ''));
 }
-$$('#tofuto-chips [data-tfto]').forEach(c => c.onclick = () => {
+$$('#tofuto-chips [data-tfto]').forEach(c => { c.title = '点击填充该宽限期，再点同一枚清除（「仅本机」直接清空）'; c.onclick = () => {
   const f = $('#add-form');
   f['tofu-timeout'].value = (c.dataset.tfto === '' || f['tofu-timeout'].value.trim() === c.dataset.tfto)
     ? '' : c.dataset.tfto;
@@ -3568,7 +3568,7 @@ function syncFwtoChips() {
   $$('#fwto-chips [data-fwto]').forEach(c =>
     c.classList.toggle('active', cur === c.dataset.fwto));
 }
-$$('#fwto-chips [data-fwto]').forEach(c => c.onclick = () => {
+$$('#fwto-chips [data-fwto]').forEach(c => { c.title = '点击填充该超时，再点同一枚清除恢复默认'; c.onclick = () => {
   const f = $('#add-form');
   f['fw-timeout'].value = (f['fw-timeout'].value.trim() === c.dataset.fwto) ? '' : c.dataset.fwto;
   f['fw-timeout'].dispatchEvent(new Event('input'));  /* 联动校验 + 草稿 */
@@ -4771,7 +4771,7 @@ function openStanzaEditor(index) {
         ? `<label class="check-row"><input type="checkbox" data-sf="${f.k}" ${f.get(s) ? 'checked' : ''} style="width:auto"> ${f.label}</label>`
         : `<label>${f.label}</label><input data-sf="${f.k}" value="${esc(f.get(s) || '')}" placeholder="${esc(f.ph || '')}">
            ${f.chips ? `<div class="tpl-row" style="margin-top:5px">${f.chips.map(c =>
-             `<button type="button" class="tpl-chip" data-sfc="${f.k}" data-v="${esc(c[1] || '')}">${esc(c[0])}</button>`).join('')}</div>` : ''}`}
+             `<button type="button" class="tpl-chip" data-sfc="${f.k}" data-v="${esc(c[1] || '')}" title="点击填入该值，再点同值清除">${esc(c[0])}</button>`).join('')}</div>` : ''}`}
       <div class="tip">${esc(f.tip || '')}</div>
     </div>`).join('');
   openModal(`<h3>编辑授权「${esc(name)}」</h3>
@@ -5060,7 +5060,20 @@ const CONF_TEMPLATES = {
     lines: [['ENABLE_AUDIT', 'N']],
   },
 };
-$$('[data-ctpl]').forEach(chip => chip.onclick = () => {
+/* 快速模板芯片：hover/聚焦预览改动说明（与签发卡片模板同一交互），点击合并填充 */
+$$('[data-ctpl]').forEach(chip => {
+  const preview = () => { const t = CONF_TEMPLATES[chip.dataset.ctpl]; if (t) $('#conf-tpl-desc').textContent = '预览 · ' + t.desc; };
+  const restore = () => {
+    const act = $('[data-ctpl].active');
+    const t = act && CONF_TEMPLATES[act.dataset.ctpl];
+    $('#conf-tpl-desc').textContent = t ? t.desc : '';
+  };
+  chip.addEventListener('mouseenter', preview);
+  chip.addEventListener('focus', preview);
+  chip.addEventListener('mouseleave', restore);
+  chip.addEventListener('blur', restore);
+  chip.title = '合并式填充（同键覆盖、新键追加），套用后仍需手动「保存」落盘';
+  chip.onclick = () => {
   const t = CONF_TEMPLATES[chip.dataset.ctpl];
   if (!t) return;
   if (confRawEdit) { confRawEdit = false; toast('已切换回结构化编辑以套用模板', 'ok'); }
@@ -5074,6 +5087,7 @@ $$('[data-ctpl]').forEach(chip => chip.onclick = () => {
   markConfDirty();
   renderConfEditor();
   toast(`模板已合并（更新 ${upd} 项、新增 ${add} 项），点击右上角「保存」生效`, 'ok', 5000);
+  };
 });
 $('#conf-save').onclick = async () => {
   /* 保存前拦截：结构化模式下存在类型校验红框（ce-bad）时拒绝并聚焦 */
