@@ -224,6 +224,7 @@ v4 往返/v3 兼容/timeout+device_id 单测 **33/33 PASS**（`REF/build/test_de
 ---
 
 ## 变更日志
+- 2026-08-23：**WebUI 2.5.0 归档**（45 项 UX 迭代，commit `6f3d9896..` 起）。核心：预警前置（侧栏 __CHANGEME__ 占位密钥/TOFU 悬空绑定琥珀徽标；概览状态卡全部可点击直达）；键盘可达性闭环（KB_CLICK_SEL 统一体系+静态元素首扫；焦点保护——轮询重渲染不再清空 Tab 位置）；事件深链携带类型筛选与预设时间范围（~f=/~t=）；事件搜索前缀词与裸词混用；配置编辑器「仅看修改」过滤；方案另存副本（POST /api/profiles/duplicate）与当前生效置顶；批量操作按钮内实时进度；表头吸附偏移修复；移动端输入体验（禁自动纠错/数字键盘）；内联 favicon + theme-color + 主题跨标签同步。回归 112/112 PASS。详见 note/release/2.5.0.md。
 - 2026-08-23：**WebUI 2.4.9 归档**（50 项 UX 迭代，commit `c3d889a3..` 起）。核心：事件页深链携带搜索词（#events~bad~q=，复制视图链接/前进后退完整还原排查现场）；弹窗打开时后退键消费为关弹窗；异常桌面通知可点击直达仅看异常；通知未读徽标只计错误降噪；桌面端窄侧栏模式（纯图标+持久化）；配置编辑器重复指令实时琥珀预警；登录/初始化防连点（不再双倍计入限流）；关于页展示面板启动时间（panel.started）；新增 -version 标志；确认框按破坏性分级配色。回归 105→109 PASS（新增 lint/since×2/-version 用例）。详见 note/release/2.4.9.md。
 - 2026-08-23：**WebUI 2.4.8 归档**（50 项 UX 迭代，commit `3f509492..` 起）。核心：关于页自助修改密码（新端点 /api/auth/password：验证当前密码+CSRF+限流复用，改密即失效其他设备会话，只读可用）；签发结果默认掩码密钥行；侧栏常驻「只读」徽章；键盘流贯通（用户页 n 直达签发、事件页 b 仅看异常、方案保存 Enter、搜索框 Esc 清空）；CSV 导出补授权名称列；审计备份逐文件时间+大小（/api/overview 增 sizes）；已禁用授权补禁用时刻（disabled_at）；登录/初始化页版本号动态化。回归 98→105 PASS（新增改密 6 用例）。详见 note/release/2.4.8.md。
 - 2026-08-23：**WebUI 2.4.7 归档**（24 项 UX 迭代，commit `93223d3c..` 起）。核心：PCAP_PORT_RANGE × TOTP_PORT_RANGE 双向跨配置校验（签发/stanza 编辑正向拦截 + 保存 fwknopd.conf 反向列出受影响授权）；事件/TOFU/授权三方反查闭环（禁用态+懒加载+序号直查）；标签页标题未读通知计数；时钟偏差警示提到概览顶部；方案 diff 覆盖 access.conf（/api/profiles/view 增 current_access_conf）；时间分布柱键盘可达。回归 98/98 PASS。详见 note/release/2.4.7.md。
