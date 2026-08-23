@@ -3392,14 +3392,18 @@ $('#users-batch-rm').onclick = () => {
     `撤销 ${names.length} 个授权`, async () => {
       const btn = $('#users-batch-rm'); btn.disabled = true;
       const ok = [], fail = [];
+      let done = 0;
       for (const nm of names) {  /* 逐个提交：复用单撤销服务端链路（备份+预检+SIGHUP） */
         try {
           const fd = new FormData(); fd.append('name', nm);
           const r = await api('/api/admin/rm', { method:'POST', body: fd });
           if (r.error) fail.push(`${nm}：${r.error}`); else ok.push(nm);
         } catch (e) { fail.push(`${nm}：网络错误`); }
+        /* 进度入按钮文案（与批量解绑同一模式），大批量时不再像卡死 */
+        btn.textContent = `撤销中 ${++done}/${names.length}…`;
       }
       btn.disabled = false;
+      btn.innerHTML = '<svg width="13" height="13"><use href="#i-trash"/></svg>批量撤销';
       S.usersSel = new Set();
       loadUsers(); loadTOFU();
       if (fail.length) infoModal('批量撤销 — 部分失败', `成功 ${ok.length} 个，失败 ${fail.length} 个：\n` + fail.join('\n'), true);
