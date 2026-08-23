@@ -571,7 +571,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
     <div class="side-foot">
       <div class="conn" id="conn-box" title="点击立即重连刷新" style="cursor:pointer" role="status" aria-live="polite"><span class="dot" id="conn-dot"></span><span id="conn-text">正在连接…</span>
         <span id="ro-badge" style="display:none;color:var(--amber);border:1px solid var(--amber);border-radius:4px;padding:0 5px;font-size:10.5px;line-height:16px;margin-left:6px;cursor:default" title="当前为只读模式（-read-only）：仅可查看；去掉该参数重启后可进行管理操作">只读</span>
-        <span class="hint" id="side-ver" style="margin-left:auto;font-size:11px" title="面板版本">v2.4.8</span></div>
+        <span class="hint cp-cell" id="side-ver" style="margin-left:auto;font-size:11px" title="面板版本（点击复制，报障时随附）">v2.4.8</span></div>
       <div class="hint" id="sess-ttl" style="display:none;font-size:11px;margin-top:2px" aria-live="polite"></div>
       <div class="side-actions">
         <button class="icon-btn" id="kbd-btn" title="键盘快捷键（按 ? 随时打开）"><svg><use href="#i-key"/></svg>快捷键</button>
@@ -1230,6 +1230,8 @@ async function bootAuth() {
       $$('.auth-ver').forEach(el => { el.textContent = 'v' + st.version; });
     }
     if (st.session_exp) S.sessionExp = st.session_exp;
+    /* 侧栏版本号点击复制（报障时免手选）；位于 conn-box 内，须阻断冒泡防误触发重连 */
+    $('#side-ver').onclick = ev => { ev.stopPropagation(); copyText($('#side-ver').textContent.trim(), '面板版本'); };
     S.writeEnabled = !!st.write_enabled;
     S.passwordSet = !!st.password_set;  /* Bearer 令牌模式下隐藏「修改密码」卡 */
     if (st.needs_setup) showAuthView('auth-setup');
