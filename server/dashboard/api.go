@@ -503,10 +503,22 @@ func handleSaveFwknopdConf(w http.ResponseWriter, r *http.Request) {
 		Mode  string   `json:"mode"`
 		Lines []string `json:"lines"`
 		Raw   string   `json:"raw"`
+		Mtime int64    `json:"mtime"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "请求格式错误", http.StatusBadRequest)
 		return
+	}
+	/* 乐观并发锁：前端带来加载时的文件 mtime，不一致说明加载后文件已被
+	   其他会话/进程改动——合并式落盘以旧快照为底，直接保存会静默回滚
+	   他人的修改，拒绝并提示刷新（面板操作日志可见是谁改的）。
+	   mtime=0（旧客户端）跳过守卫，保持向后兼容 */
+	if req.Mtime > 0 {
+		if st, serr := os.Stat(cfg.FwknopdConf); serr == nil && st.ModTime().Unix() != req.Mtime {
+			logOp(r, "保存 fwknopd.conf", "并发冲突：文件已被修改，拒绝保存", false)
+			adminResult(w, "", fmt.Errorf("检测到 fwknopd.conf 在您加载后已被修改（并发改动），已拒绝保存以防覆盖他人修改；配置已为您刷新，请复核后重试"))
+			return
+		}
 	}
 	var out string
 	var err error
@@ -523,14 +535,17 @@ func handleSaveFwknopdConf(w http.ResponseWriter, r *http.Request) {
 	adminResult(w, out, err)
 }
 
-// handleUpdateStanza: JSON {index:N, fields:{KEY:value,...}}。
+// handleUpdateStanza: JSON {index:N, fields:{KEY:value,...},
+// expect_name/expect_source：打开编辑器时的授权身份（序号移位防护）。
 func handleUpdateStanza(w http.ResponseWriter, r *http.Request) {
 	if !requirePost(w, r) {
 		return
 	}
 	var req struct {
-		Index  int               `json:"index"`
-		Fields map[string]string `json:"fields"`
+		Index        int               `json:"index"`
+		Fields       map[string]string `json:"fields"`
+		ExpectName   string            `json:"expect_name"`
+		ExpectSource string            `json:"expect_source"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "请求格式错误", http.StatusBadRequest)
@@ -540,7 +555,7 @@ func handleUpdateStanza(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "没有需要修改的字段", http.StatusBadRequest)
 		return
 	}
-	out, err := updateStanza(req.Index, req.Fields)
+	out, err := updateStanza(req.Index, req.Fields, req.ExpectName, req.ExpectSource)
 	/* detail 记录被改指令名（排序保证确定性）：只含指令名不含值，
 	   密钥类指令本来就进不了编辑器（updateStanza 白名单拒绝） */
 	keys := make([]string, 0, len(req.Fields))

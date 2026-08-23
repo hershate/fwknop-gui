@@ -5607,10 +5607,15 @@ function openStanzaEditor(index) {
     $('#se-save').disabled = true;
     try {
       const r = await api('/api/config/stanza', { method:'POST',
-        headers:{'Content-Type':'application/json'}, body: JSON.stringify({ index, fields }) });
+        headers:{'Content-Type':'application/json'},
+        /* 序号移位防护：带上打开编辑器时的授权身份，服务端发现列表已变化
+           （并发增删致序号移位）会拒绝保存，防止编辑落到错误的 stanza 上 */
+        body: JSON.stringify({ index, fields, expect_name: s.name || '', expect_source: s.source || '' }) });
       modalGuard = null;
       closeModal();
-      if (r.error) { toast('保存失败', 'err'); infoModal('编辑授权 — 失败', r.output + '\n' + r.error, true); }
+      if (r.error) { toast('保存失败', 'err'); infoModal('编辑授权 — 失败', r.output + '\n' + r.error, true);
+        /* 序号移位冲突：授权列表已过期，立刻重拉，避免重开编辑器再撞同一冲突 */
+        if (/授权列表已变化/.test(r.error)) loadUsers(); }
       else { toast('授权已更新', 'ok'); loadUsers(); }
     } catch (e) { $('#se-save').disabled = false; }
   };
@@ -6032,6 +6037,9 @@ $('#conf-save').onclick = async () => {
       payload = { mode:'structured', lines: editRows.map(([k, v]) => v ? k + ' ' + v : k) };
     }
   }
+  /* 乐观并发锁：带上加载时的文件 mtime，服务端发现加载后文件被他人改动
+     会拒绝保存（防止合并式落盘以旧快照为底静默回滚他人修改） */
+  payload.mtime = (S.config && S.config.mtime) || 0;
   /* 反向跨配置校验：收窄/修改 PCAP_PORT_RANGE 可能使现有授权的 TOTP 范围
      越界（敲门静默丢失）。保存前在确认框中列出受影响授权，由运维确认。
      授权数据未加载时先懒加载（config 页直达场景） */
@@ -6070,7 +6078,10 @@ $('#conf-save').onclick = async () => {
         const el = $('#conf-save-out');
         el.style.display = ''; el.style.borderColor = r.error ? 'var(--red)' : 'var(--green)';
         el.textContent = (r.output || '') + (r.error ? '\n错误：' + r.error : '');
-        if (r.error) toast('配置保存失败（未落盘）', 'err');
+        if (r.error) { toast('配置保存失败（未落盘）', 'err');
+          /* 并发冲突被拒后本地 mtime/raw 基线已过期，不刷新重试必再撞同一
+             冲突——自动重拉配置（编辑器行保持不动），用户复核后重试即可 */
+          if (/并发改动/.test(r.error)) { loadConfig(); toast('配置已刷新为最新，请复核改动后重试保存', 'ok', 5000); } }
         else { toast('配置已保存并热加载', 'ok'); clearConfDirty(); loadConfig();
           harvestConfRows();  /* 先收割再快照：confRows 可能落后于 DOM（input 委托不回写），
             直接快照会把已保存的修改误判为「打开后新改动」，实比对随即使保存成功页误脏 */

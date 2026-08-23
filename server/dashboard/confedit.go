@@ -150,7 +150,10 @@ func stanzaEditableKeys() map[string]bool {
 // updateStanza rewrites the editable directives of stanza #index (1-based).
 // fields: key -> value（"" 表示删除该指令；布尔指令用 "Y"/""）。
 // 密钥行原样保留，绝不读取或改写。
-func updateStanza(index int, fields map[string]string) (string, error) {
+// expectName/expectSource 是打开编辑器时的授权身份：stanza 按序号定位，
+// 若打开后他人并发增删授权，序号对应关系已移位，不加核验编辑会落到
+// 错误的 stanza 上；身份不符即拒绝（空串跳过该校验，向后兼容旧客户端）。
+func updateStanza(index int, fields map[string]string, expectName, expectSource string) (string, error) {
 	allowed := stanzaEditableKeys()
 	for k, v := range fields {
 		if _, ok := allowed[k]; !ok {
@@ -173,6 +176,13 @@ func updateStanza(index int, fields map[string]string) (string, error) {
 		return "", fmt.Errorf("stanza 序号 %d 不存在（共 %d 个）", index, len(st))
 	}
 	s := st[index-1]
+	/* 序号移位身份核验：并发增删导致列表变化时给出明确差异，拒绝落盘 */
+	if expectSource != "" && s.Source != expectSource {
+		return "", fmt.Errorf("授权列表已变化（序号 %d 的 SOURCE 由 %q 变为 %q），已拒绝保存以防改错授权；请刷新后重新编辑", index, expectSource, s.Source)
+	}
+	if expectName != "" && s.Name != expectName {
+		return "", fmt.Errorf("授权列表已变化（序号 %d 的名称由 %q 变为 %q），已拒绝保存以防改错授权；请刷新后重新编辑", index, expectName, s.Name)
+	}
 
 	// stanza 范围内的行：替换 / 删除目标指令；其余（含密钥行）原样保留。
 	// 不存在的指令在 stanza 末尾（EndLine 行之后）追加。
