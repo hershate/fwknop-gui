@@ -5798,6 +5798,9 @@ function renderAbout() {
     /* 面板别名：本机设定（localStorage），多实例部署时浏览器标签与侧栏
        品牌位以此区分「这是哪个面板」；行内编辑与设备别名同款 */
     ['面板别名', `<span class="pf-note-ed" id="about-alias-ed" title="点击编辑面板别名（本机设定，最多 24 字符，清空即删除）" style="cursor:pointer;border-bottom:1px dashed var(--border)">${esc(panelAlias() || '＋ 设定别名')}</span> <span class="hint">仅保存在本机浏览器，用于多实例区分</span>`],
+    /* 本机界面数据一键重置：共享工位/录屏/弃用浏览器档案的卫生出口——
+       面板在本机留存搜索历史/服务器地址等便捷数据，此前无统一清除入口 */
+    ['本机界面数据', `<button class="btn ghost small" id="about-reset-local" title="清除本机保存的界面偏好与历史（搜索历史、服务器地址历史、密度/折叠/过滤记忆、主题、已消除的警示），保留面板别名/设备别名/自定义模板/签发草稿">重置偏好与历史…</button> <span class="hint">面板仅在本机浏览器保存界面偏好与便捷历史，无云端同步</span>`],
     ['服务器时间', d && d.now ? `${fmtAbs(d.now)}${clockWarn ? '' : ' <span class="hint">（时钟正常）</span>'}` : '—'],
     ['管理工具状态', d && d.admin_tool && d.admin_tool.status
       ? esc(d.admin_tool.status).replace(/\n/g, '<br>') +
@@ -5862,6 +5865,27 @@ function renderAbout() {
     };
     inp.onkeydown = e => { if (e.key === 'Enter') commit(true); else if (e.key === 'Escape') commit(false); };
     inp.onblur = () => commit(true);
+  };
+  /* 重置本机偏好与历史：前缀扫描 fwknop-* 与主题键，保留清单内的用户数据。
+     清单外新键默认被清——对「卫生重置」误清新偏好无害，误留新历史才违背承诺 */
+  const rl = $('#about-reset-local');
+  if (rl) rl.onclick = () => {
+    const PRESERVE = ['fwknop-dev-alias', 'fwknop-panel-alias', 'fwknop-add-custom-tpls', 'fwknop-add-draft'];
+    const doomed = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if ((k.startsWith('fwknop-') || k === 'dash_theme') && !PRESERVE.includes(k)) doomed.push(k);
+    }
+    confirmDialog('重置本机界面数据',
+      `将清除本机保存的 <b>${doomed.length} 项</b>界面偏好与历史（搜索历史、服务器地址历史、密度/折叠/过滤记忆、主题、已消除的警示等）。<br>` +
+      `保留：面板别名、设备别名、自定义签发模板、签发草稿。<br>清除后页面自动刷新以应用默认状态。`,
+      '清除并刷新', () => {
+        doomed.forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+        /* 标签页级数据（通知历史/趋势采样）随刷新仍在同标签存活，一并清除 */
+        ['fwknop-notif-log', 'fwknop-hist'].forEach(k => { try { sessionStorage.removeItem(k); } catch (e) {} });
+        toast('本机偏好与历史已清除，正在刷新…', 'ok', 1200);
+        setTimeout(() => location.reload(), 900);
+      }, true);
   };
   /* 路径点击复制（键盘可达由全局 MutationObserver/委托覆盖） */
   $$('#about-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, '路径 '));
