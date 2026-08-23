@@ -622,7 +622,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <button class="btn ghost small" id="qa-add"><svg width="14" height="14"><use href="#i-plus"/></svg>签发新凭证</button>
             <button class="btn ghost small" id="qa-bad"><svg width="14" height="14"><use href="#i-warn"/></svg>仅看异常事件</button>
             <button class="btn ghost small" id="qa-profile"><svg width="14" height="14"><use href="#i-archive"/></svg>保存配置方案</button>
-            <a class="btn ghost small" href="/api/audit/download" download><svg width="14" height="14"><use href="#i-download"/></svg>导出审计日志</a>
+            <a class="btn ghost small" id="qa-audit" href="/api/audit/download" download><svg width="14" height="14"><use href="#i-download"/></svg>导出审计日志</a>
           </div>
         </div>
         <div class="grid-tiles" id="tiles"><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div></div>
@@ -1757,6 +1757,13 @@ async function loadOverview() {
 function renderStatusCards() {
   const d = S.overview; if (!d) return;
   const F = d.files || {};
+  /* 快速操作「导出审计日志」实时标注当前文件大小与更新时间，下载前即有预期 */
+  const qa = $('#qa-audit');
+  if (qa) {
+    const a0 = F.audit;
+    qa.innerHTML = `<svg width="14" height="14"><use href="#i-download"/></svg>导出审计日志${a0 && a0.exists ? `（${fmtSize(a0.size)}）` : ''}`;
+    qa.title = a0 && a0.exists ? `下载完整审计日志（JSONL · ${fmtSize(a0.size)} · ${fmtAgo(a0.mtime)}更新）` : '审计日志文件不存在';
+  }
   const cards = [
     { ic:'server', c: d.daemon.alive ? 'var(--green)' : 'var(--red)',
       bg: d.daemon.alive ? 'var(--green-soft)' : 'var(--red-soft)',
