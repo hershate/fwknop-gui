@@ -1101,7 +1101,11 @@ function focusWithin(sel) {
 }
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const icon = (n, sz) => `<svg width="${sz||16}" height="${sz||16}"><use href="#i-${n}"/></svg>`;
+/* 历史两种调用规约并存：字面量与 EVT 元数据带 i- 前缀（icon('i-copy')），
+   状态卡 ic 字段不带（ic:'server'）。此前定义无条件拼 #i- 前缀，带前缀的
+   调用产出 #i-i-copy——symbol 无此 id，use 静默渲染空白：全部按钮/徽章/
+   事件类型图标自 e2f1ea99（redesign 引入）起从未显示。在此归一兼容两种规约 */
+const icon = (n, sz) => `<svg width="${sz||16}" height="${sz||16}"><use href="#${n.startsWith('i-') ? n : 'i-' + n}"/></svg>`;
 /* localStorage 安全写：隐私模式/存储配额满时 setItem 抛异常，裸调用会让
    整个事件处理器中断（开关看似点了没反应）。统一吞掉——偏好丢失可接受，
    功能中断不可接受。读侧 getItem 不抛配额错，沿用内联 try 风格 */
