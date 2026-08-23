@@ -746,7 +746,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <span class="hint">至</span>
                 <input type="datetime-local" class="ctl" id="ev-to" title="截止时间" style="padding:4px 6px;font-size:12px">
                 <button class="btn ghost small" id="ev-preset-24h" title="填充为「此刻往前 24 小时」" style="padding:4px 8px;font-size:11.5px">最近 24h</button>
-                <button class="btn ghost small" id="ev-preset-yday" title="填充为「昨天 00:00 至今天 00:00」" style="padding:4px 8px;font-size:11.5px">昨日全天</button>
+                <button class="btn ghost small" id="ev-preset-yday" title="填充为「昨天 00:00 至 23:59」（含首尾分钟）" style="padding:4px 8px;font-size:11.5px">昨日全天</button>
               </span>
               <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口 / 授权 / 异常…（支持 user:/ip:/dev:/port:/stanza: 前缀）" title="全字段子串匹配；搜「异常」等价于「仅看异常」芯片（拒绝/重放/未知指纹/端口不匹配/过期）；空格分隔多关键词为 AND（如「admin 22」）；前缀语法精确限定字段：user:admin、ip:192.168、dev:指纹前缀、port:22（SPA 与目标端口都匹配）、stanza:3 或 stanza:授权名，前缀词与裸词可混用（「user:admin port:22」）；快捷键 / 聚焦" style="width:290px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
               <button class="btn ghost small" id="ev-density" title="切换表格行密度（紧凑模式一屏看更多事件）">紧凑</button>
@@ -3609,7 +3609,9 @@ $('#ev-preset-24h').onclick = () => { const now = new Date(); fillEvRange(new Da
 $('#ev-preset-yday').onclick = () => {
   const now = new Date();
   const today0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  fillEvRange(new Date(today0.getTime() - 86400000), today0);
+  /* 截止端含到该分钟 59 秒（timeFilteredEvents +59）：填昨日 23:59 正好覆盖
+     昨日全天；若填今天 00:00，今天 0 点这一分钟内的事件会被误算进来 */
+  fillEvRange(new Date(today0.getTime() - 86400000), new Date(today0.getTime() - 60000));
 };
 
 /* 导出当前筛选（时间窗 + 类型芯片 + 搜索词）结果为 CSV，含全部审计字段 */
