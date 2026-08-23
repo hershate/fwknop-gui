@@ -3617,6 +3617,9 @@ function renderTOFU() {
     return;
   }
   if (!S.tofuSel) S.tofuSel = new Set();
+  /* 剔除已不存在的绑定（单台解绑/外部改动后防残留），与用户页批量撤销同一模式 */
+  const liveBind = new Set(all.map(b => b.stanza_key + '\x01' + b.device_id));
+  [...S.tofuSel].forEach(k => { if (!liveBind.has(k)) S.tofuSel.delete(k); });
   $('#tofu-body').innerHTML = bs.map(b => `<tr>
     <td>${S.writeEnabled ? `<input type="checkbox" class="tofu-sel" data-sk="${esc(b.stanza_key)}" data-dev="${esc(b.device_id)}"
       ${S.tofuSel.has(b.stanza_key + '\x01' + b.device_id) ? 'checked' : ''}>` : ''}</td>
