@@ -3419,6 +3419,7 @@ function renderUsers() {
           `<input type="checkbox" class="usr-sel" data-selname="${esc(name)}" ${S.usersSel && S.usersSel.has(name) ? 'checked' : ''} title="选择以批量撤销" style="width:auto;margin-right:2px">
           <button class="btn ghost small" data-edit="${s.index}" title="编辑该授权的非密钥指令（来源/端口/超时等），保存前自动预检并备份">${icon('i-pencil',13)}编辑</button>
            <button class="btn ghost small" data-dup="${s.index}" title="按该授权的安全选项预填签发表单（名称留空待填）">${icon('i-copy',13)}签发类似</button>
+           <button class="btn ghost small" data-qr="${esc(name)}" title="为该授权重建 fwknop:// 授权 URI（cred.json 丢失后的重发场景；需提供服务器地址，密钥材料不离开服务器）">${icon('i-key',13)}重发 URI</button>
            <button class="btn ghost small" data-rm="${esc(name)}" title="撤销该授权：注释禁用其 stanza 并热加载（可在下方「已禁用的授权」区恢复）">${icon('i-trash',13)}撤销</button>` : ''}</div>
       </div>
       <div class="body" style="padding-top:6px">
@@ -3466,6 +3467,76 @@ function renderUsers() {
     saveAddDraft();
     toast('已按该授权预填，请填写新名称', 'ok');
     f.name.focus();
+  });
+  /* 重发 URI：为已有授权重建 fwknop://（access.conf 不记录服务器地址，需补录；
+     密钥材料不离开服务器，由 fwknopd-admin user qr 就地重建）。两步弹窗：
+     第一步补录服务器地址（历史 datalist + 实时校验），第二步展示 URI——
+     默认参数级掩码防窥屏/截图泄露，复制/下载始终用原文 */
+  $$('#users-body [data-qr]').forEach(b => b.onclick = () => {
+    const name = b.dataset.qr;
+    const lastSrv = localStorage.getItem('fwknop-last-server') || '';
+    openModal(`<h3>重发授权 URI「${esc(name)}」</h3>
+      <div class="mb hint">access.conf 不记录 SPA 服务器地址，重建 URI 需重新提供。<b>URI 内嵌完整密钥材料</b>，等同于该授权的 cred.json，请妥善传递。</div>
+      <div class="fg"><label for="qr-server">SPA 服务器地址</label>
+        <input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="qr-server" list="server-history" value="${esc(lastSrv)}" placeholder="例如 203.0.113.10 或 vpn.example.com" style="width:100%">
+        <div class="auth-hint" aria-live="polite" id="qr-hint"></div>
+        <div class="tip">IPv4/IPv6 或主机名；可从历史记录下拉点选。</div></div>
+      <div class="mf"><button class="btn ghost" id="qr-cancel">取消</button>
+      <button class="btn" id="qr-ok">${icon('i-key',14)} 重建 URI</button></div>`);
+    const inp = $('#qr-server'), hint = $('#qr-hint'), ok = $('#qr-ok');
+    inp.focus(); inp.select();
+    const check = () => {
+      const v = inp.value.trim();
+      const bad = v && !V.server(v);
+      hint.textContent = !v ? '服务器地址不能为空' : bad ? '地址格式无效（IPv4/IPv6/主机名）' : '';
+      hint.style.color = 'var(--red)';
+      ok.disabled = !v || bad;
+    };
+    inp.addEventListener('input', check);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !ok.disabled) ok.click(); });
+    check();
+    $('#qr-cancel').onclick = () => closeModal();
+    ok.onclick = async () => {
+      if (ok.disabled) return;
+      const srv = inp.value.trim();
+      ok.disabled = true; ok.textContent = '重建中…';
+      const restore = () => { ok.disabled = false; ok.innerHTML = `${icon('i-key',14)} 重建 URI`; };
+      try {
+        const fd = new FormData();
+        fd.append('name', name); fd.append('server', srv);
+        const r = await api('/api/admin/qr', { method:'POST', body: fd });
+        /* URI 行锚定行首提取：避开输出首行标题中的 fwknop:// 字样 */
+        const uri = ((r.output || '').match(/^fwknop:\/\/\S+/m) || [''])[0];
+        if (r.error || !uri) {
+          hint.textContent = r.error ? ('重建失败：' + r.error) : '输出中未找到 URI，请检查服务端日志';
+          hint.style.color = 'var(--red)';
+          restore(); return;
+        }
+        lsSet('fwknop-last-server', srv); pushServerHistory(srv);
+        const masked = uri.replace(/([?&](?:key|hmac|totp)=)[^&]*/gi, '$1••••••••（已掩码）');
+        openModal(`<h3>授权 URI「${esc(name)}」</h3>
+          <div class="mb hint">已按服务器地址 <b>${esc(srv)}</b> 重建。URI 内嵌完整密钥材料，默认掩码防窥屏/截图泄露；复制与下载不受掩码影响。</div>
+          <pre class="out-pre" id="qr-uri" style="white-space:pre-wrap;word-break:break-all;max-height:20vh">${esc(masked)}</pre>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+            <button class="btn ghost small" id="qr-reveal" aria-pressed="false" title="切换显示完整 URI（含密钥材料，注意周围可窥屏环境）">显示完整 URI</button>
+            <button class="btn ghost small" id="qr-cp-uri" title="复制完整 URI（发给客户端，fwknop import 导入）">${icon('i-copy',12)} 复制 URI</button>
+            <button class="btn ghost small" id="qr-cp-cmd" title="复制完整导入命令 fwknop import '<URI>'（客户端终端直接粘贴执行）">${icon('i-copy',12)} 复制导入命令</button>
+            <button class="btn ghost small" id="qr-dl" title="下载明文 cred.json 凭证文件（含全部密钥材料，请妥善保管）">${icon('i-download',12)} 下载 cred.json</button>
+          </div>
+          <div class="mf"><button class="btn" id="qr-done">完成</button></div>`, true);
+        let revealed = false;
+        $('#qr-reveal').onclick = () => {
+          revealed = !revealed;
+          $('#qr-uri').textContent = revealed ? uri : masked;
+          $('#qr-reveal').textContent = revealed ? '隐藏完整 URI' : '显示完整 URI';
+          $('#qr-reveal').setAttribute('aria-pressed', revealed ? 'true' : 'false');
+        };
+        $('#qr-cp-uri').onclick = () => copyText(uri, '授权 URI ');
+        $('#qr-cp-cmd').onclick = () => copyText(`fwknop import '${uri}'`, '导入命令 ');
+        $('#qr-dl').onclick = () => downloadCredJson(uri);
+        $('#qr-done').onclick = () => closeModal();
+      } catch (e) { restore(); }
+    };
   });
   $$('#users-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, (c.dataset.lab || '授权名称') + ' '));
   /* 最近事件按钮：直达事件页该用户筛选 */
