@@ -3654,6 +3654,9 @@ function renderTOFU() {
   $$('.th-sort').forEach(th => {
     const on = ts && th.dataset.tsort === ts.key;
     th.innerHTML = esc(th.textContent.replace(/[▲▼]$/, '')) + (on ? `<span class="arr">${ts.dir > 0 ? '▲' : '▼'}</span>` : '');
+    /* 读屏语义：排序状态用 aria-sort 表达（无排序=移除属性） */
+    if (on) th.setAttribute('aria-sort', ts.dir > 0 ? 'ascending' : 'descending');
+    else th.removeAttribute('aria-sort');
   });
   /* 悬空绑定检测：授权已从 access.conf 删除/禁用后，残留绑定不再匹配任何
      stanza，敲门永远失败——标出并计数提醒清理（授权列表未加载时不判定） */
