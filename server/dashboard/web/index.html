@@ -3542,6 +3542,10 @@ $('#add-form').addEventListener('submit', async ev => {
     $('#add-output').textContent = r.output || '(无输出)';
     const m = (r.output || '').match(/fwknop:\/\/\S+/);
     if (m) {
+      /* 留空签发的 URI 主机是占位符「server」（credential.c）：结果区再提一次，
+         避免没看字段提示就直接分发 */
+      if (!f.server.value.trim())
+        toast('提示：未填服务器地址，URI 主机为占位符「server」，客户端导入后需自行替换', '', 6000);
       $('#add-uri').textContent = m[0];
       $('#add-uri-box').style.display = '';
       $('#add-uri-hint').style.display = '';
