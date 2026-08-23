@@ -2825,6 +2825,7 @@ $('#show-add').onclick = () => {
   c.style.display = c.style.display === 'none' ? '' : 'none';
   if (c.style.display !== 'none') {
     renderServerHistory(); renderCustomTpls(); loadAddDraft();
+    if (!S.config) loadConfig();  /* 端口范围跨配置校验需要 PCAP_PORT_RANGE */
     c.scrollIntoView({ behavior:'smooth', block:'start' });
     setTimeout(() => $('#add-form').name.focus(), 250);  /* 展开后聚焦第一必填项（等滚动落定） */
   }
@@ -3221,7 +3222,21 @@ $('#add-form').access.addEventListener('input', ev => {
 $('#add-form')['port-range'].addEventListener('input', ev => {
   const v = ev.target.value.trim(), el = $('#add-range-hint');
   if (!v) { el.textContent = ''; el.className = 'auth-hint'; return; }
-  fmtHint(el, V.range(v), '✓ 范围有效', '✗ 格式应为 30000-60000（1024-65535，起 < 止）');
+  if (!V.range(v)) { fmtHint(el, false, '', '✗ 格式应为 30000-60000（1024-65535，起 < 止）'); return; }
+  /* 跨配置校验：TOTP 跳变端口若超出 fwknopd.conf PCAP_PORT_RANGE 监听范围，
+     落在范围外的敲门根本不会被捕获——签发前即时拦截（配置未加载时跳过） */
+  const ent = ((S.config && S.config.entries) || []).find(e => e.key === 'PCAP_PORT_RANGE');
+  const sv = ent && String(ent.value || '').trim();
+  if (sv) {
+    const a = v.split('-').map(Number), b = sv.split('-').map(Number);
+    if (b.length === 2 && !(a[0] >= b[0] && a[1] <= b[1])) {
+      fmtHint(el, false, '', `✗ 超出服务端监听范围 ${sv}（PCAP_PORT_RANGE），范围外的敲门无法被捕获`);
+      return;
+    }
+    fmtHint(el, true, `✓ 范围有效，位于服务端监听范围 ${sv} 内`, '');
+    return;
+  }
+  fmtHint(el, true, '✓ 范围有效', '');
 });
 
 $('#add-form').user.addEventListener('input', ev => {
