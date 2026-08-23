@@ -3369,7 +3369,9 @@ $('#add-form').user.addEventListener('input', ev => {
 
 $('#add-form').server.addEventListener('input', ev => {
   const v = ev.target.value.trim(), el = $('#add-server-hint');
-  if (!v) { el.textContent = ''; el.className = 'auth-hint'; return; }
+  /* 留空时 URI 主机是占位符「server」（credential_to_uri），客户端导入后
+     需自行替换——琥珀提示而非报错（留空本身合法，但产出的 URI 不可直接分发） */
+  if (!v) { el.textContent = '△ 留空则授权 URI 主机为占位符「server」，客户端导入后需自行替换'; el.className = 'auth-hint no'; return; }
   if (/^https?:\/\//i.test(v) || /\s/.test(v)) {
     fmtHint(el, false, '', '✗ 只填地址本身（不含 http://、端口或空白）'); return;
   }
