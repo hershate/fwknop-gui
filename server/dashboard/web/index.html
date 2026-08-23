@@ -1718,7 +1718,7 @@ document.addEventListener('touchend', e => {
 
 /* .cp-cell 点击复制、.tmtoggle 时间列切换、分组折叠头等全局键盘可达：模板
    生成点多，用 MutationObserver 统一补 tabindex，Enter/空格经事件委托触发其 click */
-const KB_CLICK_SEL = '.cp-cell, .tmtoggle, .evh-hot, .sum-link, .ratiobad-seg, .conf-grp, #dis-toggle, [data-pg], #daemon-pill, #conn-box, #nav-ev-badge, #nav-conf-dot, #sess-ttl';
+const KB_CLICK_SEL = '.cp-cell, .tmtoggle, .evh-hot, .sum-link, .ratiobad-seg, .conf-grp, #dis-toggle, [data-pg], [data-rmf], #daemon-pill, #conn-box, #nav-ev-badge, #nav-conf-dot, #sess-ttl';
 new MutationObserver(muts => {
   for (const m of muts) m.addedNodes.forEach(n => {
     if (n.nodeType !== 1) return;
@@ -2616,7 +2616,7 @@ function updateEvActiveStrip() {
   const backBtn = (S.evHeatStack && S.evHeatStack.length)
     ? '<button class="btn ghost small" id="ev-heat-back" style="padding:2px 8px;font-size:11.5px" title="返回钻取前的时间范围">↩ 上级视图</button>' : '';
   el.innerHTML = '<span class="hint" style="font-size:11.5px">筛选中：</span>' +
-    parts.map(([k, label]) => `<span class="tag hl" style="cursor:pointer" data-rmf="${k}" title="${esc(label)}（点击移除此筛选）">${esc(label)} ✕</span>`).join('') +
+    parts.map(([k, label]) => `<span class="tag hl" role="button" style="cursor:pointer" data-rmf="${k}" title="${esc(label)}（点击或 Enter 移除此筛选）">${esc(label)} ✕</span>`).join('') +
     backBtn +
     '<button class="btn ghost small" id="ev-copylink" style="padding:2px 8px;font-size:11.5px" title="复制当前事件视图的链接（含类型筛选/预设时间范围/搜索词），发给同事即见同一画面">复制视图链接</button>' +
     '<button class="btn ghost small" id="ev-clear-all" style="padding:2px 8px;font-size:11.5px">全部清除</button>';
