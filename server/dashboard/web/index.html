@@ -1492,13 +1492,13 @@ document.addEventListener('touchend', e => {
 new MutationObserver(muts => {
   for (const m of muts) m.addedNodes.forEach(n => {
     if (n.nodeType !== 1) return;
-    if (n.matches && n.matches('.cp-cell:not([tabindex]), .tmtoggle:not([tabindex])')) n.tabIndex = 0;
-    if (n.querySelectorAll) n.querySelectorAll('.cp-cell:not([tabindex]), .tmtoggle:not([tabindex])').forEach(el => { el.tabIndex = 0; });
+    if (n.matches && n.matches('.cp-cell:not([tabindex]), .tmtoggle:not([tabindex]), .evh-hot:not([tabindex])')) n.tabIndex = 0;
+    if (n.querySelectorAll) n.querySelectorAll('.cp-cell:not([tabindex]), .tmtoggle:not([tabindex]), .evh-hot:not([tabindex])').forEach(el => { el.tabIndex = 0; });
   });
 }).observe(document.body, { childList: true, subtree: true });
 document.addEventListener('keydown', ev => {
   if (ev.key !== 'Enter' && ev.key !== ' ') return;
-  const el = ev.target && ev.target.closest ? ev.target.closest('.cp-cell, .tmtoggle') : null;
+  const el = ev.target && ev.target.closest ? ev.target.closest('.cp-cell, .tmtoggle, .evh-hot') : null;
   if (el) { ev.preventDefault(); el.click(); }
 });
 
@@ -1559,7 +1559,7 @@ const KBD_HELP = [
   ['r', '手动刷新全部数据'],
   ['t', '切换明暗主题'],
   ['← / →', '事件页翻页'],
-  ['Enter / 空格', '展开聚焦的事件行详情'],
+  ['Enter / 空格', '展开聚焦的事件行详情；钻取聚焦的时间分布柱'],
   ['Ctrl/⌘ + S', '保存服务配置（编辑器有改动时）'],
   ['Esc', '关闭弹窗；在输入框中则取消焦点'],
   ['?', '打开本帮助'],
@@ -2291,7 +2291,7 @@ function renderEvHeat() {
   el.innerHTML = buckets.map((b, i) => {
     const t0 = lo + i * bw;
     const lab = `${fmtAbs(t0).slice(0, 16)} 起 · ${b.n} 条${b.bad ? `（异常 ${b.bad}）` : ''}${b.n ? '，点击筛选该时段' : ''}`;
-    return `<div class="evh-bar" data-i="${i}" title="${lab}" style="flex:1;display:flex;align-items:flex-end;height:34px;${b.n ? 'cursor:pointer' : ''}">
+    return `<div class="evh-bar${b.n ? ' evh-hot' : ''}" data-i="${i}" title="${lab}" ${b.n ? `role="button" aria-label="${lab}"` : ''} style="flex:1;display:flex;align-items:flex-end;height:34px;${b.n ? 'cursor:pointer' : ''}">
       <div style="width:100%;height:${b.n ? Math.max(b.n / max * 100, 8) : 2}%;background:${b.bad ? 'var(--red)' : 'var(--accent)'};opacity:${b.n ? 0.45 + 0.55 * b.n / max : 0.15};border-radius:2px 2px 0 0"></div></div>`;
   }).join('');
   $$('#ev-heat .evh-bar').forEach(bar => bar.onclick = () => {
