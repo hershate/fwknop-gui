@@ -824,7 +824,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 </div>
                 <div class="field">
                   <label>访问超时（秒）</label>
-                  <input spellcheck="false" autocomplete="off" autocapitalize="off" name="fw-timeout" placeholder="默认 30">
+                  <input inputmode="numeric" spellcheck="false" autocomplete="off" autocapitalize="off" name="fw-timeout" placeholder="默认 30">
                   <div class="tip">FW_ACCESS_TIMEOUT，敲门后端口保持开放的时长</div>
                   <div id="fwto-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
                     <button type="button" class="tpl-chip" data-fwto="30">30 秒</button>
@@ -859,7 +859,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 </div>
                 <div class="field">
                   <label>TOFU 宽限期（秒）</label>
-                  <input spellcheck="false" autocomplete="off" autocapitalize="off" name="tofu-timeout" placeholder="留空 = 绑定本机指纹；86400 = 首用自动绑定">
+                  <input inputmode="numeric" spellcheck="false" autocomplete="off" autocapitalize="off" name="tofu-timeout" placeholder="留空 = 绑定本机指纹；86400 = 首用自动绑定">
                   <div class="tip">设值后首个敲门的设备自动绑定；留空则绑定当前设备</div>
                   <div id="tofuto-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
                     <button type="button" class="tpl-chip" data-tfto="3600">1 小时</button>
@@ -2995,7 +2995,7 @@ function renderEvents() {
     </select>
     <button class="btn ghost small" id="pg-prev" ${S.evPage<=0?'disabled':''}>上一页</button>
     <button class="btn ghost small" id="pg-next" ${S.evPage>=pages-1?'disabled':''}>下一页</button>
-    ${pages > 5 ? `<input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="pg-jump" type="number" min="1" max="${pages}" placeholder="跳页" title="输入页码回车跳转（1-${pages}）" style="width:64px;padding:3px 6px;font-size:12px">` : ''}`;
+    ${pages > 5 ? `<input inputmode="numeric" spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="pg-jump" type="number" min="1" max="${pages}" placeholder="跳页" title="输入页码回车跳转（1-${pages}）" style="width:64px;padding:3px 6px;font-size:12px">` : ''}`;
   const pv = $('#pg-prev'), nx = $('#pg-next');
   if (pv) pv.onclick = () => { S.evPage--; renderEvents(); };
   if (nx) nx.onclick = () => { S.evPage++; renderEvents(); };
