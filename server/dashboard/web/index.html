@@ -2585,6 +2585,11 @@ function renderEvents() {
         const k = tr.dataset.key;
         if (S.evExpanded.has(k)) S.evExpanded.delete(k); else S.evExpanded.add(k);
         renderEvents();
+        /* 展开后详情可能落在视口下方：滚入视野（nearest 不打扰已可见的行） */
+        if (S.evExpanded.has(k)) {
+          const det = document.querySelector(`tr[data-detail="${CSS.escape(k)}"]`);
+          if (det) det.scrollIntoView({ behavior:'smooth', block:'nearest' });
+        }
       };
       tr.onclick = ev => {
         if (ev.target.closest('.cp-cell,.icon-btn,[data-lookup]')) return;
