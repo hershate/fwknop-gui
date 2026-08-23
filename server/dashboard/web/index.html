@@ -2621,13 +2621,13 @@ function renderEvents() {
             if (stz && !hit)
               return `${e.stanza}${nm} <span class="hint">已删除</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" disabled title="该 stanza 已不在当前配置（可能已撤销），无法反查">${icon('i-users',12)}</button>`;
             return `${e.stanza}${nm}<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-evstanza="${e.stanza}" title="在用户与授权页查看该 stanza">${icon('i-users',12)}</button>`; })()}</div></div>
-          <div><div class="k">用户</div><div class="v">${e.user?`<span class="cp-cell" data-cp="${esc(e.user)}">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" title="查看该用户的全部事件">${icon('i-search',12)}</button><button class="icon-btn" style="padding:2px 5px;margin-left:2px" data-ev2usr="${esc(e.user)}" title="在用户与授权页按该用户名定位授权">${icon('i-users',12)}</button>`:'—'}</div></div>
-          <div><div class="k">设备指纹（完整）</div><div class="v">${e.device_id?`<span class="cp-cell" data-cp="${esc(e.device_id)}">${esc(e.device_id)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" title="查看该设备的全部事件">${icon('i-search',12)}</button>${(() => { const bd = S.tofu && S.tofu.bindings;
+          <div><div class="k">用户</div><div class="v">${e.user?`<span class="cp-cell" data-cp="${esc(e.user)}">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" data-lk="user" title="查看该用户的全部事件">${icon('i-search',12)}</button><button class="icon-btn" style="padding:2px 5px;margin-left:2px" data-ev2usr="${esc(e.user)}" title="在用户与授权页按该用户名定位授权">${icon('i-users',12)}</button>`:'—'}</div></div>
+          <div><div class="k">设备指纹（完整）</div><div class="v">${e.device_id?`<span class="cp-cell" data-cp="${esc(e.device_id)}">${esc(e.device_id)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" data-lk="dev" title="查看该设备的全部事件">${icon('i-search',12)}</button>${(() => { const bd = S.tofu && S.tofu.bindings;
             /* TOFU 数据已加载且查无绑定 → 禁用反查按钮并说明；未加载保持可点（跳转后 tofu 页自会加载） */
             if (bd && !bd.some(x => x.device_id === e.device_id))
               return `<button class="icon-btn" style="padding:2px 5px;margin-left:2px" disabled title="该设备当前无 TOFU 绑定（可能已解绑或从未绑定）">${icon('i-fp',12)}</button>`;
             return `<button class="icon-btn" style="padding:2px 5px;margin-left:2px" data-devtofu="${esc(e.device_id)}" title="查该设备的 TOFU 绑定状态">${icon('i-fp',12)}</button>`; })()}`:'—'}</div></div>
-          <div><div class="k">来源 IP</div><div class="v">${e.src_ip?`<span class="cp-cell" data-cp="${esc(e.src_ip)}">${esc(e.src_ip)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.src_ip)}" title="查看该 IP 的全部事件">${icon('i-search',12)}</button>`:'—'}</div></div>
+          <div><div class="k">来源 IP</div><div class="v">${e.src_ip?`<span class="cp-cell" data-cp="${esc(e.src_ip)}">${esc(e.src_ip)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.src_ip)}" data-lk="ip" title="查看该 IP 的全部事件">${icon('i-search',12)}</button>`:'—'}</div></div>
           <div><div class="k" title="敲门包的目的端口：TOTP 跳变时随时间变化，是 SPA 包的「落点」，不是服务端口">SPA 端口</div><div class="v">${e.spa_port?`<span class="cp-cell" data-portq="${e.spa_port}" title="点击按 SPA 端口 ${e.spa_port} 筛选">${e.spa_port}</span>`:'—'}</div></div>
           <div><div class="k" title="客户端请求放行的服务端口（须在授权 OPEN_PORTS 白名单内），敲门成功后防火墙放行该端口">目标端口</div><div class="v">${e.target_port?`<span class="cp-cell" data-portq="${e.target_port}" title="点击按目标端口 ${e.target_port} 筛选">${e.target_port}</span>`:'—'}</div></div>
           <div><div class="k">原因（原始）</div><div class="v">${e.reason?`<span class="cp-cell" data-cp="${esc(e.reason)}">${esc(e.reason)}</span>`:'—'}</div></div>
@@ -2641,9 +2641,9 @@ function renderEvents() {
       return `<tr class="ev-click${BAD_EVTS.includes(e.event) ? ' ev-bad' : ''}" data-key="${esc(key)}" tabindex="0" role="button" aria-expanded="${open?'true':'false'}" title="点击或 Enter 展开/收起完整详情">
         <td class="mono tmtoggle" title="点击切换相对/绝对时间" style="white-space:nowrap;color:var(--muted);cursor:pointer">${S.evTimeAbs ? fmtAbs(e.time) : fmtAgo(e.time)}</td>
         <td><span class="badge ${m.cls}">${m.label}</span></td>
-        <td>${e.user ? `<span class="cp-cell" data-cp="${esc(e.user)}" title="点击复制用户名">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" title="查看该用户的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
-        <td class="mono">${e.device_id ? `<span class="cp-cell" data-cp="${esc(e.device_id)}" title="点击复制完整指纹：${esc(e.device_id)}">${esc(e.device_id.slice(0,14))}…</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" title="查看该设备的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
-        <td class="mono">${e.src_ip ? `<span class="cp-cell" data-cp="${esc(e.src_ip)}" title="点击复制来源 IP">${esc(e.src_ip)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.src_ip)}" title="查看该 IP 的全部事件">${icon('i-search',12)}</button>` : '—'}</td>
+        <td>${e.user ? `<span class="cp-cell" data-cp="${esc(e.user)}" title="点击复制用户名">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" data-lk="user" title="查看该用户的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
+        <td class="mono">${e.device_id ? `<span class="cp-cell" data-cp="${esc(e.device_id)}" title="点击复制完整指纹：${esc(e.device_id)}">${esc(e.device_id.slice(0,14))}…</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" data-lk="dev" title="查看该设备的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
+        <td class="mono">${e.src_ip ? `<span class="cp-cell" data-cp="${esc(e.src_ip)}" title="点击复制来源 IP">${esc(e.src_ip)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.src_ip)}" data-lk="ip" title="查看该 IP 的全部事件">${icon('i-search',12)}</button>` : '—'}</td>
         <td class="mono">${e.spa_port ? `<span class="cp-cell" data-portq="${e.spa_port}" title="点击按 SPA 端口 ${e.spa_port} 筛选">${e.spa_port}</span>` : '—'}</td>
         <td class="mono">${e.target_port ? `<span class="cp-cell" data-portq="${e.target_port}" title="点击按目标端口 ${e.target_port} 筛选">${e.target_port}</span>` : '—'}</td>
         <td class="hint">${e.reason ? `<span class="cp-cell" data-reasonq="${esc(e.reason)}" title="点击按原因「${esc(e.reason)}」筛选">${esc(reasonZh(e.reason))}</span>` : esc(reasonZh(e.reason))}</td>
@@ -2759,11 +2759,13 @@ function renderEvents() {
     });
     $$('#events-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, ''));
     /* 来源 IP 一键反查：搜索框填入该 IP 并重置到第一页 */
+    /* 行内放大镜：按列语义写字段前缀式查询（user:/dev:/ip:），精确限定字段 */
     $$('#events-body [data-lookup]').forEach(b => b.onclick = () => {
-      S.evQuery = b.dataset.lookup; S.evPage = 0;
+      const v = (b.dataset.lk ? b.dataset.lk + ':' : '') + b.dataset.lookup;
+      S.evQuery = v; S.evPage = 0;
       $('#event-search').value = S.evQuery;
       renderEvents();
-      toast(`已按「${b.dataset.lookup}」筛选事件`, 'ok');
+      toast(`已按「${v}」筛选事件`, 'ok');
     });
   }
 
