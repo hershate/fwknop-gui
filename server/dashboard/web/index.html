@@ -2412,8 +2412,8 @@ function renderEvents() {
               return `<button class="icon-btn" style="padding:2px 5px;margin-left:2px" disabled title="该设备当前无 TOFU 绑定（可能已解绑或从未绑定）">${icon('i-fp',12)}</button>`;
             return `<button class="icon-btn" style="padding:2px 5px;margin-left:2px" data-devtofu="${esc(e.device_id)}" title="查该设备的 TOFU 绑定状态">${icon('i-fp',12)}</button>`; })()}`:'—'}</div></div>
           <div><div class="k">来源 IP</div><div class="v">${e.src_ip?`<span class="cp-cell" data-cp="${esc(e.src_ip)}">${esc(e.src_ip)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.src_ip)}" title="查看该 IP 的全部事件">${icon('i-search',12)}</button>`:'—'}</div></div>
-          <div><div class="k">SPA 端口</div><div class="v">${e.spa_port?`<span class="cp-cell" data-portq="${e.spa_port}" title="点击按 SPA 端口 ${e.spa_port} 筛选">${e.spa_port}</span>`:'—'}</div></div>
-          <div><div class="k">目标端口</div><div class="v">${e.target_port?`<span class="cp-cell" data-portq="${e.target_port}" title="点击按目标端口 ${e.target_port} 筛选">${e.target_port}</span>`:'—'}</div></div>
+          <div><div class="k" title="敲门包的目的端口：TOTP 跳变时随时间变化，是 SPA 包的「落点」，不是服务端口">SPA 端口</div><div class="v">${e.spa_port?`<span class="cp-cell" data-portq="${e.spa_port}" title="点击按 SPA 端口 ${e.spa_port} 筛选">${e.spa_port}</span>`:'—'}</div></div>
+          <div><div class="k" title="客户端请求放行的服务端口（须在授权 OPEN_PORTS 白名单内），敲门成功后防火墙放行该端口">目标端口</div><div class="v">${e.target_port?`<span class="cp-cell" data-portq="${e.target_port}" title="点击按目标端口 ${e.target_port} 筛选">${e.target_port}</span>`:'—'}</div></div>
           <div><div class="k">原因（原始）</div><div class="v">${e.reason?`<span class="cp-cell" data-cp="${esc(e.reason)}">${esc(e.reason)}</span>`:'—'}</div></div>
           <div><div class="k">原因（中文）</div><div class="v">${esc(reasonZh(e.reason))}</div></div>
           <div style="align-self:end"><button class="btn ghost small" data-evjson="${esc(key)}" title="复制该事件的完整 JSON（排障/上报用）">${icon('i-copy',12)} 复制原始 JSON</button>
