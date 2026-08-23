@@ -5394,11 +5394,28 @@ function renderConfEditor() {
       '<div class="hint">（配置为空，点击「新增指令」添加）</div>';
     $$('#conf-edit-rows .ce-del').forEach(b => b.onclick = () => {
       const row = b.parentElement; const i = Array.from(row.parentElement.children).indexOf(row);
+      harvestConfRows();  /* 先收割：其他行的未保存输入不被重建覆盖；收割后 confRows 与 DOM 行序一致，索引 i 仍对应 */
       confRows.splice(i, 1); markConfDirty(); renderConfEditor();
     });
     markConfRows();
     applyConfFilter();  /* 重渲染后过滤状态（指令名 × 仅看修改）保持 */
   }
+}
+
+/* 结构化行的真实编辑状态在 DOM input 里（input 委托只标脏、不回写 confRows）：
+   任何触发 renderConfEditor 重建的动作（删行/新增/模板合并）前必须先收割，
+   否则其余行的未保存修改被 confRows 旧快照覆盖——静默丢失且无提示 */
+function harvestConfRows() {
+  if (confRawEdit) return;  /* 原文模式下结构化行不可见，无编辑状态可收 */
+  const rows = [];
+  $$('#conf-edit-rows > div').forEach(row => {
+    const ki = row.querySelector('.ce-key'); if (!ki) return;
+    const vi = row.querySelector('.ce-val');
+    /* 空键行保留（可能是「新增指令」后正在编辑的行）；保存路径自有
+       「有值无键」拦截与空行跳过，收割不做过滤以免编辑现场被裁 */
+    rows.push([ki.value.trim(), vi ? vi.value : '']);
+  });
+  confRows = rows;
 }
 
 $('#conf-edit-btn').onclick = () => {
@@ -5425,7 +5442,15 @@ $('#nav-conf-dot').onclick = ev => {
   showPage('config');
   if (!confEditing) setTimeout(() => $('#conf-edit-btn').click(), 60);
 };
-$('#conf-raw-edit').onclick = () => { confRawEdit = !confRawEdit; renderConfEditor(); };
+/* 结构化 ↔ 原文两种模式的编辑状态各自独立（行集 ↔ 自由文本，无双向合并）：
+   有未保存修改时切换前确认，防「切过去看一眼」变成静默丢弃编辑现场；
+   确认丢弃后目标模式回到打开时快照，脏标记同步复位 */
+$('#conf-raw-edit').onclick = () => {
+  if (confDirty && !confirm('切换编辑模式将丢弃当前模式下未保存的修改（两种模式的修改不会自动合并），确定切换吗？')) return;
+  if (confDirty) clearConfDirty();
+  confRawEdit = !confRawEdit;
+  renderConfEditor();
+};
 /* 放弃修改：确认后恢复为已保存的配置（编辑器保持打开，两个模式同步复位） */
 $('#conf-discard').onclick = () => {
   if (!confDirty) { toast('没有未保存的修改', 'ok', 1500); return; }
@@ -5440,6 +5465,7 @@ $('#conf-discard').onclick = () => {
 };
 /* 新增指令：渲染后滚动到并聚焦新行键名（长配置末尾新增不再「找不到」） */
 $('#conf-add-row').onclick = () => {
+  harvestConfRows();  /* 先收割：既有行的未保存输入不被重建覆盖 */
   confRows.push(['', '']); markConfDirty(); renderConfEditor();
   const rows = $$('#conf-edit-rows > div');
   const last = rows[rows.length - 1];
@@ -5542,6 +5568,7 @@ $$('[data-ctpl]').forEach(chip => {
   const t = CONF_TEMPLATES[chip.dataset.ctpl];
   if (!t) return;
   if (confRawEdit) { confRawEdit = false; toast('已切换回结构化编辑以套用模板', 'ok'); }
+  harvestConfRows();  /* 先收割：既有行的手动修改不被模板合并的重建覆盖（同键查找也基于最新状态） */
   let upd = 0, add = 0;
   t.lines.forEach(([k, v]) => {
     const row = confRows.find(r => r[0] === k);
