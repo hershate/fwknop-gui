@@ -1719,9 +1719,13 @@ function renderStatusCards() {
       const a = F.audit;
       const MB = 1048576;
       const bk = d.audit_backups || {};
-      const bakNote = bk.count ? ` · 备份 ×${bk.count}（${fmtSize(bk.size)}）` : '';
+      /* 备份堆积警示：数量 >20 或总体积 >100MB 时琥珀提示，引导到关于页清理 */
+      const bkHeavy = (bk.count || 0) > 20 || (bk.size || 0) > 100*MB;
+      const bakNote = bk.count ? (bkHeavy
+        ? ` · <span style="color:var(--amber)" title="审计备份堆积占用磁盘：可到关于页逐个下载或删除">备份 ×${bk.count}（${fmtSize(bk.size)}）⚠ 建议清理</span>`
+        : ` · 备份 ×${bk.count}（${fmtSize(bk.size)}）`) : '';
       if (!a || !a.exists) return { ic:'activity', c:'var(--blue)', bg:'var(--blue-soft)', k:'审计日志',
-        v: bk.count ? `已清空 <small>备份 ×${bk.count}（${fmtSize(bk.size)}），可从关于页或清理回执下载</small>` : '缺失' };
+        v: bk.count ? `已清空 <small>${bkHeavy ? '<span style="color:var(--amber)">' : ''}备份 ×${bk.count}（${fmtSize(bk.size)}）${bkHeavy ? ' ⚠ 建议清理</span>' : ''}，可从关于页或清理回执下载</small>` : '缺失' };
       const clr = (S.writeEnabled && a.size > 0)
         ? ` <button class="btn ghost small" data-audclear="${a.size}" style="padding:2px 8px;font-size:11.5px" title="备份为 .bak-时间戳 文件后清空审计日志">清理</button>` : '';
       if (a.size > 200*MB) return { ic:'activity', c:'var(--red)', bg:'var(--red-soft)', k:'审计日志',
@@ -3564,7 +3568,7 @@ function renderAbout() {
           <a href="/api/audit/download?bak=${encodeURIComponent(n)}" download class="mono" style="color:var(--accent)">${esc(n)}</a>
           ${S.writeEnabled ? `<button class="icon-btn" data-rmbak="${esc(n)}" title="删除该备份文件（不可恢复）">${icon('i-trash',12)}</button>` : ''}
         </div>`).join('') +
-      `<div class="hint" style="margin-top:4px">共 ${d.audit_backups.count} 个 · ${fmtSize(d.audit_backups.size)}</div>`,
+      `<div class="hint" style="margin-top:4px">共 ${d.audit_backups.count} 个 · ${fmtSize(d.audit_backups.size)}${(d.audit_backups.count > 20 || (d.audit_backups.size || 0) > 100*1048576) ? ' · <span style="color:var(--amber)">⚠ 堆积较多，建议下载后清理以释放磁盘</span>' : ''}</div>`,
     ]] : []),
   ];
   $('#about-body').innerHTML = clockWarn + `<table class="tb"><tbody>` + rows.map(([k,v]) =>
