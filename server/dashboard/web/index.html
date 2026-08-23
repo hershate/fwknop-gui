@@ -230,6 +230,9 @@ select.ctl, input.ctl {
 .srch-clear:hover { color:var(--ink); }
 .ev-click { cursor:pointer; }
 .ev-click:hover td { background:var(--panel-2); }
+/* 展开中的事件行：左缘 3px 强调条（inset 阴影不改背景——与异常行红底、
+   悬停底色兼容叠加），多行同时展开时一眼分辨哪些行处于展开态 */
+.ev-click[aria-expanded="true"] td:first-child { box-shadow:inset 3px 0 0 var(--accent); }
 .ev-detail td { background:var(--panel-2); padding:10px 16px; border-top:1px dashed var(--line); }
 .ev-kv { display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:6px 18px; font-size:12.5px; }
 .ev-kv .k { color:var(--faint); font-size:11.5px; margin-bottom:1px; }
