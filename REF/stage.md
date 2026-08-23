@@ -224,6 +224,7 @@ v4 往返/v3 兼容/timeout+device_id 单测 **33/33 PASS**（`REF/build/test_de
 ---
 
 ## 变更日志
+- 2026-08-23：**WebUI 2.4.7 归档**（24 项 UX 迭代，commit `93223d3c..` 起）。核心：PCAP_PORT_RANGE × TOTP_PORT_RANGE 双向跨配置校验（签发/stanza 编辑正向拦截 + 保存 fwknopd.conf 反向列出受影响授权）；事件/TOFU/授权三方反查闭环（禁用态+懒加载+序号直查）；标签页标题未读通知计数；时钟偏差警示提到概览顶部；方案 diff 覆盖 access.conf（/api/profiles/view 增 current_access_conf）；时间分布柱键盘可达。回归 98/98 PASS。详见 note/release/2.4.7.md。
 - 2026-08-23：**WebUI 2.4.6 归档**（37 项 UX 迭代，commit `501cd1fa..` 起）。核心：用户页批量撤销（活跃预警+逐个复用单撤销链路）；批量条「被筛选隐藏」标注；签发安全选项折叠+生效值摘要；搜索历史通用组件五框接入；浏览器前进/后退翻页；事件排行用户维度+异常角标；模板高亮一致性修复；首访引导命令纠错（fwknop -n）。回归 98/98 PASS。详见 note/release/2.4.6.md。
 - 2026-08-23：**WebUI 2.4.5 归档**（27 项 UX 迭代，commit `b53aadbb..9bc558a8`）。核心：审计日志管理闭环（面板清理 rename 备份 / ?bak= 白名单下载 / rmbak 删除 / overview 备份汇总）；签发结果「下载 cred.json」（URI→JSON v1 前端直转，端到端验证）；TOFU 悬空绑定检测 + 一键全选清理；事件来源/设备排行芯片；toast/通知历史纯文本插入消除 HTML 注入面；CSV 导出列错位修复。回归 98/98 PASS。详见 note/release/2.4.5.md。
 - 2026-08-23：**WebUI 2.4.4 归档**（27 项 UX 迭代，commit `b9b2140b..48a29310`）。核心：无障碍补齐（概览卡/cp-cell 键盘可达、aria-live ×5、全局错误兜底 toast）；加载失败兜底（骨架屏超时→错误占位+重试，9 容器）；事件详情复制摘要/异常桌面通知/密度切换/「筛选中」标签条/详情解绑设备；配置视图指令查找框；签发三组常用值芯片；登录失败提示剩余尝试次数。回归 90/90 PASS。详见 note/release/2.4.4.md。
