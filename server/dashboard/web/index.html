@@ -720,6 +720,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           </div>
         </div>
         <div class="grid-tiles" id="tiles"><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div><div class="skel" style="height:76px"></div></div>
+        <div class="hint" id="tiles-cap" style="margin:3px 2px 0;font-size:11.5px"></div>
         <div class="card">
           <div class="head"><h2>汇总</h2><span class="sub">基于当前计数器快照</span></div>
           <div class="body" id="summary-body"><div class="skel" style="height:60px"></div></div>
@@ -2493,6 +2494,12 @@ function renderTiles() {
       if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); go(); }
     };
   });
+  /* 计数口径标注：计数器自 fwknopd 本次启动累计（重启清零），不是「近期流量」——
+     未标注时易把历史总量误读为当前活跃度；附已运行时长便于心算速率 */
+  const cap = $('#tiles-cap');
+  if (cap) cap.textContent = S.daemonStarted
+    ? `计数口径：fwknopd 本次启动以来（已运行 ${fmtDur(Date.now()/1000 - S.daemonStarted)}），服务重启后清零重新累计`
+    : '计数口径：fwknopd 本次启动以来，服务重启后清零重新累计';
 }
 
 function renderSummary() {
