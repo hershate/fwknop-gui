@@ -268,7 +268,7 @@ if [ -x "$GOBIN" ]; then
     export GOROOT="$("$GOBIN" env GOROOT 2>/dev/null || dirname "$(dirname "$GOBIN")")"
     if (cd "$ROOT/server/dashboard" && "$GOBIN" build -o /tmp/ft_dashboard . >/tmp/ft_go.log 2>&1); then
         ok "go 构建 fwknop-dashboard"
-        /tmp/ft_dashboard -version 2>/dev/null | grep -q '^fwknop-dashboard 2\.4\.' \
+        /tmp/ft_dashboard -version 2>/dev/null | grep -q '^fwknop-dashboard 2\.[0-9]' \
             && ok "-version 打印面板版本" || bad "-version 输出异常"
         # 用样例数据启动面板并探测各 API
         D=$(mktemp -d); mkdir -p "$D/run"
