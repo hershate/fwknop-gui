@@ -922,9 +922,9 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               <span class="srch-wrap"><input class="ctl" id="conf-view-filter" placeholder="查找指令 / 说明…" title="按指令名或说明文字过滤（快捷键 / 聚焦）" style="width:150px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="conf-view-filter" title="清空查找" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span><span class="hint" id="conf-view-filter-n" style="font-size:11.5px"></span>
               <button class="btn ghost small" id="conf-expand-all" title="展开全部分组">展开全部</button>
               <button class="btn ghost small" id="conf-collapse-all" title="收起全部分组">收起全部</button>
-              <button class="btn ghost small" id="conf-edit-btn" style="display:none"><svg width="14" height="14"><use href="#i-pencil"/></svg>编辑</button>
+              <button class="btn ghost small" id="conf-edit-btn" style="display:none" title="打开结构化编辑器：增删改指令，含类型校验与重复预警"><svg width="14" height="14"><use href="#i-pencil"/></svg>编辑</button>
               <button class="btn ghost small" id="conf-save-profile" title="把当前 fwknopd.conf + access.conf 快照保存为命名方案（方案页）"><svg width="14" height="14"><use href="#i-archive"/></svg>存为方案</button>
-              <button class="btn ghost small" id="raw-toggle">查看原文</button>
+              <button class="btn ghost small" id="raw-toggle" title="查看 fwknopd.conf 原始文本（含注释，只读）">查看原文</button>
             </div>
           </div>
           <div class="body" id="config-body"><div class="skel" style="height:120px"></div></div>
@@ -938,7 +938,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               <button class="btn ghost small" id="conf-add-row"><svg width="14" height="14"><use href="#i-plus"/></svg>新增指令</button>
               <button class="btn ghost small" id="conf-raw-edit">原文编辑</button>
               <button class="btn ghost small" id="conf-discard" title="放弃全部未保存修改，恢复为已保存的配置">放弃修改</button>
-              <button class="btn small" id="conf-save"><svg width="14" height="14"><use href="#i-save"/></svg>保存</button>
+              <button class="btn small" id="conf-save" title="保存并热加载（Ctrl/⌘+S）；保存前自动预检，原文件自动备份"><svg width="14" height="14"><use href="#i-save"/></svg>保存</button>
             </div>
           </div>
           <div class="body">
@@ -4075,7 +4075,7 @@ function renderTOFU() {
       <div class="d">${q ? '试试更换搜索关键词' : '当授权的指纹白名单为空且启用「要求设备指纹」时，第一台通过校验的设备会自动绑定并显示在这里'}</div>
       ${!q && uf ? `<div class="warn-strip" style="margin-top:12px;text-align:left">${icon('i-warn',15)}<div>
         最近 1 小时有 <b>${uf}</b> 次「指纹未知」拒绝——可能设备尚未完成 TOFU 绑定（授权未设宽限期或已过期）。
-        <button class="btn ghost small" id="tofu-uf-lookup" style="margin-left:6px">查看这些事件</button></div></div>` : ''}
+        <button class="btn ghost small" id="tofu-uf-lookup" style="margin-left:6px" title="跳到事件页筛选「未知指纹」事件，确认来源后再决定是否放行">查看这些事件</button></div></div>` : ''}
     </div></td></tr>`;
     const lk = $('#tofu-uf-lookup');
     if (lk) lk.onclick = () => { S.evFilter = 'unknown_fingerprint'; S.evPage = 0; showPage('events'); };
