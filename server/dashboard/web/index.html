@@ -5720,7 +5720,7 @@ function renderOpLog() {
       <td title="${esc(fmtAbs(e.time))}" style="white-space:nowrap">${esc(fmtAgo(e.time))}</td>
       <td style="white-space:nowrap">${esc(e.op)}</td>
       <td style="word-break:break-all">${e.detail ? `<span class="cp-cell" data-cp="${esc(e.detail)}" data-lab="详情" title="点击复制详情">${esc(e.detail)}</span>` : ''}${!e.ok && e.reason ? `<div style="color:var(--red);font-size:12px;margin-top:2px" title="失败原因（服务端记录的错误摘要）">原因：${esc(e.reason)}</div>` : ''}</td>
-      <td style="white-space:nowrap">${e.ip ? `<span class="cp-cell" data-cp="${esc(e.ip)}" data-lab="来源 IP" title="点击复制来源 IP（爆破排查可直接贴进防火墙封禁）">${esc(e.ip)}</span>` : '—'}</td>
+      <td style="white-space:nowrap">${e.ip ? `<span class="cp-cell" data-cp="${esc(e.ip)}" data-lab="来源 IP" title="点击复制来源 IP（爆破排查可直接贴进防火墙封禁）">${esc(e.ip)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-olip="${esc(e.ip)}" title="在事件页查看该 IP 的全部 SPA 事件（登录失败与敲门行为关联排查）">${icon('i-search',12)}</button>` : '—'}</td>
       <td>${e.ok ? '<span style="color:var(--green)" title="成功">✓</span>' : '<span style="color:var(--red)" title="失败/被拒">✗</span>'}</td>
     </tr>`).join('')}</tbody></table></div>`;
   /* 「加载更早」：返回条数顶到当前窗口说明文件里可能还有更早记录；
@@ -5738,6 +5738,13 @@ function renderOpLog() {
     };
   }
   $$('#oplog-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, (c.dataset.lab || '') + ' '));
+  /* 来源 IP 跨面钻取：操作日志看到可疑 IP（如连番登录失败），一步看它的
+     敲门行为（与防火墙规则表 fwr-src 同一 ip: 前缀口径） */
+  $$('#oplog-body [data-olip]').forEach(b => b.onclick = () => {
+    S.evQuery = 'ip:' + b.dataset.olip; S.evPage = 0; S.evFilter = 'all';
+    $('#event-search').value = S.evQuery;
+    showPage('events');
+  });
 }
 $('#oplog-filter').onchange = e => { S.oplogFilter = e.target.value; renderOpLog(); };
 $('#oplog-search').oninput = e => { S.oplogQuery = e.target.value.trim(); renderOpLog(); };
