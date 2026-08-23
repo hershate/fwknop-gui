@@ -2109,8 +2109,13 @@ $('#to-top').onclick = () => window.scrollTo({ top: 0, behavior: SB() });
 function restartTimer() {
   clearInterval(S.timer);
   /* 断连退避期间 tick 空转守卫：未到 nextTry 不发起请求（顶栏倒计时显示的
-     就是真实重试时刻）；手动刷新会重置 nextTry，不受退避约束 */
-  if (S.auto) S.timer = setInterval(() => { if (Date.now() >= (S.nextTry || 0)) refreshNow(); }, S.ivl);
+     就是真实重试时刻）；手动刷新会重置 nextTry，不受退避约束。
+     tick 固定 1s 粒度而非 ivl：守卫已保证只在 nextTry 到达时发请求（refreshNow
+     起手即把 nextTry 推后一个 ivl，请求频率不变），而旧实现按 ivl 整边界触发，
+     退避的 nextTry 由请求完成时刻算出、与 tick 相位错开——倒计时归零后实际重试
+     最晚可拖到下一边界（ivl=60s 时「0s 后重试」空挂近一分钟）。1s 粒度让
+     两处倒计时（断连 conn-text / 常态 auto-ttl）与真实重试时刻误差 ≤1s */
+  if (S.auto) S.timer = setInterval(() => { if (Date.now() >= (S.nextTry || 0)) refreshNow(); }, 1000);
   $('#foot-ivl').textContent = S.ivl / 1000;
 }
 $('#auto-sw').onchange = e => { S.auto = e.target.checked; S.nextTry = Date.now(); try { localStorage.setItem('fwknop-auto', S.auto ? '1' : '0'); } catch (e2) {} restartTimer(); };
