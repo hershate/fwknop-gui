@@ -1472,10 +1472,16 @@ async function submitLogin() {
        有失败尝试时换错误样式并延长驻留；稍作延迟不与「登录成功」叠读 */
     if (d.last_login) {
       const ll = d.last_login;
-      const failN = ll.failed_since || 0;
-      const failNote = failN ? `，此后有 ${failN} 次失败尝试${failN >= 3 ? '——若非本人操作，请到「关于」页修改密码并核查操作日志' : ''}` : '';
-      setTimeout(() => toast(`上次登录：${fmtAgo(ll.time)}（${ll.ip || '未知 IP'}）${failNote}`,
-        failN ? 'err' : 'ok', failN ? 9000 : 5000), 400);
+      if (ll.window_exceeded) {
+        /* 追溯窗口被失败记录灌满（持续爆破的典型形态）：明确告知「看不到
+           上次登录」本身即是告警，而非无声省略 */
+        setTimeout(() => toast(`安全提醒：窗口内已有 ${ll.failed_since} 次登录失败，上次成功登录已超出追溯窗口——若非本人操作，请到「关于」页修改密码并核查操作日志`, 'err', 9000), 400);
+      } else {
+        const failN = ll.failed_since || 0;
+        const failNote = failN ? `，此后有 ${failN} 次失败尝试${failN >= 3 ? '——若非本人操作，请到「关于」页修改密码并核查操作日志' : ''}` : '';
+        setTimeout(() => toast(`上次登录：${fmtAgo(ll.time)}（${ll.ip || '未知 IP'}）${failNote}`,
+          failN ? 'err' : 'ok', failN ? 9000 : 5000), 400);
+      }
     }
     enterApp();
   } catch (e) { errEl.textContent = '网络错误，请重试'; btn.disabled = false; }

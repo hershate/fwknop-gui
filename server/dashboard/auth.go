@@ -477,7 +477,9 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	   察觉。先扫尾部再写本次记录——本次登录不应把自己算进去 */
 	var lastLogin *OpEntry
 	failedSince := 0
+	scanned := 0
 	for _, e := range readOpLogTail(500) {
+		scanned++
 		switch e.Op {
 		case "登录":
 			ce := e
@@ -498,6 +500,13 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	if lastLogin != nil {
 		resp["last_login"] = map[string]interface{}{
 			"time": lastLogin.Time, "ip": lastLogin.IP, "failed_since": failedSince,
+		}
+	} else if scanned >= 500 && failedSince > 0 {
+		/* 窗口被失败记录灌满仍找不到上次成功登录（持续爆破的典型形态）：
+		   静默省略会让「攻击最重时恰恰无警告」；显式告知超出追溯窗口。
+		   scanned 未满（全新部署首次登录）不误报 */
+		resp["last_login"] = map[string]interface{}{
+			"time": 0, "ip": "", "failed_since": failedSince, "window_exceeded": true,
 		}
 	}
 	writeJSON(w, resp)
