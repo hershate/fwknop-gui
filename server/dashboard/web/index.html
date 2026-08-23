@@ -234,6 +234,8 @@ select.ctl, input.ctl {
 .stat-card .k { font-size:12px; color:var(--muted); }
 .stat-card .v { font-size:14.5px; font-weight:700; margin-top:1px; word-break:break-all; }
 .stat-card .v small { font-weight:500; color:var(--muted); font-size:11.5px; }
+.stat-card[data-pg] { cursor:pointer; }
+.stat-card[data-pg]:hover { border-color:var(--accent); }
 
 .grid-tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:20px; }
 .tile {
@@ -2105,15 +2107,17 @@ function renderStatusCards() {
     { ic:'cfg', c: d.admin_tool && d.admin_tool.available ? 'var(--teal)' : 'var(--red)',
       bg: d.admin_tool && d.admin_tool.available ? 'var(--teal-soft)' : 'var(--red-soft)', k:'管理工具',
       v: d.admin_tool && d.admin_tool.available ? 'fwknopd-admin 可用' : 'fwknopd-admin 不可用',
-      tip: d.admin_tool && d.admin_tool.available ? '签发/撤销/解绑等管理操作经 fwknopd-admin 执行'
-        : '检查 fwknopd-admin 是否在 PATH，或以 -admin 参数指定路径后重启面板；不可用则签发/撤销等管理操作全部失败' },
+      pg: 'about',
+      tip: (d.admin_tool && d.admin_tool.available ? '签发/撤销/解绑等管理操作经 fwknopd-admin 执行'
+        : '检查 fwknopd-admin 是否在 PATH，或以 -admin 参数指定路径后重启面板；不可用则签发/撤销等管理操作全部失败') + '；点击查看「关于」页状态与诊断' },
     /* 授权规模一览：免进用户页即可感知生效/禁用数量 */
     { ic:'users', c:'var(--accent)', bg:'var(--accent-soft)', k:'访问授权',
       v: d.stanzas ? `${d.stanzas.active} 个生效${d.stanzas.disabled ? ` <small>· ${d.stanzas.disabled} 个已禁用</small>` : ''}` : '—',
-      tip: 'access.conf 中的 stanza 计数（生效 / 已注释禁用）；明细见「用户与授权」页' },
+      pg: 'users',
+      tip: 'access.conf 中的 stanza 计数（生效 / 已注释禁用）；点击查看「用户与授权」明细' },
   ];
   $('#status-cards').innerHTML = cards.map(c => `
-    <div class="stat-card"${c.tip ? ` title="${c.tip}"` : ''}>
+    <div class="stat-card"${c.pg ? ` data-pg="${c.pg}"` : ''}${c.tip ? ` title="${c.tip}"` : ''}>
       <div class="ic" style="color:${c.c};background:${c.bg}">${icon(c.ic, 19)}</div>
       <div><div class="k">${c.k}</div><div class="v">${c.v}</div></div>
     </div>`).join('');
@@ -2122,7 +2126,12 @@ function renderStatusCards() {
 /* 审计日志清理（事件委托，轮询重渲染不失效）：确认 → 备份并清空 → 刷新 */
 $('#status-cards').addEventListener('click', ev => {
   const b = ev.target.closest('[data-audclear]');
-  if (!b) return;
+  if (!b) {
+    /* 状态卡点击直达对应明细页（与指标计数卡同交互范式） */
+    const c = ev.target.closest('[data-pg]');
+    if (c) showPage(c.dataset.pg);
+    return;
+  }
   const size = +b.dataset.audclear;
   confirmDialog('清理审计日志？',
     `当前 <b>${fmtSize(size)}</b> 的审计日志将备份为 <code>.bak-时间戳</code> 文件并清空，事件页从头累计。备份文件仍在运行目录，可随时取回。`,
