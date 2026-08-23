@@ -146,6 +146,18 @@ select.ctl, input.ctl {
 .btn.small { padding:5px 11px; font-size:12px; }
 .btn[disabled] { opacity:.55; cursor:not-allowed; }
 #burger { display:none; }
+/* 桌面端窄侧栏模式（侧栏底部按钮切换）：只留图标，内容区让给宽表格；
+   徽标/状态点/悬停提示全部保留，不丢异常感知能力。限 ≥921px，移动端不受影响 */
+@media (min-width:921px) {
+  body.sb-mini #sidebar { width:64px; flex:0 0 64px; padding:18px 8px; }
+  body.sb-mini .brand { justify-content:center; padding:4px 0 12px; }
+  body.sb-mini .brand > div, body.sb-mini .brand .ver { display:none; }
+  body.sb-mini .nav-item { font-size:0; gap:0; justify-content:center; padding:10px 0; }
+  body.sb-mini #conn-text, body.sb-mini #sess-ttl, body.sb-mini #side-ver, body.sb-mini #ro-badge { display:none; }
+  body.sb-mini .conn { justify-content:center; }
+  body.sb-mini .side-actions { flex-wrap:wrap; justify-content:center; gap:6px; }
+  body.sb-mini .side-actions .icon-btn { font-size:0; gap:0; padding:6px 8px; }
+}
 
 #content { padding:26px 28px 60px; max-width:1360px; width:100%; margin:0 auto; }
 .page { display:none; animation:fadeup .28s cubic-bezier(.3,.7,.4,1); }
@@ -578,6 +590,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
         <button class="icon-btn" id="notif-btn" title="通知历史"><svg><use href="#i-bell"/></svg>通知<span class="nb-badge" id="notif-badge" style="display:none"></span></button>
         <button class="icon-btn" id="theme-btn" title="切换明暗主题（快捷键 t）"><svg><use href="#i-sun"/></svg><span id="theme-lab">浅色</span></button>
         <button class="icon-btn" id="logout-btn" title="注销登录"><svg><use href="#i-lock"/></svg>注销</button>
+        <button class="icon-btn" id="sb-toggle" title="收起/展开侧栏为窄栏图标模式（仅桌面端生效，宽表格场景释放横向空间）"><svg><use href="#i-menu"/></svg>窄栏</button>
       </div>
     </div>
   </aside>
@@ -1601,6 +1614,12 @@ function showPage(p) {
 }
 $$('.nav-item').forEach(b => b.onclick = () => showPage(b.dataset.page));
 $('#burger').onclick = () => { $('#sidebar').classList.add('open'); $('#scrim').classList.add('show'); };
+/* 桌面窄侧栏模式：状态持久化，刷新后保持 */
+if (localStorage.getItem('fwknop-sb-mini') === '1') document.body.classList.add('sb-mini');
+$('#sb-toggle').onclick = () => {
+  const on = document.body.classList.toggle('sb-mini');
+  try { localStorage.setItem('fwknop-sb-mini', on ? '1' : ''); } catch (e) {}
+};
 $('#scrim').onclick = () => { $('#sidebar').classList.remove('open'); $('#scrim').classList.remove('show'); };
 /* 移动端手势：左缘右滑开侧栏，侧栏上左滑收栏（水平位移需明显大于纵向滚动） */
 let touchX0 = null, touchY0 = null;
