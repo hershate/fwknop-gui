@@ -3219,24 +3219,27 @@ $('#add-form').access.addEventListener('input', ev => {
   if (!v) { el.textContent = ''; el.className = 'auth-hint'; return; }
   fmtHint(el, V.access(v), '✓ 格式正确', '✗ 格式应为 tcp/22 或 tcp/22,udp/53（端口 1-65535）');
 });
+/* 跨配置校验共用：TOTP 范围超出 PCAP_PORT_RANGE 时返回服务端范围字符串，
+   否则 null；即时提示与提交前拦截共用同一份逻辑 */
+function rangePcapConflict(v) {
+  const ent = ((S.config && S.config.entries) || []).find(e => e.key === 'PCAP_PORT_RANGE');
+  const sv = ent && String(ent.value || '').trim();
+  if (!sv) return null;
+  const a = v.split('-').map(Number), b = sv.split('-').map(Number);
+  return (b.length === 2 && !(a[0] >= b[0] && a[1] <= b[1])) ? sv : null;
+}
 $('#add-form')['port-range'].addEventListener('input', ev => {
   const v = ev.target.value.trim(), el = $('#add-range-hint');
   if (!v) { el.textContent = ''; el.className = 'auth-hint'; return; }
   if (!V.range(v)) { fmtHint(el, false, '', '✗ 格式应为 30000-60000（1024-65535，起 < 止）'); return; }
-  /* 跨配置校验：TOTP 跳变端口若超出 fwknopd.conf PCAP_PORT_RANGE 监听范围，
-     落在范围外的敲门根本不会被捕获——签发前即时拦截（配置未加载时跳过） */
-  const ent = ((S.config && S.config.entries) || []).find(e => e.key === 'PCAP_PORT_RANGE');
-  const sv = ent && String(ent.value || '').trim();
+  const sv = rangePcapConflict(v);
   if (sv) {
-    const a = v.split('-').map(Number), b = sv.split('-').map(Number);
-    if (b.length === 2 && !(a[0] >= b[0] && a[1] <= b[1])) {
-      fmtHint(el, false, '', `✗ 超出服务端监听范围 ${sv}（PCAP_PORT_RANGE），范围外的敲门无法被捕获`);
-      return;
-    }
-    fmtHint(el, true, `✓ 范围有效，位于服务端监听范围 ${sv} 内`, '');
+    fmtHint(el, false, '', `✗ 超出服务端监听范围 ${sv}（PCAP_PORT_RANGE），范围外的敲门无法被捕获`);
     return;
   }
-  fmtHint(el, true, '✓ 范围有效', '');
+  const ent = ((S.config && S.config.entries) || []).find(e => e.key === 'PCAP_PORT_RANGE');
+  const svo = ent && String(ent.value || '').trim();
+  fmtHint(el, true, svo ? `✓ 范围有效，位于服务端监听范围 ${svo} 内` : '✓ 范围有效', '');
 });
 
 $('#add-form').user.addEventListener('input', ev => {
@@ -3389,6 +3392,11 @@ $('#add-form').addEventListener('submit', async ev => {
     if (name === 'port-range' && !f.totp.checked) continue;  /* TOTP 关闭时不校验不提交 */
     const v = f[name].value.trim();
     if (v && !chk(v)) { toast(`${label} 格式不正确，请按红色提示修正`, 'err'); f[name].focus(); return; }
+    /* 端口范围额外做跨配置拦截：超出 PCAP_PORT_RANGE 的签发必然不可用 */
+    if (name === 'port-range' && v) {
+      const sv = rangePcapConflict(v);
+      if (sv) { toast(`TOTP 端口范围超出服务端监听范围 ${sv}（PCAP_PORT_RANGE），请调整后再签发`, 'err', 6000); f[name].focus(); return; }
+    }
   }
   const fd = new FormData();
   fd.append('name', nm);
