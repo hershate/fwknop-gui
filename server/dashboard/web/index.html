@@ -5327,6 +5327,14 @@ $$('[data-ctpl]').forEach(chip => {
   $('#conf-tpl-desc').textContent = t.desc;
   markConfDirty();
   renderConfEditor();
+  /* 滚动定位首个受影响行 + 全部受影响行闪烁：模板改动散落在长表中，免手动查找 */
+  const tplKeys = new Set(t.lines.map(([k]) => k));
+  const hitRows = $$('#conf-edit-rows > div').filter(r => {
+    const ki = r.querySelector('.ce-key');
+    return ki && tplKeys.has(ki.value.trim());
+  });
+  hitRows.forEach(r => { r.classList.add('flash-prefill'); setTimeout(() => r.classList.remove('flash-prefill'), 1600); });
+  if (hitRows[0]) hitRows[0].scrollIntoView({ behavior:'smooth', block:'center' });
   toast(`模板已合并（更新 ${upd} 项、新增 ${add} 项），点击右上角「保存」生效`, 'ok', 5000);
   };
 });
