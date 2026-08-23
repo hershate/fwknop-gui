@@ -699,7 +699,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <div class="head">
               <h2>访问授权（access.conf）</h2><span class="sub" id="users-sub"></span>
               <div class="tools">
-                <span class="srch-wrap"><input class="ctl" id="users-search" placeholder="搜索名称 / 用户 / 端口 / 来源…" style="width:220px"><button class="icon-btn srch-clear" data-for="users-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+                <span class="srch-wrap"><input class="ctl" id="users-search" placeholder="搜索名称 / 用户 / 端口 / 来源 / 序号（#3）…" style="width:240px"><button class="icon-btn srch-clear" data-for="users-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
                 <select class="ctl" id="users-sort" title="授权排序方式" style="padding:5px 8px;font-size:12.5px">
                   <option value="conf">按配置顺序</option>
                   <option value="name">按名称</option>
@@ -2453,7 +2453,8 @@ function renderEvents() {
       if (!S.users) { try { await loadUsers(); } catch (_) { /* loadUsers 内部已提示 */ } }
       const idx = +b.dataset.evstanza;
       const tgt = ((S.users && S.users.stanzas) || []).find(s => s.index === idx);
-      S.usersQuery = tgt ? (tgt.name || '') : '';
+      /* 无名授权回退按序号过滤（用户页搜索支持「#3」/「3」直查） */
+      S.usersQuery = tgt ? (tgt.name || ('#' + idx)) : '';
       $('#users-search').value = S.usersQuery;
       showPage('users');
       toast(tgt ? `已定位授权「${tgt.name || ('#' + idx)}」` : '该 stanza 已不存在于当前配置（可能已撤销）', tgt ? 'ok' : 'err', 2000);
@@ -2680,7 +2681,9 @@ function renderUsers() {
     (s.name||'').toLowerCase().includes(q) ||
     (s.require_username||'').toLowerCase().includes(q) ||
     (s.open_ports||'').toLowerCase().includes(q) ||
-    (s.source||'').toLowerCase().includes(q)) : all;
+    (s.source||'').toLowerCase().includes(q) ||
+    /* 支持按 stanza 序号直查（事件详情的「授权索引」、审计字段都是序号） */
+    String(s.index) === q || ('#' + s.index) === q) : all;
   /* 排序：配置顺序（默认）/ 名称 / 最近活跃（按该用户最近事件时间倒序）/ 绑定设备数（倒序） */
   const lastEv = {};
   (S.events || []).forEach(e => { if (e.user && !(e.user in lastEv)) lastEv[e.user] = e.time || 0; });
