@@ -789,22 +789,22 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               <div class="form-sec">基本信息</div>
               <div class="form-grid">
                 <div class="field">
-                  <label>凭证名称 <span class="req">*</span></label>
-                  <input spellcheck="false" autocomplete="off" autocapitalize="off" name="name" placeholder="例如 prod-ssh" required>
+                  <label for="af-name">凭证名称 <span class="req">*</span></label>
+                  <input id="af-name" spellcheck="false" autocomplete="off" autocapitalize="off" name="name" placeholder="例如 prod-ssh" required>
                   <div class="tip">作为 access.conf stanza 的标识 · 想不到名字？<a href="javascript:void 0" id="add-autoname" style="color:var(--accent)">用当前时间命名</a></div>
                   <div class="auth-hint" id="add-name-hint"></div>
                 </div>
                 <div class="field">
-                  <label>SPA 服务器地址</label>
-                  <input spellcheck="false" autocomplete="off" autocapitalize="off" name="server" list="server-history" placeholder="例如 203.0.113.10 或 vpn.example.com">
+                  <label for="af-server">SPA 服务器地址</label>
+                  <input id="af-server" spellcheck="false" autocomplete="off" autocapitalize="off" name="server" list="server-history" placeholder="例如 203.0.113.10 或 vpn.example.com">
                   <datalist id="server-history"></datalist>
                   <div class="tip">写入客户端配置，客户端向该地址发 SPA 包<span id="srv-hist-ctl" style="display:none"> · <span id="srv-hist-n"></span> 条历史 <a href="javascript:void 0" id="srv-hist-manage" style="color:var(--accent)">管理</a> <a href="javascript:void 0" id="srv-hist-clear" style="color:var(--faint)">清空</a></span></div>
                   <div id="srv-hist-chips" style="display:none;flex-wrap:wrap;gap:6px;margin-top:6px"></div>
                   <div class="auth-hint" id="add-server-hint"></div>
                 </div>
                 <div class="field">
-                  <label>允许访问端口</label>
-                  <input spellcheck="false" autocomplete="off" autocapitalize="off" name="access" placeholder="默认 tcp/22">
+                  <label for="af-access">允许访问端口</label>
+                  <input id="af-access" spellcheck="false" autocomplete="off" autocapitalize="off" name="access" placeholder="默认 tcp/22">
                   <div class="tip">OPEN_PORTS：敲门成功后<b>放行的服务端口</b>，如 tcp/22,udp/53（与下方 TOTP 跳变端口是两回事）</div>
                   <div id="access-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
                     <button type="button" class="tpl-chip" data-port="tcp/22" title="SSH · 点击加入/移出端口列表">tcp/22</button>
@@ -817,14 +817,14 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                   <div class="auth-hint" id="add-access-hint"></div>
                 </div>
                 <div class="field">
-                  <label>要求客户端用户名</label>
-                  <input spellcheck="false" autocomplete="off" autocapitalize="off" name="user" placeholder="可选，如 alice">
+                  <label for="af-user">要求客户端用户名</label>
+                  <input id="af-user" spellcheck="false" autocomplete="off" autocapitalize="off" name="user" placeholder="可选，如 alice">
                   <div class="tip">REQUIRE_USERNAME，留空则不校验</div>
                   <div class="auth-hint" id="add-user-hint"></div>
                 </div>
                 <div class="field">
-                  <label>访问超时（秒）</label>
-                  <input inputmode="numeric" spellcheck="false" autocomplete="off" autocapitalize="off" name="fw-timeout" placeholder="默认 30">
+                  <label for="af-fwto">访问超时（秒）</label>
+                  <input inputmode="numeric" id="af-fwto" spellcheck="false" autocomplete="off" autocapitalize="off" name="fw-timeout" placeholder="默认 30">
                   <div class="tip">FW_ACCESS_TIMEOUT，敲门后端口保持开放的时长</div>
                   <div id="fwto-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
                     <button type="button" class="tpl-chip" data-fwto="30">30 秒</button>
@@ -843,8 +843,8 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                   <div class="tip">目的端口随时间一次性变化，扫描器无法发现稳定端口</div>
                 </div>
                 <div class="field">
-                  <label>TOTP 端口范围</label>
-                  <input spellcheck="false" autocomplete="off" autocapitalize="off" name="port-range" placeholder="默认 30000-60000">
+                  <label for="af-range">TOTP 端口范围</label>
+                  <input id="af-range" spellcheck="false" autocomplete="off" autocapitalize="off" name="port-range" placeholder="默认 30000-60000">
                   <div class="tip">敲门包的<b>目的端口</b>在此范围内随时间跳变（SPA 包的落点，不是服务端口）</div>
                   <div id="range-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
                     <button type="button" class="tpl-chip" data-pr="30000-60000">30000-60000</button>
@@ -858,8 +858,8 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                   <div class="tip">SPA v4 每包携带设备指纹，敲门即身份认证</div>
                 </div>
                 <div class="field">
-                  <label>TOFU 宽限期（秒）</label>
-                  <input inputmode="numeric" spellcheck="false" autocomplete="off" autocapitalize="off" name="tofu-timeout" placeholder="留空 = 绑定本机指纹；86400 = 首用自动绑定">
+                  <label for="af-tfto">TOFU 宽限期（秒）</label>
+                  <input inputmode="numeric" id="af-tfto" spellcheck="false" autocomplete="off" autocapitalize="off" name="tofu-timeout" placeholder="留空 = 绑定本机指纹；86400 = 首用自动绑定">
                   <div class="tip">设值后首个敲门的设备自动绑定；留空则绑定当前设备</div>
                   <div id="tofuto-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
                     <button type="button" class="tpl-chip" data-tfto="3600">1 小时</button>
@@ -893,7 +893,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <button class="btn ghost small" id="dl-cred" title="下载明文 cred.json 凭证文件（fwknop import cred.json 导入）；含全部密钥材料，请妥善保管"><svg width="13" height="13"><use href="#i-download"/></svg>下载 cred.json</button>
                 <button class="btn ghost small" id="add-goto-user" style="display:none" title="在授权列表中定位刚签发的授权"><svg width="13" height="13"><use href="#i-users"/></svg>查看该授权</button>
               </div>
-              <div class="hint" id="add-uri-hint" style="display:none;margin-top:6px">客户端导入方式任选其一：<code>fwknop import '&lt;URI&gt;'</code> · <code>fwknop import qr.png</code>（QR 图片）· 手机 App 直接扫码</div>
+              <div class="hint" id="add-uri-hint" style="display:none;margin-top:6px">客户端导入方式任选其一：<code>fwknop import '&lt;URI&gt;'</code> · <code>fwknop import cred.json</code>（上方下载的凭证文件）· 把 URI 做成 QR 后 <code>fwknop import qr.png</code></div>
               <div class="warn-strip" id="add-noapply-strip" style="display:none;margin-top:10px"><svg width="15" height="15"><use href="#i-warn"/></svg><div>该授权<b>尚未写入 access.conf</b>（未勾选「签发后写入」）。请将上方 stanza 段手动追加到配置，或勾选后重新签发。 <button type="button" class="btn ghost small" id="add-cp-stanza" style="padding:1px 8px;font-size:11.5px" title="从签发输出中截取 stanza 段（### 标记至空行）复制，贴入 access.conf 末尾即可">复制 stanza 段</button></div></div>
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
                 <span class="hint" style="font-size:11.5px">完整输出（含 stanza 与服务端回执）</span>
@@ -983,11 +983,11 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="head"><h2>保存当前配置为方案</h2><span class="sub">快照 fwknopd.conf + access.conf</span></div>
           <div class="body">
             <div class="form-grid">
-              <div class="field"><label>方案名 <span class="req">*</span></label>
+              <div class="field"><label for="pf-name">方案名 <span class="req">*</span></label>
                 <input spellcheck="false" autocomplete="off" autocapitalize="off" id="pf-name" placeholder="例如：办公网-仅SSH">
                 <div class="auth-hint" id="pf-name-hint"></div>
                 <div class="tip">想不到名字？<a href="javascript:void 0" id="pf-autoname" style="color:var(--accent)">用当前时间命名</a></div></div>
-              <div class="field"><label>备注</label>
+              <div class="field"><label for="pf-note">备注</label>
                 <input spellcheck="false" autocomplete="off" autocapitalize="off" id="pf-note" placeholder="用途说明（可选）"></div>
               <div class="field" style="align-self:end"><button class="btn" id="pf-save" title="把当前 fwknopd.conf + access.conf 快照保存为命名方案，随时一键套用"><svg width="15" height="15"><use href="#i-save"/></svg>保存方案</button></div>
             </div>
