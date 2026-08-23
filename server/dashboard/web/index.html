@@ -850,7 +850,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <button class="btn ghost small" id="add-goto-user" style="display:none"><svg width="13" height="13"><use href="#i-users"/></svg>查看该授权</button>
               </div>
               <div class="hint" id="add-uri-hint" style="display:none;margin-top:6px">客户端导入方式任选其一：<code>fwknop import '&lt;URI&gt;'</code> · <code>fwknop import qr.png</code>（QR 图片）· 手机 App 直接扫码</div>
-              <div class="warn-strip" id="add-noapply-strip" style="display:none;margin-top:10px"><svg width="15" height="15"><use href="#i-warn"/></svg><div>该授权<b>尚未写入 access.conf</b>（未勾选「签发后写入」）。请将上方 stanza 段手动追加到配置，或勾选后重新签发。</div></div>
+              <div class="warn-strip" id="add-noapply-strip" style="display:none;margin-top:10px"><svg width="15" height="15"><use href="#i-warn"/></svg><div>该授权<b>尚未写入 access.conf</b>（未勾选「签发后写入」）。请将上方 stanza 段手动追加到配置，或勾选后重新签发。 <button type="button" class="btn ghost small" id="add-cp-stanza" style="padding:1px 8px;font-size:11.5px" title="从签发输出中截取 stanza 段（### 标记至空行）复制，贴入 access.conf 末尾即可">复制 stanza 段</button></div></div>
               <pre class="out-pre" id="add-output"></pre>
               <div style="margin-top:12px;text-align:right"><button class="btn ghost small" id="add-next" style="display:none" title="收起结果区并回到表单顶部，连续签发下一位"><svg width="13" height="13"><use href="#i-key"/></svg>凭证已分发妥当？再签一个</button></div>
             </div>
@@ -3537,6 +3537,18 @@ $('#add-form').addEventListener('submit', async ev => {
     } else { $('#add-uri-box').style.display = 'none'; $('#add-uri-hint').style.display = 'none'; }
     /* 一键生效（apply）时提供直达：跳到用户页并聚焦新授权卡片 */
     $('#add-noapply-strip').style.display = (!r.error && !f.apply.checked) ? '' : 'none';
+    /* 手动落盘闭环：从输出截取 stanza 段（与服务端 extractPrintedStanza 同规则）一键复制 */
+    $('#add-cp-stanza').onclick = () => {
+      const lines = (r.output || '').split('\n');
+      const i = lines.findIndex(l => l.startsWith('### fwknopd-admin user:'));
+      if (i < 0) { toast('输出中未找到 stanza 段，请在下方输出区手动圈选', 'err', 4000); return; }
+      const seg = [];
+      for (let j = i; j < lines.length; j++) {
+        if (lines[j].trim() === '') break;
+        seg.push(lines[j]);
+      }
+      copyText(seg.join('\n'), 'stanza 段 ');
+    };
     const gu = $('#add-goto-user');
     if (!r.error && f.apply.checked) {
       gu.style.display = '';
