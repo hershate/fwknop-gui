@@ -274,6 +274,9 @@ select.ctl, input.ctl {
 .ce-mod .ce-revert { display:inline-flex; }
 .ce-bad { border-color:var(--red) !important; box-shadow:0 0 0 2px var(--red-soft); }
 .ce-dup { border-color:var(--amber) !important; box-shadow:0 0 0 2px var(--amber-soft); }
+/* 墓碑行（标记删除）：红边标识 + 划线置灰，输入禁用；保存落盘前始终可撤销 */
+.ce-gone { box-shadow:inset 3px 0 0 var(--red); padding-left:8px; border-radius:4px; }
+.ce-gone .ce-key, .ce-gone .ce-val { text-decoration:line-through; opacity:.55; }
 .sum-link { cursor:pointer; border-radius:var(--radius-sm); padding:4px 6px; margin:-4px -6px; transition:background .15s; }
 .sum-link:hover, .sum-link:focus-visible { background:var(--accent-soft); outline:none; }
 .flash-prefill { animation:prefillFlash 1.6s ease; }
@@ -994,7 +997,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <h2>编辑 fwknopd.conf</h2><span class="sub">保存前自动预检（fwknopd --exit-parse-config），通过后备份并热加载 · <span style="color:var(--amber)">▎</span>已修改 <span style="color:var(--green)">▎</span>新增</span>
             <div class="tools">
               <input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="conf-filter" placeholder="过滤指令名…" title="按指令名过滤编辑行（大小写不敏感；快捷键 / 在编辑器打开时聚焦此处）" style="width:150px;padding:4px 8px;font-size:12.5px"><span class="hint" id="conf-filter-n" style="font-size:11.5px"></span>
-              <button class="btn ghost small" id="conf-only-changed" title="只显示本次编辑中已修改/新增的行（大配置保存前快速复核改动面）" aria-pressed="false">仅看修改</button>
+              <button class="btn ghost small" id="conf-only-changed" title="只显示本次编辑中已修改/新增/标记删除的行（大配置保存前快速复核改动面）" aria-pressed="false">仅看修改</button>
               <button class="btn ghost small" id="conf-add-row" title="追加一行新指令（键名带自动补全与说明）"><svg width="14" height="14"><use href="#i-plus"/></svg>新增指令</button>
               <button class="btn ghost small" id="conf-raw-edit" title="切换原文编辑：整份配置按文本直接修改（保存同样先预检+备份+热加载）">原文编辑</button>
               <button class="btn ghost small" id="conf-discard" title="放弃全部未保存修改，恢复为已保存的配置">放弃修改</button>
@@ -5593,28 +5596,30 @@ function clearConfDirty() {
    「改回原值自动复位」的比对基准；confOrigCnt 记录各指令出现次数——
    原配置本身含重复指令时，值映射会折叠重复键，仅凭值比对会打开即误脏 */
 function snapConfOrig() {
-  confOrig = Object.fromEntries(confRows.map(([k, v]) => [k, v]));
+  /* 防御性跳过墓碑行：快照代表「落盘口径」的行集，墓碑行不会被保存 */
+  confOrig = Object.fromEntries(confRows.filter(r => !r[2]).map(([k, v]) => [k, v]));
   confOrigCnt = {};
-  confRows.forEach(([k]) => { const key = k.trim(); if (key) confOrigCnt[key] = (confOrigCnt[key] || 0) + 1; });
+  confRows.forEach(([k, , d]) => { const key = k.trim(); if (key && !d) confOrigCnt[key] = (confOrigCnt[key] || 0) + 1; });
 }
 
-function confEntryRow(key, val) {
+function confEntryRow(key, val, gone) {
   const meta = CONF_META[key];
   const yn = /^(Y|N)?$/.test(val) && (key.startsWith('ENABLE_') || key.startsWith('FLUSH_') || key.startsWith('EXIT_'));
+  const dis = gone ? ' disabled' : '';  /* 墓碑行输入禁用，防误触改写将删内容 */
   /* 空值开关（裸 `ENABLE_X` 行，parse.go 解析为 Value:""）必须保留空 option：
      此前 '' 落入「N（否）」selected，select.value='N' 与快照 '' 比对即误标
      ce-mod（「仅看修改」误列、还原按钮误显示），保存还会把裸行无意改写为
      「ENABLE_X N」——语义等价但配置 diff 多出意外行 */
-  return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-    <input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl ce-key" list="conf-keys" value="${esc(key)}" placeholder="指令名" style="flex:0 0 250px;font-family:var(--mono);font-size:12px">
-    ${yn ? `<select class="ctl ce-val" style="flex:0 0 110px">
+  return `<div${gone ? ' class="ce-gone"' : ''} style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+    <input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl ce-key" list="conf-keys" value="${esc(key)}" placeholder="指令名" style="flex:0 0 250px;font-family:var(--mono);font-size:12px"${dis}>
+    ${yn ? `<select class="ctl ce-val" style="flex:0 0 110px"${dis}>
         ${val === '' ? '<option value="" selected>（空 = 否）</option>' : ''}
         <option value="Y" ${val==='Y'?'selected':''}>Y（是）</option>
         <option value="N" ${val==='N'?'selected':''}>N（否）</option></select>`
-      : `<input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl ce-val" value="${esc(val)}" placeholder="值" style="flex:1;font-family:var(--mono);font-size:12px">`}
+      : `<input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl ce-val" value="${esc(val)}" placeholder="值" style="flex:1;font-family:var(--mono);font-size:12px"${dis}>`}
     <button class="icon-btn ce-revert" title="还原为本次打开编辑器时的值">${icon('i-undo',13)}</button>
-    <button class="icon-btn ce-del" title="删除该指令">${icon('i-trash',13)}</button>
-    <div class="hint" style="flex:1;min-width:160px">${meta ? esc(meta[1]) : ''}</div>
+    <button class="icon-btn ce-del" title="${gone ? '撤销删除，还原该行' : '删除该指令（保存后生效，删除前可撤销）'}">${icon(gone ? 'i-undo' : 'i-trash',13)}</button>
+    <div class="hint" style="flex:1;min-width:160px">${gone ? '<span style="color:var(--red)">已标记删除，保存后从配置移除</span>' : (meta ? esc(meta[1]) : '')}</div>
   </div>`;
 }
 
@@ -5626,6 +5631,13 @@ function markConfRows() {
     const vi = row.querySelector('.ce-val');
     const k = ki.value.trim(), v = vi ? vi.value : '';
     row.classList.remove('ce-mod', 'ce-new');
+    /* 墓碑行（标记删除）：不计入当前行集（脏实比对借此把删除识别为改动）、
+       不参与校验与重复统计；残留的 ce-bad/ce-dup 状态一并清理 */
+    if (row.classList.contains('ce-gone')) {
+      if (vi) { vi.classList.remove('ce-bad'); vi.title = ''; }
+      ki.classList.remove('ce-dup'); ki.title = '';
+      return;
+    }
     if (!k) return;
     cur[k] = v; curCnt[k] = (curCnt[k] || 0) + 1;
     if (!(k in confOrig)) row.classList.add('ce-new');
@@ -5661,10 +5673,13 @@ function markConfRows() {
   /* 重复指令预警：fwknopd.conf 同名指令以最后出现的值为准，前面的被静默
      忽略，多为误改/复制残留，琥珀框即时标出（随输入实时刷新） */
   const counts = {};
-  $$('#conf-edit-rows > div .ce-key').forEach(ki => {
+  $$('#conf-edit-rows > div').forEach(row => {
+    if (row.classList.contains('ce-gone')) return;  /* 墓碑行不参与重复统计（行将被删除） */
+    const ki = row.querySelector('.ce-key'); if (!ki) return;
     const k = ki.value.trim().toUpperCase(); if (k) counts[k] = (counts[k] || 0) + 1;
   });
   $$('#conf-edit-rows > div').forEach(row => {
+    if (row.classList.contains('ce-gone')) return;  /* 墓碑行状态已在上方清理 */
     const ki = row.querySelector('.ce-key'); if (!ki) return;
     const k = ki.value.trim().toUpperCase();
     const isDup = !!(k && counts[k] > 1);
@@ -5693,12 +5708,16 @@ function renderConfEditor() {
   }
   $('#conf-raw-edit').textContent = confRawEdit ? '返回结构化编辑' : '原文编辑';
   if (!confRawEdit) {
-    $('#conf-edit-rows').innerHTML = confRows.map(([k,v]) => confEntryRow(k,v)).join('') ||
+    $('#conf-edit-rows').innerHTML = confRows.map(([k,v,d]) => confEntryRow(k,v,d)).join('') ||
       '<div class="hint">（配置为空，点击「新增指令」添加）</div>';
+    /* 删除为墓碑标记（可撤销）：行保留但划线置灰、从保存/脏比对/校验剔除，
+       再次点击撤销删除；物理移除发生在保存落盘（合并式跳过已删指令行）。
+       替代此前点击即物理移除——误删无法行内找回，「仅看修改」也看不到删了什么 */
     $$('#conf-edit-rows .ce-del').forEach(b => b.onclick = () => {
       const row = b.parentElement; const i = Array.from(row.parentElement.children).indexOf(row);
-      harvestConfRows();  /* 先收割：其他行的未保存输入不被重建覆盖；收割后 confRows 与 DOM 行序一致，索引 i 仍对应 */
-      confRows.splice(i, 1); markConfDirty(); renderConfEditor();
+      harvestConfRows();  /* 先收割：其他行的未保存输入与各行墓碑态不被重建覆盖；收割后 confRows 与 DOM 行序一致，索引 i 仍对应 */
+      confRows[i][2] = confRows[i][2] ? 0 : 1;
+      markConfDirty(); renderConfEditor();
     });
     /* 行级还原：仅 ce-mod 行可见（CSS 控制）。DOM 级设值 + 派发 input——
        联动 markConfRows 摘除 ce-mod（按钮自动隐藏）与「仅看修改」过滤，
@@ -5727,8 +5746,9 @@ function harvestConfRows() {
     const ki = row.querySelector('.ce-key'); if (!ki) return;
     const vi = row.querySelector('.ce-val');
     /* 空键行保留（可能是「新增指令」后正在编辑的行）；保存路径自有
-       「有值无键」拦截与空行跳过，收割不做过滤以免编辑现场被裁 */
-    rows.push([ki.value.trim(), vi ? vi.value : '']);
+       「有值无键」拦截与空行跳过，收割不做过滤以免编辑现场被裁；
+       墓碑态（ce-gone）存入第三元素，删除标记跨重建（删行/新增/模板）存活 */
+    rows.push([ki.value.trim(), vi ? vi.value : '', row.classList.contains('ce-gone') ? 1 : 0]);
   });
   confRows = rows;
 }
@@ -5801,7 +5821,7 @@ function applyConfFilter() {
     if (!ki) return;
     total++;
     const show = (!q || ki.value.toUpperCase().includes(q)) &&
-      (!confOnlyChanged || row.classList.contains('ce-mod') || row.classList.contains('ce-new'));
+      (!confOnlyChanged || row.classList.contains('ce-mod') || row.classList.contains('ce-new') || row.classList.contains('ce-gone'));
     row.style.display = show ? '' : 'none';
     if (show) hit++;
   });
@@ -5887,8 +5907,9 @@ $$('[data-ctpl]').forEach(chip => {
   harvestConfRows();  /* 先收割：既有行的手动修改不被模板合并的重建覆盖（同键查找也基于最新状态） */
   let upd = 0, add = 0;
   t.lines.forEach(([k, v]) => {
-    const row = confRows.find(r => r[0] === k);
-    if (row) { row[1] = v; upd++; } else { confRows.push([k, v]); add++; }
+    /* 命中墓碑行时撤销删除并写值：模板语义是「确保该指令生效为此值」 */
+    const row = confRows.find(r => r[0] === k && !r[2]) || confRows.find(r => r[0] === k);
+    if (row) { row[1] = v; row[2] = 0; upd++; } else { confRows.push([k, v]); add++; }
   });
   $$('[data-ctpl]').forEach(c => c.classList.toggle('active', c === chip));
   $('#conf-tpl-desc').textContent = t.desc;
@@ -5922,8 +5943,9 @@ $('#conf-save').onclick = async () => {
   if (confRawEdit) {
     payload = { mode:'raw', raw: $('#conf-raw-area').value };
   } else {
-    /* 有值无键的行会被静默丢弃——保存前拦截并聚焦 */
+    /* 有值无键的行会被静默丢弃——保存前拦截并聚焦（墓碑行不参与，其内容将被删除） */
     for (const row of $$('#conf-edit-rows > div')) {
+      if (row.classList.contains('ce-gone')) continue;
       const ki = row.querySelector('.ce-key'); if (!ki) continue;
       const k = ki.value.trim(), v = row.querySelector('.ce-val').value.trim();
       if (!k && v) {
@@ -5934,6 +5956,7 @@ $('#conf-save').onclick = async () => {
     }
     const editRows = [];
     $$('#conf-edit-rows > div').forEach(row => {
+      if (row.classList.contains('ce-gone')) return;  /* 墓碑行不落入保存口径——删除即由此生效 */
       const k = row.querySelector('.ce-key').value.trim();
       const v = row.querySelector('.ce-val').value.trim();
       if (k) editRows.push([k, v]);
@@ -6005,7 +6028,8 @@ $('#conf-save').onclick = async () => {
         else { toast('配置已保存并热加载', 'ok'); clearConfDirty(); loadConfig();
           harvestConfRows();  /* 先收割再快照：confRows 可能落后于 DOM（input 委托不回写），
             直接快照会把已保存的修改误判为「打开后新改动」，实比对随即使保存成功页误脏 */
-          snapConfOrig(); markConfRows(); }
+          confRows = confRows.filter(r => !r[2]);  /* 已落盘的删除行从编辑器移除（删除至此不可逆） */
+          snapConfOrig(); renderConfEditor(); }
       } catch (e) {}
     });
 };
