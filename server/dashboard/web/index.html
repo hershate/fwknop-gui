@@ -4504,7 +4504,8 @@ function syncTotpFields() {
   });
   const h = $('#add-range-hint');
   if (!on) { h.textContent = '⚠ TOTP 已关闭，端口范围不生效（提交时忽略）'; h.className = 'auth-hint no'; }
-  else f['port-range'].dispatchEvent(new Event('input'));  /* 恢复即时校验提示 */
+  else f['port-range'].dispatchEvent(new Event('input'));  /* 恢复即时校验提示（其监听会级联重估 access 重叠提示） */
+  if (!on) f.access.dispatchEvent(new Event('input'));  /* 关闭后清除残留的 access∩range 重叠提示 */
 }
 $('#add-form').totp.addEventListener('change', syncTotpFields);
 
@@ -4543,12 +4544,33 @@ const V = {
   },
   tofuto: v => /^\d+$/.test(v) && +v >= 1 && +v <= 8388608,
 };
+/* 放行端口 ∩ TOTP 敲门范围：跳变端口命中放行端口时敲门包会送达该端口上的
+   真实服务（fail2ban 误判/日志噪声），即时提示错开；TOTP 关闭时范围为死配置不查 */
+function accessRangeOverlap() {
+  const f = $('#add-form');
+  if (!f.totp.checked) return null;
+  const m = (f['port-range'].value.trim() || '30000-60000').match(/^(\d{1,5})-(\d{1,5})$/);
+  if (!m) return null;
+  const lo = +m[1], hi = +m[2];
+  const av = f.access.value.trim() || 'tcp/22';
+  if (!V.access(av)) return null;
+  const hits = av.split(',').filter(x => { const n = +x.split('/')[1]; return n >= lo && n <= hi; });
+  return hits.length ? hits : null;
+}
 $('#add-form').access.addEventListener('input', ev => {
   const v = ev.target.value.trim(), el = $('#add-access-hint');
   /* 留空 = 服务端默认 tcp/22（fwknopd-admin.c gen 默认值），中性提示而非置空 */
   if (!v) { el.textContent = '○ 留空默认 tcp/22（SSH）'; el.className = 'auth-hint'; return; }
-  fmtHint(el, V.access(v), '✓ 格式正确', '✗ 格式应为 tcp/22 或 tcp/22,udp/53（端口 1-65535）');
+  if (!V.access(v)) { fmtHint(el, false, '', '✗ 格式应为 tcp/22 或 tcp/22,udp/53（端口 1-65535）'); return; }
+  const ov = accessRangeOverlap();
+  if (ov) {
+    el.textContent = `⚠ ${ov.join('、')} 落在 TOTP 敲门范围内，敲门包可能送达该端口上的服务（fail2ban 误判风险），建议错开`;
+    el.className = 'auth-hint no'; return;
+  }
+  fmtHint(el, true, '✓ 格式正确', '');
 });
+/* access ∩ range 重叠提示随范围/开关变化重估（独立监听，不改动主校验流） */
+$('#add-form')['port-range'].addEventListener('input', () => $('#add-form').access.dispatchEvent(new Event('input')));
 /* 跨配置校验共用：TOTP 范围超出 PCAP_PORT_RANGE 时返回服务端范围字符串，
    否则 null；即时提示与提交前拦截共用同一份逻辑 */
 function rangePcapConflict(v) {
