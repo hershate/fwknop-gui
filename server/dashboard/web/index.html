@@ -1531,6 +1531,12 @@ document.addEventListener('keydown', ev => {
   const modalOpen = $('#modal-root').classList.contains('show');
   if (ev.key === 'Escape') {
     if (modalOpen) closeModal();
+    /* 搜索框 Esc：有内容先清空并触发过滤复位，再按才失焦（主流搜索习惯）。
+       仅搜索/过滤框，表单输入框不清内容（防误清已填数据） */
+    else if (typing && ev.target.matches && ev.target.matches('#event-search,#users-search,#tofu-search,#conf-view-filter,#conf-filter') && ev.target.value) {
+      ev.target.value = '';
+      ev.target.dispatchEvent(new Event('input'));
+    }
     else if (typing) ev.target.blur();
     return;
   }
@@ -1570,7 +1576,7 @@ const KBD_HELP = [
   ['← / →', '事件页翻页'],
   ['Enter / 空格', '展开聚焦的事件行详情；钻取聚焦的时间分布柱'],
   ['Ctrl/⌘ + S', '保存服务配置（编辑器有改动时）'],
-  ['Esc', '关闭弹窗；在输入框中则取消焦点'],
+  ['Esc', '关闭弹窗；搜索框中先清空内容、再按取消焦点'],
   ['?', '打开本帮助'],
 ];
 /* 常用命令速查：语法与 fwknopd-admin usage()、fwknop import 实际行为一致 */
