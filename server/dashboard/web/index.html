@@ -2124,7 +2124,7 @@ function timeFilteredEvents() {
 /* 一键重置全部事件筛选（空态按钮与「激活筛选」标签条共用） */
 function resetEvFilters() {
   S.evFilter = 'all'; S.evQuery = ''; S.evTime = 'all'; S.evPage = 0;
-  S.evFrom = ''; S.evTo = '';
+  S.evFrom = ''; S.evTo = ''; S.evHeatStack = [];
   $('#event-search').value = ''; $('#ev-time').value = 'all';
   $('#ev-custom').style.display = 'none';
   renderEvents();
@@ -2142,8 +2142,12 @@ function updateEvActiveStrip() {
     parts.push(['time', '时间：' + ({ '5m':'最近 5 分钟', '1h':'最近 1 小时', today:'今日', custom:'自定义区间' }[S.evTime] || S.evTime)]);
   if (!parts.length) { el.style.display = 'none'; return; }
   el.style.display = 'flex';
+  /* 分布条钻取后的「上级视图」返回钮：逐级恢复钻取前的时间窗 */
+  const backBtn = (S.evHeatStack && S.evHeatStack.length)
+    ? '<button class="btn ghost small" id="ev-heat-back" style="padding:2px 8px;font-size:11.5px" title="返回钻取前的时间范围">↩ 上级视图</button>' : '';
   el.innerHTML = '<span class="hint" style="font-size:11.5px">筛选中：</span>' +
     parts.map(([k, label]) => `<span class="tag hl" style="cursor:pointer" data-rmf="${k}" title="点击移除此筛选">${esc(label)} ✕</span>`).join('') +
+    backBtn +
     '<button class="btn ghost small" id="ev-clear-all" style="padding:2px 8px;font-size:11.5px">全部清除</button>';
   $$('#ev-active [data-rmf]').forEach(t => t.onclick = () => {
     const k = t.dataset.rmf;
@@ -2152,10 +2156,23 @@ function updateEvActiveStrip() {
     else if (k === 'time') {
       S.evTime = 'all'; S.evFrom = ''; S.evTo = '';
       $('#ev-time').value = 'all'; $('#ev-custom').style.display = 'none';
+      S.evHeatStack = [];  /* 手动移除时间筛选即放弃钻取上下文 */
     }
     S.evPage = 0;
     renderEvents();
   });
+  const hb = $('#ev-heat-back');
+  if (hb) hb.onclick = () => {
+    const prev = S.evHeatStack.pop();
+    if (!prev) return;
+    S.evTime = prev.time || 'all';
+    S.evFrom = prev.from; S.evTo = prev.to;
+    $('#ev-time').value = S.evTime;
+    $('#ev-custom').style.display = S.evTime === 'custom' ? 'inline-flex' : 'none';
+    $('#ev-from').value = S.evFrom; $('#ev-to').value = S.evTo;
+    S.evPage = 0;
+    renderEvents();
+  };
   $('#ev-clear-all').onclick = resetEvFilters;
 }
 
@@ -2242,6 +2259,9 @@ function renderEvHeat() {
   $$('#ev-heat .evh-bar').forEach(bar => bar.onclick = () => {
     const i = +bar.dataset.i;
     if (!buckets[i].n) return;
+    /* 钻取前把当前时间窗入栈，标签条出现「↩ 上级视图」可逐级返回 */
+    if (!S.evHeatStack) S.evHeatStack = [];
+    S.evHeatStack.push({ time: S.evTime, from: S.evFrom || '', to: S.evTo || '' });
     S.evTime = 'custom';
     $('#ev-time').value = 'custom';
     $('#ev-custom').style.display = 'inline-flex';
@@ -2494,6 +2514,7 @@ attachSearchHistory($('#conf-view-filter'), 'fwknop-hist-confv');
 attachSearchHistory($('#conf-filter'), 'fwknop-hist-confe');
 $('#ev-time').onchange = e => {
   S.evTime = e.target.value; S.evPage = 0;
+  S.evHeatStack = [];  /* 手动切换时间窗即放弃钻取栈 */
   $('#ev-custom').style.display = S.evTime === 'custom' ? 'inline-flex' : 'none';
   renderEvents();
 };
