@@ -827,6 +827,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               <div class="hint" id="add-uri-hint" style="display:none;margin-top:6px">客户端导入方式任选其一：<code>fwknop import '&lt;URI&gt;'</code> · <code>fwknop import qr.png</code>（QR 图片）· 手机 App 直接扫码</div>
               <div class="warn-strip" id="add-noapply-strip" style="display:none;margin-top:10px"><svg width="15" height="15"><use href="#i-warn"/></svg><div>该授权<b>尚未写入 access.conf</b>（未勾选「签发后写入」）。请将上方 stanza 段手动追加到配置，或勾选后重新签发。</div></div>
               <pre class="out-pre" id="add-output"></pre>
+              <div style="margin-top:12px;text-align:right"><button class="btn ghost small" id="add-next" style="display:none" title="收起结果区并回到表单顶部，连续签发下一位"><svg width="13" height="13"><use href="#i-key"/></svg>凭证已分发妥当？再签一个</button></div>
             </div>
           </div>
         </div>
@@ -3150,7 +3151,7 @@ $('#add-form').addEventListener('submit', async ev => {
         showPage('users');
       };
     } else gu.style.display = 'none';
-    if (r.error) toast('签发失败：' + esc(r.error), 'err', 6000);
+    if (r.error) { toast('签发失败：' + esc(r.error), 'err', 6000); $('#add-next').style.display = 'none'; }
     else {
       toast(f.apply.checked
         ? `凭证「${nm}」已签发并写入 access.conf（已热加载），请复制授权 URI 分发给用户`
@@ -3161,12 +3162,20 @@ $('#add-form').addEventListener('submit', async ev => {
       syncTotpFields();
       $$('.tpl-chip').forEach(c => c.classList.remove('active'));
       $('#tpl-desc').textContent = '';
+      $('#add-next').style.display = '';  /* 连续签发入口：收起结果区回到表单顶部 */
       loadUsers();
     }
   } catch (e) {} finally {
     btn.disabled = false; btn.innerHTML = `${icon('i-key',15)}签发凭证`;
   }
 });
+
+/* 「再签一个」：收起结果区，平滑滚动回表单顶部并聚焦名称框（批量签发场景） */
+$('#add-next').onclick = () => {
+  $('#add-result').style.display = 'none';
+  $('#add-form').name.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  $('#add-form').name.focus();
+};
 
 /* ==================== TOFU 绑定 ==================== */
 async function loadTOFU() {
