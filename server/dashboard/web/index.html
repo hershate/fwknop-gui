@@ -707,7 +707,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <button class="btn ghost small" id="ev-preset-24h" title="填充为「此刻往前 24 小时」" style="padding:4px 8px;font-size:11.5px">最近 24h</button>
                 <button class="btn ghost small" id="ev-preset-yday" title="填充为「昨天 00:00 至今天 00:00」" style="padding:4px 8px;font-size:11.5px">昨日全天</button>
               </span>
-              <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口…（支持 user:/ip:/dev:/port: 前缀）" title="全字段子串匹配；空格分隔多关键词为 AND（如「admin 22」）；前缀语法精确限定字段：user:admin、ip:192.168、dev:指纹前缀、port:22（SPA 与目标端口都匹配），前缀词与裸词可混用（「user:admin port:22」）；快捷键 / 聚焦" style="width:270px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+              <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口 / 授权…（支持 user:/ip:/dev:/port:/stanza: 前缀）" title="全字段子串匹配；空格分隔多关键词为 AND（如「admin 22」）；前缀语法精确限定字段：user:admin、ip:192.168、dev:指纹前缀、port:22（SPA 与目标端口都匹配）、stanza:3 或 stanza:授权名，前缀词与裸词可混用（「user:admin port:22」）；快捷键 / 聚焦" style="width:290px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
               <button class="btn ghost small" id="ev-density" title="切换表格行密度（紧凑模式一屏看更多事件）">紧凑</button>
               <button class="btn ghost small" id="ev-expand-all" title="展开/收起当前页全部事件详情（对比多条事件字段用）">展开全部</button>
               <button class="btn ghost small" id="ev-notify" title="后台标签页收到异常事件时弹桌面通知（需浏览器授权）；点击通知直达「仅看异常」视图"><svg width="14" height="14"><use href="#i-bell"/></svg>异常桌面通知</button>
@@ -2640,23 +2640,26 @@ function filteredEvents() {
   else if (S.evFilter !== 'all') evs = evs.filter(e => e.event === S.evFilter);
   if (S.evQuery) {
     const raw = S.evQuery.trim();
-    /* 字段前缀语法（user:/ip:/dev:/port:）精确限定字段；空格分隔多词为 AND，
+    /* 字段前缀语法（user:/ip:/dev:/port:/stanza:）精确限定字段；空格分隔多词为 AND，
        前缀词与裸词可混用：「user:admin port:22」「dev:abc 重放」都按预期命中 */
+    /* stanza 序号 → 授权名（用户数据未加载时返回空串，序号搜索不受影响） */
+    const evStanzaName = n => { if (n == null) return ''; const s = ((S.users && S.users.stanzas) || []).find(x => x.index === n); return s ? (s.name || '') : ''; };
     const fields = {
       user: e => e.user || '',
       ip:   e => e.src_ip || '',
       dev:  e => e.device_id || '',
       port: e => String(e.spa_port || '') + ' ' + String(e.target_port || ''),
+      stanza: e => String(e.stanza ?? '') + ' ' + evStanzaName(e.stanza),
     };
     /* 中文可读文案同样可搜：用户按界面所见的词（如「重放」）检索 */
     const hayOf = e => [e.user, e.src_ip, e.device_id, e.reason, reasonZh(e.reason),
-      evMeta(e.event).label, e.spa_port, e.target_port]
+      evMeta(e.event).label, e.spa_port, e.target_port, e.stanza, evStanzaName(e.stanza)]
       .map(x => String(x ?? '').toLowerCase()).join('\n');
     const terms = raw.toLowerCase().split(/\s+/).filter(Boolean);
     evs = evs.filter(e => {
       const hay = hayOf(e);
       return terms.every(t => {
-        const m = t.match(/^(user|ip|dev|port):(.*)$/);
+        const m = t.match(/^(user|ip|dev|port|stanza):(.*)$/);
         if (m && m[2]) return String(fields[m[1]](e)).toLowerCase().includes(m[2]);
         return hay.includes(t);
       });
