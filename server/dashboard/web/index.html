@@ -2652,6 +2652,8 @@ $('#ev-time').onchange = e => {
   S.evTime = e.target.value; S.evPage = 0;
   S.evHeatStack = [];  /* 手动切换时间窗即放弃钻取栈 */
   $('#ev-custom').style.display = S.evTime === 'custom' ? 'inline-flex' : 'none';
+  /* 选「自定义区间」后聚焦起始时间框，键盘流不用手动定位 */
+  if (S.evTime === 'custom') setTimeout(() => $('#ev-from').focus(), 60);
   renderEvents();
 };
 /* 起止倒挂时静默得 0 条结果，难排查：自动交换并提示 */
