@@ -1549,7 +1549,7 @@ function refreshNow() {
   if (S.page === 'overview') jobs.push(loadMetrics(), loadEvents());
   if (S.page === 'events') jobs.push(loadEvents());
   if (S.page === 'users') jobs.push(loadUsers(), loadEvents(), loadTOFU());
-  if (S.page === 'tofu') jobs.push(loadTOFU(), loadEvents());
+  if (S.page === 'tofu') jobs.push(loadTOFU(), loadEvents(), loadUsers());
   if (S.page === 'config') jobs.push(loadConfig());
   if (S.page === 'profiles') jobs.push(loadProfiles());
   if (S.page === 'about') renderAbout();
@@ -2324,6 +2324,7 @@ async function loadUsers() {
     const d = await api('/api/users');
     S.users = d;
     if (S.page === 'users') renderUsers();
+    if (S.page === 'tofu') renderTOFU();  /* 悬空绑定检测依赖授权列表 */
   } catch (e) {
     setConn(false);
     showLoadError('#users-body', loadUsers);
@@ -3061,7 +3062,15 @@ function renderTOFU() {
     const on = ts && th.dataset.tsort === ts.key;
     th.innerHTML = esc(th.textContent.replace(/[▲▼]$/, '')) + (on ? `<span class="arr">${ts.dir > 0 ? '▲' : '▼'}</span>` : '');
   });
-  $('#tofu-sub').textContent = q ? `匹配 ${bs.length} / ${all.length} 台已绑定设备` : `${all.length} 台已绑定设备`;
+  /* 悬空绑定检测：授权已从 access.conf 删除/禁用后，残留绑定不再匹配任何
+     stanza，敲门永远失败——标出并计数提醒清理（授权列表未加载时不判定） */
+  const liveKeys = S.users
+    ? new Set((S.users.stanzas || []).map(s => `${s.source||''}|${s.require_username||''}|${s.open_ports||''}`))
+    : null;
+  const orphanOf = b => liveKeys && !liveKeys.has(b.stanza_key);
+  const orphanN = liveKeys ? all.filter(orphanOf).length : 0;
+  $('#tofu-sub').innerHTML = (q ? `匹配 ${bs.length} / ${all.length} 台已绑定设备` : `${all.length} 台已绑定设备`) +
+    (orphanN ? ` · <span style="color:var(--amber)" title="对应授权已删除/禁用，这些绑定不再生效，建议勾选后批量解绑">⚠ ${orphanN} 条悬空绑定</span>` : '');
   $('#tofu-file').textContent = d.file.exists ? `状态文件更新于 ${fmtAgo(d.file.mtime)}` : '状态文件不存在';
   if (!bs.length) {
     /* 无绑定但近期有指纹未知拒绝：提示可能 TOFU 未启用/宽限已过，并给反查入口 */
@@ -3084,6 +3093,7 @@ function renderTOFU() {
       ${S.tofuSel.has(b.stanza_key + '\x01' + b.device_id) ? 'checked' : ''}>` : ''}</td>
     <td class="mono" title="${esc(b.device_id)}">${esc(b.device_id)}
       <button class="icon-btn" style="padding:2px 6px;margin-left:6px" data-cp="${esc(b.device_id)}" title="复制指纹">${icon('i-copy',12)}</button>
+      ${orphanOf(b) ? `<div><span class="tag" style="background:var(--amber-soft);color:var(--amber);margin-top:3px" title="对应授权已删除/禁用，该绑定不再生效，建议解绑清理">⚠ 悬空绑定</span></div>` : ''}
       ${lastEventForDevice(b.device_id)}</td>
     <td class="mono">${b.source ? `<span class="cp-cell" data-cp="${esc(b.source)}" title="点击复制来源限制" data-lab="来源限制">${esc(b.source)}</span>` : '—'}</td>
     <td>${b.username ? `${esc(b.username)}<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-uev2="${esc(b.username)}" title="查看该用户的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
