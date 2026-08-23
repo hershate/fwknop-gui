@@ -2279,10 +2279,16 @@ async function loadEvents() {
       const freshBad = S.events.filter(e => BAD_EVTS.includes(e.event) && (e.time || 0) > S.evPrevNewest);
       if (freshBad.length && 'Notification' in window && Notification.permission === 'granted') {
         const e0 = freshBad[0];
-        new Notification(`fwknop 异常事件 ×${freshBad.length}`, {
+        const n2 = new Notification(`fwknop 异常事件 ×${freshBad.length}`, {
           body: `${evMeta(e0.event).label}${e0.src_ip ? ' · 来自 ' + e0.src_ip : ''} · ${fmtAgo(e0.time)}`,
           tag: 'fwknop-bad',  /* 同 tag 覆盖，避免连发刷屏 */
         });
+        /* 点击通知：聚焦标签页并直达「仅看异常」视图，一步进入排查现场 */
+        n2.onclick = () => {
+          window.focus();
+          S.evFilter = 'bad'; S.evPage = 0;
+          showPage('events');
+        };
       }
     }
     S.evPrevNewest = newest;
