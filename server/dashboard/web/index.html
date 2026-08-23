@@ -1016,6 +1016,7 @@ function notifLog(msg, kind) {
   badge.style.display = '';
   /* 持久化到会话存储：刷新页面后历史仍可追溯（关标签即清，不长期残留） */
   try { sessionStorage.setItem('fwknop-notif-log', JSON.stringify(S.notifLog)); } catch (e) {}
+  updateDocTitle();  /* 未读计数同步进标签页标题（后台标签可感知） */
 }
 
 function toast(msg, kind, ms) {
@@ -1110,6 +1111,7 @@ $('#notif-btn').onclick = () => {
   };
   S.notifUnread = 0;
   $('#notif-badge').style.display = 'none';
+  updateDocTitle();  /* 已读后标题中的未读计数同步清零 */
   $('#notif-clear').onclick = () => {
     S.notifLog = [];
     try { sessionStorage.removeItem('fwknop-notif-log'); } catch (e) {}
@@ -2093,12 +2095,14 @@ $('#ev-new-pill').onclick = () => {
   renderEvents();
 };
 
-/* 标签页标题显示最近 15 分钟异常事件数，后台标签也能感知 */
+/* 标签页标题显示最近 15 分钟异常事件数 + 未读通知数，后台标签也能感知 */
 function updateDocTitle() {
   const now = Date.now() / 1000;
   const bad = (S.events || []).filter(e => BAD_EVTS.includes(e.event) && now - (e.time || 0) < 900).length;
+  const un = S.notifUnread || 0;
   const pg = (typeof PAGE_TITLES !== 'undefined' && PAGE_TITLES[S.page]) || '';
-  document.title = (bad ? `(${bad} 异常) ` : '') + (pg ? pg + ' · ' : '') + 'fwknop 运维面板';
+  document.title = (bad ? `(${bad} 异常) ` : '') + (un ? `[${un > 99 ? '99+' : un} 通知] ` : '') +
+    (pg ? pg + ' · ' : '') + 'fwknop 运维面板';
   /* 侧栏导航徽标：不在事件页时也能感知异常；正在事件页则视为已知悉 */
   const nb = $('#nav-ev-badge');
   if (nb) {
