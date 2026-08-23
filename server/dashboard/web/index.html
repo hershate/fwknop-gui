@@ -851,6 +851,10 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               </div>
               <div class="hint" id="add-uri-hint" style="display:none;margin-top:6px">客户端导入方式任选其一：<code>fwknop import '&lt;URI&gt;'</code> · <code>fwknop import qr.png</code>（QR 图片）· 手机 App 直接扫码</div>
               <div class="warn-strip" id="add-noapply-strip" style="display:none;margin-top:10px"><svg width="15" height="15"><use href="#i-warn"/></svg><div>该授权<b>尚未写入 access.conf</b>（未勾选「签发后写入」）。请将上方 stanza 段手动追加到配置，或勾选后重新签发。 <button type="button" class="btn ghost small" id="add-cp-stanza" style="padding:1px 8px;font-size:11.5px" title="从签发输出中截取 stanza 段（### 标记至空行）复制，贴入 access.conf 末尾即可">复制 stanza 段</button></div></div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <span class="hint" style="font-size:11.5px">完整输出（含 stanza 与服务端回执）</span>
+                <button type="button" class="btn ghost small" id="add-output-mask" style="padding:1px 8px;font-size:11.5px" title="输出含密钥材料，默认掩码防窥屏/截图泄露；点击切换显示">显示敏感内容</button>
+              </div>
               <pre class="out-pre" id="add-output"></pre>
               <div style="margin-top:12px;text-align:right"><button class="btn ghost small" id="add-next" style="display:none" title="收起结果区并回到表单顶部，连续签发下一位"><svg width="13" height="13"><use href="#i-key"/></svg>凭证已分发妥当？再签一个</button></div>
             </div>
@@ -3585,7 +3589,19 @@ $('#add-form').addEventListener('submit', async ev => {
     $('#add-result').classList.remove('flash-prefill');
     void $('#add-result').offsetWidth;
     $('#add-result').classList.add('flash-prefill');
-    $('#add-output').textContent = r.output || '(无输出)';
+    /* 输出含密钥材料（KEY/HMAC/TOTP_SEED）：默认掩码显示防窥屏截图泄露，
+       原始文本保留在闭包中供「复制 stanza 段」/显示开关使用 */
+    const rawOut = r.output || '(无输出)';
+    const maskKeys = t => t.split('\n').map(l =>
+      /^(KEY|KEY_BASE64|HMAC_KEY|HMAC_KEY_BASE64|TOTP_SEED|TOTP_SEED_BASE64|GPG_PW)\s/.test(l)
+        ? l.replace(/(\S)(\s+)(\S+)/, '$1$2••••••••（已掩码）') : l).join('\n');
+    let outMasked = true;
+    const renderOut = () => {
+      $('#add-output').textContent = outMasked ? maskKeys(rawOut) : rawOut;
+      $('#add-output-mask').textContent = outMasked ? '显示敏感内容' : '隐藏敏感内容';
+    };
+    $('#add-output-mask').onclick = () => { outMasked = !outMasked; renderOut(); };
+    renderOut();
     const m = (r.output || '').match(/fwknop:\/\/\S+/);
     if (m) {
       /* 留空签发的 URI 主机是占位符「server」（credential.c）：结果区再提一次，
