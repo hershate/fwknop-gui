@@ -1676,6 +1676,13 @@ const PAGE_SEARCH = { events:'#event-search', users:'#users-search', tofu:'#tofu
    拨回当前页保持 URL 与页面一致 */
 window.addEventListener('popstate', () => {
   const { page: h, bad, q } = parseEvHash();
+  /* 弹窗打开时浏览器后退：消费在「关弹窗」上而非切页（与 Esc 行为一致）；
+     未保存修改的守卫拒绝关闭时，拨回 hash 中止导航 */
+  if ($('#modal-root').classList.contains('show')) {
+    closeModal();
+    history.pushState(null, '', evHashFor(S.page));
+    return;
+  }
   /* 页相同但筛选标记不同（#events ↔ #events~bad / ~q= 变化的后退/前进）也要响应 */
   if (!PAGE_KEYS.includes(h) || (h === S.page && (h !== 'events' ||
       (bad === (S.evFilter === 'bad') && q === (S.evQuery || ''))))) return;
