@@ -3421,8 +3421,8 @@ function renderConfig() {
         <span class="hint" style="font-weight:400">${list.length} 项</span></div>
       <table class="tb" style="${collapsed?'display:none':''}"><thead><tr><th style="width:250px">指令</th><th style="width:280px">当前值</th><th>说明</th></tr></thead><tbody>` +
       list.map(e => `<tr>
-        <td class="mono" style="color:var(--accent);font-weight:600">${esc(e.key)}</td>
-        <td class="mono">${esc(e.value)}</td>
+        <td class="mono" style="color:var(--accent);font-weight:600"><span class="cp-cell" data-cp="${esc(e.key)}" title="点击复制指令名">${esc(e.key)}</span></td>
+        <td class="mono"><span class="cp-cell" data-cp="${esc(e.value)}" title="点击复制当前值">${esc(e.value)}</span></td>
         <td class="hint">${esc((CONF_META[e.key] || [,''])[1] || '（未收录说明，请参考 fwknopd.conf 注释）')}</td>
       </tr>`).join('') + `</tbody></table>`;
   }
@@ -3437,6 +3437,8 @@ function renderConfig() {
   /* 重渲染后查找状态保持 */
   const vf = $('#conf-view-filter');
   if (vf && vf.value.trim()) vf.dispatchEvent(new Event('input'));
+  /* 指令名/值点击复制（键盘可达由全局委托覆盖） */
+  $$('#config-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, '配置项 '));
 }
 /* 视图模式指令查找：按键名/说明过滤行，命中分组自动展开，清空后恢复原折叠状态 */
 $('#conf-view-filter').oninput = e => {
