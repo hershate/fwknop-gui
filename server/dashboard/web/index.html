@@ -3484,12 +3484,15 @@ function renderAbout() {
     ['TOFU 状态', frow(F.tofu)],
     ['授权配置', frow(F.access_conf)],
     ['服务配置', frow(F.fwknopd_conf)],
-    /* 审计清理备份：列出全部 .bak 文件名与面板内下载入口（随时可取回） */
+    /* 审计清理备份：列出全部 .bak 文件名与面板内下载/删除入口（随时可取回或清理） */
     ...((d && d.audit_backups && d.audit_backups.count) ? [[
       '审计备份',
       (d.audit_backups.names || []).map(n =>
-        `<div><a href="/api/audit/download?bak=${encodeURIComponent(n)}" download class="mono" style="color:var(--accent)">${esc(n)}</a></div>`).join('') +
-      `<div class="hint" style="margin-top:4px">共 ${d.audit_backups.count} 个 · ${fmtSize(d.audit_backups.size)} · 取回后可在服务器上手动删除释放空间</div>`,
+        `<div style="display:flex;align-items:center;gap:8px">
+          <a href="/api/audit/download?bak=${encodeURIComponent(n)}" download class="mono" style="color:var(--accent)">${esc(n)}</a>
+          ${S.writeEnabled ? `<button class="icon-btn" data-rmbak="${esc(n)}" title="删除该备份文件（不可恢复）">${icon('i-trash',12)}</button>` : ''}
+        </div>`).join('') +
+      `<div class="hint" style="margin-top:4px">共 ${d.audit_backups.count} 个 · ${fmtSize(d.audit_backups.size)}</div>`,
     ]] : []),
   ];
   $('#about-body').innerHTML = clockWarn + `<table class="tb"><tbody>` + rows.map(([k,v]) =>
@@ -3516,6 +3519,18 @@ function renderAbout() {
   };
   /* 路径点击复制（键盘可达由全局 MutationObserver/委托覆盖） */
   $$('#about-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, '路径 '));
+  /* 审计备份删除：确认后删除并刷新（文件名服务端白名单校验） */
+  $$('#about-body [data-rmbak]').forEach(b => b.onclick = () => {
+    const n = b.dataset.rmbak;
+    confirmDialog('删除审计备份？', `备份 <code>${esc(n)}</code> 将被永久删除，删除前请确认已下载或不再需要。`, '删除', async () => {
+      try {
+        const fd = new FormData();
+        fd.append('name', n);
+        const r = await api('/api/admin/audit/rmbak', { method:'POST', body: fd });
+        if (r.ok) { toast(r.msg, 'ok'); loadOverview(); }
+      } catch (e) {}
+    });
+  });
 }
 
 /* ==================== 通用模态 ==================== */

@@ -316,6 +316,33 @@ func handleAdminAuditClear(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleAdminAuditRmBak 删除一个审计清理备份文件（?name= 白名单校验，
+// 与下载同一正则，防路径穿越）。
+func handleAdminAuditRmBak(w http.ResponseWriter, r *http.Request) {
+	if !requireWrite(w, r) {
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "需要 POST", http.StatusMethodNotAllowed)
+		return
+	}
+	name := r.FormValue("name")
+	if !auditBakName.MatchString(name) {
+		http.Error(w, "非法备份文件名", http.StatusBadRequest)
+		return
+	}
+	p := filepath.Join(cfg.RunDir, name)
+	if err := os.Remove(p); err != nil {
+		if os.IsNotExist(err) {
+			http.Error(w, "备份不存在（可能已被删除）", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "删除失败："+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, map[string]interface{}{"ok": true, "msg": "已删除备份 " + name})
+}
+
 // ------------------------------------------------------------------
 // 服务控制（写操作）
 // ------------------------------------------------------------------

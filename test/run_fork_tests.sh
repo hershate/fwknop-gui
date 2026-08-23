@@ -336,6 +336,13 @@ if [ -x "$GOBIN" ]; then
         wget -qO- --header='Authorization: Bearer fttok' http://127.0.0.1:18099/api/overview 2>/dev/null \
             | grep -q '"audit_backups":{"count":1' \
             && ok "面板 overview 汇总审计备份数" || bad "overview 审计备份汇总"
+        # 备份删除：白名单名校验，非法名 400，删除后文件消失
+        wget -qO- --post-data 'name=../../etc/passwd' --header='Authorization: Bearer fttok' \
+            http://127.0.0.1:18099/api/admin/audit/rmbak 2>/dev/null \
+            && bad "备份删除非法名未拦截" || ok "备份删除拦截非法文件名"
+        wget -qO- --post-data "name=$BAK" --header='Authorization: Bearer fttok' \
+            http://127.0.0.1:18099/api/admin/audit/rmbak 2>/dev/null | grep -q '已删除备份' \
+            && [ ! -e "$D/run/$BAK" ] && ok "面板删除审计备份" || bad "备份删除"
 
         # 一键签发：apply=1 自动写入 access.conf（预检+备份），同名查重拒绝
         wget -qO- --post-data 'name=autoadd1&server=203.0.113.10&user=bob&apply=1' \

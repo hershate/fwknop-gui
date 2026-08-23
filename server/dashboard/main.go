@@ -123,6 +123,7 @@ func main() {
 	mux.HandleFunc("/api/admin/rm", guard(handleAdminRm))
 	mux.HandleFunc("/api/admin/tofu/unbind", guard(handleAdminTofuUnbind))
 	mux.HandleFunc("/api/admin/audit/clear", guard(handleAdminAuditClear))
+	mux.HandleFunc("/api/admin/audit/rmbak", guard(handleAdminAuditRmBak))
 	mux.HandleFunc("/api/service/", guard(handleService))
 	mux.HandleFunc("/api/config/fwknopd", guard(handleSaveFwknopdConf))
 	mux.HandleFunc("/api/config/stanza", guard(handleUpdateStanza))
