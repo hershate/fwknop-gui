@@ -172,6 +172,17 @@ select.ctl, input.ctl {
   * { animation:none !important; transition:none !important; }
 }
 
+/* 跳到主内容（skip link）：键盘/读屏用户每次换页前需 Tab 穿过整个侧栏
+   （导航 7 项 + 状态区 + 操作钮十余站）。默认移出视口但保留在 Tab 序中，
+   聚焦时滑入可见；回车直达 #main */
+.skip-link {
+  position:fixed; top:8px; left:8px; z-index:110; padding:8px 14px;
+  background:var(--accent); color:#fff; border-radius:8px; font-size:13px;
+  text-decoration:none; transform:translateY(-64px); transition:transform .15s;
+}
+.skip-link:focus { transform:none; outline:2px solid var(--text); outline-offset:1px; }
+#main:focus { outline:none; }  /* skip 目标聚焦不画框：跳转本身即反馈 */
+
 /* ================= 通用组件 ================= */
 .card {
   background:var(--panel); border:1px solid var(--border-soft);
@@ -585,6 +596,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
 </div>
 
 <div id="app" style="display:none">
+  <a href="#main" class="skip-link" id="skip-link">跳到主内容</a>
   <!-- ============ 侧边栏 ============ -->
   <aside id="sidebar">
     <div class="brand">
@@ -620,7 +632,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
   <div id="scrim"></div>
 
   <!-- ============ 主区 ============ -->
-  <div id="main">
+  <div id="main" tabindex="-1">
     <header id="topbar">
       <button class="icon-btn" id="burger" title="菜单" aria-expanded="false" aria-controls="sidebar"><svg><use href="#i-menu"/></svg></button>
       <h1 id="page-title">概览</h1>
@@ -1632,6 +1644,15 @@ const fmtSize = n => {
   if (n < 1048576) return (n/1024).toFixed(1) + ' KB';
   if (n < 1073741824) return (n/1048576).toFixed(1) + ' MB';
   return (n/1073741824).toFixed(2) + ' GB';
+};
+
+/* skip link：JS 接管跳转保证焦点确实落到 #main（部分浏览器对碎片导航的
+   焦点迁移不一致），滚动行为尊重减弱动效偏好 */
+$('#skip-link').onclick = ev => {
+  ev.preventDefault();
+  const m = $('#main');
+  m.focus({ preventScroll: true });
+  m.scrollIntoView({ behavior: SB() });
 };
 
 /* ==================== 主题 ==================== */
