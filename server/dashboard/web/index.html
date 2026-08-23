@@ -757,7 +757,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <div class="field">
                   <label>允许访问端口</label>
                   <input name="access" placeholder="默认 tcp/22">
-                  <div class="tip">OPEN_PORTS，如 tcp/22,udp/53</div>
+                  <div class="tip">OPEN_PORTS：敲门成功后<b>放行的服务端口</b>，如 tcp/22,udp/53（与下方 TOTP 跳变端口是两回事）</div>
                   <div id="access-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
                     <button type="button" class="tpl-chip" data-port="tcp/22" title="SSH">tcp/22</button>
                     <button type="button" class="tpl-chip" data-port="tcp/443" title="HTTPS">tcp/443</button>
@@ -797,6 +797,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <div class="field">
                   <label>TOTP 端口范围</label>
                   <input name="port-range" placeholder="默认 30000-60000">
+                  <div class="tip">敲门包的<b>目的端口</b>在此范围内随时间跳变（SPA 包的落点，不是服务端口）</div>
                   <div id="range-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
                     <button type="button" class="tpl-chip" data-pr="30000-60000">30000-60000</button>
                     <button type="button" class="tpl-chip" data-pr="40000-50000">40000-50000</button>
