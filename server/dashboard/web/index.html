@@ -2360,9 +2360,16 @@ function renderEvents() {
       ${icon('i-list', 40)}<div class="t">暂无匹配事件</div>
       <div class="d">${(S.events||[]).length ? '当前筛选/搜索条件下无匹配' : 'fwknopd 收到 SPA 包后，事件会显示在这里'}</div>
       ${(S.events||[]).length && hasFilter ? '<button class="btn ghost small" id="ev-reset" style="margin-top:12px">清空筛选与搜索，查看全部</button>' : ''}
+      ${!(S.events||[]).length && S.writeEnabled ? '<button class="btn small" id="ev-goto-add" style="margin-top:12px">还没有授权？去签发凭证</button>' : ''}
     </div></td></tr>`;
     const rst = $('#ev-reset');
     if (rst) rst.onclick = resetEvFilters;
+    /* 全空空态引导：直达用户页并展开签发卡片（与概览引导条①同一动作） */
+    const ga = $('#ev-goto-add');
+    if (ga) ga.onclick = () => {
+      showPage('users');
+      if ($('#add-card').style.display === 'none') $('#show-add').click();
+    };
   } else {
     $('#events-body').innerHTML = slice.map(e => {
       const m = evMeta(e.event);
