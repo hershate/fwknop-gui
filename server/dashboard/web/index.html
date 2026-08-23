@@ -6727,7 +6727,11 @@ function lineDiff(oldText, newText) {
 function renderDiff(pre, cur) {
   const ops = lineDiff(pre, cur).filter(([op, l]) => l.trim() !== '');
   if (!ops.length) return '<div class="hint" style="padding:4px 0">与当前配置完全一致</div>';
-  return '<pre class="out-pre" style="max-height:24vh">' + ops.map(([op, l]) =>
+  /* 变更量摘要先行：方案切换/保存确认是高危复核场景，「+3/-1 行」与
+     「+80/-75 行」的复核心态完全不同——先给量级再逐行读 */
+  const adds = ops.filter(([op]) => op === '+').length;
+  return `<div class="hint" style="padding:2px 0 4px">差异：+${adds} / -${ops.length - adds} 行</div>` +
+    '<pre class="out-pre" style="max-height:24vh">' + ops.map(([op, l]) =>
     `<span class="df-${op === '+' ? 'add' : 'del'}">${op} ${esc(l)}</span>`).join('\n') + '</pre>';
 }
 
