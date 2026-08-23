@@ -4435,7 +4435,16 @@ $('#conf-filter').oninput = e => {
   if (cn) cn.textContent = q ? `匹配 ${hit}/${total}` : '';
 };
 /* 任何键/值输入都标记为未保存（容器上委托，重渲染不失效） */
-$('#conf-edit-rows').addEventListener('input', () => { markConfDirty(); markConfRows(); });
+$('#conf-edit-rows').addEventListener('input', ev => {
+  markConfDirty(); markConfRows();
+  /* 指令名改动时同步刷新行内说明：新增指令行键入/点选已知指令后，
+     右侧说明不再是空白或上一个键的残留 */
+  if (ev.target && ev.target.classList && ev.target.classList.contains('ce-key')) {
+    const row = ev.target.parentElement;
+    const hint = row && row.querySelector('.hint');
+    if (hint) hint.textContent = (CONF_META[ev.target.value.trim().toUpperCase()] || [,''])[1] || '';
+  }
+});
 $('#conf-raw-area').addEventListener('input', () => {
   markConfDirty();
   const v = $('#conf-raw-area').value;
