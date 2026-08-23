@@ -1808,8 +1808,11 @@ function applyWriteGate() {
   $('#profile-save-card').style.display = on ? '' : 'none';
   $('#show-add').style.display = on ? '' : 'none';
   $('#users-lint').style.display = on ? '' : 'none';  /* lint 经写操作门禁（CSRF），只读隐藏 */
-  /* 快速操作中的写动作在只读模式禁用 */
+  /* 快速操作中的写动作在只读模式禁用（title 说明原因，鼠标悬停不困惑） */
   $('#qa-add').disabled = !on; $('#qa-profile').disabled = !on;
+  const roTitle = '只读模式（-read-only）下不可用；去掉该参数重启后恢复';
+  $('#qa-add').title = on ? '' : roTitle;
+  $('#qa-profile').title = on ? '' : roTitle;
   /* 侧栏常驻「只读」徽章：模式随时可见，不靠各页提示零散表达 */
   $('#ro-badge').style.display = on ? 'none' : '';
   /* 徽章在 conn-box 内，拦截冒泡避免误触「点击重连」 */
@@ -1936,6 +1939,14 @@ async function loadOverview() {
     if (S.writeEnabled) {
       ['svc-stop','svc-restart','svc-reload'].forEach(id => { $('#'+id).disabled = !alive; });
       $('#svc-start').disabled = alive;
+      /* 状态禁用时在原标题上追加原因（保留 317 轮补的操作语义说明） */
+      const retitle = (id, dis, why) => {
+        const b = $('#'+id);
+        if (!b.dataset.otitle) b.dataset.otitle = b.title || '';
+        b.title = dis ? (b.dataset.otitle + '（' + why + '）') : b.dataset.otitle;
+      };
+      retitle('svc-start', alive, 'fwknopd 已在运行');
+      ['svc-stop','svc-restart','svc-reload'].forEach(id => retitle(id, !alive, 'fwknopd 未运行，该操作无意义'));
     }
     if (S.page === 'overview') renderStatusCards();
     if (S.page === 'about') renderAbout();
