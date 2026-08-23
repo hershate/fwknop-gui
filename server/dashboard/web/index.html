@@ -5834,7 +5834,9 @@ function parseFwList(text) {
   }
   return chains.filter(c => c.rules.length);
 }
-$('#svc-fwlist').onclick = async () => {
+/* 抽成命名函数：弹窗内「刷新」按钮复用同一入口——放行规则随超时消失，
+   盯规则过期的运维此前要关掉重开弹窗 */
+const openFwRules = async () => {
   try {
     const r = await api('/api/service/fwrules');
     /* 空输出易误读为故障：区分「无活动放行规则」与「读取失败」 */
@@ -5858,16 +5860,27 @@ $('#svc-fwlist').onclick = async () => {
       const showDst = c.rules.some(x => x.dst && x.dst !== '0.0.0.0/0' && x.dst !== '::/0');
       return `${multi ? `<div class="sub" style="margin:10px 0 4px">${esc(c.name)}（${c.rules.length} 条）</div>` : ''}
       <table class="tb"><thead><tr><th>来源</th><th>协议/端口</th>${showDst ? '<th>目的</th>' : ''}<th>动作</th></tr></thead>
-      <tbody>${c.rules.map(x => `<tr><td>${esc(x.src)}</td><td>${esc(x.prot)}${x.port ? '/' + esc(x.port) : ''}</td>${showDst ? `<td>${esc(x.dst)}</td>` : ''}<td style="color:${actColor(x.target)}">${esc(x.target)}</td></tr>`).join('')}</tbody></table>`;
+      <tbody>${c.rules.map(x => `<tr><td><button class="chip fwr-src" data-src="${esc(x.src)}" title="在事件页按来源「${esc(x.src)}」精确筛选，核查该放行是否被使用" style="font-size:12px">${esc(x.src)}</button></td><td>${esc(x.prot)}${x.port ? '/' + esc(x.port) : ''}</td>${showDst ? `<td>${esc(x.dst)}</td>` : ''}<td style="color:${actColor(x.target)}">${esc(x.target)}</td></tr>`).join('')}</tbody></table>`;
     }).join('');
     openModal(`<h3>防火墙规则 — ${nRules} 条活动放行（${srcs.size} 个来源）</h3>
       <div style="max-height:46vh;overflow:auto">${tbl}</div>
       <details style="margin-top:10px"><summary class="hint" style="cursor:pointer">查看 iptables 原始输出</summary>
       <pre class="out-pre" style="max-height:30vh;margin-top:6px">${esc(body)}</pre></details>
-      <div class="mf"><button class="btn ghost" id="im-cp" title="复制 iptables 原始输出（贴入工单/终端排查用）">${icon('i-copy',13)} 复制原始输出</button><button class="btn" onclick="closeModal()">关闭</button></div>`, true);
+      <div class="mf"><button class="btn ghost" id="im-refresh" title="重新读取防火墙规则（放行随超时自动消失，盯过期不用重开弹窗）">${icon('i-refresh',13)} 刷新</button><button class="btn ghost" id="im-cp" title="复制 iptables 原始输出（贴入工单/终端排查用）">${icon('i-copy',13)} 复制原始输出</button><button class="btn" onclick="closeModal()">关闭</button></div>`, true);
     $('#im-cp').onclick = () => copyText(body, '防火墙规则 ');
+    $('#im-refresh').onclick = openFwRules;
+    /* 来源钻取：规则表回答「谁被放行」，事件页回答「它最近敲过吗」——同一
+       ip: 前缀口径（与来源排行芯片一致）；/32 后缀去掉，事件 src_ip 是裸 IP */
+    $$('.fwr-src').forEach(b => b.onclick = () => {
+      const src = b.dataset.src.replace(/\/32$/, '');
+      S.evQuery = 'ip:' + src; S.evPage = 0; S.evFilter = 'all';
+      $('#event-search').value = S.evQuery;
+      closeModal();
+      showPage('events');
+    });
   } catch (e) {}
 };
+$('#svc-fwlist').onclick = openFwRules;
 
 /* ==================== stanza 在线编辑（仅非密钥指令） ==================== */
 const STANZA_FIELDS = [
