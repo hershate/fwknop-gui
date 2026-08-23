@@ -2442,6 +2442,7 @@ function renderEvents() {
           <div><div class="k">原因（中文）</div><div class="v">${esc(reasonZh(e.reason))}</div></div>
           <div style="align-self:end"><button class="btn ghost small" data-evjson="${esc(key)}" title="复制该事件的完整 JSON（排障/上报用）">${icon('i-copy',12)} 复制原始 JSON</button>
           <button class="btn ghost small" data-evsum="${esc(key)}" title="复制一行中文摘要（聊天/工单用）">${icon('i-copy',12)} 复制摘要</button>
+          ${e.time ? `<button class="btn ghost small" data-evctx="${e.time}" title="筛选该事件前后 5 分钟内的全部事件（还原现场上下文，可「↩ 上级视图」返回）">${icon('i-search',12)} 前后 5 分钟</button>` : ''}
           ${(() => { const bd = e.device_id && ((S.tofu && S.tofu.bindings) || []).find(x => x.device_id === e.device_id);
             return bd && S.writeEnabled ? ` <button class="btn ghost small" data-evub="${esc(bd.stanza_key)}" data-dev="${esc(e.device_id)}" title="该设备当前已绑定 TOFU，点击直接解绑">${icon('i-trash',12)} 解绑该设备</button>` : ''; })()}</div>
         </div></td></tr>`;
@@ -2517,6 +2518,19 @@ function renderEvents() {
     $$('#events-body [data-evjson]').forEach(b => b.onclick = () => {
       const ev2 = slice.find(x => `${x.time}|${x.event}|${x.src_ip||''}|${x.device_id||''}` === b.dataset.evjson);
       if (ev2) copyText(JSON.stringify(ev2), '事件 JSON ');
+    });
+    /* 「前后 5 分钟」：以该事件为中心切自定义区间还原现场，入钻取栈可逐级返回 */
+    $$('#events-body [data-evctx]').forEach(b => b.onclick = ev => {
+      ev.stopPropagation();
+      const t = +b.dataset.evctx;
+      if (!t) return;
+      if (!S.evHeatStack) S.evHeatStack = [];
+      S.evHeatStack.push({ time: S.evTime, from: S.evFrom || '', to: S.evTo || '' });
+      S.evTime = 'custom';
+      $('#ev-time').value = 'custom';
+      $('#ev-custom').style.display = 'inline-flex';
+      fillEvRange(new Date((t - 300) * 1000), new Date((t + 300) * 1000));
+      toast('已筛选该事件前后 5 分钟（点「↩ 上级视图」返回）', 'ok', 2500);
     });
     /* 行点击展开/收起完整详情；复制/反查控件不触发 */
     if (!S.evExpanded) S.evExpanded = new Set();
