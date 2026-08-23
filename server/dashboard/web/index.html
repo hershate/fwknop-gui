@@ -875,6 +875,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               <input class="ctl" id="conf-filter" placeholder="过滤指令名…" style="width:150px;padding:4px 8px;font-size:12.5px">
               <button class="btn ghost small" id="conf-add-row"><svg width="14" height="14"><use href="#i-plus"/></svg>新增指令</button>
               <button class="btn ghost small" id="conf-raw-edit">原文编辑</button>
+              <button class="btn ghost small" id="conf-discard" title="放弃全部未保存修改，恢复为已保存的配置">放弃修改</button>
               <button class="btn small" id="conf-save"><svg width="14" height="14"><use href="#i-save"/></svg>保存</button>
             </div>
           </div>
@@ -3718,6 +3719,18 @@ $('#conf-edit-btn').onclick = () => {
   }
 };
 $('#conf-raw-edit').onclick = () => { confRawEdit = !confRawEdit; renderConfEditor(); };
+/* 放弃修改：确认后恢复为已保存的配置（编辑器保持打开，两个模式同步复位） */
+$('#conf-discard').onclick = () => {
+  if (!confDirty) { toast('没有未保存的修改', 'ok', 1500); return; }
+  confirmDialog('放弃全部修改？', '编辑器将恢复为<b>已保存</b>的配置内容，全部未保存修改都会丢失。', '放弃修改', () => {
+    confRows = ((S.config && S.config.entries) || []).map(e => [e.key, e.value]);
+    confOrig = Object.fromEntries(confRows.map(([k, v]) => [k, v]));
+    $('#conf-raw-area').value = (S.config && S.config.raw) || '';
+    clearConfDirty();
+    renderConfEditor();
+    toast('已恢复为已保存的配置', 'ok');
+  });
+};
 $('#conf-add-row').onclick = () => { confRows.push(['', '']); markConfDirty(); renderConfEditor(); };
 /* 指令名即时过滤：只隐藏不匹配行，不影响数据 */
 $('#conf-filter').oninput = e => {
