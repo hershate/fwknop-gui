@@ -34,6 +34,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -69,6 +70,15 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("Referrer-Policy", "no-referrer")
+		/* 缓存策略显式化：API 一律 no-store（状态数据被任何中间层缓存都是 bug，
+		   401/限流响应更不能被缓存）；内嵌 HTML 用 no-cache——embed.FS 文件无
+		   ModTime（不发 Last-Modified/ETag），主流浏览器本就不缓存，此处把
+		   「升级二进制后刷新即得新 UI」从行为巧合变成契约 */
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			h.Set("Cache-Control", "no-store")
+		} else {
+			h.Set("Cache-Control", "no-cache")
+		}
 		next.ServeHTTP(w, r)
 	})
 }
