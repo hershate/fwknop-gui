@@ -516,7 +516,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
   <div class="auth-card" id="auth-setup" style="display:none">
     <div class="auth-brand">
       <svg width="30" height="30"><use href="#i-shield"/></svg>
-      <div><div class="t1">首次启动初始化</div><div class="t2">fwknop 运维面板 v2.4.7</div></div>
+      <div><div class="t1">首次启动初始化</div><div class="t2">fwknop 运维面板 <span class="auth-ver">v2.4.7</span></div></div>
     </div>
     <p class="desc">欢迎使用 fwknop 运维面板。作为面向网络提供服务的管理入口，面板在首次启动时必须完成初始化，之后所有访问都需要登录。</p>
     <ol class="auth-steps">
@@ -538,7 +538,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
   <div class="auth-card" id="auth-login" style="display:none">
     <div class="auth-brand">
       <svg width="30" height="30"><use href="#i-lock"/></svg>
-      <div><div class="t1">登录</div><div class="t2">fwknop 运维面板 v2.4.7</div></div>
+      <div><div class="t1">登录</div><div class="t2">fwknop 运维面板 <span class="auth-ver">v2.4.7</span></div></div>
     </div>
     <p class="desc">请输入管理员密码。连续失败 5 次将锁定 60 秒；登录成功后会话有效期 12 小时（顶栏可见剩余时间）。<br><span class="hint" style="font-size:11.5px">忘记密码：停止面板，删除运行目录下的 dashboard_auth.json（默认 /var/run/fwknop/），重启后回到初始化页重设。</span></p>
     <label for="login-pw">管理员密码（或 DASHBOARD_TOKEN）</label>
@@ -1223,6 +1223,8 @@ async function bootAuth() {
     if (st.version) {  /* 服务端为准，防硬编码漂移 */
       $('#side-ver').textContent = 'v' + st.version;
       const bv = $('#brand-ver'); if (bv) bv.textContent = 'v' + st.version;
+      /* 登录/初始化页品牌区版本同步（未登录也可见，排障报版本不用先登录） */
+      $$('.auth-ver').forEach(el => { el.textContent = 'v' + st.version; });
     }
     if (st.session_exp) S.sessionExp = st.session_exp;
     S.writeEnabled = !!st.write_enabled;
