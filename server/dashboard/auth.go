@@ -200,7 +200,16 @@ func newSession() (string, error) {
 	}
 	tok := hex.EncodeToString(buf)
 	auth.mu.Lock()
-	auth.sessions[tok] = time.Now().Add(sessionTTL)
+	/* 顺手清扫过期会话：validSession 只在「被使用」时删过期令牌，登录后再
+	   未访问的会话会一直滞留——长跑下面板 sessions 单调增长。登录是低频
+	   事件，O(n) 清扫代价可忽略 */
+	now := time.Now()
+	for t, exp := range auth.sessions {
+		if now.After(exp) {
+			delete(auth.sessions, t)
+		}
+	}
+	auth.sessions[tok] = now.Add(sessionTTL)
 	auth.mu.Unlock()
 	return tok, nil
 }
@@ -322,6 +331,15 @@ func loginLocked(ip string) time.Duration {
 func recordLoginFail(ip string) int {
 	auth.mu.Lock()
 	defer auth.mu.Unlock()
+	/* 顺手清扫陈旧失败记录：failures 按客户端 IP 累积且无淘汰，面板若暴露
+	   在 LAN/公网被持续探测，map 会随不同源 IP 单调增长。保留语义边界：
+	   锁定中的记录（解锁后剩余尝试次数的依据）与窗口期内的记录不动 */
+	now := time.Now()
+	for k, r := range auth.failures {
+		if now.After(r.lockedTil) && now.Sub(r.first) > loginFailWindow {
+			delete(auth.failures, k)
+		}
+	}
 	rec, ok := auth.failures[ip]
 	if !ok || time.Since(rec.first) > loginFailWindow {
 		rec = &failRec{first: time.Now()}
