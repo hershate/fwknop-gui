@@ -4954,6 +4954,31 @@ function openStanzaEditor(index) {
   });
   modalGuard = () => !seDirty || confirm('授权编辑有未保存的修改，确定丢弃吗？');
   $('#se-cancel').onclick = closeModal;
+  /* 死配置联动（与签发卡片同语义）：
+     ① 未勾选「要求设备指纹」→ TOFU 宽限期禁用，保存时按删除处理；
+     ② 该授权无 TOTP 种子（密钥不可在线编辑，面板内不会变为有）→
+        TOTP 端口范围/端口匹配禁用，保存时按删除处理 */
+  const fpCb = document.querySelector('#modal-root [data-sf="REQUIRE_FINGERPRINT"]');
+  const tftoInp = document.querySelector('#modal-root [data-sf="FINGERPRINT_TOFU_TIMEOUT"]');
+  const syncSeFp = () => {
+    const on = fpCb && fpCb.checked;
+    if (tftoInp) {
+      tftoInp.disabled = !on;
+      const fd = tftoInp.closest('.field'); if (fd) fd.style.opacity = on ? '' : '.45';
+      tftoInp.title = on ? '' : '未勾选「要求设备指纹」时宽限期不生效，保存时将移除该指令';
+    }
+  };
+  if (fpCb) fpCb.addEventListener('change', syncSeFp);
+  syncSeFp();
+  if (!s.has_totp) {
+    ['TOTP_PORT_RANGE', 'REQUIRE_TOTP_PORT_MATCH'].forEach(k => {
+      const el = document.querySelector(`#modal-root [data-sf="${k}"]`);
+      if (!el) return;
+      el.disabled = true;
+      const fd = el.closest('.field'); if (fd) fd.style.opacity = '.45';
+      el.title = '该授权未配置 TOTP 种子（密钥不可在线编辑），跳变类指令不生效，保存时将移除';
+    });
+  }
   $('#se-save').onclick = async () => {
     /* 保存前校验：端口列表 / 超时秒数 / TOTP 范围，非法即聚焦中止（与签发卡片规则同源） */
     const seChecks = {
@@ -4969,6 +4994,9 @@ function openStanzaEditor(index) {
     };
     for (const el of $$('#modal-root [data-sf]')) {
       if (el.type === 'checkbox') continue;
+      /* 保存时将被剥离的死配置字段不参与校验（避免拦在无关字段上） */
+      if (el.dataset.sf === 'FINGERPRINT_TOFU_TIMEOUT' && !(fpCb && fpCb.checked)) continue;
+      if (!s.has_totp && (el.dataset.sf === 'TOTP_PORT_RANGE' || el.dataset.sf === 'REQUIRE_TOTP_PORT_MATCH')) continue;
       const c = seChecks[el.dataset.sf];
       if (c && el.value.trim() && !c[1](el.value.trim())) {
         toast(`${c[0]} 格式不正确，请修正后再保存`, 'err');
@@ -4992,7 +5020,7 @@ function openStanzaEditor(index) {
     /* 跨配置校验（与签发卡片同源）：TOTP 范围超出 PCAP_PORT_RANGE 的改动
        保存后敲门会静默丢失，保存前拦截；配置未加载时先懒加载再判定 */
     const rangeEl = document.querySelector('#modal-root [data-sf="TOTP_PORT_RANGE"]');
-    if (rangeEl && rangeEl.value.trim()) {
+    if (rangeEl && s.has_totp && rangeEl.value.trim()) {
       if (!S.config) { try { await loadConfig(); } catch (_) { /* loadConfig 内部已提示 */ } }
       const sv = rangePcapConflict(rangeEl.value.trim());
       if (sv) {
@@ -5005,6 +5033,10 @@ function openStanzaEditor(index) {
     $$('#modal-root [data-sf]').forEach(el => {
       fields[el.dataset.sf] = el.type === 'checkbox' ? (el.checked ? 'Y' : '') : el.value.trim();
     });
+    /* 死配置按删除处理（服务端 "" = 移除指令行）：与签发卡片「提交时忽略」同语义，
+       避免无指纹授权残留宽限期、无 TOTP 种子授权残留跳变指令 */
+    if (fields.REQUIRE_FINGERPRINT !== 'Y') fields.FINGERPRINT_TOFU_TIMEOUT = '';
+    if (!s.has_totp) { fields.TOTP_PORT_RANGE = ''; fields.REQUIRE_TOTP_PORT_MATCH = ''; }
     $('#se-save').disabled = true;
     try {
       const r = await api('/api/config/stanza', { method:'POST',
