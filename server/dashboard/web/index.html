@@ -4196,14 +4196,20 @@ function renderAbout() {
     ['TOFU 状态', frow(F.tofu)],
     ['授权配置', frow(F.access_conf)],
     ['服务配置', frow(F.fwknopd_conf)],
-    /* 审计清理备份：列出全部 .bak 文件名与面板内下载/删除入口（随时可取回或清理） */
+    /* 审计清理备份：列出全部 .bak 文件名（含备份时间与单文件大小）与面板内下载/删除入口 */
     ...((d && d.audit_backups && d.audit_backups.count) ? [[
       '审计备份',
-      (d.audit_backups.names || []).map(n =>
-        `<div style="display:flex;align-items:center;gap:8px">
+      (d.audit_backups.names || []).map(n => {
+        /* 文件名尾缀即备份时刻（.bak-YYYYMMDD-HHMMSS，api.go 清理时命名） */
+        const bm = n.match(/\.bak-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})$/);
+        const when = bm ? fmtAbs(new Date(+bm[1], +bm[2]-1, +bm[3], +bm[4], +bm[5], +bm[6]).getTime()/1000) : '';
+        const sz = d.audit_backups.sizes && d.audit_backups.sizes[n] != null ? fmtSize(d.audit_backups.sizes[n]) : '';
+        return `<div style="display:flex;align-items:center;gap:8px">
           <a href="/api/audit/download?bak=${encodeURIComponent(n)}" download class="mono" style="color:var(--accent)">${esc(n)}</a>
+          <span class="hint" style="font-size:11.5px">${when ? when + ' · ' : ''}${sz}</span>
           ${S.writeEnabled ? `<button class="icon-btn" data-rmbak="${esc(n)}" title="删除该备份文件（不可恢复）">${icon('i-trash',12)}</button>` : ''}
-        </div>`).join('') +
+        </div>`;
+      }).join('') +
       `<div class="hint" style="margin-top:4px">共 ${d.audit_backups.count} 个 · ${fmtSize(d.audit_backups.size)}${(d.audit_backups.count > 20 || (d.audit_backups.size || 0) > 100*1048576) ? ' · <span style="color:var(--amber)">⚠ 堆积较多，建议下载后清理以释放磁盘</span>' : ''}</div>`,
     ]] : []),
   ];
