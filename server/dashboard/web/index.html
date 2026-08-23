@@ -263,6 +263,7 @@ select.ctl, input.ctl {
 #to-top { position:fixed; right:22px; bottom:22px; z-index:40; width:38px; height:38px; border-radius:50%;
   display:none; align-items:center; justify-content:center; box-shadow:var(--shadow); }
 .nb-badge { background:var(--red); color:#fff; border-radius:9px; font-size:10px; line-height:1.6; padding:0 5px; margin-left:4px; vertical-align:2px; }
+.nb-badge.amber { background:var(--amber); }
 @keyframes spin { to { transform:rotate(360deg); } }
 .spinning svg { animation:spin .8s linear infinite; }
 @keyframes prefillFlash { 0% { box-shadow:0 0 0 2px var(--accent); } 100% { box-shadow:none; } }
@@ -586,7 +587,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
     </div>
     <button class="nav-item active" data-page="overview" title="快捷键 1"><svg><use href="#i-dash"/></svg>概览</button>
     <button class="nav-item" data-page="events" title="快捷键 2"><svg><use href="#i-list"/></svg>SPA 事件<span class="nb-badge" id="nav-ev-badge" style="display:none" title="最近 15 分钟异常事件数（点击直达「仅看异常」）"></span></button>
-    <button class="nav-item" data-page="users" title="快捷键 3"><svg><use href="#i-users"/></svg>用户与授权</button>
+    <button class="nav-item" data-page="users" title="快捷键 3"><svg><use href="#i-users"/></svg>用户与授权<span class="nb-badge amber" id="nav-usr-badge" style="display:none"></span></button>
     <button class="nav-item" data-page="tofu" title="快捷键 4"><svg><use href="#i-fp"/></svg>TOFU 设备绑定</button>
     <button class="nav-item" data-page="config" title="快捷键 5"><svg><use href="#i-cfg"/></svg>服务配置<span id="nav-conf-dot" style="display:none;color:var(--amber);font-size:16px;line-height:0;vertical-align:-1px" title="有未保存的配置修改（点击直达编辑器）"> ●</span></button>
     <button class="nav-item" data-page="profiles" title="快捷键 6"><svg><use href="#i-archive"/></svg>配置方案</button>
@@ -3094,6 +3095,12 @@ async function loadUsers() {
   try {
     const d = await api('/api/users');
     S.users = d;
+    /* 占位密钥预警：__CHANGEME__ 授权永远无法工作，不进用户页就发现不了——
+       侧栏琥珀徽标常驻提醒，点击导航直达处理 */
+    const cm = (d.stanzas || []).filter(s => s.changeme).length;
+    const ub = $('#nav-usr-badge');
+    ub.style.display = cm ? '' : 'none';
+    if (cm) { ub.textContent = cm; ub.title = `${cm} 个授权仍是 __CHANGEME__ 占位密钥，无法正常工作，点击前往撤销并重签`; }
     if (S.page === 'users') renderUsers();
     if (S.page === 'tofu') renderTOFU();  /* 悬空绑定检测依赖授权列表 */
   } catch (e) {
