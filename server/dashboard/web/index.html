@@ -2332,7 +2332,9 @@ function renderEvents() {
     $$('#events-body [data-evsum]').forEach(b => b.onclick = () => {
       const ev2 = slice.find(x => `${x.time}|${x.event}|${x.src_ip||''}|${x.device_id||''}` === b.dataset.evsum);
       if (!ev2) return;
-      copyText(`[${fmtAbs(ev2.time)}] ${evMeta(ev2.event).label}${ev2.user ? ' · 用户 ' + ev2.user : ''}${ev2.src_ip ? ' · 来自 ' + ev2.src_ip : ''}${ev2.target_port ? ' · 目标端口 ' + ev2.target_port : ''}${ev2.reason ? ' · ' + reasonZh(ev2.reason) : ''}`, '事件摘要 ');
+      /* 摘要面向工单/聊天：补齐 SPA 端口与授权名（stanza 索引反查当前配置） */
+      const stz = ev2.stanza != null && ((S.users && S.users.stanzas) || []).find(s => s.index === ev2.stanza);
+      copyText(`[${fmtAbs(ev2.time)}] ${evMeta(ev2.event).label}${ev2.user ? ' · 用户 ' + ev2.user : ''}${stz ? ' · 授权 ' + (stz.name || ('#' + stz.index)) : ''}${ev2.src_ip ? ' · 来自 ' + ev2.src_ip : ''}${ev2.spa_port ? ' · SPA 端口 ' + ev2.spa_port : ''}${ev2.target_port ? ' · 目标端口 ' + ev2.target_port : ''}${ev2.reason ? ' · ' + reasonZh(ev2.reason) : ''}`, '事件摘要 ');
     });
     $$('#events-body [data-evjson]').forEach(b => b.onclick = () => {
       const ev2 = slice.find(x => `${x.time}|${x.event}|${x.src_ip||''}|${x.device_id||''}` === b.dataset.evjson);
