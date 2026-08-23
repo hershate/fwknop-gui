@@ -1463,18 +1463,18 @@ document.addEventListener('touchend', e => {
   }
 }, { passive: true });
 
-/* .cp-cell 点击复制全局键盘可达：模板生成点多，用 MutationObserver 统一
-   补 tabindex，Enter/空格经事件委托触发其 click（复制/筛选均生效） */
+/* .cp-cell 点击复制、.tmtoggle 时间列切换全局键盘可达：模板生成点多，用
+   MutationObserver 统一补 tabindex，Enter/空格经事件委托触发其 click */
 new MutationObserver(muts => {
   for (const m of muts) m.addedNodes.forEach(n => {
     if (n.nodeType !== 1) return;
-    if (n.matches && n.matches('.cp-cell:not([tabindex])')) n.tabIndex = 0;
-    if (n.querySelectorAll) n.querySelectorAll('.cp-cell:not([tabindex])').forEach(el => { el.tabIndex = 0; });
+    if (n.matches && n.matches('.cp-cell:not([tabindex]), .tmtoggle:not([tabindex])')) n.tabIndex = 0;
+    if (n.querySelectorAll) n.querySelectorAll('.cp-cell:not([tabindex]), .tmtoggle:not([tabindex])').forEach(el => { el.tabIndex = 0; });
   });
 }).observe(document.body, { childList: true, subtree: true });
 document.addEventListener('keydown', ev => {
   if (ev.key !== 'Enter' && ev.key !== ' ') return;
-  const el = ev.target && ev.target.closest ? ev.target.closest('.cp-cell') : null;
+  const el = ev.target && ev.target.closest ? ev.target.closest('.cp-cell, .tmtoggle') : null;
   if (el) { ev.preventDefault(); el.click(); }
 });
 
