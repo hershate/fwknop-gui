@@ -1683,7 +1683,10 @@ const S = {
   auto: true, ivl: 5000, timer: null,
   overview: null, metrics: null, events: null, users: null, tofu: null, config: null,
   writeEnabled: false,
-  evFilter: 'all', evQuery: '', evPage: 0, evPer: +(localStorage.getItem('fwknop-ev-per') || 20),
+  /* 持久化值白名单校验（与 ivl 恢复同规）：手改/旧版遗留的非法值会让
+     slice(NaN) 得到永远空白的列表且无表面原因 */
+  evFilter: 'all', evQuery: '', evPage: 0,
+  evPer: [20, 50, 100].includes(+localStorage.getItem('fwknop-ev-per')) ? +localStorage.getItem('fwknop-ev-per') : 20,
   evTime: 'all',
   tofuQuery: '', usersQuery: '', pfQuery: '',
   hist: {},            // key -> [{t, v}] 计数器历史（前端采样，用于迷你趋势）
