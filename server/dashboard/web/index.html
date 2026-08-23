@@ -785,7 +785,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <div class="head">
               <h2>访问授权（access.conf）</h2><span class="sub" id="users-sub"></span>
               <div class="tools">
-                <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="users-search" placeholder="搜索名称 / 用户 / 端口 / 来源 / 序号（#3）…" title="匹配授权名称 / 要求用户名 / 端口 / 来源 / stanza 序号（快捷键 / 聚焦）" style="width:240px"><button class="icon-btn srch-clear" data-for="users-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+                <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="users-search" placeholder="搜索名称 / 用户 / 端口 / 来源 / 序号（#3）/ 占位…" title="匹配授权名称 / 要求用户名 / 端口 / 来源 / stanza 序号；搜「占位」定位 __CHANGEME__ 占位密钥授权（快捷键 / 聚焦）" style="width:240px"><button class="icon-btn srch-clear" data-for="users-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
                 <select class="ctl" id="users-sort" title="授权排序方式（选择跨刷新记忆）" style="padding:5px 8px;font-size:12.5px">
                   <option value="conf">按配置顺序</option>
                   <option value="name">按名称</option>
@@ -1863,7 +1863,7 @@ document.addEventListener('touchend', e => {
 
 /* .cp-cell 点击复制、.tmtoggle 时间列切换、分组折叠头等全局键盘可达：模板
    生成点多，用 MutationObserver 统一补 tabindex，Enter/空格经事件委托触发其 click */
-const KB_CLICK_SEL = '.cp-cell, .tmtoggle, .evh-hot, .sum-link, .ratiobad-seg, .conf-grp, #dis-toggle, [data-pg], [data-rmf], [data-evf], .pf-note-ed, #daemon-pill, #conn-box, #nav-ev-badge, #nav-about-badge, #nav-conf-dot, #sess-ttl';
+const KB_CLICK_SEL = '.cp-cell, .tmtoggle, .evh-hot, .sum-link, .ratiobad-seg, .conf-grp, #dis-toggle, [data-pg], [data-rmf], [data-evf], .pf-note-ed, #daemon-pill, #conn-box, #nav-ev-badge, #nav-about-badge, #nav-usr-badge, #nav-conf-dot, #sess-ttl';
 new MutationObserver(muts => {
   for (const m of muts) m.addedNodes.forEach(n => {
     if (n.nodeType !== 1) return;
@@ -2896,6 +2896,13 @@ $('#nav-about-badge').onclick = ev => {
   S.oplogQuery = '登录失败'; const os3 = $('#oplog-search'); if (os3) os3.value = '登录失败';
   showPage('about');
 };
+/* 占位密钥徽标钻取（与 about/ev 徽标同模式）：不止导航——预填「占位」搜索词，
+   授权很多时问题卡片也不会滚出视野（filteredStanzas 对该词匹配 changeme 态） */
+$('#nav-usr-badge').onclick = ev => {
+  ev.stopPropagation();
+  S.usersQuery = '占位'; const us = $('#users-search'); if (us) us.value = '占位';
+  showPage('users');
+};
 
 /* 异常事件集合：「仅看异常」快捷筛选用 */
 const BAD_EVTS = ['reject','replay','unknown_fingerprint','port_mismatch','aged'];
@@ -3688,7 +3695,10 @@ function filteredStanzas() {
     (s.restrict_ports||'').toLowerCase().includes(q) ||
     (s.source||'').toLowerCase().includes(q) ||
     /* 支持按 stanza 序号直查（事件详情的「授权索引」、审计字段都是序号） */
-    String(s.index) === q || ('#' + s.index) === q);
+    String(s.index) === q || ('#' + s.index) === q ||
+    /* 状态中文可读文案同样可搜（与事件页 reasonZh 检索同一心智）：按界面所见的
+       「占位」字样定位 __CHANGEME__ 授权；侧栏占位徽标点击即预填此词 */
+    (s.changeme && ('占位密钥'.includes(q) || 'changeme'.includes(q))));
 }
 /* 安全选项纯文本汇总（CSV 用）：与 stanzaBadges 同一判定口径，HTML 徽章的
    文字版；两处置换时须同步 */
