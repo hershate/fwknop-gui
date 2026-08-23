@@ -1809,7 +1809,16 @@ const EV_HASH_TIMES = ['5m', '1h', 'today'];
 function evHashFilter(bad, f) { return bad ? 'bad' : (EVT_ORDER.includes(f) ? f : 'all'); }
 
 function showPage(p) {
-  if (S.page === 'config' && p !== 'config' && !confGuardLeave()) return;
+  if (S.page === 'config' && p !== 'config') {
+    if (!confGuardLeave()) return;
+    /* 确认「丢弃」要兑现：编辑器同步复位——此前仅确认不执行，回到配置页时
+       被丢弃的修改仍在展开编辑器里（方案切换后更是基于过期文件版本，保存
+       才会被 mtime 锁拒绝，困惑在前端就可避免） */
+    if (confEditing) {
+      confEditing = false; confRawEdit = false; clearConfDirty();
+      const ce = $('#conf-editor'); if (ce) ce.style.display = 'none';
+    }
+  }
   /* 滚动位置记忆：离开前保存，返回时恢复；首次到访滚到顶部
      （长列表页来回切换不丢浏览位置，也不再继承上一页的尴尬滚动高度） */
   if (!S.scrollMem) S.scrollMem = {};
