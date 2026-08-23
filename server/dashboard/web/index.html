@@ -533,7 +533,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
       <svg width="30" height="30"><use href="#i-lock"/></svg>
       <div><div class="t1">登录</div><div class="t2">fwknop 运维面板 v2.4.7</div></div>
     </div>
-    <p class="desc">请输入管理员密码。连续失败 5 次将锁定 60 秒；登录成功后会话有效期 12 小时（顶栏可见剩余时间）。</p>
+    <p class="desc">请输入管理员密码。连续失败 5 次将锁定 60 秒；登录成功后会话有效期 12 小时（顶栏可见剩余时间）。<br><span class="hint" style="font-size:11.5px">忘记密码：停止面板，删除运行目录下的 dashboard_auth.json（默认 /var/run/fwknop/），重启后回到初始化页重设。</span></p>
     <label for="login-pw">管理员密码（或 DASHBOARD_TOKEN）</label>
     <div class="pw-wrap"><input type="password" id="login-pw" autocomplete="current-password" placeholder="密码 / 令牌">
       <button type="button" class="pw-eye" data-eye="login-pw" title="显示/隐藏密码"><svg width="16" height="16"><use href="#i-eye"/></svg></button></div>
