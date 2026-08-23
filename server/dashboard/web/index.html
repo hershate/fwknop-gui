@@ -1974,6 +1974,10 @@ $('#refresh-btn').onclick = () => {
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) clearInterval(S.timer); else restartTimer(), refreshNow();
 });
+/* 浏览器网络栈事件：离线即刻置为断连（connFail 直抬到达标，不等两个轮询周期
+   失败才发现）；上线即刻刷新抢回时效（不等倒计时结束） */
+window.addEventListener('offline', () => { connFail = Math.max(connFail, 1); setConn(false); });
+window.addEventListener('online', () => refreshNow());
 /* 连接状态区点击 = 立即重连/刷新（断连时不必等下一个周期） */
 $('#conn-box').onclick = () => { refreshNow(); toast('正在刷新…', 'ok', 1200); };
 
