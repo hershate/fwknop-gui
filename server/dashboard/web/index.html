@@ -1210,9 +1210,10 @@ function showAuthView(which) {
 function enterApp() {
   $('#auth-gate').style.display = 'none';
   $('#app').style.display = '';
-  /* URL hash 深链接：刷新/分享链接回到原页面 */
-  const h = location.hash.replace('#', '');
+  /* URL hash 深链接：刷新/分享链接回到原页面（#events~bad 还原「仅看异常」） */
+  const { page: h, bad } = parseEvHash();
   if (PAGE_KEYS.includes(h)) S.page = h;
+  if (h === 'events' && bad) S.evFilter = 'bad';
   showPage(S.page);
   restartTimer();
 }
@@ -1533,6 +1534,14 @@ sysThemeMQ.addEventListener('change', e => {
 applyTheme(localStorage.getItem('dash_theme') || (sysThemeMQ.matches ? 'light' : 'dark'), !!localStorage.getItem('dash_theme'));
 
 /* ==================== 导航 ==================== */
+/* 事件页「仅看异常」可分享深链：hash 形如 #events~bad；开关筛选时用
+   replaceState 同步（不产生历史垃圾），前进/后退/直接访问均能还原筛选 */
+function parseEvHash() {
+  const parts = location.hash.replace('#', '').split('~');
+  return { page: parts[0], bad: parts[1] === 'bad' };
+}
+function evHashFor(p) { return '#' + (p === 'events' && S.evFilter === 'bad' ? 'events~bad' : p); }
+
 function showPage(p) {
   if (S.page === 'config' && p !== 'config' && !confGuardLeave()) return;
   /* 滚动位置记忆：离开前保存，返回时恢复；首次到访滚到顶部
@@ -1540,7 +1549,8 @@ function showPage(p) {
   if (!S.scrollMem) S.scrollMem = {};
   if (S.page && S.page !== p) S.scrollMem[S.page] = window.scrollY;
   S.page = p;
-  if (('#' + p) !== location.hash) history.pushState(null, '', '#' + p);  /* 产生历史条目，浏览器前进/后退可翻页 */
+  const wantHash = evHashFor(p);
+  if (wantHash !== location.hash) history.pushState(null, '', wantHash);  /* 产生历史条目，浏览器前进/后退可翻页 */
   $$('.nav-item').forEach(b => {
     const on = b.dataset.page === p;
     b.classList.toggle('active', on);
@@ -1603,11 +1613,13 @@ const PAGE_SEARCH = { events:'#event-search', users:'#users-search', tofu:'#tofu
    不会重复 pushState）；配置页未保存修改被 confGuardLeave 拦截时，把 hash
    拨回当前页保持 URL 与页面一致 */
 window.addEventListener('popstate', () => {
-  const h = location.hash.replace('#', '');
-  if (!PAGE_KEYS.includes(h) || h === S.page) return;
+  const { page: h, bad } = parseEvHash();
+  /* 页相同但「仅看异常」标记不同（#events ↔ #events~bad 后退/前进）也要响应 */
+  if (!PAGE_KEYS.includes(h) || (h === S.page && (h !== 'events' || bad === (S.evFilter === 'bad')))) return;
+  if (h === 'events') { S.evFilter = bad ? 'bad' : 'all'; S.evPage = 0; }
   const before = S.page;
   showPage(h);
-  if (S.page === before) history.pushState(null, '', '#' + before);
+  if (S.page === before) history.pushState(null, '', evHashFor(before));
 });
 document.addEventListener('keydown', ev => {
   const tag = (ev.target.tagName || '').toLowerCase();
@@ -2757,6 +2769,12 @@ function renderEvents() {
     localStorage.setItem('fwknop-ev-per', String(S.evPer));
     renderEvents();
   };
+  /* 「仅看异常」状态与 URL hash 同步（芯片点击/b 键/重置都会走到这里）：
+     replaceState 不产生历史条目，仅让地址栏可复制分享、刷新后还原 */
+  if (S.page === 'events') {
+    const want = evHashFor('events');
+    if (location.hash !== want) history.replaceState(null, '', want);
+  }
 }
 $('#event-search').oninput = e => { S.evQuery = e.target.value.trim(); S.evPage = 0; renderEvents(); };
 /* 搜索历史通用组件：Enter/失焦时记录非空关键词（≥2 字符，最多 8 条、去重
