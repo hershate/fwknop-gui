@@ -1195,11 +1195,13 @@ $('#notif-btn').onclick = () => {
   $('#notif-close').onclick = () => closeModal();
 };
 
-function confirmDialog(title, body, okLabel, onOk) {
-  /* 复用 openModal/closeModal：焦点记录与返还、Esc 关闭一致生效 */
+function confirmDialog(title, body, okLabel, onOk, danger) {
+  /* 复用 openModal/closeModal：焦点记录与返还、Esc 关闭一致生效；
+     danger 为真时确认按钮红色——仅破坏性操作（删除/撤销/停止/放弃）使用，
+     启动/热加载/保存等安全操作保持常规主色，红色不再被稀释 */
   openModal(`<h3>${title}</h3><div class="mb">${body}</div>
     <div class="mf"><button class="btn ghost" id="m-cancel">取消</button>
-    <button class="btn danger" id="m-ok">${okLabel}</button></div>`);
+    <button class="${danger ? 'btn danger' : 'btn'}" id="m-ok">${okLabel}</button></div>`);
   $('#m-cancel').onclick = () => closeModal();
   $('#m-ok').onclick = () => { closeModal(); onOk(); };
   $('#m-cancel').focus();  /* 破坏性确认默认聚焦「取消」，防回车误触 */
@@ -1412,7 +1414,7 @@ $('#logout-btn').onclick = () => {
   };
   /* 有未保存的配置修改时注销前确认（会话注销后编辑现场丢失） */
   if (typeof confDirty !== 'undefined' && confDirty) {
-    confirmDialog('注销登录', '服务配置有<b>未保存的修改</b>，注销后编辑现场将丢失。<b>确定注销吗？</b>', '仍要注销', doLogout);
+    confirmDialog('注销登录', '服务配置有<b>未保存的修改</b>，注销后编辑现场将丢失。<b>确定注销吗？</b>', '仍要注销', doLogout, true);
   } else doLogout();
 };
 
@@ -2133,7 +2135,7 @@ $('#status-cards').addEventListener('click', ev => {
         }
         else infoModal('审计日志清理', r.msg || '无需清理');
       } catch (e) {}
-    });
+    }, true);
 });
 
 /* ==================== 指标（计数器 + 迷你趋势） ==================== */
@@ -3244,7 +3246,7 @@ function renderUsers() {
           if (r.error) toast('撤销失败：' + esc(r.error), 'err');
           else { toast(`授权「${esc(name)}」已撤销`, 'ok'); loadUsers(); }
         } catch (e) {}
-      });
+      }, true);
   });
 }
 
@@ -3293,7 +3295,7 @@ $('#users-batch-rm').onclick = () => {
       loadUsers(); loadTOFU();
       if (fail.length) infoModal('批量撤销 — 部分失败', `成功 ${ok.length} 个，失败 ${fail.length} 个：\n` + fail.join('\n'), true);
       toast(`批量撤销完成：成功 ${ok.length} 个${fail.length ? `，失败 ${fail.length} 个` : ''}`, fail.length ? 'err' : 'ok', 5000);
-    });
+    }, true);
 };
 
 /* 签发凭证 */
@@ -3446,7 +3448,7 @@ function renderCustomTpls() {
         localStorage.setItem(CUSTOM_TPL_KEY, JSON.stringify(m));
         renderCustomTpls();
         toast(`模板「${name}」已删除`, 'ok', 1500);
-      });
+      }, true);
     };
     box.appendChild(chip);
   });
@@ -4157,7 +4159,7 @@ function unbindDevice(sk, dev) {
         if (r.error) toast('解绑失败：' + esc(r.error), 'err');
         else { toast('设备已解绑：若授权启用了 TOFU 宽限期，该设备下次敲门会自动重新绑定；否则需加入指纹白名单', 'ok', 8000); loadTOFU(); }
       } catch (e) {}
-    });
+    }, true);
 }
 
 /* 批量解绑：勾选多台设备后一次性解绑 */
@@ -4213,7 +4215,7 @@ $('#tofu-batch-unbind').onclick = () => {
       S.tofuSel = new Set();
       toast(`批量解绑完成：成功 ${ok} 台${fail ? `，失败 ${fail} 台` : ''}。若授权启用了 TOFU 宽限期，设备下次敲门会自动重新绑定；否则需加入指纹白名单`, fail ? 'err' : 'ok', 8000);
       loadTOFU();
-    });
+    }, true);
 };
 
 $('#tofu-search').oninput = e => { S.tofuQuery = e.target.value.trim(); renderTOFU(); };
@@ -4556,7 +4558,7 @@ function renderAbout() {
         const r = await api('/api/admin/audit/rmbak', { method:'POST', body: fd });
         if (r.ok) { toast(r.msg, 'ok'); loadOverview(); }
       } catch (e) {}
-    });
+    }, true);
   });
   /* 备份批量清理：堆积场景免逐个确认；逐个复用单删端点（白名单校验不变） */
   const rmAll = $('#bak-rmall');
@@ -4576,7 +4578,7 @@ function renderAbout() {
         }
         toast(fail ? `备份删除完成：成功 ${ok} 个、失败 ${fail} 个` : `已删除全部 ${ok} 个备份`, fail ? 'err' : 'ok', 5000);
         loadOverview();
-      });
+      }, true);
   };
 }
 
@@ -4648,7 +4650,7 @@ $('#svc-start').onclick = () =>
     () => svcAction('start', '启动'));
 $('#svc-stop').onclick = () =>
   confirmDialog('停止 fwknopd', '停止后所有 SPA 敲门将不再被处理，已放行的防火墙规则会按既有超时过期。<b>确定停止吗？</b>', '停止服务',
-    () => svcAction('stop', '停止'));
+    () => svcAction('stop', '停止'), true);
 $('#svc-restart').onclick = () =>
   confirmDialog('重启 fwknopd', '将先停止再启动（启动前强制配置预检）。期间敲门请求会中断数秒。<b>确定重启吗？</b>', '重启',
     () => svcAction('restart', '重启'));
@@ -4912,7 +4914,7 @@ $('#conf-discard').onclick = () => {
     clearConfDirty();
     renderConfEditor();
     toast('已恢复为已保存的配置', 'ok');
-  });
+  }, true);
 };
 /* 新增指令：渲染后滚动到并聚焦新行键名（长配置末尾新增不再「找不到」） */
 $('#conf-add-row').onclick = () => {
@@ -5198,7 +5200,7 @@ function renderProfiles() {
           if (r.error) toast('删除失败：' + esc(r.error), 'err');
           else { toast('方案已删除', 'ok'); loadProfiles(); }
         } catch (e) {}
-      });
+      }, true);
   });
 }
 
