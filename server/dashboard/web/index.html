@@ -2927,7 +2927,9 @@ function renderEvents() {
   $('#events-sub').innerHTML = (hasFilter ? `<span style="color:var(--accent)">匹配 ${fmtNum(evs.length)} 条</span> · ` : '') +
     `最近 ${fmtNum((S.events||[]).length)} 条` +
     (capped ? ' <span style="color:var(--amber)" title="事件缓存已达服务端上限，更早的事件请点右上角「导出原始」下载完整审计日志">（已达 500 条上限，更早请导出原始）</span>' : '（服务端保留 500 条）') +
-    ` · ${fmtAgo(Date.now()/1000)}刷新`;
+    /* 刷新时刻用静态时间戳而非 fmtAgo(now)：「刚刚」在渲染瞬间成立，但文案
+       不随时间更新，5 秒后（断连时更久）即成误导性陈旧信息 */
+    ` · ${new Date().toLocaleTimeString('zh-CN', { hour12:false })} 刷新`;
 
   const pages = Math.max(1, Math.ceil(evs.length / S.evPer));
   S.evPage = Math.min(S.evPage, pages - 1);
