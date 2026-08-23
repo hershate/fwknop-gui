@@ -748,7 +748,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <button class="btn ghost small" id="ev-preset-24h" title="填充为「此刻往前 24 小时」" style="padding:4px 8px;font-size:11.5px">最近 24h</button>
                 <button class="btn ghost small" id="ev-preset-yday" title="填充为「昨天 00:00 至今天 00:00」" style="padding:4px 8px;font-size:11.5px">昨日全天</button>
               </span>
-              <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口 / 授权…（支持 user:/ip:/dev:/port:/stanza: 前缀）" title="全字段子串匹配；空格分隔多关键词为 AND（如「admin 22」）；前缀语法精确限定字段：user:admin、ip:192.168、dev:指纹前缀、port:22（SPA 与目标端口都匹配）、stanza:3 或 stanza:授权名，前缀词与裸词可混用（「user:admin port:22」）；快捷键 / 聚焦" style="width:290px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+              <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口 / 授权 / 异常…（支持 user:/ip:/dev:/port:/stanza: 前缀）" title="全字段子串匹配；搜「异常」等价于「仅看异常」芯片（拒绝/重放/未知指纹/端口不匹配/过期）；空格分隔多关键词为 AND（如「admin 22」）；前缀语法精确限定字段：user:admin、ip:192.168、dev:指纹前缀、port:22（SPA 与目标端口都匹配）、stanza:3 或 stanza:授权名，前缀词与裸词可混用（「user:admin port:22」）；快捷键 / 聚焦" style="width:290px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
               <button class="btn ghost small" id="ev-density" title="切换表格行密度（紧凑模式一屏看更多事件）">紧凑</button>
               <button class="btn ghost small" id="ev-expand-all" title="展开/收起当前页全部事件详情（对比多条事件字段用；快捷键 x）">展开全部</button>
               <button class="btn ghost small" id="ev-notify" title="后台标签页收到异常事件时弹桌面通知（需浏览器授权）；点击通知直达「仅看异常」视图"><svg width="14" height="14"><use href="#i-bell"/></svg>异常桌面通知</button>
@@ -1061,7 +1061,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
         </div>
         <div class="card">
           <div class="head"><h2>面板操作日志</h2><span class="sub" id="oplog-sub">管理面审计：签发 / 撤销 / 配置保存 / 服务控制 / 登录等</span>
-            <div class="tools"><span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="oplog-search" placeholder="搜索操作 / 详情 / IP…" title="按操作名、详情文本、来源 IP 子串过滤（与类别过滤叠加；快捷键 / 聚焦，Esc 清空）" style="width:170px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="oplog-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span><select class="ctl" id="oplog-filter" title="按类别过滤操作记录；「仅看失败」聚焦被拒/失败动作（排查爆破与误操作）" style="padding:3px 6px;font-size:12px">
+            <div class="tools"><span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="oplog-search" placeholder="搜索操作 / 详情 / IP / 失败…" title="按操作名、详情文本、来源 IP 子串过滤，搜「失败」直达失败/被拒记录（与类别过滤叠加；快捷键 / 聚焦，Esc 清空）" style="width:170px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="oplog-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span><select class="ctl" id="oplog-filter" title="按类别过滤操作记录；「仅看失败」聚焦被拒/失败动作（排查爆破与误操作）" style="padding:3px 6px;font-size:12px">
               <option value="all">全部</option><option value="fail">仅看失败</option>
               <option value="acct">账户（登录/注销/改密）</option><option value="stanza">授权（签发/撤销/编辑等）</option>
               <option value="conf">配置与方案</option><option value="svc">服务与审计</option>
@@ -3049,9 +3049,10 @@ function filteredEvents() {
       port: e => String(e.spa_port || '') + ' ' + String(e.target_port || ''),
       stanza: e => String(e.stanza ?? '') + ' ' + evStanzaName(e.stanza),
     };
-    /* 中文可读文案同样可搜：用户按界面所见的词（如「重放」）检索 */
+    /* 中文可读文案同样可搜：用户按界面所见的词（如「重放」）检索；异常事件
+       附带「异常」词——界面芯片叫「仅看异常」，照字面输入也该命中 */
     const hayOf = e => [e.user, e.src_ip, e.device_id, e.reason, reasonZh(e.reason),
-      evMeta(e.event).label, e.spa_port, e.target_port, e.stanza, evStanzaName(e.stanza)]
+      evMeta(e.event).label, BAD_EVTS.includes(e.event) ? '异常' : '', e.spa_port, e.target_port, e.stanza, evStanzaName(e.stanza)]
       .map(x => String(x ?? '').toLowerCase()).join('\n');
     const terms = raw.toLowerCase().split(/\s+/).filter(Boolean);
     evs = evs.filter(e => {
@@ -5557,7 +5558,10 @@ function filteredOpLog() {
   const f = S.oplogFilter || 'all';
   const q = (S.oplogQuery || '').toLowerCase();
   const matchQ = e => !q || (e.op || '').toLowerCase().includes(q) ||
-    (e.detail || '').toLowerCase().includes(q) || (e.ip || '').toLowerCase().includes(q);
+    (e.detail || '').toLowerCase().includes(q) || (e.ip || '').toLowerCase().includes(q) ||
+    /* 结果列状态词（界面所见即所搜，与事件页「异常」同一心智）：搜「失败」
+       直达全部失败/被拒记录——与类别过滤的「仅看失败」互补（可再叠关键词） */
+    ((e.ok ? '成功' : '失败').includes(q));
   return (f === 'all' ? all : (f === 'fail' ? all.filter(e => !e.ok) : all.filter(e => oplogCat(e.op) === f))).filter(matchQ);
 }
 function renderOpLog() {
