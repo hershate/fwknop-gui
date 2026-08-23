@@ -3315,11 +3315,14 @@ $('#add-cancel').onclick = () => { $('#add-card').style.display = 'none'; syncAd
 /* 一致性检查：面板内直接跑 fwknopd-admin lint（手动编辑过 access.conf 后
    快速验证，不用切终端）；异常退出码时按错误样式展示输出 */
 $('#users-lint').onclick = async () => {
+  const btn = $('#users-lint');
+  if (btn.disabled) return;  /* 检查期间防连点（lint 需 shell 出 fwknopd-admin，有耗时不确定性） */
+  btn.disabled = true;
   try {
     const r = await api('/api/admin/lint', { method: 'POST' });
     infoModal('access.conf 一致性检查（fwknopd-admin lint）',
       (r.output || '（无输出）') + (r.error ? '\n\n退出状态：' + r.error : ''), !!r.error);
-  } catch (e) {}
+  } catch (e) {} finally { btn.disabled = false; }
 };
 
 /* 签发快速模板：一键填充安全选项（不动名称/地址/用户名等部署相关字段） */
