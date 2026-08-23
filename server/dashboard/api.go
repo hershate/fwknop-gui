@@ -118,6 +118,19 @@ func handleOverview(w http.ResponseWriter, r *http.Request) {
 			"fwknopd_conf": statFile(cfg.FwknopdConf),
 		},
 		"audit_backups": auditBackupStat(),
+		/* 近 15 分钟登录失败计数：面板开启期间正在发生的密码爆破/尝试，
+		   此前只能在关于页 oplog 或下次登录 toast 里察觉——概览轮询自带
+		   后进门即见。成本与 parseAccessConf 同级（256KB 尾窗扫读） */
+		"auth_fail_15m": func() int {
+			n := 0
+			cutoff := time.Now().Unix() - 900
+			for _, e := range readOpLogTail(500) {
+				if e.Op == "登录失败" && e.Time >= cutoff {
+					n++
+				}
+			}
+			return n
+		}(),
 	})
 }
 

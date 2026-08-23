@@ -2290,7 +2290,17 @@ function renderStatusCards() {
     const la = d.panel && d.panel.listen_addr;
     if (la && !panelLoopback(la)) warnHtml += `<div class="warn-strip" style="margin-bottom:12px">${icon('i-warn',15)}<div>
       面板当前监听 <b>${esc(la)}</b>（非本机回环）。面板本身为明文 HTTP，远程访问会把登录凭证暴露给链路嗅探，请置于带 TLS 的反向代理之后，或改回 <code>127.0.0.1</code> 监听。</div></div>`;
+    /* 面板开启期间的登录失败（他人正在尝试密码）：此前只能在关于页 oplog
+       或下次登录 toast 察觉——概览轮询自带计数，进门即见；直达 oplog 核查来源 */
+    if ((d.auth_fail_15m || 0) > 0) warnHtml += `<div class="warn-strip" style="margin-bottom:12px;border-color:var(--red)">${icon('i-warn',15)}<div style="flex:1">
+      最近 15 分钟有 <b>${d.auth_fail_15m}</b> 次<b>登录失败</b>——若非本人误输，可能正在遭遇密码尝试，请到操作日志核查来源 IP。
+      <button class="btn ghost small" id="ov-authfail-go" style="margin-left:8px;padding:1px 8px;font-size:11.5px" title="前往「关于」页操作日志，按「登录失败」搜索核查来源 IP">核查来源</button></div></div>`;
     cw.innerHTML = warnHtml;
+    const afg = $('#ov-authfail-go');
+    if (afg) afg.onclick = () => {
+      S.oplogQuery = '登录失败'; const os2 = $('#oplog-search'); if (os2) os2.value = '登录失败';
+      showPage('about');
+    };
   }
   /* 首次运行引导：0 授权（含已禁用也为 0，即从未配置过）时显示三步上线
      清单（启动 → 签发 → 客户端导入）——新部署最常见的困惑是「先做什么」；
