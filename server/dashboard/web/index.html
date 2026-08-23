@@ -299,6 +299,10 @@ table.tb { width:100%; border-collapse:collapse; font-size:13px; }
 .tb td { padding:9px 16px; border-bottom:1px solid var(--border-soft); vertical-align:middle; }
 .tb.dense td { padding:4px 10px; font-size:12px; }
 .tb.dense .badge { font-size:10.5px; }
+/* 用户页紧凑模式：隐藏卡片明细（来源/端口/徽标/最近事件），只留标题行与操作按钮；
+   __CHANGEME__ 警示条在明细容器之外，紧凑下依然可见 */
+body.users-dense #users-body .uc-detail { display:none; }
+body.users-dense #users-body .card .body { padding-bottom:6px; }
 .tb tbody tr { transition:background var(--trans); }
 .tb tbody tr:hover { background:var(--panel-2); }
 /* 斑马纹提升长表可读性：普通表隔行淡色；事件表按「主行+详情行」成对分组 */
@@ -740,6 +744,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                   <option value="bound">按绑定设备数</option>
                 </select>
                 <button class="btn ghost small" id="users-lint" title="fwknopd-admin lint：检查 access.conf 一致性（重复来源/缺失指令等），结果弹窗展示"><svg width="14" height="14"><use href="#i-check"/></svg>一致性检查</button>
+                <button class="btn ghost small" id="users-density" title="切换卡片密度：紧凑模式只显示名称与操作按钮，授权多时一屏总览">紧凑</button>
                 <button class="btn small" id="show-add" title="展开签发新凭证表单（快捷键 n）"><svg width="14" height="14"><use href="#i-plus"/></svg>签发新凭证</button>
               </div>
             </div>
@@ -2416,6 +2421,18 @@ function initDensityToggle(btnSel, bodySel, key) {
 }
 initDensityToggle('#ev-density', '#events-body', 'fwknop-ev-dense');
 initDensityToggle('#tofu-density', '#tofu-body', 'fwknop-tofu-dense');
+/* 用户页密度是 body 级类（卡片结构非表格），不走 initDensityToggle */
+{
+  const btn = $('#users-density');
+  const sync = on => { btn.textContent = on ? '详情' : '紧凑'; btn.setAttribute('aria-pressed', on ? 'true' : 'false'); };
+  if (localStorage.getItem('fwknop-users-dense') === '1') { document.body.classList.add('users-dense'); sync(true); }
+  else sync(false);
+  btn.onclick = () => {
+    const on = document.body.classList.toggle('users-dense');
+    sync(on);
+    localStorage.setItem('fwknop-users-dense', on ? '1' : '');
+  };
+}
 
 /* 展开全部/收起本页：对比多条事件字段时免去逐行点击；按钮文案随状态切换
    （renderEvents 末尾同步），操作范围只限当前页行，避免误收其他页的展开 */
@@ -3202,6 +3219,7 @@ function renderUsers() {
       </div>
       <div class="body" style="padding-top:6px">
         ${s.changeme ? `<div class="warn-strip">${icon('i-warn',15)}<div>该授权仍包含 <code>__CHANGEME__</code> 占位密钥，<b>无法正常工作</b>，请撤销后重新签发。</div></div>` : ''}
+        <div class="uc-detail">
         <div class="form-grid" style="margin-bottom:10px">
           <div><div class="hint">来源限制（SOURCE）</div><div class="mono">${s.source ? `<span class="cp-cell" data-cp="${esc(s.source)}" data-lab="来源限制" title="点击复制来源限制">${esc(s.source)}</span>` : '—'}</div></div>
           <div><div class="hint">要求用户名</div><div class="mono">${s.require_username ? `<span class="cp-cell" data-cp="${esc(s.require_username)}" data-lab="用户名" title="点击复制用户名">${esc(s.require_username)}</span>` : '不校验'}</div></div>
@@ -3210,6 +3228,7 @@ function renderUsers() {
         </div>
         <div>${stanzaBadges(s)}</div>
         ${lastEventForUser(s)}
+        </div>
       </div>
     </div>`;
   }).join('') + disHtml;
