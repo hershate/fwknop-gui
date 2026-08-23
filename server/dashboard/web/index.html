@@ -5834,11 +5834,13 @@ function closeModal() {
   if (modalPrevFocus && modalPrevFocus.isConnected) modalPrevFocus.focus();
   modalPrevFocus = null;
 }
-function infoModal(title, text, isErr) {
+function infoModal(title, text, isErr, action) {
   openModal(`<h3>${title}</h3>
     <pre class="out-pre" style="max-height:50vh;${isErr?'border-color:var(--red)':''}">${esc(text || '（无输出）')}</pre>
-    <div class="mf"><button class="btn ghost" id="im-cp" title="复制全部输出内容（贴入工单/终端排查用）">${icon('i-copy',13)} 复制输出</button><button class="btn" onclick="closeModal()">关闭</button></div>`, true);
+    <div class="mf">${action ? `<button class="btn ghost" id="im-act" title="${esc(action.title || '')}">${icon('i-cfg',13)} ${esc(action.label)}</button>` : ''}<button class="btn ghost" id="im-cp" title="复制全部输出内容（贴入工单/终端排查用）">${icon('i-copy',13)} 复制输出</button><button class="btn" onclick="closeModal()">关闭</button></div>`, true);
   $('#im-cp').onclick = () => copyText(text || '', '输出 ');
+  /* 可选的后续动作按钮（如预检失败 → 前往配置页）：读完输出一步直达修复位置 */
+  if (action) $('#im-act').onclick = () => { closeModal(); action.onclick(); };
 }
 
 /* ==================== 服务控制 ==================== */
@@ -5852,7 +5854,16 @@ async function svcAction(action, label, done) {
     const r = await api('/api/service/' + action, { method:'POST' });
     const out = (r.output || '') + (r.error ? '\n错误：' + r.error : '');
     const secs = ((Date.now() - t0) / 1000).toFixed(1);
-    if (r.error) { toast(label + '失败（耗时 ' + secs + ' 秒）', 'err'); infoModal(label + ' — 失败', out, true); }
+    if (r.error) {
+      toast(label + '失败（耗时 ' + secs + ' 秒）', 'err');
+      /* 启动/重启失败多源于配置（启动链路含强制预检）：给出直达配置页的
+         后续动作（事件排障「建议动作化」同一心智）；access.conf 错误在
+         title 里指路授权页。停止/热加载失败与配置无关，不给死按钮 */
+      const cfgAct = (action === 'start' || action === 'restart')
+        ? { label: '前往服务配置', title: '打开服务配置页检查 fwknopd.conf（预检错误多源于此）；若错误指向 access.conf，请到「用户与授权」页检查 stanza', onclick: () => showPage('config') }
+        : null;
+      infoModal(label + ' — 失败', out, true, cfgAct);
+    }
     else { toast(label + '成功（耗时 ' + secs + ' 秒）', 'ok'); if (out.trim()) infoModal(label, out); }
   } catch (e) {}
   btns.forEach(b => b.disabled = !S.writeEnabled);
@@ -5877,7 +5888,9 @@ $('#svc-validate').onclick = async () => {
     const r = await api('/api/service/validate', { method:'POST' });
     const secs = ((Date.now() - t0) / 1000).toFixed(1);
     const out = (r.output || '') + (r.error ? '\n' + r.error : '');
-    if (r.error) infoModal('配置预检 — 未通过', out, true); else infoModal(`配置预检 — 通过（耗时 ${secs} 秒）`, out);
+    if (r.error) infoModal('配置预检 — 未通过', out, true,
+      { label: '前往服务配置', title: '打开服务配置页检查 fwknopd.conf；若错误指向 access.conf，请到「用户与授权」页检查 stanza', onclick: () => showPage('config') });
+    else infoModal(`配置预检 — 通过（耗时 ${secs} 秒）`, out);
   } catch (e) {}
 };
 /* 引导条里的「立即校验配置」复用主按钮逻辑 */
