@@ -2185,6 +2185,9 @@ function tickSessTtl() {
   if (!el) return;
   if (!S.sessionExp) { el.style.display = 'none'; return; }
   const left = S.sessionExp - Date.now() / 1000;
+  /* 标志复位：重新登录（left 回到正常区间）后清除警告记忆，下个 12h 周期的
+     临期警告才能再次触发——此前只置位不复位，第二周期起再无临期提醒 */
+  if (left > 300) S.sessWarned = false;
   /* 临期主动提醒一次（<5 分钟），避免专注操作时无预兆被登出 */
   if (left > 0 && left < 300 && !S.sessWarned) {
     S.sessWarned = true;
