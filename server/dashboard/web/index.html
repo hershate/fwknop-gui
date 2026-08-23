@@ -529,7 +529,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
   <div class="auth-card" id="auth-setup" style="display:none">
     <div class="auth-brand">
       <svg width="30" height="30"><use href="#i-shield"/></svg>
-      <div><div class="t1">首次启动初始化</div><div class="t2">fwknop 运维面板 <span class="auth-ver">v2.4.8</span></div></div>
+      <div><div class="t1">首次启动初始化</div><div class="t2">fwknop 运维面板 <span class="auth-ver">v2.4.9</span></div></div>
     </div>
     <p class="desc">欢迎使用 fwknop 运维面板。作为面向网络提供服务的管理入口，面板在首次启动时必须完成初始化，之后所有访问都需要登录。</p>
     <ol class="auth-steps">
@@ -551,7 +551,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
   <div class="auth-card" id="auth-login" style="display:none">
     <div class="auth-brand">
       <svg width="30" height="30"><use href="#i-lock"/></svg>
-      <div><div class="t1">登录</div><div class="t2">fwknop 运维面板 <span class="auth-ver">v2.4.8</span></div></div>
+      <div><div class="t1">登录</div><div class="t2">fwknop 运维面板 <span class="auth-ver">v2.4.9</span></div></div>
     </div>
     <p class="desc">请输入管理员密码。连续失败 5 次将锁定 60 秒；登录成功后会话有效期 12 小时（顶栏可见剩余时间）。<br><span class="hint" style="font-size:11.5px">忘记密码：停止面板，删除运行目录下的 dashboard_auth.json（默认 /var/run/fwknop/），重启后回到初始化页重设。</span></p>
     <label for="login-pw">管理员密码（或 DASHBOARD_TOKEN）</label>
@@ -572,7 +572,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
         <div class="t1">fwknop 运维面板</div>
         <div class="t2">单包授权 · 零信任访问</div>
       </div>
-      <span class="ver" id="brand-ver">v2.4.8</span>
+      <span class="ver" id="brand-ver">v2.4.9</span>
     </div>
     <button class="nav-item active" data-page="overview" title="快捷键 1"><svg><use href="#i-dash"/></svg>概览</button>
     <button class="nav-item" data-page="events" title="快捷键 2"><svg><use href="#i-list"/></svg>SPA 事件<span class="nb-badge" id="nav-ev-badge" style="display:none" title="最近 15 分钟异常事件数（点击直达「仅看异常」）"></span></button>
@@ -585,7 +585,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
     <div class="side-foot">
       <div class="conn" id="conn-box" title="点击立即重连刷新" style="cursor:pointer" role="status" aria-live="polite"><span class="dot" id="conn-dot"></span><span id="conn-text">正在连接…</span>
         <span id="ro-badge" style="display:none;color:var(--amber);border:1px solid var(--amber);border-radius:4px;padding:0 5px;font-size:10.5px;line-height:16px;margin-left:6px;cursor:default" title="当前为只读模式（-read-only）：仅可查看；去掉该参数重启后可进行管理操作">只读</span>
-        <span class="hint cp-cell" id="side-ver" style="margin-left:auto;font-size:11px" title="面板版本（点击复制，报障时随附）">v2.4.8</span></div>
+        <span class="hint cp-cell" id="side-ver" style="margin-left:auto;font-size:11px" title="面板版本（点击复制，报障时随附）">v2.4.9</span></div>
       <div class="hint" id="sess-ttl" style="display:none;font-size:11px;margin-top:2px" aria-live="polite"></div>
       <div class="side-actions">
         <button class="icon-btn" id="kbd-btn" title="键盘快捷键（按 ? 随时打开）"><svg><use href="#i-key"/></svg>快捷键</button>
@@ -1030,7 +1030,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
         </div>
       </section>
 
-      <footer class="foot">fwknop 运维面板 · fwknop fork 2.4.8 · 协议 4.0.0 · 数据每 <span id="foot-ivl">5</span> 秒自动刷新</footer>
+      <footer class="foot">fwknop 运维面板 · fwknop fork 2.4.9 · 协议 4.0.0 · 数据每 <span id="foot-ivl">5</span> 秒自动刷新</footer>
     </div>
   </div>
 </div>
