@@ -3572,6 +3572,10 @@ function renderTOFU() {
     ? new Set((S.users.stanzas || []).map(s => `${s.source||''}|${s.require_username||''}|${s.open_ports||''}`))
     : null;
   const orphanOf = b => liveKeys && !liveKeys.has(b.stanza_key);
+  /* 绑定 → 授权反查：按 stanza_key（SOURCE|用户|端口）找回 stanza，供行内
+     「查看授权」按钮定位；S.users 未加载或悬空绑定时不提供该入口 */
+  const stanzaOf = b => !S.users ? null :
+    ((S.users.stanzas) || []).find(s => `${s.source||''}|${s.require_username||''}|${s.open_ports||''}` === b.stanza_key) || null;
   const orphanN = liveKeys ? all.filter(orphanOf).length : 0;
   $('#tofu-sub').innerHTML = (q ? `匹配 ${bs.length} / ${all.length} 台已绑定设备` : `${all.length} 台已绑定设备`) +
     (orphanN ? ` · <span style="color:var(--amber)" title="对应授权已删除/禁用，这些绑定不再生效，建议勾选后批量解绑">⚠ ${orphanN} 条悬空绑定</span>${S.writeEnabled ? ' <button class="btn ghost small" id="tofu-sel-orphan" style="padding:1px 8px;font-size:11.5px" title="一键勾选全部悬空绑定，配合批量解绑清理">选中它们</button>' : ''}` : '');
@@ -3607,7 +3611,12 @@ function renderTOFU() {
       <button class="icon-btn" style="padding:2px 6px;margin-left:6px" data-cp="${esc(b.device_id)}" title="复制指纹">${icon('i-copy',12)}</button>
       ${orphanOf(b) ? `<div><span class="tag" style="background:var(--amber-soft);color:var(--amber);margin-top:3px" title="对应授权已删除/禁用，该绑定不再生效，建议解绑清理">⚠ 悬空绑定</span></div>` : ''}
       ${lastEventForDevice(b.device_id)}</td>
-    <td class="mono">${b.source ? `<span class="cp-cell" data-cp="${esc(b.source)}" title="点击复制来源限制" data-lab="来源限制">${esc(b.source)}</span>` : '—'}</td>
+    <td class="mono">${b.source ? `<span class="cp-cell" data-cp="${esc(b.source)}" title="点击复制来源限制" data-lab="来源限制">${esc(b.source)}</span>` : '—'}${(() => {
+      const stz = stanzaOf(b);
+      if (!stz) return '';
+      /* 授权可能无名：搜索词回退用户名/来源限制，保证过滤能定位 */
+      const q2 = stz.name || stz.require_username || stz.source || '';
+      return `<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-toustz="${esc(q2)}" data-toustzn="${esc(stz.name || ('#' + stz.index))}" title="在用户与授权页查看对应授权「${esc(stz.name || ('#' + stz.index))}」">${icon('i-users',12)}</button>`; })()}</td>
     <td>${b.username ? `${esc(b.username)}<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-uev2="${esc(b.username)}" title="查看该用户的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
     <td class="mono">${b.open_ports ? `<span class="cp-cell" data-cp="${esc(b.open_ports)}" title="点击复制开放端口" data-lab="开放端口">${esc(b.open_ports)}</span>` : '—'}</td>
     <td>${S.writeEnabled ?
@@ -3633,6 +3642,13 @@ function renderTOFU() {
     showPage('events');
   });
   $$('#tofu-body [data-ub]').forEach(b => b.onclick = () => unbindDevice(b.dataset.ub, b.dataset.dev));
+  /* 绑定 → 授权反查：跳转用户页并按授权名过滤定位 */
+  $$('#tofu-body [data-toustz]').forEach(b => b.onclick = () => {
+    S.usersQuery = b.dataset.toustz;
+    $('#users-search').value = S.usersQuery;
+    showPage('users');
+    toast(`已定位授权「${b.dataset.toustzn}」`, 'ok', 1500);
+  });
 }
 /* 单台解绑（TOFU 表与事件详情共用）：确认框附最近敲门摘要，防误删活跃设备 */
 function unbindDevice(sk, dev) {
