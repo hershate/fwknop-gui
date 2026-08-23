@@ -5394,11 +5394,16 @@ function clearConfDirty() {
 function confEntryRow(key, val) {
   const meta = CONF_META[key];
   const yn = /^(Y|N)?$/.test(val) && (key.startsWith('ENABLE_') || key.startsWith('FLUSH_') || key.startsWith('EXIT_'));
+  /* 空值开关（裸 `ENABLE_X` 行，parse.go 解析为 Value:""）必须保留空 option：
+     此前 '' 落入「N（否）」selected，select.value='N' 与快照 '' 比对即误标
+     ce-mod（「仅看修改」误列、还原按钮误显示），保存还会把裸行无意改写为
+     「ENABLE_X N」——语义等价但配置 diff 多出意外行 */
   return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
     <input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl ce-key" list="conf-keys" value="${esc(key)}" placeholder="指令名" style="flex:0 0 250px;font-family:var(--mono);font-size:12px">
-    ${yn ? `<select class="ctl ce-val" style="flex:0 0 90px">
+    ${yn ? `<select class="ctl ce-val" style="flex:0 0 110px">
+        ${val === '' ? '<option value="" selected>（空 = 否）</option>' : ''}
         <option value="Y" ${val==='Y'?'selected':''}>Y（是）</option>
-        <option value="N" ${val!=='Y'?'selected':''}>N（否）</option></select>`
+        <option value="N" ${val==='N'?'selected':''}>N（否）</option></select>`
       : `<input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl ce-val" value="${esc(val)}" placeholder="值" style="flex:1;font-family:var(--mono);font-size:12px">`}
     <button class="icon-btn ce-revert" title="还原为本次打开编辑器时的值">${icon('i-undo',13)}</button>
     <button class="icon-btn ce-del" title="删除该指令">${icon('i-trash',13)}</button>
@@ -5433,8 +5438,9 @@ function markConfRows() {
       if (!(m && +m[1] >= 1 && +m[2] <= 65535 && +m[1] < +m[2])) bad = '范围应为 起-止（1-65535，起 < 止）';
     } else if (/^(ENABLE_|FLUSH_|EXIT_)/.test(k)) {
       /* 开关指令的约定取值是 Y/N（config_init.c 以首字符 Y 判定）；写成
-         yes/true/1 虽可能侥幸生效，但语义靠猜，提前红框引导规范值 */
-      if (!/^(Y|N)$/.test(v)) bad = '开关指令应为 Y 或 N';
+         yes/true/1 虽可能侥幸生效，但语义靠猜，提前红框引导规范值；
+         空值（裸指令行）合法——等同 N，不红框 */
+      if (!/^(Y|N)?$/.test(v)) bad = '开关指令应为 Y 或 N（留空等同 N）';
     } else if (/_TIMEOUT$|_INTERVAL$|_THRESHOLD$/.test(k)) {
       if (!/^\d+$/.test(v)) bad = '应为非负整数';
     }
