@@ -677,7 +677,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               <span class="srch-wrap"><input class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口…（支持 user:/ip:/dev:/port: 前缀）" title="全字段子串匹配；空格分隔多关键词为 AND（如「admin 22」）；前缀语法精确限定字段：user:admin、ip:192.168、dev:指纹前缀、port:22（SPA 与目标端口都匹配）" style="width:270px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
               <button class="btn ghost small" id="ev-density" title="切换表格行密度（紧凑模式一屏看更多事件）">紧凑</button>
               <button class="btn ghost small" id="ev-expand-all" title="展开/收起当前页全部事件详情（对比多条事件字段用）">展开全部</button>
-              <button class="btn ghost small" id="ev-notify" title="后台标签页收到异常事件时弹桌面通知（需浏览器授权）"><svg width="14" height="14"><use href="#i-bell"/></svg>异常桌面通知</button>
+              <button class="btn ghost small" id="ev-notify" title="后台标签页收到异常事件时弹桌面通知（需浏览器授权）；点击通知直达「仅看异常」视图"><svg width="14" height="14"><use href="#i-bell"/></svg>异常桌面通知</button>
               <button class="btn ghost small" id="ev-csv" title="把当前筛选结果导出为 CSV（可用表格软件打开）"><svg width="14" height="14"><use href="#i-download"/></svg>导出筛选 CSV</button>
               <a class="btn ghost small" href="/api/audit/download" download title="下载完整审计日志（JSONL）"><svg width="14" height="14"><use href="#i-download"/></svg>导出原始</a>
             </div>
@@ -1140,7 +1140,7 @@ $('#notif-btn').onclick = () => {
     <div id="notif-list" style="max-height:50vh;overflow:auto"></div>
     <div class="mf">
       <button class="btn ghost" id="notif-export" title="把当前视图（含「仅看错误」过滤）的通知历史下载为文本文件">导出</button>
-      <button class="btn ghost" id="notif-clear">清空历史</button>
+      <button class="btn ghost" id="notif-clear" title="清空本会话的通知历史（仅界面记录，不影响审计日志）">清空历史</button>
       <button class="btn" id="notif-close">关闭</button>
     </div>`, true);
   renderList();
@@ -4548,7 +4548,7 @@ function closeModal() {
 function infoModal(title, text, isErr) {
   openModal(`<h3>${title}</h3>
     <pre class="out-pre" style="max-height:50vh;${isErr?'border-color:var(--red)':''}">${esc(text || '（无输出）')}</pre>
-    <div class="mf"><button class="btn ghost" id="im-cp">${icon('i-copy',13)} 复制输出</button><button class="btn" onclick="document.getElementById('modal-root').classList.remove('show')">关闭</button></div>`, true);
+    <div class="mf"><button class="btn ghost" id="im-cp" title="复制全部输出内容（贴入工单/终端排查用）">${icon('i-copy',13)} 复制输出</button><button class="btn" onclick="document.getElementById('modal-root').classList.remove('show')">关闭</button></div>`, true);
   $('#im-cp').onclick = () => copyText(text || '', '输出 ');
 }
 
