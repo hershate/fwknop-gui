@@ -658,6 +658,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <div class="chips" id="event-chips"></div>
             <div id="event-ratio" style="margin-top:8px"></div>
             <div id="ev-active" style="display:none;margin-top:8px;flex-wrap:wrap;gap:6px;align-items:center"></div>
+            <div id="ev-topip" class="chips" style="display:none;margin-top:8px"></div>
             <button class="btn small" id="ev-new-pill" style="display:none;margin-top:8px;width:100%" aria-live="polite"></button>
           </div>
           <div class="tb-wrap">
@@ -2090,6 +2091,25 @@ function renderEventChips() {
     </div>` : '';
 }
 
+/* 来源 IP 排行：按当前时间窗聚合计数，点击芯片按该 IP 筛选（再点取消），
+   用于一眼定位扫源/爆破源；不足 2 个来源时隐藏 */
+function renderTopIps() {
+  const el = $('#ev-topip');
+  const cnt = {};
+  for (const e of timeFilteredEvents()) if (e.src_ip) cnt[e.src_ip] = (cnt[e.src_ip] || 0) + 1;
+  const top = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  if (top.length < 2) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = 'flex';
+  el.innerHTML = '<span class="hint" style="align-self:center">来源排行：</span>' + top.map(([ip, n]) =>
+    `<button class="chip ${S.evQuery === ip ? 'active' : ''}" data-tip="${esc(ip)}" title="点击按 ${esc(ip)} 筛选，再点取消">${esc(ip)}<span class="n">${n}</span></button>`).join('');
+  $$('#ev-topip .chip').forEach(b => b.onclick = () => {
+    S.evQuery = S.evQuery === b.dataset.tip ? '' : b.dataset.tip;
+    S.evPage = 0;
+    $('#event-search').value = S.evQuery;
+    renderEvents();
+  });
+}
+
 function renderEvents() {
   /* 筛选状态持久化：刷新/重开页面后恢复（所有变更路径都会经过本函数） */
   updateEvActiveStrip();
@@ -2102,6 +2122,7 @@ function renderEvents() {
   syncSearchClear();
   if (S.evPage === 0 && S.evFilter === 'all' && !S.evQuery) $('#ev-new-pill').style.display = 'none';
   renderEventChips();
+  renderTopIps();
   const evs = filteredEvents();
   $('#events-sub').textContent = `最近 ${fmtNum((S.events||[]).length)} 条（服务端保留 500 条）· ${fmtAgo(Date.now()/1000)}刷新`;
 
