@@ -4648,10 +4648,12 @@ $('#svc-reload').onclick = () =>
   confirmDialog('热加载配置', '向 fwknopd 发送 SIGHUP，重新读取 fwknopd.conf 与 access.conf（不中断进程）。', '热加载',
     () => svcAction('reload', '热加载'));
 $('#svc-validate').onclick = async () => {
+  const t0 = Date.now();
   try {
     const r = await api('/api/service/validate', { method:'POST' });
+    const secs = ((Date.now() - t0) / 1000).toFixed(1);
     const out = (r.output || '') + (r.error ? '\n' + r.error : '');
-    if (r.error) infoModal('配置预检 — 未通过', out, true); else infoModal('配置预检 — 通过', out);
+    if (r.error) infoModal('配置预检 — 未通过', out, true); else infoModal(`配置预检 — 通过（耗时 ${secs} 秒）`, out);
   } catch (e) {}
 };
 /* 引导条里的「立即校验配置」复用主按钮逻辑 */
@@ -4660,8 +4662,12 @@ $('#svc-down-start').onclick = () => $('#svc-start').click();  /* 横幅内直�
 $('#svc-fwlist').onclick = async () => {
   try {
     const r = await api('/api/service/fwrules');
+    /* 空输出易误读为故障：区分「无活动放行规则」与「读取失败」 */
+    const body = (r.output || '').trim()
+      ? r.output
+      : (r.error ? '' : '（当前无活动放行规则：没有进行中的敲门放行，或 fwknopd 未在运行）');
     infoModal('防火墙规则（fwknopd --fw-list）',
-      (r.output || '（无输出）') + (r.error ? '\n\n提示：' + r.error + '\n（无 root 权限时无法读取防火墙规则）' : ''));
+      body + (r.error ? '\n\n提示：' + r.error + '\n（无 root 权限时无法读取防火墙规则）' : ''));
   } catch (e) {}
 };
 
