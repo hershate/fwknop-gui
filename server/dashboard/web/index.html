@@ -2353,6 +2353,7 @@ S.evNotify = localStorage.getItem('fwknop-ev-notify') === '1';
 function syncEvNotifyBtn() {
   const b = $('#ev-notify');
   b.classList.toggle('active', !!S.evNotify);
+  b.setAttribute('aria-pressed', S.evNotify ? 'true' : 'false');
   b.innerHTML = `<svg width="14" height="14"><use href="#i-bell"/></svg>异常桌面通知${S.evNotify ? '·开' : ''}`;
 }
 $('#ev-notify').onclick = async () => {
@@ -2377,10 +2378,12 @@ syncEvNotifyBtn();
 /* 行密度切换（事件 / TOFU 共用）：紧凑模式适合监控场景一屏多看；选择按表持久化 */
 function initDensityToggle(btnSel, bodySel, key) {
   const btn = $(btnSel), tb = $(bodySel).closest('table');
-  if (localStorage.getItem(key) === '1') { tb.classList.add('dense'); btn.textContent = '舒适'; }
+  const sync = on => { btn.textContent = on ? '舒适' : '紧凑'; btn.setAttribute('aria-pressed', on ? 'true' : 'false'); };
+  if (localStorage.getItem(key) === '1') { tb.classList.add('dense'); sync(true); }
+  else sync(false);
   btn.onclick = () => {
     const on = tb.classList.toggle('dense');
-    btn.textContent = on ? '舒适' : '紧凑';
+    sync(on);
     localStorage.setItem(key, on ? '1' : '');
   };
 }
