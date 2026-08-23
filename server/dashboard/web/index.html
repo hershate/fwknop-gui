@@ -1909,7 +1909,8 @@ async function loadMetrics() {
 /* 用采样差分绘制 SVG 迷你趋势 */
 function sparkline(key) {
   const h = S.hist[key] || [];
-  if (h.length < 2) return '';
+  /* 采样不足时给出占位说明：避免误以为「无流量」（实际是趋势还没攒够点） */
+  if (h.length < 2) return '<span class="hint" style="font-size:10px;opacity:.7" title="趋势图需要至少 2 次采样，随自动刷新出现">趋势采样中…</span>';
   const deltas = [];
   for (let i = 1; i < h.length; i++) deltas.push(Math.max(0, h[i].v - h[i-1].v));
   const max = Math.max(...deltas, 1);
