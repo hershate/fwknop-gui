@@ -1057,11 +1057,16 @@ function notifLog(msg, kind) {
     S.notifLog.push({ t: Date.now() / 1000, msg, kind: kind || '', n: 1 });
     if (S.notifLog.length > 50) S.notifLog.shift();
   }
-  S.notifUnread = (S.notifUnread || 0) + 1;
-  const badge = $('#notif-badge');
-  badge.textContent = S.notifUnread > 99 ? '99+' : S.notifUnread;
-  badge.style.display = '';
-  $('#notif-btn').title = `通知历史（${S.notifUnread} 条未读）`;
+  /* 未读徽标只计错误：常规成功反馈（已复制/已刷新…）是用户刚触发的操作回执，
+     计入未读会让徽标常驻失真，真正需要回看的只有错误 */
+  if (kind === 'err') {
+    S.notifUnread = (S.notifUnread || 0) + 1;
+    const badge = $('#notif-badge');
+    badge.textContent = S.notifUnread > 99 ? '99+' : S.notifUnread;
+    badge.style.display = '';
+    $('#notif-btn').title = `通知历史（${S.notifUnread} 条未读错误）`;
+    updateDocTitle();  /* 未读错误数同步进标签页标题（后台标签可感知） */
+  }
   /* 持久化到会话存储：刷新页面后历史仍可追溯（关标签即清，不长期残留） */
   try { sessionStorage.setItem('fwknop-notif-log', JSON.stringify(S.notifLog)); } catch (e) {}
   updateDocTitle();  /* 未读计数同步进标签页标题（后台标签可感知） */
@@ -2385,7 +2390,7 @@ function updateDocTitle() {
   const bad = (S.events || []).filter(e => BAD_EVTS.includes(e.event) && now - (e.time || 0) < 900).length;
   const un = S.notifUnread || 0;
   const pg = (typeof PAGE_TITLES !== 'undefined' && PAGE_TITLES[S.page]) || '';
-  document.title = (bad ? `(${bad} 异常) ` : '') + (un ? `[${un > 99 ? '99+' : un} 通知] ` : '') +
+  document.title = (bad ? `(${bad} 异常) ` : '') + (un ? `[${un > 99 ? '99+' : un} 错误] ` : '') +
     (pg ? pg + ' · ' : '') + 'fwknop 运维面板';
   /* 概览快速操作同步标注：不用切到事件页就知道有几条异常 */
   const qb = $('#qa-bad');
