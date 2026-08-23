@@ -1015,8 +1015,17 @@ function toast(msg, kind, ms) {
   const el = document.createElement('div');
   el.className = cls;
   el.dataset.msg = msg;
-  el.innerHTML = `<div>${msg}</div><button class="x" aria-label="关闭">✕</button>`;
-  el.querySelector('.x').onclick = () => el.remove();
+  /* 消息一律按纯文本插入：部分消息含审计字段/服务端错误文本（如 SPA 包
+     内的用户名，网络可控），innerHTML 拼接存在 HTML 注入面 */
+  const txt = document.createElement('div');
+  txt.textContent = msg;
+  el.appendChild(txt);
+  const xbtn = document.createElement('button');
+  xbtn.className = 'x';
+  xbtn.setAttribute('aria-label', '关闭');
+  xbtn.textContent = '✕';
+  el.appendChild(xbtn);
+  xbtn.onclick = () => el.remove();
   /* 悬停暂停消失倒计时，移开后 2s 兜底关闭；驻留型错误 toast 不受影响 */
   const sticky = kind === 'err' && !ms;
   if (!sticky) {
@@ -1050,7 +1059,7 @@ $('#notif-btn').onclick = () => {
     $('#notif-list').innerHTML = log.length ? log.map(n => `
       <div style="display:flex;gap:10px;align-items:baseline;padding:7px 2px;border-bottom:1px solid var(--border-soft)">
         <span style="color:${kindDot(n.kind)}">●</span>
-        <div style="flex:1;font-size:13px" class="cp-cell" data-nmsg="${esc(n.msg)}" title="点击复制该条通知">${n.msg}${n.n > 1 ? ` <span class="hint">×${n.n}</span>` : ''}</div>
+        <div style="flex:1;font-size:13px" class="cp-cell" data-nmsg="${esc(n.msg)}" title="点击复制该条通知">${esc(n.msg)}${n.n > 1 ? ` <span class="hint">×${n.n}</span>` : ''}</div>
         <span class="hint" style="white-space:nowrap;font-size:11.5px">${fmtAgo(n.t)}</span>
       </div>`).join('')
       : '<div class="hint" style="padding:20px 0;text-align:center">暂无通知</div>';
