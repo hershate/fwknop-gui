@@ -289,7 +289,17 @@ table.tb { width:100%; border-collapse:collapse; font-size:13px; }
 #events-body tr.ev-bad, #events-body tr.ev-bad + tr.ev-detail { background:color-mix(in srgb, var(--red-soft) 55%, transparent); }
 #events-body tr.ev-bad:hover { background:var(--red-soft); }
 .tb .mono { font-size:12px; }
-.tb-wrap { overflow-x:auto; }
+.tb-wrap { overflow-x:auto;
+  /* 滚动阴影：列宽超出可视宽度时边缘出现渐隐阴影，暗示可横向滑动
+     （移动端/窄窗发现性）；cover 层用卡片底色遮住无阴影侧 */
+  background:
+    linear-gradient(to right, var(--panel) 30%, rgba(0,0,0,0)) local left,
+    linear-gradient(to left, var(--panel) 30%, rgba(0,0,0,0)) local right,
+    radial-gradient(farthest-side at 0 50%, rgba(0,0,0,.28), rgba(0,0,0,0)) local left,
+    radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,.28), rgba(0,0,0,0)) local right;
+  background-repeat:no-repeat;
+  background-size:40px 100%, 40px 100%, 12px 100%, 12px 100%;
+}
 
 .badge {
   display:inline-flex; align-items:center; gap:5px; white-space:nowrap;
