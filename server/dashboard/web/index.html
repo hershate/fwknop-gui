@@ -1299,8 +1299,12 @@ async function submitLogin() {
 
 $('#setup-btn').onclick = submitSetup;
 $('#login-btn').onclick = submitLogin;
+/* Enter 逐格推进：第一框回车跳下一框，末框回车提交（无需离键盘找鼠标） */
+$('#setup-pw1').addEventListener('keydown', e => { if (e.key === 'Enter') $('#setup-pw2').focus(); });
 $('#setup-pw2').addEventListener('keydown', e => { if (e.key === 'Enter') submitSetup(); });
 $('#login-pw').addEventListener('keydown', e => { if (e.key === 'Enter') submitLogin(); });
+$('#pw-old').addEventListener('keydown', e => { if (e.key === 'Enter') $('#pw-new1').focus(); });
+$('#pw-new1').addEventListener('keydown', e => { if (e.key === 'Enter') $('#pw-new2').focus(); });
 
 /* 初始化密码实时反馈：长度/一致性即时可见，附简易强度评估（长度+字符类），
    避免提交后才报错往返 */
