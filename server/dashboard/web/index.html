@@ -1610,6 +1610,11 @@ const sysThemeMQ = matchMedia('(prefers-color-scheme: light)');
 sysThemeMQ.addEventListener('change', e => {
   if (!localStorage.getItem('dash_theme')) applyTheme(e.matches ? 'light' : 'dark', false);
 });
+/* 多标签页主题同步：另一个标签切换主题后本页即时跟随（storage 事件跨标签触发），
+   避免一深一浅并排时的割裂感 */
+window.addEventListener('storage', e => {
+  if (e.key === 'dash_theme' && e.newValue) applyTheme(e.newValue, false);
+});
 applyTheme(localStorage.getItem('dash_theme') || (sysThemeMQ.matches ? 'light' : 'dark'), !!localStorage.getItem('dash_theme'));
 
 /* ==================== 导航 ==================== */
