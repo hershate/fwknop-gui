@@ -4013,10 +4013,17 @@ $('#users-raw').onclick = async () => {
   try {
     const r = await api('/api/accessconf/view');
     if (!r.exists) { infoModal('access.conf 原文', '（文件不存在或不可读：' + (r.error || '未知原因') + '）'); return; }
+    /* 逐行渲染带行号（与 fwknopd.conf 原文视图同范式，user-select:none 复制
+       不混入）：授权卡片/禁用块都标注「第 X–Y 行」，无行号时该交叉引用在
+       原文里无法定位；指令名高亮与配置页一致 */
+    const rawHtml = (r.raw || '').split('\n').map((ln, i) => {
+      const h = esc(ln).replace(/^([A-Z_]+)(\s)/, '<span style="color:var(--accent);font-weight:600">$1</span>$2');
+      return `<span class="rl"><span class="ln">${i + 1}</span>${h}</span>`;
+    }).join('\n');
     openModal(`<h3>access.conf 原文</h3>
-      <div class="hint" style="margin-bottom:8px">修改于 ${fmtAbs(r.mtime)}（${fmtAgo(r.mtime)}）· 密钥指令已掩码，复制外发安全；结构化编辑请用授权卡片</div>
-      <pre class="out-pre" style="max-height:52vh">${esc(r.raw || '（空文件）')}</pre>
-      <div class="mf"><button class="btn ghost" id="ar-cp" title="复制掩码原文（密钥已掩码，可安全贴入工单/评审/文档）">${icon('i-copy',13)} 复制掩码原文</button><button class="btn" onclick="closeModal()">关闭</button></div>`, true);
+      <div class="hint" style="margin-bottom:8px">修改于 ${fmtAbs(r.mtime)}（${fmtAgo(r.mtime)}）· 行号与授权卡片「第 X–Y 行」标注对应 · 密钥指令已掩码，复制外发安全；结构化编辑请用授权卡片</div>
+      <pre class="out-pre" style="max-height:52vh">${r.raw ? rawHtml : '<span class="hint">（空文件）</span>'}</pre>
+      <div class="mf"><button class="btn ghost" id="ar-cp" title="复制掩码原文（密钥已掩码，可安全贴入工单/评审/文档；不含行号）">${icon('i-copy',13)} 复制掩码原文</button><button class="btn" onclick="closeModal()">关闭</button></div>`, true);
     $('#ar-cp').onclick = () => copyText(r.raw || '', 'access.conf 掩码原文 ');
   } catch (e) {}
 };
