@@ -2689,7 +2689,10 @@ function updateUsersBatchBar() {
   const bar = $('#users-batch-bar');
   if (!bar) return;
   bar.style.display = n && S.writeEnabled ? 'flex' : 'none';
-  $('#users-sel-count').textContent = n ? `已选 ${n} 个授权` : '';
+  /* 与 TOFU 批量条同理：被搜索隐藏的已选授权同样会被批量撤销影响，显式标注 */
+  const vis = new Set($$('#users-body .usr-sel').map(c => c.dataset.selname));
+  const hidden = n ? [...S.usersSel].filter(nm => !vis.has(nm)).length : 0;
+  $('#users-sel-count').innerHTML = n ? `已选 ${n} 个授权${hidden ? ` <span style="color:var(--amber)" title="有 ${hidden} 个已选授权被当前搜索隐藏，批量撤销同样对它们生效">（含 ${hidden} 个被筛选隐藏）</span>` : ''}` : '';
 }
 $('#users-sel-all').onclick = () => {
   if (!S.usersSel) S.usersSel = new Set();
@@ -3461,7 +3464,10 @@ function updateTofuBatchBar() {
   const n = S.tofuSel ? S.tofuSel.size : 0;
   const bar = $('#tofu-batch-bar');
   bar.style.display = n && S.writeEnabled ? 'flex' : 'none';
-  $('#tofu-sel-count').textContent = n ? `已选 ${n} 台设备` : '';
+  /* 已选中被当前搜索隐藏的设备会一并被批量操作影响：显式标注防误操作 */
+  const visKeys = new Set($$('#tofu-body .tofu-sel').map(c => c.dataset.sk + '\x01' + c.dataset.dev));
+  const hidden = n ? [...S.tofuSel].filter(k => !visKeys.has(k)).length : 0;
+  $('#tofu-sel-count').innerHTML = n ? `已选 ${n} 台设备${hidden ? ` <span style="color:var(--amber)" title="有 ${hidden} 台已选设备被当前搜索隐藏，批量解绑同样对它们生效">（含 ${hidden} 台被筛选隐藏）</span>` : ''}` : '';
   const all = $('#tofu-sel-all');
   const boxes = $$('#tofu-body .tofu-sel');
   if (all) { all.checked = boxes.length > 0 && boxes.every(c => c.checked);
