@@ -792,6 +792,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 </select>
                 <button class="btn ghost small" id="users-raw" title="查看 access.conf 原始文本（密钥指令已掩码，含注释与禁用块布局——lint 与 fwknopd 实际解析的文本视图）"><svg width="14" height="14"><use href="#i-list"/></svg>查看原文</button>
                 <button class="btn ghost small" id="users-lint" title="fwknopd-admin lint：检查 access.conf 一致性（重复来源/缺失指令等），结果弹窗展示"><svg width="14" height="14"><use href="#i-check"/></svg>一致性检查</button>
+                <button class="btn ghost small" id="users-csv" title="把当前搜索过滤后的授权清单导出为 CSV（含安全选项/绑定设备数/状态汇总；访问评审用，不含任何密钥）"><svg width="14" height="14"><use href="#i-download"/></svg>导出 CSV</button>
                 <button class="btn ghost small" id="users-density" title="切换卡片密度：紧凑模式只显示名称与操作按钮，授权多时一屏总览">紧凑</button>
                 <button class="btn small" id="show-add" title="展开签发新凭证表单（快捷键 n）"><svg width="14" height="14"><use href="#i-plus"/></svg>签发新凭证</button>
               </div>
@@ -3597,6 +3598,36 @@ function stanzaBadges(s) {
   return b.join('');
 }
 
+/* 搜索过滤语义单点化：renderUsers 渲染与「导出 CSV」共用（导出=所见列表）。
+   始终返回副本——调用方会 in-place 排序，直接返回 S.users.stanzas 引用会把
+   排序结果写回缓存，空搜索词下切回「按配置顺序」无法恢复 */
+function filteredStanzas() {
+  const all = (S.users && S.users.stanzas) || [];
+  const q = (S.usersQuery || '').toLowerCase();
+  if (!q) return all.slice();
+  return all.filter(s =>
+    (s.name||'').toLowerCase().includes(q) ||
+    (s.require_username||'').toLowerCase().includes(q) ||
+    (s.open_ports||'').toLowerCase().includes(q) ||
+    (s.restrict_ports||'').toLowerCase().includes(q) ||
+    (s.source||'').toLowerCase().includes(q) ||
+    /* 支持按 stanza 序号直查（事件详情的「授权索引」、审计字段都是序号） */
+    String(s.index) === q || ('#' + s.index) === q);
+}
+/* 安全选项纯文本汇总（CSV 用）：与 stanzaBadges 同一判定口径，HTML 徽章的
+   文字版；两处置换时须同步 */
+function stanzaSecSummary(s) {
+  const b = [];
+  if (s.has_key) b.push('密钥');
+  if (s.has_gpg) b.push('GnuPG');
+  if (s.has_hmac) b.push('HMAC');
+  if (s.has_totp) b.push('TOTP跳变' + (s.port_range ? ' ' + s.port_range : ''));
+  if (s.require_fingerprint && s.fingerprint_count > 0) b.push(`指纹白名单×${s.fingerprint_count}`);
+  else if (s.require_fingerprint) b.push('TOFU首用绑定');
+  if (s.require_totp_port_match) b.push('端口因子校验');
+  if (s.require_source_address) b.push('强制真实IP');
+  return b.join('; ');
+}
 function renderUsers() {
   syncSearchClear();
   try { localStorage.setItem('fwknop-users-query', S.usersQuery || ''); } catch (e) {}
@@ -3615,14 +3646,7 @@ function renderUsers() {
   }
   updateUsersBatchBar();
   const q = (S.usersQuery || '').toLowerCase();
-  const st = q ? all.filter(s =>
-    (s.name||'').toLowerCase().includes(q) ||
-    (s.require_username||'').toLowerCase().includes(q) ||
-    (s.open_ports||'').toLowerCase().includes(q) ||
-    (s.restrict_ports||'').toLowerCase().includes(q) ||
-    (s.source||'').toLowerCase().includes(q) ||
-    /* 支持按 stanza 序号直查（事件详情的「授权索引」、审计字段都是序号） */
-    String(s.index) === q || ('#' + s.index) === q) : all;
+  const st = filteredStanzas();
   /* 排序：配置顺序（默认）/ 名称 / 最近活跃（按该用户最近事件时间倒序）/ 绑定设备数（倒序） */
   const lastEv = {};
   (S.events || []).forEach(e => { if (e.user && !(e.user in lastEv)) lastEv[e.user] = e.time || 0; });
@@ -5056,6 +5080,40 @@ $$('.th-sort').forEach(th => th.onkeydown = ev => {
   if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); th.click(); }
 });
 $('#users-search').oninput = e => { S.usersQuery = e.target.value.trim(); renderUsers(); };
+
+/* 导出当前搜索过滤后的授权清单为 CSV：访问评审（哪些授权放行哪些端口/来源）、
+   合规留档用。数据全来自已加载的 S.users/S.tofu，纯前端生成、不含任何密钥
+   （密钥类指令从来就不进 API 结构体，只有 has_* 布尔）。过滤语义与列表渲染
+   共用 filteredStanzas() */
+$('#users-csv').onclick = async () => {
+  const st = filteredStanzas();
+  const total = ((S.users && S.users.stanzas) || []).length;
+  if (!st.length) { toast(total ? '当前搜索无匹配授权可导出' : '暂无授权可导出', 'err'); return; }
+  /* 绑定设备数列依赖 TOFU 数据，未加载先懒加载（失败则留空——宁可缺列） */
+  if (!S.tofu) { try { await loadTOFU(); } catch (e) {} }
+  /* RFC 4180：字段含逗号/引号/CR/LF 任一即需整体加引号 */
+  const cell = v => { v = String(v ?? ''); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  const head = ['序号', '名称', '来源', '要求用户名', '开放端口', '禁止端口', '访问超时(秒)', '超时上限(秒)',
+    '安全选项', 'TOFU绑定设备数', '状态'];
+  const lines = st.map(s => [s.index, s.name || ('授权 #' + s.index), s.source, s.require_username,
+    s.open_ports, s.restrict_ports, s.fw_access_timeout, s.max_fw_timeout,
+    stanzaSecSummary(s), S.tofu ? tofuBindCount(s) : '',
+    s.changeme ? '占位密钥待处理' : '正常'].map(cell).join(','));
+  /* 加 BOM 以便表格软件正确识别 UTF-8 中文 */
+  const blob = new Blob(['\ufeff' + head.join(',') + '\n' + lines.join('\n')], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  /* 文件名携带搜索上下文，多文件并排可区分 */
+  const tag = S.usersQuery ? S.usersQuery.replace(/[^\w.-]/g, '_').slice(0, 24) : '';
+  a.download = 'fwknop_stanzas_' + (tag ? tag + '_' : '') +
+    new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.csv';
+  a.click();
+  /* 延迟回收 blob URL（与 ev-csv 同款 5s）：立即 revoke 偶发下载失败 */
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  const cmN = st.filter(s => s.changeme).length;
+  toast(`已导出 ${st.length} 个授权` + (S.usersQuery ? `（搜索「${S.usersQuery}」过滤后）` : '') +
+    (cmN ? `，含 ${cmN} 个占位密钥待处理` : ''), 'ok', cmN ? 5000 : 3000);
+};
 S.usersSort = localStorage.getItem('fwknop-users-sort') || 'conf';
 /* 恢复用户/TOFU 页搜索词（与事件筛选持久化一致的体验） */
 S.usersQuery = localStorage.getItem('fwknop-users-query') || '';
