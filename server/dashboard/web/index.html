@@ -1565,6 +1565,11 @@ document.addEventListener('keydown', ev => {
     refreshNow(); toast('已刷新', 'ok', 1200);
   } else if (ev.key === 't') {
     $('#theme-btn').click();  /* 明暗主题切换（复用按钮逻辑，含持久化与系统跟随） */
+  } else if (ev.key === 'b' && S.page === 'events') {
+    /* 事件页 b：「仅看异常」开/关（排查高频动作，免鼠标找芯片） */
+    S.evFilter = S.evFilter === 'bad' ? 'all' : 'bad'; S.evPage = 0;
+    renderEvents();
+    toast(S.evFilter === 'bad' ? '仅看异常' : '已查看全部', 'ok', 1200);
   } else if ((ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') && S.page === 'events') {
     /* 事件页 ←/→ 翻页：直接点分页器按钮，沿用其禁用边界 */
     const btn = $(ev.key === 'ArrowLeft' ? '#pg-prev' : '#pg-next');
@@ -1580,6 +1585,7 @@ const KBD_HELP = [
   ['/', '聚焦当前页搜索框（事件 / 用户 / TOFU / 配置）'],
   ['r', '手动刷新全部数据'],
   ['t', '切换明暗主题'],
+  ['b', '事件页「仅看异常」开/关'],
   ['← / →', '事件页翻页'],
   ['Enter / 空格', '展开聚焦的事件行详情；钻取聚焦的时间分布柱'],
   ['Ctrl/⌘ + S', '保存服务配置（编辑器有改动时）'],
