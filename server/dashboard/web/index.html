@@ -938,7 +938,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="head">
             <h2>fwknopd 配置</h2><span class="sub" id="config-sub"></span>
             <div class="tools">
-              <span class="srch-wrap"><input class="ctl" id="conf-view-filter" placeholder="查找指令 / 说明…" title="按指令名或说明文字过滤（快捷键 / 聚焦）" style="width:150px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="conf-view-filter" title="清空查找" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span><span class="hint" id="conf-view-filter-n" style="font-size:11.5px"></span>
+              <span class="srch-wrap"><input class="ctl" id="conf-view-filter" placeholder="查找指令 / 说明…" title="按指令名或说明文字过滤；「查看原文」模式下按行过滤（含注释）并高亮命中；快捷键 / 聚焦" style="width:150px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="conf-view-filter" title="清空查找" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span><span class="hint" id="conf-view-filter-n" style="font-size:11.5px"></span>
               <button class="btn ghost small" id="conf-expand-all" title="展开全部分组">展开全部</button>
               <button class="btn ghost small" id="conf-collapse-all" title="收起全部分组">收起全部</button>
               <button class="btn ghost small" id="conf-edit-btn" style="display:none" title="打开结构化编辑器：增删改指令，含类型校验与重复预警"><svg width="14" height="14"><use href="#i-pencil"/></svg>编辑</button>
@@ -4458,12 +4458,25 @@ function renderConfig() {
   $('#config-sub').textContent = `${esc(d.path)} · ${d.entries.length} 项生效指令 · 修改于 ${fmtAbs(d.mtime)}`;
 
   if (S.rawMode) {
-    /* 逐行渲染带行号（行号不可选中，复制原文时不会混入），指令名高亮保持 */
-    const raw = esc(d.raw).split('\n').map((ln, i) =>
-      `<span class="rl"><span class="ln">${i + 1}</span>` +
-      ln.replace(/^([A-Z_]+)(\s)/, '<span style="color:var(--accent);font-weight:600">$1</span>$2') +
-      `</span>`).join('\n');
-    $('#config-body').innerHTML = `<pre class="out-pre" style="max-height:none">${raw}</pre>`;
+    /* 逐行渲染带行号（行号不可选中，复制原文时不会混入），指令名高亮保持；
+       查找框在原文模式同样生效：按行过滤（含注释行）并琥珀高亮命中片段 */
+    const q = ($('#conf-view-filter').value || '').trim();
+    const ql = q.toUpperCase();
+    const qEsc = esc(q);
+    const re = qEsc ? new RegExp(qEsc.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi') : null;
+    let hitN = 0;
+    const raw = d.raw.split('\n').map((ln, i) => ({ ln, i }))
+      .filter(o => !ql || o.ln.toUpperCase().includes(ql))
+      .map(o => {
+        hitN++;
+        let h = esc(o.ln);
+        if (re) h = h.replace(re, m => `<span style="background:var(--amber-soft);color:var(--amber);border-radius:2px;padding:0 1px">${m}</span>`);
+        h = h.replace(/^([A-Z_]+)(\s)/, '<span style="color:var(--accent);font-weight:600">$1</span>$2');
+        return `<span class="rl"><span class="ln">${o.i + 1}</span>${h}</span>`;
+      }).join('\n');
+    $('#config-body').innerHTML = `<pre class="out-pre" style="max-height:none">${raw || '<span class="hint">（无匹配行）</span>'}</pre>`;
+    const vn0 = $('#conf-view-filter-n');
+    if (vn0) vn0.textContent = q ? `命中 ${hitN} 行` : '';
     return;
   }
 
@@ -4524,6 +4537,8 @@ function renderConfig() {
 }
 /* 视图模式指令查找：按键名/说明过滤行，命中分组自动展开，清空后恢复原折叠状态 */
 $('#conf-view-filter').oninput = e => {
+  /* 原文模式：行级过滤在 renderConfig 内完成（含命中高亮） */
+  if (S.rawMode) { renderConfig(); return; }
   const q = e.target.value.trim().toUpperCase();
   let hitAll = 0;
   $$('#config-body .conf-grp').forEach(h => {
