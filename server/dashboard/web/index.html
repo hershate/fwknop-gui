@@ -3340,7 +3340,7 @@ function renderUsers() {
     f['tofu-timeout'].value = s.tofu_timeout > 0 ? String(s.tofu_timeout) : '';
     f['fw-timeout'].value = s.fw_access_timeout || '';
     f['require-totp-port-match'].checked = !!s.require_totp_port_match;
-    syncTotpFields();
+    syncTotpFields(); syncFpFields();
     ['name','access','user','port-range','tofu-timeout','fw-timeout'].forEach(n =>
       f[n] && f[n].dispatchEvent(new Event('input')));  /* 联动校验 + 芯片高亮 + 草稿 */
     saveAddDraft();
@@ -3546,7 +3546,7 @@ function applyAddTemplate(key, chip) {
   f['tofu-timeout'].value = t.tofuTimeout;
   f['require-totp-port-match'].checked = t.portMatch;
   f['fw-timeout'].value = t.fwTimeout || '';  /* 旧模板无此字段 → 清空回默认 30 */
-  syncTotpFields();
+  syncTotpFields(); syncFpFields();
   $$('.tpl-chip').forEach(c => c.classList.toggle('active', c === chip));
   $('#tpl-desc').textContent = t.desc;
   /* 程序化赋值不触发 input：手动派发让即时校验提示同步刷新 */
@@ -3777,12 +3777,12 @@ function loadAddDraft() {
     strip.style.display = '';
     $('#add-draft-clear').onclick = () => {
       $('#add-form').reset();
-      syncTotpFields();
+      syncTotpFields(); syncFpFields();
       clearAddDraft();
       strip.style.display = 'none';
       toast('表单已清空', 'ok', 1500);
     };
-    syncTotpFields();
+    syncTotpFields(); syncFpFields();
     return;
   }
   /* 无草稿时预填上次使用的服务器地址（签多名用户到同一台服务器时免重输） */
@@ -3792,7 +3792,7 @@ function loadAddDraft() {
     f.server.classList.add('flash-prefill');
     setTimeout(() => f.server.classList.remove('flash-prefill'), 1600);
   }
-  syncTotpFields();  /* 恢复/新建后同步 TOTP 关联字段可用态 */
+  syncTotpFields(); syncFpFields();  /* 恢复/新建后同步 TOTP 关联字段可用态 */
 }
 function clearAddDraft() { localStorage.removeItem(ADD_DRAFT_KEY); }
 $('#add-form').addEventListener('input', saveAddDraft);
@@ -3844,6 +3844,19 @@ function syncTotpFields() {
   else f['port-range'].dispatchEvent(new Event('input'));  /* 恢复即时校验提示 */
 }
 $('#add-form').totp.addEventListener('change', syncTotpFields);
+
+/* 指纹/TOFU 联动：未勾选「要求设备指纹」时宽限期为死配置——禁用并提示，
+   提交时忽略（与 TOTP 联动 syncTotpFields 同范式） */
+function syncFpFields() {
+  const f = $('#add-form'), on = f['require-fingerprint'].checked;
+  f['tofu-timeout'].disabled = !on;
+  const fd = f['tofu-timeout'].closest('.field'); if (fd) fd.style.opacity = on ? '' : '.45';
+  const h = $('#add-tofuto-hint');
+  if (!on) { h.textContent = '⚠ 设备指纹未启用，TOFU 宽限期不生效（提交时忽略）'; h.className = 'auth-hint no'; }
+  else f['tofu-timeout'].dispatchEvent(new Event('input'));  /* 恢复即时校验提示 */
+}
+$('#add-form')['require-fingerprint'].addEventListener('change', syncFpFields);
+syncFpFields();
 
 /* 端口字段格式即时校验：OPEN_PORTS 与 TOTP 端口范围 */
 function fmtHint(el, ok, okText, badText) {
@@ -4046,6 +4059,7 @@ $('#add-form').addEventListener('submit', async ev => {
   ];
   for (const [name, label, chk] of fieldChecks) {
     if (name === 'port-range' && !f.totp.checked) continue;  /* TOTP 关闭时不校验不提交 */
+    if (name === 'tofu-timeout' && !f['require-fingerprint'].checked) continue;  /* 指纹关闭时宽限期为死配置 */
     const v = f[name].value.trim();
     if (v && !chk(v)) { toast(`${label} 格式不正确，请按红色提示修正`, 'err'); f[name].focus(); return; }
     /* 端口范围额外做跨配置拦截：超出 PCAP_PORT_RANGE 的签发必然不可用 */
@@ -4062,7 +4076,7 @@ $('#add-form').addEventListener('submit', async ev => {
   if (!f.totp.checked) fd.append('totp', 'off');
   if (f.totp.checked && f['port-range'].value.trim()) fd.append('port-range', f['port-range'].value.trim());
   if (!f['require-fingerprint'].checked) fd.append('require-fingerprint', 'off');
-  if (f['tofu-timeout'].value.trim()) fd.append('tofu-timeout', f['tofu-timeout'].value.trim());
+  if (f['require-fingerprint'].checked && f['tofu-timeout'].value.trim()) fd.append('tofu-timeout', f['tofu-timeout'].value.trim());
   if (f['fw-timeout'].value.trim()) fd.append('fw-timeout', f['fw-timeout'].value.trim());
   if (f.totp.checked && f['require-totp-port-match'].checked) fd.append('require-totp-port-match', '1');
   if (f.apply.checked) fd.append('apply', '1');
@@ -4135,7 +4149,7 @@ $('#add-form').addEventListener('submit', async ev => {
       clearAddDraft();
       if (f.server.value.trim()) { localStorage.setItem('fwknop-last-server', f.server.value.trim()); pushServerHistory(f.server.value.trim()); }
       f.reset();  /* 清空表单便于连续签发下一位用户（结果区不受影响） */
-      syncTotpFields();
+      syncTotpFields(); syncFpFields();
       $$('.tpl-chip').forEach(c => c.classList.remove('active'));
       $('#tpl-desc').textContent = '';
       $('#add-next').style.display = '';  /* 连续签发入口：收起结果区回到表单顶部 */
