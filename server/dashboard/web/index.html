@@ -5956,11 +5956,13 @@ function openStanzaEditor(index) {
   const s = (S.users && S.users.stanzas || []).find(x => x.index === index);
   if (!s) return;
   const name = s.name || ('授权 #' + s.index);
+  /* 纯秒数超时字段（*_TIMEOUT）给 inputmode=numeric：移动端弹数字键盘而非全键盘
+     （与签发卡片 af-fwto/af-tfto 同款）；TOTP_PORT_RANGE 含连字符不匹配，保持全键盘 */
   const rows = STANZA_FIELDS.map(f => `
     <div class="field">
       ${f.bool
         ? `<label class="check-row"><input spellcheck="false" autocomplete="off" autocapitalize="off" type="checkbox" data-sf="${f.k}" ${f.get(s) ? 'checked' : ''} style="width:auto"> ${f.label}</label>`
-        : `<label>${f.label}</label><input spellcheck="false" autocomplete="off" autocapitalize="off" data-sf="${f.k}" value="${esc(f.get(s) || '')}" placeholder="${esc(f.ph || '')}">
+        : `<label>${f.label}</label><input ${/TIMEOUT$/.test(f.k) ? 'inputmode="numeric" ' : ''}spellcheck="false" autocomplete="off" autocapitalize="off" data-sf="${f.k}" value="${esc(f.get(s) || '')}" placeholder="${esc(f.ph || '')}">
            ${f.chips ? `<div class="tpl-row" style="margin-top:5px">${f.chips.map(c =>
              `<button type="button" class="tpl-chip" data-sfc="${f.k}" data-v="${esc(c[1] || '')}" title="点击填入该值，再点同值清除">${esc(c[0])}</button>`).join('')}</div>` : ''}
            ${f.bool ? '' : `<div class="auth-hint" aria-live="polite" data-sfh="${f.k}"></div>`}`}
