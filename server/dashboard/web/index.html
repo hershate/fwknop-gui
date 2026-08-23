@@ -2666,8 +2666,21 @@ async function loadEvents() {
     const since = (S.events && S.events.length && S.events[0].time) || 0;
     const d = await api('/api/events' + (since ? '?since=' + since : ''));
     if (since && d) {
-      const seen = new Set(S.events.map(evKey));
-      const fresh = d.filter(e => !seen.has(evKey(e)));
+      /* 去重按「边界秒多重集差」：服务端每轮重发 >=since 全量（含边界秒），
+         Set 按键去重会把同秒同键的真实不同事件（重放风暴同一源同一秒数十条
+         完全相同的包）误判为已见而丢弃——攻击量被低估，且恰发生在事故场景。
+         改为计数差：时间更新的一定是新到；边界秒上，消耗完本地已有同键副本
+         额度的才算新到（边界秒即最新秒，500 条封顶从尾部裁，永远裁不到它，
+         副本计数不会因缓存裁剪失真） */
+      const localCnt = {};
+      S.events.forEach(e => { const k = evKey(e); localCnt[k] = (localCnt[k] || 0) + 1; });
+      const fresh = [];
+      d.forEach(e => {
+        const k = evKey(e);
+        if ((e.time || 0) > since) { fresh.push(e); return; }
+        if (localCnt[k] > 0) localCnt[k]--;
+        else fresh.push(e);
+      });
       /* 记录新到行的复合键：渲染时给一次性淡入高亮（监控扫视可感知新事件落点） */
       if (fresh.length) {
         if (!S.evFresh) S.evFresh = new Set();
