@@ -20,6 +20,7 @@
 //
 //	fwknop-dashboard -run-dir /var/run/fwknop -addr 127.0.0.1:8088
 //	fwknop-dashboard -read-only                          # 只读模式
+//	fwknop-dashboard -version                            # 打印版本并退出
 //	DASHBOARD_TOKEN=secret fwknop-dashboard              # 无头/CI 场景
 //
 // See REF/plan/Port Knocking.md §7.4/§7.6.
