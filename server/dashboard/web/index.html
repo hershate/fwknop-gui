@@ -2730,7 +2730,9 @@ $('#ev-csv').onclick = () => {
     new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.csv';
   a.click();
   URL.revokeObjectURL(a.href);
-  toast(`已导出 ${evs.length} 条事件`, 'ok');
+  /* 缓存截断时提示：CSV 只含缓存内最近 500 条，完整历史用「导出原始」 */
+  const capped = (S.events || []).length >= 500;
+  toast(`已导出 ${evs.length} 条事件` + (capped ? '（仅缓存内最近 500 条；完整历史请用「导出原始」）' : ''), 'ok', capped ? 6000 : 3000);
 };
 
 /* ==================== 用户与授权 ==================== */
