@@ -2158,13 +2158,17 @@ function renderTopIps() {
   const cnt = {};
   for (const e of timeFilteredEvents()) {
     const k = DIMS[dim][1](e);
-    if (k) cnt[k] = (cnt[k] || 0) + 1;
+    if (k) {
+      cnt[k] = cnt[k] || { n: 0, bad: 0 };
+      cnt[k].n++;
+      if (BAD_EVTS.includes(e.event)) cnt[k].bad++;
+    }
   }
-  const top = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const top = Object.entries(cnt).sort((a, b) => b[1].n - a[1].n).slice(0, 5);
   if (top.length < 2) { el.style.display = 'none'; el.innerHTML = ''; return; }
   el.style.display = 'flex';
-  el.innerHTML = `<span class="hint" style="align-self:center">${DIMS[dim][0]}排行：</span>` + top.map(([k, n]) =>
-    `<button class="chip ${S.evQuery === k ? 'active' : ''}" data-tip="${esc(k)}" title="点击按 ${esc(k)} 筛选，再点取消">${esc(dim === 'dev' && k.length > 12 ? k.slice(0, 12) + '…' : k)}<span class="n">${n}</span></button>`).join('') +
+  el.innerHTML = `<span class="hint" style="align-self:center">${DIMS[dim][0]}排行：</span>` + top.map(([k, c]) =>
+    `<button class="chip ${S.evQuery === k ? 'active' : ''}" data-tip="${esc(k)}" title="点击按 ${esc(k)} 筛选，再点取消${c.bad ? `；其中 ${c.bad} 条异常` : ''}">${esc(dim === 'dev' && k.length > 12 ? k.slice(0, 12) + '…' : k)}<span class="n">${c.n}</span>${c.bad ? `<span style="color:var(--red);font-weight:600" title="${c.bad} 条异常事件">⚠${c.bad}</span>` : ''}</button>`).join('') +
     `<button class="chip" id="ev-topdim" title="切换统计维度（来源 IP / 设备指纹 / 用户）" style="opacity:.75">⇄ 换维度</button>`;
   $$('#ev-topip .chip[data-tip]').forEach(b => b.onclick = () => {
     S.evQuery = S.evQuery === b.dataset.tip ? '' : b.dataset.tip;
