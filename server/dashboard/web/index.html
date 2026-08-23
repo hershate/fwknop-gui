@@ -4108,7 +4108,7 @@ const STANZA_FIELDS = [
     chips:[['30 秒','30'],['5 分钟','300'],['1 小时','3600'],['1 天','86400']] },
   { k:'MAX_FW_TIMEOUT',         label:'最大访问超时（秒）', ph:'默认 300',                        get:s=>s.max_fw_timeout,         tip:'客户端自定义超时的上限' },
   { k:'REQUIRE_SOURCE_ADDRESS', label:'强制包内真实 IP',    bool:true,                            get:s=>s.require_source_address, tip:'禁用 -s 伪造，客户端须解析真实外网 IP' },
-  { k:'TOTP_PORT_RANGE',        label:'TOTP 端口范围',      ph:'如 30000-60000',                  get:s=>s.port_range,             tip:'与客户端一致的跳变范围',
+  { k:'TOTP_PORT_RANGE',        label:'TOTP 端口范围',      ph:'如 30000-60000',                  get:s=>s.port_range,             tip:'与客户端一致的跳变范围；须落在 fwknopd.conf 的 PCAP_PORT_RANGE 监听范围内，否则敲门无法被捕获',
     chips:[['30000-60000'],['40000-50000'],['10000-65000']] },
   { k:'REQUIRE_FINGERPRINT',    label:'要求设备指纹',       bool:true,                            get:s=>s.require_fingerprint,    tip:'v4 包必须携带 device_id 并通过白名单/TOFU' },
   { k:'FINGERPRINT_TOFU_TIMEOUT', label:'TOFU 宽限期（秒）', ph:'留空 = 默认 86400',              get:s=>s.tofu_timeout ? String(s.tofu_timeout) : '', tip:'首用自动绑定的时间窗口',
@@ -4167,6 +4167,18 @@ function openStanzaEditor(index) {
       if (c && el.value.trim() && !c[1](el.value.trim())) {
         toast(`${c[0]} 格式不正确，请修正后再保存`, 'err');
         el.focus();
+        return;
+      }
+    }
+    /* 跨配置校验（与签发卡片同源）：TOTP 范围超出 PCAP_PORT_RANGE 的改动
+       保存后敲门会静默丢失，保存前拦截；配置未加载时先懒加载再判定 */
+    const rangeEl = document.querySelector('#modal-root [data-sf="TOTP_PORT_RANGE"]');
+    if (rangeEl && rangeEl.value.trim()) {
+      if (!S.config) { try { await loadConfig(); } catch (_) { /* loadConfig 内部已提示 */ } }
+      const sv = rangePcapConflict(rangeEl.value.trim());
+      if (sv) {
+        toast(`TOTP 端口范围超出服务端监听范围 ${sv}（PCAP_PORT_RANGE），范围外的敲门无法被捕获`, 'err', 6000);
+        rangeEl.focus();
         return;
       }
     }
