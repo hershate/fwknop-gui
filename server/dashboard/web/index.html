@@ -894,6 +894,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               <button class="btn ghost small" id="conf-expand-all" title="展开全部分组">展开全部</button>
               <button class="btn ghost small" id="conf-collapse-all" title="收起全部分组">收起全部</button>
               <button class="btn ghost small" id="conf-edit-btn" style="display:none"><svg width="14" height="14"><use href="#i-pencil"/></svg>编辑</button>
+              <button class="btn ghost small" id="conf-save-profile" title="把当前 fwknopd.conf + access.conf 快照保存为命名方案（方案页）"><svg width="14" height="14"><use href="#i-archive"/></svg>存为方案</button>
               <button class="btn ghost small" id="raw-toggle">查看原文</button>
             </div>
           </div>
@@ -1684,6 +1685,7 @@ function applyWriteGate() {
   ['svc-start','svc-stop','svc-restart','svc-reload','svc-validate'].forEach(id => { $('#'+id).disabled = !on; });
   $('#svc-hint').textContent = on ? '' : '当前为只读模式（-read-only）：去掉该参数重启后，可进行服务控制与配置编辑';
   $('#conf-edit-btn').style.display = on ? '' : 'none';
+  $('#conf-save-profile').style.display = on ? '' : 'none';  /* 存为方案同属写操作 */
   if (!on) $('#conf-editor').style.display = 'none';
   $('#profile-save-card').style.display = on ? '' : 'none';
   $('#show-add').style.display = on ? '' : 'none';
@@ -4086,6 +4088,11 @@ $('#raw-toggle').onclick = () => {
   S.rawMode = !S.rawMode;
   $('#raw-toggle').textContent = S.rawMode ? '查看分组说明' : '查看原文';
   renderConfig();
+};
+/* 配置页直达「存为方案」：调完配置顺手快照，与概览快速操作同一动作 */
+$('#conf-save-profile').onclick = () => {
+  showPage('profiles');
+  if (S.writeEnabled) $('#pf-name').focus();
 };
 
 /* ==================== 关于 ==================== */
