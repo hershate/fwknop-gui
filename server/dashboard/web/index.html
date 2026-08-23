@@ -1247,21 +1247,29 @@ async function submitSetup() {
   const errEl = $('#setup-err'); errEl.textContent = '';
   if (pw1.length < 8) { errEl.textContent = '密码长度至少 8 位'; return; }
   if (pw1 !== pw2) { errEl.textContent = '两次输入的密码不一致'; return; }
+  const btn = $('#setup-btn');
+  if (btn.disabled) return;  /* 防连点重复提交初始化请求 */
+  btn.disabled = true;
   try {
     const r = await fetch('/api/setup', { method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ password: pw1, confirm: pw2 }) });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) { errEl.textContent = d.error || d.msg || ('初始化失败（HTTP ' + r.status + '）'); return; }
+    if (!r.ok) { errEl.textContent = d.error || d.msg || ('初始化失败（HTTP ' + r.status + '）'); btn.disabled = false; return; }
+    btn.disabled = false;
     toast(d.msg || '初始化完成', 'ok');
     enterApp();
-  } catch (e) { errEl.textContent = '网络错误，请重试'; }
+  } catch (e) { errEl.textContent = '网络错误，请重试'; btn.disabled = false; }
 }
 
 async function submitLogin() {
   const pw = $('#login-pw').value;
   const errEl = $('#login-err'); errEl.textContent = '';
   if (!pw) { errEl.textContent = '请输入密码'; return; }
+  const btn = $('#login-btn');
+  /* 防连点/连按 Enter 重复提交：错误密码双发会双倍计入限流，加速锁定 */
+  if (btn.disabled) return;
+  btn.disabled = true;
   try {
     const r = await fetch('/api/login', { method:'POST',
       headers:{'Content-Type':'application/json'},
@@ -1271,8 +1279,6 @@ async function submitLogin() {
       if (r.status === 429) {
         /* 锁定倒计时：禁用按钮并逐秒倒数，结束自动恢复 */
         const sec = +d.retry_after || 60;
-        const btn = $('#login-btn');
-        btn.disabled = true;
         let left = sec;
         const tick = () => {
           errEl.textContent = `失败次数过多，请 ${left} 秒后再试`;
@@ -1288,15 +1294,17 @@ async function submitLogin() {
         return;
       }
       errEl.textContent = d.error || '密码错误';
+      btn.disabled = false;
       $('#login-pw').value = ''; $('#login-pw').focus();
       return;
     }
+    btn.disabled = false;
     $('#login-pw').value = '';
     S.sessionExp = Date.now() / 1000 + 12 * 3600;  /* 与服务端 sessionTTL（12h）一致 */
     tickSessTtl();
     toast(d.msg || '登录成功', 'ok');
     enterApp();
-  } catch (e) { errEl.textContent = '网络错误，请重试'; }
+  } catch (e) { errEl.textContent = '网络错误，请重试'; btn.disabled = false; }
 }
 
 $('#setup-btn').onclick = submitSetup;
