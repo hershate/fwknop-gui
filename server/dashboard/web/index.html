@@ -1955,11 +1955,13 @@ $('#to-top').onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 /* ==================== 自动刷新 ==================== */
 function restartTimer() {
   clearInterval(S.timer);
-  if (S.auto) S.timer = setInterval(refreshNow, S.ivl);
+  /* 断连退避期间 tick 空转守卫：未到 nextTry 不发起请求（顶栏倒计时显示的
+     就是真实重试时刻）；手动刷新会重置 nextTry，不受退避约束 */
+  if (S.auto) S.timer = setInterval(() => { if (Date.now() >= (S.nextTry || 0)) refreshNow(); }, S.ivl);
   $('#foot-ivl').textContent = S.ivl / 1000;
 }
-$('#auto-sw').onchange = e => { S.auto = e.target.checked; try { localStorage.setItem('fwknop-auto', S.auto ? '1' : '0'); } catch (e2) {} restartTimer(); };
-$('#ivl-sel').onchange = e => { S.ivl = +e.target.value; try { localStorage.setItem('fwknop-ivl', String(S.ivl)); } catch (e2) {} restartTimer(); };
+$('#auto-sw').onchange = e => { S.auto = e.target.checked; S.nextTry = Date.now(); try { localStorage.setItem('fwknop-auto', S.auto ? '1' : '0'); } catch (e2) {} restartTimer(); };
+$('#ivl-sel').onchange = e => { S.ivl = +e.target.value; S.nextTry = Date.now(); try { localStorage.setItem('fwknop-ivl', String(S.ivl)); } catch (e2) {} restartTimer(); };
 /* 自动刷新开关/间隔持久化：与事件筛选等偏好一致，刷新页面后恢复 */
 try {
   if (localStorage.getItem('fwknop-auto') === '0') { S.auto = false; $('#auto-sw').checked = false; }
@@ -1998,7 +2000,12 @@ function refreshNow() {
   if (S.page === 'config') jobs.push(loadConfig());
   if (S.page === 'profiles') jobs.push(loadProfiles());
   if (S.page === 'about') renderAbout();
-  return Promise.allSettled(jobs);
+  return Promise.allSettled(jobs).then(() => {
+    /* 断连退避：连续失败时下次自动重试按 ivl×2ⁿ 递增（封顶 60s）——服务器宕机
+       期间不再按原间隔打无效请求（错误日志噪音同步减少）；任意手动刷新（顶栏
+       刷新钮/连接区点击/online 事件）会重置 nextTry 即清退避，恢复后回到原间隔 */
+    if (connFail >= 2) S.nextTry = Date.now() + Math.min(S.ivl * Math.pow(2, connFail - 2), 60000);
+  });
 }
 
 /* 写操作门禁：只读模式下禁用管理控件 */
