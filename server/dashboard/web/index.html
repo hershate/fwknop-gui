@@ -1969,10 +1969,15 @@ function renderSummary() {
       guide.className = 'warn-strip';
       guide.style.marginTop = '12px';
       guide.innerHTML = `${icon('i-info',15)}<div>还没有收到任何 SPA 敲门。上手三步：
-        <b>①</b> 用户与授权页「签发新凭证」→ <b>②</b> 把授权 URI 发给客户端
-        <code>fwknop import 'fwknop://…'</code> 导入 → <b>③</b> 客户端执行
-        <code>fwknop -R -D 服务器</code> 发起敲门，事件随即出现在这里。</div>`;
+        <b>①</b> <a href="javascript:void 0" id="ov-guide-add" style="color:var(--accent)">用户与授权页「签发新凭证」</a> → <b>②</b> 把授权 URI 发给客户端
+        <code>fwknop import 'fwknop://…'</code> 导入（写入与凭证同名的 stanza）→ <b>③</b> 客户端执行
+        <code>fwknop -n 凭证名称</code> 发起敲门，事件随即出现在这里。</div>`;
       $('#summary-body').appendChild(guide);
+      /* ① 可点击直达：跳用户页并展开签发卡片（与概览快速操作 qa-add 同一动作） */
+      $('#ov-guide-add').onclick = () => {
+        showPage('users');
+        if ($('#add-card').style.display === 'none') $('#show-add').click();
+      };
     }
   } else if (guide) guide.remove();
 }
