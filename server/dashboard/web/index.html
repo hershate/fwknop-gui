@@ -936,7 +936,8 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <button class="btn ghost small" id="dl-cred" title="下载明文 cred.json 凭证文件（fwknop import cred.json 导入）；含全部密钥材料，请妥善保管"><svg width="13" height="13"><use href="#i-download"/></svg>下载 cred.json</button>
                 <button class="btn ghost small" id="add-goto-user" style="display:none" title="在授权列表中定位刚签发的授权"><svg width="13" height="13"><use href="#i-users"/></svg>查看该授权</button>
               </div>
-              <div class="hint" id="add-uri-hint" style="display:none;margin-top:6px">客户端导入方式任选其一：<code>fwknop import '&lt;URI&gt;'</code> · <code>fwknop import cred.json</code>（上方下载的凭证文件）· 把 URI 做成 QR 后 <code>fwknop import qr.png</code></div>
+              <div id="add-qr-box" style="display:none"></div>
+              <div class="hint" id="add-uri-hint" style="display:none;margin-top:6px">客户端导入方式任选其一：手机扫上方二维码 · <code>fwknop import '&lt;URI&gt;'</code> · <code>fwknop import cred.json</code> · <code>fwknop import qr.png</code>（上方下载的二维码图片）</div>
               <div class="warn-strip" id="add-noapply-strip" style="display:none;margin-top:10px"><svg width="15" height="15"><use href="#i-warn"/></svg><div>该授权<b>尚未写入 access.conf</b>（未勾选「签发后写入」）。请将上方 stanza 段手动追加到配置，或勾选后重新签发。 <button type="button" class="btn ghost small" id="add-cp-stanza" style="padding:1px 8px;font-size:11.5px" title="从签发输出中截取 stanza 段（### 标记至空行）复制，贴入 access.conf 末尾即可">复制 stanza 段</button></div></div>
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
                 <span class="hint" style="font-size:11.5px">完整输出（含 stanza 与服务端回执）</span>
@@ -3774,7 +3775,9 @@ function renderUsers() {
             <button class="btn ghost small" id="qr-cp-uri" title="复制完整 URI（发给客户端，fwknop import 导入）">${icon('i-copy',12)} 复制 URI</button>
             <button class="btn ghost small" id="qr-cp-cmd" title="复制完整导入命令 fwknop import '<URI>'（客户端终端直接粘贴执行）">${icon('i-copy',12)} 复制导入命令</button>
             <button class="btn ghost small" id="qr-dl" title="下载明文 cred.json 凭证文件（含全部密钥材料，请妥善保管）">${icon('i-download',12)} 下载 cred.json</button>
+            <button class="btn ghost small" id="qr-img-toggle" aria-pressed="false" title="展示授权二维码（手机扫码录入；含密钥材料，注意周围可窥屏环境）">显示二维码</button>
           </div>
+          <div id="qr-img-box"></div>
           <div class="mf"><button class="btn" id="qr-done">完成</button></div>`, true);
         let revealed = false;
         $('#qr-reveal').onclick = () => {
@@ -3786,6 +3789,16 @@ function renderUsers() {
         $('#qr-cp-uri').onclick = () => copyText(uri, '授权 URI ');
         $('#qr-cp-cmd').onclick = () => copyText(`fwknop import '${uri}'`, '导入命令 ');
         $('#qr-dl').onclick = () => downloadCredJson(uri);
+        /* 二维码 opt-in：与 URI 掩码默认立场一致，点击才展示 */
+        let qrShown = false, qrLoaded = false;
+        $('#qr-img-toggle').onclick = () => {
+          qrShown = !qrShown;
+          $('#qr-img-toggle').textContent = qrShown ? '隐藏二维码' : '显示二维码';
+          $('#qr-img-toggle').setAttribute('aria-pressed', qrShown ? 'true' : 'false');
+          $('#qr-img-box').style.display = qrShown ? '' : 'none';
+          if (qrShown && !qrLoaded) { qrLoaded = true; renderUriQr(uri, $('#qr-img-box'), name); }
+        };
+        $('#qr-img-box').style.display = 'none';
         $('#qr-done').onclick = () => closeModal();
       } catch (e) { restore(); }
     };
@@ -4511,6 +4524,54 @@ function downloadCredJson(uri) {
   toast('已下载 cred.json（明文凭证，含全部密钥材料，请妥善保管）', 'ok');
 }
 
+/* ---- 授权 URI 二维码（服务端内嵌编码器渲染，纠错 M） ----
+   POST 传输 URI（含密钥材料）避免进入代理/浏览器历史；签发结果区自动展示
+   （URI 本就明文陈列），重发 URI 弹窗为 opt-in（该弹窗默认掩码立场）。 */
+async function renderUriQr(uri, box, name) {
+  box.innerHTML = '<div class="hint" style="padding:8px 0;font-size:12px">二维码生成中…</div>';
+  try {
+    const r = await api('/api/admin/qrimg', { method:'POST', body: JSON.stringify({ uri }) });
+    if (r.error || !r.svg) {
+      box.innerHTML = `<div class="hint" style="padding:8px 0;font-size:12px;color:var(--red)">二维码生成失败：${esc(r.error || '返回异常')}</div>`;
+      return;
+    }
+    box.innerHTML = `<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:10px">
+      <div style="background:#fff;padding:8px;border-radius:8px;line-height:0;flex:0 0 auto">${r.svg}</div>
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:180px">
+        <button class="btn ghost small" data-qrpng style="align-self:flex-start" title="把二维码栅格化为 PNG 下载（客户端 fwknop import qr.png 导入；含密钥材料请妥善保管）">${icon('i-download',12)} 下载 PNG</button>
+        <span class="hint" style="font-size:11.5px;line-height:1.6">手机客户端扫码录入，或下载 PNG 后<br><code>fwknop import ${esc((name || 'fwknop').replace(/[^\w.-]/g, '_'))}-qr.png</code></span>
+      </div></div>`;
+    const svgEl = box.querySelector('svg');
+    if (svgEl) { svgEl.setAttribute('width', '164'); svgEl.setAttribute('height', '164'); }
+    box.querySelector('[data-qrpng]').onclick = () => downloadQrPng(svgEl, name);
+  } catch (e) { box.innerHTML = ''; }
+}
+
+/* SVG → canvas 栅格化 PNG：4 倍放大保证远扫/印刷可用；白底填充
+   （SVG 透明底在部分查看器里黑码黑底不可读） */
+function downloadQrPng(svgEl, name) {
+  if (!svgEl) { toast('二维码尚未生成', 'err'); return; }
+  const xml = new XMLSerializer().serializeToString(svgEl);
+  const url = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml' }));
+  const img = new Image();
+  img.onload = () => {
+    const scale = 4;
+    const c = document.createElement('canvas');
+    c.width = img.width * scale; c.height = img.height * scale;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(url);
+    const a = document.createElement('a');
+    a.href = c.toDataURL('image/png');
+    a.download = (name || 'fwknop').replace(/[^\w.-]/g, '_') + '-qr.png';
+    a.click();
+    toast('已下载二维码 PNG（含密钥材料，请妥善保管）', 'ok');
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); toast('PNG 转换失败', 'err'); };
+  img.src = url;
+}
+
 $('#add-form').addEventListener('submit', async ev => {
   ev.preventDefault();
   const f = ev.target;
@@ -4581,12 +4642,15 @@ $('#add-form').addEventListener('submit', async ev => {
       $('#add-uri').textContent = m[0];
       $('#add-uri-box').style.display = '';
       $('#add-uri-hint').style.display = '';
+      /* 二维码自动渲染：URI 已明文陈列，扫码是移动端最常用录入路径 */
+      $('#add-qr-box').style.display = '';
+      renderUriQr(m[0], $('#add-qr-box'), nm);
       /* 复制 URI 后焦点转到名称框：连续签发下一位不打断键盘流 */
       $('#copy-uri').onclick = () => { copyText(m[0], '授权 URI '); f.name.focus(); };
       $('#copy-import').onclick = () => copyText(`fwknop import '${m[0]}'`, '导入命令 ');
       $('#dl-cred').onclick = () => downloadCredJson(m[0]);
       $('#copy-uri').focus();  /* 键盘流闭环：签发后回车即复制 URI */
-    } else { $('#add-uri-box').style.display = 'none'; $('#add-uri-hint').style.display = 'none'; }
+    } else { $('#add-uri-box').style.display = 'none'; $('#add-uri-hint').style.display = 'none'; $('#add-qr-box').style.display = 'none'; $('#add-qr-box').innerHTML = ''; }
     /* 一键生效（apply）时提供直达：跳到用户页并聚焦新授权卡片 */
     $('#add-noapply-strip').style.display = (!r.error && !f.apply.checked) ? '' : 'none';
     /* 手动落盘闭环：从输出截取 stanza 段（与服务端 extractPrintedStanza 同规则）一键复制 */

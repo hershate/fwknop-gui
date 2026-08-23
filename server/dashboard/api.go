@@ -338,6 +338,38 @@ func handleAdminUserURI(w http.ResponseWriter, r *http.Request) {
 	adminResult(w, out, err)
 }
 
+// handleQRRender 把 fwknop:// 授权 URI 渲染为 QR SVG（内嵌编码器 qr.go，
+// 纠错等级 M）。签发结果与重发 URI 弹窗共用：客户端 `fwknop import qr.png`
+// 可导入二维码图片，手机扫码也是 fwknop 移动端的标准录入方式。
+//
+// 安全口径：URI 含密钥材料，门禁与产生它的流程同级（写模式 + POST + CSRF，
+// requirePost 内含）；POST 也避免 URI 进代理/浏览器历史。纯渲染无状态改变，
+// 不记操作日志（与 validate/fwlist 同口径）。
+func handleQRRender(w http.ResponseWriter, r *http.Request) {
+	if !requirePost(w, r) {
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4096)
+	var req struct {
+		URI string `json:"uri"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "请求格式错误", http.StatusBadRequest)
+		return
+	}
+	// 仅接受授权 URI 形态：避免面板被当作任意内容的二维码生成器
+	if !strings.HasPrefix(req.URI, "fwknop://") {
+		http.Error(w, "仅支持 fwknop:// 授权 URI", http.StatusBadRequest)
+		return
+	}
+	mod, err := qrEncode(req.URI)
+	if err != nil {
+		http.Error(w, "二维码编码失败："+err.Error(), http.StatusBadRequest)
+		return
+	}
+	writeJSON(w, map[string]interface{}{"svg": qrSVG(mod), "size": len(mod)})
+}
+
 // handleAdminLint wraps `fwknopd-admin lint <access.conf>` — access.conf
 // 一致性检查（重复 SOURCE/缺指令等），结果原样回显供弹窗展示。
 func handleAdminLint(w http.ResponseWriter, r *http.Request) {
