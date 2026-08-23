@@ -1855,6 +1855,8 @@ document.addEventListener('keydown', ev => {
   const modalOpen = $('#modal-root').classList.contains('show');
   if (ev.key === 'Escape') {
     if (modalOpen) closeModal();
+    /* 移动端侧栏展开态：Esc 收栏（与点遮罩/手势同效；桌面端无 open 类不影响） */
+    else if ($('#sidebar').classList.contains('open')) closeSidebar();
     /* 搜索框 Esc：有内容先清空并触发过滤复位，再按才失焦（主流搜索习惯）。
        仅搜索/过滤框，表单输入框不清内容（防误清已填数据） */
     else if (typing && ev.target.matches && ev.target.matches('#event-search,#users-search,#tofu-search,#conf-view-filter,#conf-filter,#pf-search') && ev.target.value) {
@@ -1927,7 +1929,7 @@ const KBD_HELP = [
   ['← / →', '事件页翻页'],
   ['Enter / 空格', '展开聚焦的事件行详情；钻取聚焦的时间分布柱'],
   ['Ctrl/⌘ + S', '保存服务配置 / 授权编辑弹窗（有改动时）'],
-  ['Esc', '关闭弹窗；无弹窗时清空通知角；搜索框中先清空内容、再按取消焦点'],
+  ['Esc', '关闭弹窗 / 收合移动端侧栏；无浮层时清空通知角；搜索框中先清空内容、再按取消焦点'],
   ['?', '打开本帮助'],
 ];
 /* 常用命令速查：语法与 fwknopd-admin usage()、fwknop import 实际行为一致 */
