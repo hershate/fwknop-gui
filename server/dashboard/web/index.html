@@ -559,6 +559,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
       <button type="button" class="pw-eye" data-eye="login-pw" title="显示/隐藏密码"><svg width="16" height="16"><use href="#i-eye"/></svg></button></div>
     <button class="btn" id="login-btn"><svg width="15" height="15"><use href="#i-key"/></svg>登录</button>
     <div class="auth-err" id="login-err"></div>
+    <div class="auth-hint" id="login-ro-hint" style="display:none;color:var(--amber)">当前面板为只读模式（-read-only）：登录后仅可查看，管理操作不可用。</div>
   </div>
 </div>
 
@@ -1255,6 +1256,9 @@ async function bootAuth() {
     /* 侧栏版本号点击复制（报障时免手选）；位于 conn-box 内，须阻断冒泡防误触发重连 */
     $('#side-ver').onclick = ev => { ev.stopPropagation(); copyText($('#side-ver').textContent.trim(), '面板版本'); };
     S.writeEnabled = !!st.write_enabled;
+    /* 只读模式登录前预告：避免登录后才发现无法管理（auth/state 无需鉴权） */
+    const roh = $('#login-ro-hint');
+    if (roh) roh.style.display = st.write_enabled ? 'none' : '';
     S.passwordSet = !!st.password_set;  /* Bearer 令牌模式下隐藏「修改密码」卡 */
     if (st.needs_setup) showAuthView('auth-setup');
     else if (st.authenticated) enterApp();
