@@ -565,6 +565,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
     <div class="spacer"></div>
     <div class="side-foot">
       <div class="conn" id="conn-box" title="点击立即重连刷新" style="cursor:pointer" role="status" aria-live="polite"><span class="dot" id="conn-dot"></span><span id="conn-text">正在连接…</span>
+        <span id="ro-badge" style="display:none;color:var(--amber);border:1px solid var(--amber);border-radius:4px;padding:0 5px;font-size:10.5px;line-height:16px;margin-left:6px;cursor:default" title="当前为只读模式（-read-only）：仅可查看；去掉该参数重启后可进行管理操作">只读</span>
         <span class="hint" id="side-ver" style="margin-left:auto;font-size:11px" title="面板版本">v2.4.7</span></div>
       <div class="hint" id="sess-ttl" style="display:none;font-size:11px;margin-top:2px" aria-live="polite"></div>
       <div class="side-actions">
@@ -1774,6 +1775,10 @@ function applyWriteGate() {
   $('#show-add').style.display = on ? '' : 'none';
   /* 快速操作中的写动作在只读模式禁用 */
   $('#qa-add').disabled = !on; $('#qa-profile').disabled = !on;
+  /* 侧栏常驻「只读」徽章：模式随时可见，不靠各页提示零散表达 */
+  $('#ro-badge').style.display = on ? 'none' : '';
+  /* 徽章在 conn-box 内，拦截冒泡避免误触「点击重连」 */
+  $('#ro-badge').onclick = ev => ev.stopPropagation();
 }
 
 let connFail = 0;
