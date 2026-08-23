@@ -1052,6 +1052,11 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="body" id="about-body"><div class="skel" style="height:100px"></div></div>
         </div>
         <div class="card">
+          <div class="head"><h2>面板操作日志</h2><span class="sub" id="oplog-sub">管理面审计：签发 / 撤销 / 配置保存 / 服务控制 / 登录等</span>
+            <div class="tools"><a class="btn ghost small" id="oplog-dl" href="/api/oplog/download" download title="下载完整面板操作日志（JSONL，文件名带服务器时间戳）"><svg width="13" height="13"><use href="#i-download"/></svg>导出</a></div></div>
+          <div class="body" id="oplog-body"><div class="skel" style="height:60px"></div></div>
+        </div>
+        <div class="card">
           <div class="head"><h2>快捷键</h2><span class="sub">与按 ? 打开的帮助一致（同源渲染）</span></div>
           <div class="body">
             <table class="tb"><tbody id="about-kbd"></tbody></table>
@@ -2073,7 +2078,7 @@ function refreshNow() {
   if (S.page === 'tofu') jobs.push(loadTOFU(), loadEvents(), loadUsers());
   if (S.page === 'config') jobs.push(loadConfig());
   if (S.page === 'profiles') jobs.push(loadProfiles());
-  if (S.page === 'about') renderAbout();
+  if (S.page === 'about') { renderAbout(); jobs.push(loadOpLog()); }
   return Promise.allSettled(jobs).then(() => {
     /* 断连退避：连续失败时下次自动重试按 ivl×2ⁿ 递增（封顶 60s）——服务器宕机
        期间不再按原间隔打无效请求（错误日志噪音同步减少）；任意手动刷新（顶栏
@@ -5137,6 +5142,40 @@ function collectDiag() {
     '审计备份: ' + (d && d.audit_backups ? `${d.audit_backups.count} 个（${fmtSize(d.audit_backups.size)}）` : '—'),
     '近 15 分钟异常事件: ' + countRecentBad() + ' 条',
   ].join('\n');
+}
+/* 面板操作日志（管理面审计）：谁签发了凭证、谁改了配置、何时登录过——
+   与 SPA 事件审计互补（那边记敲门，这边记管理动作）。关于页懒加载 */
+async function loadOpLog() {
+  try {
+    const d = await api('/api/oplog?n=100');
+    S.oplog = d;
+    /* 轮询重渲染避开交互中（文本选择/悬停），与 about/events 同一守卫范式 */
+    if (!focusWithin('#oplog-body')) renderOpLog();
+  } catch (e) {
+    showLoadError('#oplog-body', loadOpLog);
+  }
+}
+function renderOpLog() {
+  const d = S.oplog; if (!d) return;
+  const es = (d.entries || []).slice().reverse();  /* 新→旧，与事件页同向 */
+  $('#oplog-sub').textContent = `管理面审计：签发 / 撤销 / 配置保存 / 服务控制 / 登录等 · 最近 ${es.length} 条 · 日志文件 ${fmtSize(d.size || 0)}`;
+  const dl = $('#oplog-dl');
+  if (dl) dl.style.display = d.size ? '' : 'none';  /* 空文件不提供无意义下载 */
+  if (!es.length) {
+    $('#oplog-body').innerHTML = `<div class="empty">${icon('i-list',40)}
+      <div class="t">暂无操作记录</div>
+      <div class="d">面板操作日志从本次升级起开始记录：签发 / 撤销 / 解绑 / 配置保存 / 方案操作 / 服务控制 / 登录注销 / 修改密码都会入档（JSONL，0600）</div></div>`;
+    return;
+  }
+  $('#oplog-body').innerHTML = `<div class="tb-wrap"><table class="tb">
+    <thead><tr><th>时间</th><th>操作</th><th>详情</th><th>来源 IP</th><th style="width:56px">结果</th></tr></thead>
+    <tbody>${es.map(e => `<tr>
+      <td title="${esc(fmtAbs(e.time))}" style="white-space:nowrap">${esc(fmtAgo(e.time))}</td>
+      <td style="white-space:nowrap">${esc(e.op)}</td>
+      <td style="word-break:break-all">${esc(e.detail || '')}</td>
+      <td style="white-space:nowrap">${esc(e.ip || '—')}</td>
+      <td>${e.ok ? '<span style="color:var(--green)" title="成功">✓</span>' : '<span style="color:var(--red)" title="失败/被拒">✗</span>'}</td>
+    </tr>`).join('')}</tbody></table></div>`;
 }
 function renderAbout() {
   const d = S.overview;

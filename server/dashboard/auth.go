@@ -423,6 +423,7 @@ func handleSetup(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "创建会话失败", http.StatusInternalServerError)
 		return
 	}
+	logOp(r, "初始化面板", "", true)
 	setSessionCookie(w, r, tok)
 	writeJSON(w, map[string]interface{}{"ok": true, "msg": "初始化完成，已自动登录"})
 }
@@ -457,10 +458,14 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	if !okCred {
 		left := recordLoginFail(ip)
 		if left == 0 {
+			/* 锁定触发与失败本身都入管理面日志：爆破行为事后可追（限流
+			   桶保证频率有界，日志不会被洪泛撑爆） */
+			logOp(r, "登录失败", fmt.Sprintf("第 %d 次失败，触发锁定 %d 秒", loginMaxFail, int(loginLockTime.Seconds())), false)
 			http.Error(w, fmt.Sprintf("失败次数过多，已锁定 %d 秒",
 				int(loginLockTime.Seconds())), http.StatusUnauthorized)
 		} else {
 			/* 告知剩余尝试次数：用户能预判锁定，不会「突然被锁」 */
+			logOp(r, "登录失败", "密码错误", false)
 			http.Error(w, fmt.Sprintf("密码错误（再失败 %d 次将锁定 %d 秒）",
 				left, int(loginLockTime.Seconds())), http.StatusUnauthorized)
 		}
@@ -472,6 +477,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "创建会话失败", http.StatusInternalServerError)
 		return
 	}
+	logOp(r, "登录", "", true)
 	setSessionCookie(w, r, tok)
 	writeJSON(w, map[string]interface{}{"ok": true, "msg": "登录成功"})
 }
@@ -485,6 +491,7 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 	if tok := sessionFrom(r); tok != "" {
 		dropSession(tok)
 	}
+	logOp(r, "注销", "", true)
 	clearSessionCookie(w)
 	writeJSON(w, map[string]interface{}{"ok": true, "msg": "已注销"})
 }
@@ -529,6 +536,7 @@ func handlePassword(w http.ResponseWriter, r *http.Request) {
 	if !checkPassword(req.OldPassword) {
 		/* 复用登录限流桶：防止会话被劫持后在线爆破当前密码 */
 		left := recordLoginFail(ip)
+		logOp(r, "修改密码", "当前密码校验失败", false)
 		if left == 0 {
 			http.Error(w, fmt.Sprintf("当前密码不正确，失败次数过多已锁定 %d 秒",
 				int(loginLockTime.Seconds())), http.StatusUnauthorized)
@@ -564,6 +572,7 @@ func handlePassword(w http.ResponseWriter, r *http.Request) {
 	}
 	auth.mu.Unlock()
 	clearLoginFail(ip)
+	logOp(r, "修改密码", "", true)
 	writeJSON(w, map[string]interface{}{"ok": true, "msg": "密码已更新；其他设备的会话已失效"})
 }
 

@@ -278,6 +278,7 @@ func handleAdminAdd(w http.ResponseWriter, r *http.Request) {
 		args = append(args, "--require-totp-port-match")
 	}
 	out, err := runAdmin(args...)
+	logOp(r, "签发凭证", name, err == nil)
 	// apply=1：截取输出中的 stanza 段并写入 access.conf（预检+备份+热加载），
 	// 实现「一键签发即生效」；失败不视为签发失败，原始 stanza 仍在输出中可复制。
 	if err == nil && r.FormValue("apply") == "1" {
@@ -308,6 +309,7 @@ func handleAdminRm(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := runAdmin("user", "rm", name,
 		"--access-conf", cfg.AccessConf, "--pid-file", cfg.PidFile)
+	logOp(r, "撤销授权", name, err == nil)
 	adminResult(w, out, err)
 }
 
@@ -332,6 +334,7 @@ func handleAdminUserURI(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := runAdmin("user", "qr", name, "--server", server,
 		"--access-conf", cfg.AccessConf)
+	logOp(r, "重发授权 URI", name, err == nil)
 	adminResult(w, out, err)
 }
 
@@ -366,6 +369,7 @@ func handleAdminTofuUnbind(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := runAdmin("tofu", "unbind", key, dev,
 		"--state-file", tofuPath(), "--pid-file", cfg.PidFile)
+	logOp(r, "解绑 TOFU 设备", key+" ← "+dev, err == nil)
 	adminResult(w, out, err)
 }
 
@@ -388,9 +392,11 @@ func handleAdminAuditClear(w http.ResponseWriter, r *http.Request) {
 	}
 	bak := fmt.Sprintf("%s.bak-%s", p, time.Now().Format("20060102-150405"))
 	if err := os.Rename(p, bak); err != nil {
+		logOp(r, "清理审计日志", "备份失败："+err.Error(), false)
 		http.Error(w, "备份失败："+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	logOp(r, "清理审计日志", fmt.Sprintf("原 %d 字节 → %s", st.Size(), filepath.Base(bak)), true)
 	writeJSON(w, map[string]interface{}{
 		"ok":     true,
 		"size":   st.Size(),
@@ -420,9 +426,11 @@ func handleAdminAuditRmBak(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "备份不存在（可能已被删除）", http.StatusNotFound)
 			return
 		}
+		logOp(r, "删除审计备份", name+"："+err.Error(), false)
 		http.Error(w, "删除失败："+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	logOp(r, "删除审计备份", name, true)
 	writeJSON(w, map[string]interface{}{"ok": true, "msg": "已删除备份 " + name})
 }
 
@@ -466,6 +474,11 @@ func handleService(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "未知的服务操作", http.StatusNotFound)
 		return
 	}
+	/* validate/fwlist 是只读预检不记；start/stop/restart/reload 改变进程状态，
+	   全部入管理面操作日志（敲门中断类动作事后可追） */
+	if action != "validate" {
+		logOp(r, "服务控制："+action, "", err == nil)
+	}
 	adminResult(w, out, err)
 }
 
@@ -506,6 +519,7 @@ func handleSaveFwknopdConf(w http.ResponseWriter, r *http.Request) {
 		}
 		out, err = saveFwknopdConf(req.Lines)
 	}
+	logOp(r, "保存 fwknopd.conf", "mode="+req.Mode, err == nil)
 	adminResult(w, out, err)
 }
 
@@ -527,6 +541,14 @@ func handleUpdateStanza(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out, err := updateStanza(req.Index, req.Fields)
+	/* detail 记录被改指令名（排序保证确定性）：只含指令名不含值，
+	   密钥类指令本来就进不了编辑器（updateStanza 白名单拒绝） */
+	keys := make([]string, 0, len(req.Fields))
+	for k := range req.Fields {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	logOp(r, "编辑授权", fmt.Sprintf("#%d [%s]", req.Index, strings.Join(keys, ",")), err == nil)
 	adminResult(w, out, err)
 }
 
@@ -543,6 +565,7 @@ func handleEnableStanza(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out, err := enableStanza(req.Name)
+	logOp(r, "恢复授权", req.Name, err == nil)
 	adminResult(w, out, err)
 }
 
@@ -615,5 +638,10 @@ func handleProfileOp(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "未知的方案操作", http.StatusNotFound)
 		return
 	}
+	detail := req.Name
+	if action == "duplicate" {
+		detail = req.Name + " → " + req.Target
+	}
+	logOp(r, "方案："+action, detail, err == nil)
 	adminResult(w, out, err)
 }
