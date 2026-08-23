@@ -3790,6 +3790,9 @@ function renderAbout() {
       '管理工具: ' + (d && d.admin_tool && d.admin_tool.available ? '可用' : '不可用'),
       fstat('审计日志', F.audit), fstat('指标文件', F.metrics),
       fstat('TOFU 状态', F.tofu), fstat('授权配置', F.access_conf), fstat('服务配置', F.fwknopd_conf),
+      /* 备份堆积与近期异常是远程排障高频追问项，一并打包 */
+      '审计备份: ' + (d && d.audit_backups ? `${d.audit_backups.count} 个（${fmtSize(d.audit_backups.size)}）` : '—'),
+      '近 15 分钟异常事件: ' + (S.events || []).filter(e => BAD_EVTS.includes(e.event) && (Date.now() / 1000 - (e.time || 0)) < 900).length + ' 条',
     ].join('\n'), '诊断信息 ');
   };
   /* 路径点击复制（键盘可达由全局 MutationObserver/委托覆盖） */
