@@ -1902,6 +1902,12 @@ function sparkline(key) {
 function renderTiles() {
   if (!S.metrics) return;
   if (!S.tilePrev) S.tilePrev = {};
+  /* 服务停止时计数为最后已知数据而非实时：整体降透明度 + 容器提示，
+     避免把停滞计数误读为「当前无流量」 */
+  const dead = S.overview && S.overview.daemon && !S.overview.daemon.alive;
+  const tilesEl = $('#tiles');
+  tilesEl.style.opacity = dead ? '.55' : '';
+  tilesEl.title = dead ? 'fwknopd 未运行：以下为停止前的最后已知计数' : '';
   $('#tiles').innerHTML = EVT_ORDER.map(e => {
     const m = evMeta(e), v = counterVal(S.metrics.counters, e);
     /* 与上一轮数值比对：增长时脉冲提示 + 显示增量徽标（首次渲染不闪不显） */
