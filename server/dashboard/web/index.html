@@ -268,6 +268,10 @@ select.ctl, input.ctl {
 .btn.dirty { box-shadow:0 0 0 2px var(--amber); }
 .ce-mod { box-shadow:inset 3px 0 0 var(--amber); padding-left:8px; border-radius:4px; }
 .ce-new { box-shadow:inset 3px 0 0 var(--green); padding-left:8px; border-radius:4px; }
+/* 行级还原按钮仅「已修改」行可见（新增行用删除即可撤销，键名被改的行
+   快照中无对应原值）；markConfRows 摘除 ce-mod 后按钮自动隐藏 */
+.ce-revert { display:none; }
+.ce-mod .ce-revert { display:inline-flex; }
 .ce-bad { border-color:var(--red) !important; box-shadow:0 0 0 2px var(--red-soft); }
 .ce-dup { border-color:var(--amber) !important; box-shadow:0 0 0 2px var(--amber-soft); }
 .sum-link { cursor:pointer; border-radius:var(--radius-sm); padding:4px 6px; margin:-4px -6px; transition:background .15s; }
@@ -501,6 +505,7 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
     <symbol id="i-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/></symbol>
     <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></symbol>
     <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></symbol>
     <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></symbol>
     <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
@@ -5329,6 +5334,7 @@ function confEntryRow(key, val) {
         <option value="Y" ${val==='Y'?'selected':''}>Y（是）</option>
         <option value="N" ${val!=='Y'?'selected':''}>N（否）</option></select>`
       : `<input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl ce-val" value="${esc(val)}" placeholder="值" style="flex:1;font-family:var(--mono);font-size:12px">`}
+    <button class="icon-btn ce-revert" title="还原为本次打开编辑器时的值">${icon('i-undo',13)}</button>
     <button class="icon-btn ce-del" title="删除该指令">${icon('i-trash',13)}</button>
     <div class="hint" style="flex:1;min-width:160px">${meta ? esc(meta[1]) : ''}</div>
   </div>`;
@@ -5344,6 +5350,13 @@ function markConfRows() {
     if (!k) return;
     if (!(k in confOrig)) row.classList.add('ce-new');
     else if (confOrig[k] !== v) row.classList.add('ce-mod');
+    /* 还原按钮 title 随当前键同步原值预览（键可被改名后改回，静态 title 会滞后）；
+       截断防长值（如 PCAP_FILTER）撑爆悬停框 */
+    const rev = row.querySelector('.ce-revert');
+    if (rev && k in confOrig) {
+      const orig = confOrig[k];
+      rev.title = `还原为打开时的值：${orig.length > 40 ? orig.slice(0, 40) + '…' : (orig || '（空）')}`;
+    }
     /* 指令值类型校验：端口类 1-65535、端口范围类 X-Y、超时类正整数、
        开关类（ENABLE_/FLUSH_/EXIT_ 前缀）仅 Y/N，非法即红框 */
     let bad = '';
@@ -5396,6 +5409,18 @@ function renderConfEditor() {
       const row = b.parentElement; const i = Array.from(row.parentElement.children).indexOf(row);
       harvestConfRows();  /* 先收割：其他行的未保存输入不被重建覆盖；收割后 confRows 与 DOM 行序一致，索引 i 仍对应 */
       confRows.splice(i, 1); markConfDirty(); renderConfEditor();
+    });
+    /* 行级还原：仅 ce-mod 行可见（CSS 控制）。DOM 级设值 + 派发 input——
+       联动 markConfRows 摘除 ce-mod（按钮自动隐藏）与「仅看修改」过滤，
+       不整树重建，焦点与滚动位置不动；Y/N 下拉与文本框同路径 */
+    $$('#conf-edit-rows .ce-revert').forEach(b => b.onclick = () => {
+      const row = b.parentElement;
+      const k = row.querySelector('.ce-key').value.trim();
+      if (!(k in confOrig)) return;  /* ce-mod 时 key 未变，快照必有原值；防御 */
+      const vi = row.querySelector('.ce-val');
+      vi.value = confOrig[k];
+      vi.dispatchEvent(new Event('input'));
+      toast(`已还原 ${k} 为打开时的值`, 'ok', 1500);
     });
     markConfRows();
     applyConfFilter();  /* 重渲染后过滤状态（指令名 × 仅看修改）保持 */
