@@ -554,7 +554,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
       <span class="ver" id="brand-ver">v2.4.7</span>
     </div>
     <button class="nav-item active" data-page="overview" title="快捷键 1"><svg><use href="#i-dash"/></svg>概览</button>
-    <button class="nav-item" data-page="events" title="快捷键 2"><svg><use href="#i-list"/></svg>SPA 事件<span class="nb-badge" id="nav-ev-badge" style="display:none" title="最近 15 分钟异常事件数"></span></button>
+    <button class="nav-item" data-page="events" title="快捷键 2"><svg><use href="#i-list"/></svg>SPA 事件<span class="nb-badge" id="nav-ev-badge" style="display:none" title="最近 15 分钟异常事件数（点击直达「仅看异常」）"></span></button>
     <button class="nav-item" data-page="users" title="快捷键 3"><svg><use href="#i-users"/></svg>用户与授权</button>
     <button class="nav-item" data-page="tofu" title="快捷键 4"><svg><use href="#i-fp"/></svg>TOFU 设备绑定</button>
     <button class="nav-item" data-page="config" title="快捷键 5"><svg><use href="#i-cfg"/></svg>服务配置<span id="nav-conf-dot" style="display:none;color:var(--amber);font-size:16px;line-height:0;vertical-align:-1px" title="有未保存的配置修改"> ●</span></button>
@@ -2138,6 +2138,12 @@ function updateDocTitle() {
     if (show) nb.textContent = bad > 99 ? '99+' : bad;
   }
 }
+/* 徽标点击直达「仅看异常」（阻止冒泡到导航按钮的默认切页，直接带筛选过去） */
+$('#nav-ev-badge').onclick = ev => {
+  ev.stopPropagation();
+  S.evFilter = 'bad'; S.evPage = 0;
+  showPage('events');
+};
 
 /* 异常事件集合：「仅看异常」快捷筛选用 */
 const BAD_EVTS = ['reject','replay','unknown_fingerprint','port_mismatch','aged'];
