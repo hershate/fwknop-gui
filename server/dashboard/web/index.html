@@ -3385,7 +3385,8 @@ const V = {
 };
 $('#add-form').access.addEventListener('input', ev => {
   const v = ev.target.value.trim(), el = $('#add-access-hint');
-  if (!v) { el.textContent = ''; el.className = 'auth-hint'; return; }
+  /* 留空 = 服务端默认 tcp/22（fwknopd-admin.c gen 默认值），中性提示而非置空 */
+  if (!v) { el.textContent = '○ 留空默认 tcp/22（SSH）'; el.className = 'auth-hint'; return; }
   fmtHint(el, V.access(v), '✓ 格式正确', '✗ 格式应为 tcp/22 或 tcp/22,udp/53（端口 1-65535）');
 });
 /* 跨配置校验共用：TOTP 范围超出 PCAP_PORT_RANGE 时返回服务端范围字符串，
