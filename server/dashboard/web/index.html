@@ -4700,6 +4700,8 @@ $('#add-form').user.addEventListener('input', ev => {
   if (!v) { el.textContent = ''; el.className = 'auth-hint'; return; }
   /* 写入配置行，空白会破坏解析；建议遵守 Unix 用户名惯例（小写开头 ≤32） */
   if (/\s/.test(v) || v.length > 32) { fmtHint(el, false, '', '✗ 不能含空白且 ≤32 字符'); return; }
+  /* & 硬拦：与名称同理——URI 的 user 参数在客户端解析时被 & 截断 */
+  if (/&/.test(v)) { fmtHint(el, false, '', '✗ 不能含 &（凭证 URI 以 & 分隔参数，客户端导入时用户名会被截断）'); return; }
   if (!/^[a-z_][a-z0-9_-]*$/.test(v)) fmtHint(el, false, '', '⚠ 建议 Unix 惯例：小写字母/下划线开头，仅含小写数字 - _');
   else fmtHint(el, true, '✓ 用户名有效', '');
 });
@@ -4740,8 +4742,11 @@ $('#add-form').name.addEventListener('input', ev => {
   if (!v) { el.textContent = ''; el.className = 'auth-hint'; return; }
   /* 格式前置校验：名称写入 access.conf 的标记注释行，空白/#/引号会破坏解析 */
   if (v.length > 100) { el.textContent = '✗ 名称过长（≤100 字符）'; el.className = 'auth-hint no'; return; }
-  if (/[\s#"'`]/.test(v)) {
-    el.textContent = '✗ 名称不能含空白、#、引号或反引号（会写入配置注释行）';
+  /* & 同列硬拦：凭证 URI 以 & 分隔参数，且 C 端构建/解析均不做百分号编码
+     （credential_to_uri / uri_get_param），含 & 的名称在客户端导入时被静默
+     截断（服务端 stanza 名与客户端标签不一致，排障时两难对照） */
+  if (/[\s#"'`&]/.test(v)) {
+    el.textContent = '✗ 名称不能含空白、#、引号、反引号或 &（写入配置注释行；& 会截断凭证 URI 的名称参数）';
     el.className = 'auth-hint no'; return;
   }
   const taken = n =>
@@ -4890,14 +4895,14 @@ $('#add-form').addEventListener('submit', async ev => {
   ev.preventDefault();
   const f = ev.target;
   const nm = f.name.value.trim();
-  if (nm.length > 100 || /[\s#"'`]/.test(nm)) {
-    toast('名称不能含空白、#、引号或反引号，且不超过 100 字符', 'err'); f.name.focus(); return;
+  if (nm.length > 100 || /[\s#"'`&]/.test(nm)) {
+    toast('名称不能含空白、#、引号、反引号或 &，且不超过 100 字符', 'err'); f.name.focus(); return;
   }
   /* 提交前全字段汇总校验：定位第一个非法字段并聚焦，给出字段名 */
   const fieldChecks = [
     ['server', '服务器地址', V.server], ['access', 'OPEN_PORTS', V.access],
     ['port-range', 'TOTP 端口范围', V.range], ['tofu-timeout', 'TOFU 宽限期', V.tofuto],
-    ['user', '要求用户名', v => !/\s/.test(v) && v.length <= 32],  /* 硬约束仅空白/长度 */
+    ['user', '要求用户名', v => !/[\s&]/.test(v) && v.length <= 32],  /* 硬约束：空白/长度/&（URI 参数分隔符，客户端解析截断） */
     ['fw-timeout', '访问超时', V.tofuto],
   ];
   for (const [name, label, chk] of fieldChecks) {
