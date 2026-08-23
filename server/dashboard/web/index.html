@@ -980,7 +980,8 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           </div>
         </div>
         <div class="card">
-          <div class="head"><h2>配置方案</h2><span class="sub" id="profiles-sub">一键切换整套服务端配置</span></div>
+          <div class="head"><h2>配置方案</h2><span class="sub" id="profiles-sub">一键切换整套服务端配置</span>
+            <div class="tools"><span class="srch-wrap"><input class="ctl" id="pf-search" placeholder="搜索方案名 / 备注…" title="按方案名或备注过滤（快捷键 / 聚焦；Esc 清空）" style="width:190px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="pf-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span></div></div>
           <div class="body" id="profiles-body"><div class="skel" style="height:80px"></div></div>
         </div>
       </section>
@@ -1512,7 +1513,7 @@ const S = {
   writeEnabled: false,
   evFilter: 'all', evQuery: '', evPage: 0, evPer: +(localStorage.getItem('fwknop-ev-per') || 20),
   evTime: 'all',
-  tofuQuery: '', usersQuery: '',
+  tofuQuery: '', usersQuery: '', pfQuery: '',
   hist: {},            // key -> [{t, v}] 计数器历史（前端采样，用于迷你趋势）
   rawMode: false,
 };
@@ -1680,7 +1681,7 @@ document.addEventListener('keydown', ev => {
 /* 全局快捷键：1-7 切页，/ 聚焦当前页搜索，r 手动刷新，Esc 关闭弹窗。
    输入框/下拉聚焦时或弹窗打开（除 Esc 外）不触发。 */
 const PAGE_KEYS = ['overview','events','users','tofu','config','profiles','about'];
-const PAGE_SEARCH = { events:'#event-search', users:'#users-search', tofu:'#tofu-search', config:'#conf-view-filter' };
+const PAGE_SEARCH = { events:'#event-search', users:'#users-search', tofu:'#tofu-search', config:'#conf-view-filter', profiles:'#pf-search' };
 /* 浏览器前进/后退翻页：popstate 按 hash 切页（hash 已是目标页，showPage 内
    不会重复 pushState）；配置页未保存修改被 confGuardLeave 拦截时，把 hash
    拨回当前页保持 URL 与页面一致 */
@@ -1712,7 +1713,7 @@ document.addEventListener('keydown', ev => {
     if (modalOpen) closeModal();
     /* 搜索框 Esc：有内容先清空并触发过滤复位，再按才失焦（主流搜索习惯）。
        仅搜索/过滤框，表单输入框不清内容（防误清已填数据） */
-    else if (typing && ev.target.matches && ev.target.matches('#event-search,#users-search,#tofu-search,#conf-view-filter,#conf-filter') && ev.target.value) {
+    else if (typing && ev.target.matches && ev.target.matches('#event-search,#users-search,#tofu-search,#conf-view-filter,#conf-filter,#pf-search') && ev.target.value) {
       ev.target.value = '';
       ev.target.dispatchEvent(new Event('input'));
     }
@@ -1767,7 +1768,7 @@ document.addEventListener('keydown', ev => {
 /* 快捷键帮助：侧栏按钮或按 ? 打开 */
 const KBD_HELP = [
   ['1 – 7', '切换页面（概览 / 事件 / 用户 / TOFU / 配置 / 方案 / 关于）'],
-  ['/', '聚焦当前页搜索框（事件 / 用户 / TOFU / 配置）'],
+  ['/', '聚焦当前页搜索框（事件 / 用户 / TOFU / 配置 / 方案）'],
   ['r', '手动刷新全部数据'],
   ['t', '切换明暗主题'],
   ['b', '事件页「仅看异常」开/关'],
@@ -4272,6 +4273,13 @@ S.usersQuery = localStorage.getItem('fwknop-users-query') || '';
 if (S.usersQuery) $('#users-search').value = S.usersQuery;
 S.tofuQuery = localStorage.getItem('fwknop-tofu-query') || '';
 if (S.tofuQuery) $('#tofu-search').value = S.tofuQuery;
+S.pfQuery = localStorage.getItem('fwknop-pf-query') || '';
+if (S.pfQuery) $('#pf-search').value = S.pfQuery;
+$('#pf-search').oninput = e => {
+  S.pfQuery = e.target.value.trim();
+  try { localStorage.setItem('fwknop-pf-query', S.pfQuery || ''); } catch (e2) {}
+  renderProfiles();
+};
 S.evTimeAbs = !!localStorage.getItem('fwknop-ev-timeabs');
 /* 恢复上次的事件筛选（搜索词 / 类型芯片 / 时间范围），保持排查上下文 */
 try {
@@ -5154,15 +5162,23 @@ async function loadProfiles() {
 
 function renderProfiles() {
   const d = S.profiles; if (!d) return;
-  const ps = d.profiles || [];
+  const all = d.profiles || [];
+  /* 方案名/备注过滤（与 用户/TOFU 页搜索同范式，词跨刷新记忆） */
+  const q = (S.pfQuery || '').toLowerCase();
+  const ps = q ? all.filter(p => (p.name || '').toLowerCase().includes(q) || (p.note || '').toLowerCase().includes(q)) : all;
   /* 当前生效方案置顶（Array.sort 稳定，其余保持服务端按保存时间倒序），
      方案多时一眼定位「现在跑的是哪套」 */
   ps.sort((a, b) => (b.current ? 1 : 0) - (a.current ? 1 : 0));
-  $('#profiles-sub').textContent = `${ps.length} 个方案 · 存放于 ${d.dir}`;
+  $('#profiles-sub').textContent = q ? `${ps.length} / ${all.length} 个方案（过滤中）· 存放于 ${d.dir}` : `${all.length} 个方案 · 存放于 ${d.dir}`;
   if (!ps.length) {
-    $('#profiles-body').innerHTML = `<div class="empty">${icon('i-archive',40)}
+    $('#profiles-body').innerHTML = all.length
+      ? `<div class="empty">${icon('i-list',40)}<div class="t">没有匹配「${esc(S.pfQuery)}」的方案</div>
+        <div class="d"><a href="javascript:void 0" id="pf-clear-q" style="color:var(--accent)">清空搜索</a>查看全部 ${all.length} 个方案</div></div>`
+      : `<div class="empty">${icon('i-archive',40)}
       <div class="t">还没有配置方案</div>
       <div class="d">${S.writeEnabled ? '在上方把当前配置保存为方案，之后可一键切换' : '只读模式（-read-only）下不可保存方案'}</div></div>`;
+    const cq = $('#pf-clear-q');
+    if (cq) cq.onclick = () => { S.pfQuery = ''; $('#pf-search').value = ''; try { localStorage.setItem('fwknop-pf-query', ''); } catch (e) {} renderProfiles(); };
     return;
   }
   $('#profiles-body').innerHTML = ps.map(p => `
