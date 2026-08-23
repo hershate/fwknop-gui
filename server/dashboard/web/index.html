@@ -2435,12 +2435,14 @@ function renderEvents() {
         <td colspan="8"><div class="ev-kv">
           <div><div class="k">时间</div><div class="v"><span class="cp-cell" data-cp="${fmtAbs(e.time)}" title="点击复制绝对时间">${fmtAbs(e.time)}</span>（${fmtAgo(e.time)}）</div></div>
           <div><div class="k">事件类型</div><div class="v">${esc(e.event||'—')}（${m.label}）${e.event ? `<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-evtype="${esc(e.event)}" title="筛选该类型的全部事件">${icon('i-search',12)}</button>` : ''}</div></div>
-          <div><div class="k">授权索引（stanza）</div><div class="v">${e.stanza ?? '—'}${(() => { if (e.stanza == null) return '';
+          <div><div class="k">授权索引（stanza）</div><div class="v">${(() => { if (e.stanza == null) return '—';
             const stz = (S.users && S.users.stanzas) || null;
-            /* S.users 未加载时不预判（保持可点，点击时懒加载）；已加载且查无此 stanza → 禁用并说明 */
-            if (stz && !stz.some(s => s.index === e.stanza))
-              return `<button class="icon-btn" style="padding:2px 5px;margin-left:4px" disabled title="该 stanza 已不在当前配置（可能已撤销），无法反查">${icon('i-users',12)}</button>`;
-            return `<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-evstanza="${e.stanza}" title="在用户与授权页查看该 stanza">${icon('i-users',12)}</button>`; })()}</div></div>
+            const hit = stz ? stz.find(s => s.index === e.stanza) : null;
+            /* 已加载则序号旁直接显示授权名，不用点反查才知道是谁 */
+            const nm = hit && hit.name ? `（${esc(hit.name)}）` : '';
+            if (stz && !hit)
+              return `${e.stanza}${nm} <span class="hint">已删除</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" disabled title="该 stanza 已不在当前配置（可能已撤销），无法反查">${icon('i-users',12)}</button>`;
+            return `${e.stanza}${nm}<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-evstanza="${e.stanza}" title="在用户与授权页查看该 stanza">${icon('i-users',12)}</button>`; })()}</div></div>
           <div><div class="k">用户</div><div class="v">${e.user?`<span class="cp-cell" data-cp="${esc(e.user)}">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" title="查看该用户的全部事件">${icon('i-search',12)}</button><button class="icon-btn" style="padding:2px 5px;margin-left:2px" data-ev2usr="${esc(e.user)}" title="在用户与授权页按该用户名定位授权">${icon('i-users',12)}</button>`:'—'}</div></div>
           <div><div class="k">设备指纹（完整）</div><div class="v">${e.device_id?`<span class="cp-cell" data-cp="${esc(e.device_id)}">${esc(e.device_id)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" title="查看该设备的全部事件">${icon('i-search',12)}</button>${(() => { const bd = S.tofu && S.tofu.bindings;
             /* TOFU 数据已加载且查无绑定 → 禁用反查按钮并说明；未加载保持可点（跳转后 tofu 页自会加载） */
