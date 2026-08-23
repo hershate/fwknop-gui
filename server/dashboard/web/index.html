@@ -3070,7 +3070,15 @@ function renderTOFU() {
   const orphanOf = b => liveKeys && !liveKeys.has(b.stanza_key);
   const orphanN = liveKeys ? all.filter(orphanOf).length : 0;
   $('#tofu-sub').innerHTML = (q ? `匹配 ${bs.length} / ${all.length} 台已绑定设备` : `${all.length} 台已绑定设备`) +
-    (orphanN ? ` · <span style="color:var(--amber)" title="对应授权已删除/禁用，这些绑定不再生效，建议勾选后批量解绑">⚠ ${orphanN} 条悬空绑定</span>` : '');
+    (orphanN ? ` · <span style="color:var(--amber)" title="对应授权已删除/禁用，这些绑定不再生效，建议勾选后批量解绑">⚠ ${orphanN} 条悬空绑定</span>${S.writeEnabled ? ' <button class="btn ghost small" id="tofu-sel-orphan" style="padding:1px 8px;font-size:11.5px" title="一键勾选全部悬空绑定，配合批量解绑清理">选中它们</button>' : ''}` : '');
+  /* 一键勾选全部悬空绑定 → 批量解绑清理 */
+  const so = $('#tofu-sel-orphan');
+  if (so) so.onclick = () => {
+    if (!S.tofuSel) S.tofuSel = new Set();
+    all.filter(orphanOf).forEach(b => S.tofuSel.add(b.stanza_key + '\x01' + b.device_id));
+    renderTOFU();
+    toast(`已选中 ${orphanN} 条悬空绑定，点击「批量解绑」完成清理`, 'ok', 5000);
+  };
   $('#tofu-file').textContent = d.file.exists ? `状态文件更新于 ${fmtAgo(d.file.mtime)}` : '状态文件不存在';
   if (!bs.length) {
     /* 无绑定但近期有指纹未知拒绝：提示可能 TOFU 未启用/宽限已过，并给反查入口 */
