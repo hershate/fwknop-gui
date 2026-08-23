@@ -578,9 +578,9 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
     <label for="setup-pw2">确认密码</label>
     <div class="pw-wrap"><input type="password" id="setup-pw2" autocomplete="new-password" placeholder="再次输入">
       <button type="button" class="pw-eye" data-eye="setup-pw2" title="显示/隐藏密码"><svg width="16" height="16"><use href="#i-eye"/></svg></button></div>
-    <div class="auth-hint" id="setup-pw-hint"></div>
+    <div class="auth-hint" aria-live="polite" id="setup-pw-hint"></div>
     <button class="btn" id="setup-btn" style="background:var(--green)" title="设置管理密码并完成初始化（Enter 亦可提交）"><svg width="15" height="15"><use href="#i-check"/></svg>完成初始化并进入面板</button>
-    <div class="auth-err" id="setup-err"></div>
+    <div class="auth-err" id="setup-err" role="alert"></div>
   </div>
 
   <div class="auth-card" id="auth-login" style="display:none">
@@ -593,8 +593,8 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
     <div class="pw-wrap"><input type="password" id="login-pw" autocomplete="current-password" placeholder="密码 / 令牌">
       <button type="button" class="pw-eye" data-eye="login-pw" title="显示/隐藏密码"><svg width="16" height="16"><use href="#i-eye"/></svg></button></div>
     <button class="btn" id="login-btn" title="登录（Enter 亦可提交）；连续失败 5 次将锁定 60 秒"><svg width="15" height="15"><use href="#i-key"/></svg>登录</button>
-    <div class="auth-err" id="login-err"></div>
-    <div class="auth-hint" id="login-ro-hint" style="display:none;color:var(--amber)">当前面板为只读模式（-read-only）：登录后仅可查看，管理操作不可用。</div>
+    <div class="auth-err" id="login-err" role="alert"></div>
+    <div class="auth-hint" aria-live="polite" id="login-ro-hint" style="display:none;color:var(--amber)">当前面板为只读模式（-read-only）：登录后仅可查看，管理操作不可用。</div>
   </div>
 </div>
 
@@ -811,7 +811,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                   <label for="af-name">凭证名称 <span class="req">*</span></label>
                   <input id="af-name" spellcheck="false" autocomplete="off" autocapitalize="off" name="name" placeholder="例如 prod-ssh" required>
                   <div class="tip">作为 access.conf stanza 的标识 · 想不到名字？<a href="javascript:void 0" id="add-autoname" style="color:var(--accent)">用当前时间命名</a></div>
-                  <div class="auth-hint" id="add-name-hint"></div>
+                  <div class="auth-hint" aria-live="polite" id="add-name-hint"></div>
                 </div>
                 <div class="field">
                   <label for="af-server">SPA 服务器地址</label>
@@ -819,7 +819,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                   <datalist id="server-history"></datalist>
                   <div class="tip">写入客户端配置，客户端向该地址发 SPA 包<span id="srv-hist-ctl" style="display:none"> · <span id="srv-hist-n"></span> 条历史 <a href="javascript:void 0" id="srv-hist-manage" style="color:var(--accent)">管理</a> <a href="javascript:void 0" id="srv-hist-clear" style="color:var(--faint)">清空</a></span></div>
                   <div id="srv-hist-chips" style="display:none;flex-wrap:wrap;gap:6px;margin-top:6px"></div>
-                  <div class="auth-hint" id="add-server-hint"></div>
+                  <div class="auth-hint" aria-live="polite" id="add-server-hint"></div>
                 </div>
                 <div class="field">
                   <label for="af-access">允许访问端口</label>
@@ -833,13 +833,13 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                     <button type="button" class="tpl-chip" data-port="udp/1194" title="OpenVPN · 点击加入/移出端口列表">udp/1194</button>
                     <button type="button" class="tpl-chip" data-port="tcp/3389" title="RDP · 点击加入/移出端口列表">tcp/3389</button>
                   </div>
-                  <div class="auth-hint" id="add-access-hint"></div>
+                  <div class="auth-hint" aria-live="polite" id="add-access-hint"></div>
                 </div>
                 <div class="field">
                   <label for="af-user">要求客户端用户名</label>
                   <input id="af-user" spellcheck="false" autocomplete="off" autocapitalize="off" name="user" placeholder="可选，如 alice">
                   <div class="tip">REQUIRE_USERNAME，留空则不校验</div>
-                  <div class="auth-hint" id="add-user-hint"></div>
+                  <div class="auth-hint" aria-live="polite" id="add-user-hint"></div>
                 </div>
                 <div class="field">
                   <label for="af-fwto">访问超时（秒）</label>
@@ -851,7 +851,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                     <button type="button" class="tpl-chip" data-fwto="3600">1 小时</button>
                     <button type="button" class="tpl-chip" data-fwto="86400">1 天</button>
                   </div>
-                  <div class="auth-hint" id="add-fwto-hint"></div>
+                  <div class="auth-hint" aria-live="polite" id="add-fwto-hint"></div>
                 </div>
               </div>
               <div class="form-sec" id="add-sec-toggle" role="button" tabindex="0" title="点击折叠/展开安全选项" style="cursor:pointer;display:flex;align-items:center;gap:8px;user-select:none"><span id="add-sec-arrow">▾</span>安全选项<span class="hint" id="add-sec-summary" style="display:none;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span></div>
@@ -870,7 +870,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                     <button type="button" class="tpl-chip" data-pr="40000-50000">40000-50000</button>
                     <button type="button" class="tpl-chip" data-pr="10000-65000">10000-65000（宽）</button>
                   </div>
-                  <div class="auth-hint" id="add-range-hint"></div>
+                  <div class="auth-hint" aria-live="polite" id="add-range-hint"></div>
                 </div>
                 <div class="field">
                   <label class="check-row"><input type="checkbox" name="require-fingerprint" checked style="width:auto"> 要求设备指纹绑定</label>
@@ -886,7 +886,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                     <button type="button" class="tpl-chip" data-tfto="604800">7 天</button>
                     <button type="button" class="tpl-chip" data-tfto="">仅本机（清空）</button>
                   </div>
-                  <div class="auth-hint" id="add-tofuto-hint"></div>
+                  <div class="auth-hint" aria-live="polite" id="add-tofuto-hint"></div>
                 </div>
                 <div class="field">
                   <label class="check-row"><input type="checkbox" name="require-totp-port-match" style="width:auto"> 强制 TOTP 端口匹配</label>
@@ -1006,7 +1006,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <div class="form-grid">
               <div class="field"><label for="pf-name">方案名 <span class="req">*</span></label>
                 <input spellcheck="false" autocomplete="off" autocapitalize="off" id="pf-name" placeholder="例如：办公网-仅SSH">
-                <div class="auth-hint" id="pf-name-hint"></div>
+                <div class="auth-hint" aria-live="polite" id="pf-name-hint"></div>
                 <div class="tip">想不到名字？<a href="javascript:void 0" id="pf-autoname" style="color:var(--accent)">用当前时间命名</a></div></div>
               <div class="field"><label for="pf-note">备注</label>
                 <input spellcheck="false" autocomplete="off" autocapitalize="off" id="pf-note" placeholder="用途说明（可选）"></div>
@@ -1045,7 +1045,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <div class="field"><label for="pw-new2">确认新密码</label>
               <div class="pw-wrap"><input type="password" id="pw-new2" autocomplete="new-password" placeholder="再次输入新密码" style="width:260px">
                 <button type="button" class="pw-eye" data-eye="pw-new2" title="显示/隐藏密码"><svg width="16" height="16"><use href="#i-eye"/></svg></button></div></div>
-            <div class="auth-hint" id="pw-hint"></div>
+            <div class="auth-hint" aria-live="polite" id="pw-hint"></div>
             <button class="btn" id="pw-change-btn" style="margin-top:6px" title="验证当前密码后更新；新密码至少 8 位且不能与当前相同"><svg width="15" height="15"><use href="#i-key"/></svg>更新密码</button>
           </div>
         </div>
@@ -3725,7 +3725,7 @@ function renderCustomTpls() {
 /* 存为模板：名称 + 可选描述，抓取当前表单安全选项 */
 $('#tpl-save').onclick = () => {
   openModal(`<h3>保存为签发模板</h3>
-    <div class="field"><label>模板名称</label><input spellcheck="false" autocomplete="off" autocapitalize="off" id="ct-name" maxlength="20" placeholder="例如 边缘节点标准"><div class="auth-hint" id="ct-hint"></div></div>
+    <div class="field"><label>模板名称</label><input spellcheck="false" autocomplete="off" autocapitalize="off" id="ct-name" maxlength="20" placeholder="例如 边缘节点标准"><div class="auth-hint" aria-live="polite" id="ct-hint"></div></div>
     <div class="field" style="margin-top:10px"><label>描述（可选）</label><input spellcheck="false" autocomplete="off" autocapitalize="off" id="ct-desc" maxlength="60" placeholder="一句话说明适用场景"></div>
     <div class="mf"><button class="btn ghost" id="ct-cancel">取消</button><button class="btn" id="ct-ok">保存模板</button></div>`);
   $('#ct-name').focus();
@@ -5067,7 +5067,7 @@ function openStanzaEditor(index) {
         : `<label>${f.label}</label><input spellcheck="false" autocomplete="off" autocapitalize="off" data-sf="${f.k}" value="${esc(f.get(s) || '')}" placeholder="${esc(f.ph || '')}">
            ${f.chips ? `<div class="tpl-row" style="margin-top:5px">${f.chips.map(c =>
              `<button type="button" class="tpl-chip" data-sfc="${f.k}" data-v="${esc(c[1] || '')}" title="点击填入该值，再点同值清除">${esc(c[0])}</button>`).join('')}</div>` : ''}
-           ${f.bool ? '' : `<div class="auth-hint" data-sfh="${f.k}"></div>`}`}
+           ${f.bool ? '' : `<div class="auth-hint" aria-live="polite" data-sfh="${f.k}"></div>`}`}
       <div class="tip">${esc(f.tip || '')}</div>
     </div>`).join('');
   openModal(`<h3>编辑授权「${esc(name)}」</h3>
@@ -5709,7 +5709,7 @@ function renderProfiles() {
       <div class="mb hint">完整复制 fwknopd.conf 与 access.conf 快照为新方案，不动当前生效配置；备注自动标注来源。</div>
       <div class="fg"><label>副本名称</label>
         <input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="pdup-name" value="${esc(name)}-副本" maxlength="64" style="width:100%">
-        <div class="auth-hint" id="pdup-hint"></div>
+        <div class="auth-hint" aria-live="polite" id="pdup-hint"></div>
         <div class="tip">只能包含字母、数字、点、下划线、连字符；已存在的名称会被拒绝（不覆盖）。</div></div>
       <div class="mf"><button class="btn ghost" id="pdup-cancel">取消</button>
       <button class="btn" id="pdup-ok">另存副本</button></div>`);
