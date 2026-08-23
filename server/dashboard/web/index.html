@@ -4544,6 +4544,7 @@ function renderProfiles() {
       const curRaw = (S.config && S.config.raw) || '';
       openModal(`<h3>方案「${esc(b.dataset.pv)}」预览</h3>
         <div class="form-sec">与当前配置的差异（fwknopd.conf）</div>${renderDiff(v.fwknopd_conf, curRaw)}
+        <div class="form-sec">与当前配置的差异（access.conf，密钥已掩码）</div>${renderDiff(v.access_conf, v.current_access_conf || '')}
         <div class="form-sec" style="display:flex;align-items:center;gap:8px">fwknopd.conf <button class="btn ghost small" id="pv-cp-fk" style="padding:1px 8px;font-size:11.5px">${icon('i-copy',12)} 复制</button></div><pre class="out-pre" style="max-height:28vh">${esc(v.fwknopd_conf)}</pre>
         <div class="form-sec" style="display:flex;align-items:center;gap:8px">access.conf（密钥已掩码）<button class="btn ghost small" id="pv-cp-ac" style="padding:1px 8px;font-size:11.5px">${icon('i-copy',12)} 复制</button></div><pre class="out-pre" style="max-height:28vh">${esc(v.access_conf)}</pre>
         <div class="mf"><button class="btn" onclick="document.getElementById('modal-root').classList.remove('show')">关闭</button></div>`, true);
@@ -4556,19 +4557,25 @@ function renderProfiles() {
     /* 应用确认内嵌与当前配置的 diff：切换前直接看到影响面 */
     b.disabled = true;
     let diffHtml = '<div class="hint">差异加载中…</div>';
+    let accDiffHtml = '';
     try {
       if (!S.config) await loadConfig();
       const v = await api('/api/profiles/view?name=' + encodeURIComponent(name));
       diffHtml = renderDiff(v.fwknopd_conf, (S.config && S.config.raw) || '');
+      accDiffHtml = renderDiff(v.access_conf, v.current_access_conf || '');
     } catch (e) { diffHtml = '<div class="hint">差异预览不可用（不影响切换）</div>'; }
     b.disabled = false;
-    /* 与当前完全一致时提前说明：确认切换仅触发备份+热加载，无实际配置变更 */
-    const noDiff = diffHtml.indexOf('与当前配置完全一致') >= 0;
+    /* 与当前完全一致时提前说明：确认切换仅触发备份+热加载，无实际配置变更；
+       两个文件（fwknopd.conf / access.conf）都一致才算「完全一致」 */
+    const noDiff = diffHtml.indexOf('与当前配置完全一致') >= 0 &&
+      (!accDiffHtml || accDiffHtml.indexOf('与当前配置完全一致') >= 0);
     openModal(`<h3>切换到方案「${esc(name)}」</h3>
       <div class="hint" style="margin-bottom:10px">流程：校验方案配置 → 备份当前配置（.bak-时间戳）→ 替换 fwknopd.conf 与 access.conf → 热加载。</div>
       ${noDiff ? `<div class="warn-strip" style="margin-bottom:10px">${icon('i-info',15)}<div>该方案与当前配置 <b>完全一致</b>，确认切换仅会触发备份与热加载，无实际配置变更。</div></div>` : ''}
       <div class="form-sec">与当前配置的差异（fwknopd.conf）</div>
       <div style="max-height:34vh;overflow:auto">${diffHtml}</div>
+      ${accDiffHtml ? `<div class="form-sec">与当前配置的差异（access.conf，密钥已掩码）</div>
+      <div style="max-height:34vh;overflow:auto">${accDiffHtml}</div>` : ''}
       <div class="mf">
         <button class="btn ghost" id="pf-apply-cancel">取消</button>
         <button class="btn" id="pf-apply-ok">确认切换</button>

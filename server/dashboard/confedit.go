@@ -464,9 +464,18 @@ func viewProfile(name string) (map[string]string, error) {
 	for _, l := range strings.Split(string(acc), "\n") {
 		masked = append(masked, maskAccessConfLine(l))
 	}
+	/* 当前生效的 access.conf（同样掩码）一并返回：前端可做 方案↔当前 的
+	   access.conf 差异对比，切换前看清授权层面的影响面 */
+	var curMasked []string
+	if cur, err := os.ReadFile(cfg.AccessConf); err == nil {
+		for _, l := range strings.Split(string(cur), "\n") {
+			curMasked = append(curMasked, maskAccessConfLine(l))
+		}
+	}
 	return map[string]string{
-		"fwknopd_conf": string(conf),
-		"access_conf":  strings.Join(masked, "\n"),
+		"fwknopd_conf":        string(conf),
+		"access_conf":         strings.Join(masked, "\n"),
+		"current_access_conf": strings.Join(curMasked, "\n"),
 	}, nil
 }
 
