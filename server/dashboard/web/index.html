@@ -3302,6 +3302,7 @@ function renderEvents() {
           <div style="align-self:end"><button class="btn ghost small" data-evjson="${esc(key)}" title="复制该事件的完整 JSON（排障/上报用）">${icon('i-copy',12)} 复制原始 JSON</button>
           <button class="btn ghost small" data-evsum="${esc(key)}" title="复制一行中文摘要（聊天/工单用）">${icon('i-copy',12)} 复制摘要</button>
           ${e.time ? `<button class="btn ghost small" data-evctx="${e.time}" title="筛选该事件前后 5 分钟内的全部事件（还原现场上下文，可「↩ 上级视图」返回）">${icon('i-search',12)} 前后 5 分钟</button>` : ''}
+          ${e.event === 'open' && e.src_ip ? `<button class="btn ghost small" data-evfw="${esc(e.src_ip)}" title="打开防火墙规则视图并高亮该来源的放行规则（敲门成功闭环的验证步：规则已生效=绿底命中；0 命中多为访问超时已到）">${icon('i-list',12)} 验证放行</button>` : ''}
           ${(() => { const bd = e.device_id && ((S.tofu && S.tofu.bindings) || []).find(x => x.device_id === e.device_id);
             return bd && S.writeEnabled ? ` <button class="btn ghost small" data-evub="${esc(bd.stanza_key)}" data-dev="${esc(e.device_id)}" title="该设备当前已绑定 TOFU，点击直接解绑">${icon('i-trash',12)} 解绑该设备</button>` : ''; })()}</div>
         </div></td></tr>`;
@@ -3461,6 +3462,12 @@ function renderEvents() {
       $('#ev-custom').style.display = 'inline-flex';
       fillEvRange(new Date((t - 300) * 1000), new Date((t + 300) * 1000));
       toast('已筛选该事件前后 5 分钟（点「↩ 上级视图」返回）', 'ok', 2500);
+    });
+    /* open 事件「验证放行」：敲门成功 → 防火墙应有该来源的放行规则，一键打开
+       规则视图并高亮核对（第三环：签发 → 敲门 → 放行验证） */
+    $$('#events-body [data-evfw]').forEach(b => b.onclick = ev => {
+      ev.stopPropagation();
+      openFwRules(b.dataset.evfw);
     });
     /* 行点击展开/收起完整详情；复制/反查控件不触发 */
     if (!S.evExpanded) S.evExpanded = new Set();
@@ -5978,8 +5985,10 @@ function parseFwList(text) {
   return chains.filter(c => c.rules.length);
 }
 /* 抽成命名函数：弹窗内「刷新」按钮复用同一入口——放行规则随超时消失，
-   盯规则过期的运维此前要关掉重开弹窗 */
-const openFwRules = async () => {
+   盯规则过期的运维此前要关掉重开弹窗；hlSrc = 事件详情「验证放行」带来的
+   高亮来源（裸 IP），与规则 src 的 /32 后缀归一后比对 */
+const openFwRules = async (hlSrc) => {
+  hlSrc = typeof hlSrc === 'string' ? hlSrc : '';
   try {
     const r = await api('/api/service/fwrules');
     /* 空输出易误读为故障：区分「无活动放行规则」与「读取失败」 */
@@ -5998,20 +6007,27 @@ const openFwRules = async () => {
     const nRules = chains.reduce((a, c) => a + c.rules.length, 0);
     const srcs = new Set(chains.flatMap(c => c.rules.map(x => x.src)));
     const multi = chains.length > 1;
+    const hlMatch = x => hlSrc && x.src.replace(/\/32$/, '') === hlSrc;
+    const hlN = hlSrc ? chains.flatMap(c => c.rules).filter(hlMatch).length : 0;
     const actColor = t => t === 'ACCEPT' ? 'var(--green)' : (t === 'DROP' || t === 'REJECT') ? 'var(--red)' : 'var(--fg2)';
     const tbl = chains.map(c => {
       const showDst = c.rules.some(x => x.dst && x.dst !== '0.0.0.0/0' && x.dst !== '::/0');
       return `${multi ? `<div class="sub" style="margin:10px 0 4px">${esc(c.name)}（${c.rules.length} 条）</div>` : ''}
       <table class="tb"><thead><tr><th>来源</th><th>协议/端口</th>${showDst ? '<th>目的</th>' : ''}<th>动作</th></tr></thead>
-      <tbody>${c.rules.map(x => `<tr><td><button class="chip fwr-src" data-src="${esc(x.src)}" title="在事件页按来源「${esc(x.src)}」精确筛选，核查该放行是否被使用" style="font-size:12px">${esc(x.src)}</button></td><td>${esc(x.prot)}${x.port ? '/' + esc(x.port) : ''}</td>${showDst ? `<td>${esc(x.dst)}</td>` : ''}<td style="color:${actColor(x.target)}">${esc(x.target)}</td></tr>`).join('')}</tbody></table>`;
+      <tbody>${c.rules.map(x => `<tr${hlMatch(x) ? ' style="background:var(--green-soft)"' : ''}><td><button class="chip fwr-src" data-src="${esc(x.src)}" title="在事件页按来源「${esc(x.src)}」精确筛选，核查该放行是否被使用" style="font-size:12px">${esc(x.src)}</button></td><td>${esc(x.prot)}${x.port ? '/' + esc(x.port) : ''}</td>${showDst ? `<td>${esc(x.dst)}</td>` : ''}<td style="color:${actColor(x.target)}">${esc(x.target)}</td></tr>`).join('')}</tbody></table>`;
     }).join('');
+    /* 验证放行闭环：事件侧带来来源时点名命中数——0 命中通常是规则已随
+       FW_ACCESS_TIMEOUT 消失（属正常），也可能是敲门成功但规则未生效（异常） */
+    const hlStrip = hlSrc
+      ? `<div class="hint" style="margin-bottom:8px">验证放行：来源 <b>${esc(hlSrc)}</b> 命中 ${hlN} 条规则（绿底高亮）${hlN ? '' : '；若为刚敲门成功的事件，规则可能已随访问超时消失——调大 FW_ACCESS_TIMEOUT 可延长'}</div>`
+      : '';
     openModal(`<h3>防火墙规则 — ${nRules} 条活动放行（${srcs.size} 个来源）</h3>
-      <div style="max-height:46vh;overflow:auto">${tbl}</div>
+      ${hlStrip}<div style="max-height:46vh;overflow:auto">${tbl}</div>
       <details style="margin-top:10px"><summary class="hint" style="cursor:pointer">查看 iptables 原始输出</summary>
       <pre class="out-pre" style="max-height:30vh;margin-top:6px">${esc(body)}</pre></details>
       <div class="mf"><button class="btn ghost" id="im-refresh" title="重新读取防火墙规则（放行随超时自动消失，盯过期不用重开弹窗）">${icon('i-refresh',13)} 刷新</button><button class="btn ghost" id="im-cp" title="复制 iptables 原始输出（贴入工单/终端排查用）">${icon('i-copy',13)} 复制原始输出</button><button class="btn" onclick="closeModal()">关闭</button></div>`, true);
     $('#im-cp').onclick = () => copyText(body, '防火墙规则 ');
-    $('#im-refresh').onclick = openFwRules;
+    $('#im-refresh').onclick = () => openFwRules(hlSrc);  /* 保持高亮上下文刷新 */
     /* 来源钻取：规则表回答「谁被放行」，事件页回答「它最近敲过吗」——同一
        ip: 前缀口径（与来源排行芯片一致）；/32 后缀去掉，事件 src_ip 是裸 IP */
     $$('.fwr-src').forEach(b => b.onclick = () => {
@@ -6023,7 +6039,7 @@ const openFwRules = async () => {
     });
   } catch (e) {}
 };
-$('#svc-fwlist').onclick = openFwRules;
+$('#svc-fwlist').onclick = () => openFwRules();
 
 /* ==================== stanza 在线编辑（仅非密钥指令） ==================== */
 const STANZA_FIELDS = [
