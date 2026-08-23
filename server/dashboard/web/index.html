@@ -588,7 +588,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
     <button class="nav-item active" data-page="overview" title="快捷键 1"><svg><use href="#i-dash"/></svg>概览</button>
     <button class="nav-item" data-page="events" title="快捷键 2"><svg><use href="#i-list"/></svg>SPA 事件<span class="nb-badge" id="nav-ev-badge" style="display:none" title="最近 15 分钟异常事件数（点击直达「仅看异常」）"></span></button>
     <button class="nav-item" data-page="users" title="快捷键 3"><svg><use href="#i-users"/></svg>用户与授权<span class="nb-badge amber" id="nav-usr-badge" style="display:none"></span></button>
-    <button class="nav-item" data-page="tofu" title="快捷键 4"><svg><use href="#i-fp"/></svg>TOFU 设备绑定</button>
+    <button class="nav-item" data-page="tofu" title="快捷键 4"><svg><use href="#i-fp"/></svg>TOFU 设备绑定<span class="nb-badge amber" id="nav-tofu-badge" style="display:none"></span></button>
     <button class="nav-item" data-page="config" title="快捷键 5"><svg><use href="#i-cfg"/></svg>服务配置<span id="nav-conf-dot" style="display:none;color:var(--amber);font-size:16px;line-height:0;vertical-align:-1px" title="有未保存的配置修改（点击直达编辑器）"> ●</span></button>
     <button class="nav-item" data-page="profiles" title="快捷键 6"><svg><use href="#i-archive"/></svg>配置方案</button>
     <button class="nav-item" data-page="about" title="快捷键 7"><svg><use href="#i-info"/></svg>关于</button>
@@ -3101,6 +3101,7 @@ async function loadUsers() {
     const ub = $('#nav-usr-badge');
     ub.style.display = cm ? '' : 'none';
     if (cm) { ub.textContent = cm; ub.title = `${cm} 个授权仍是 __CHANGEME__ 占位密钥，无法正常工作，点击前往撤销并重签`; }
+    syncNavTofuBadge();  /* 悬空绑定判定依赖授权列表 */
     if (S.page === 'users') renderUsers();
     if (S.page === 'tofu') renderTOFU();  /* 悬空绑定检测依赖授权列表 */
   } catch (e) {
@@ -4075,12 +4076,24 @@ async function loadTOFU() {
   try {
     const d = await api('/api/tofu');
     S.tofu = d;
+    syncNavTofuBadge();
     if (S.page === 'tofu') renderTOFU();
     if (S.page === 'users') renderUsers();  /* 绑定数徽章依赖 TOFU 数据 */
   } catch (e) {
     setConn(false);
     showLoadError('#tofu-body', loadTOFU);
   }
+}
+
+/* 悬空绑定侧栏徽标：授权删了但绑定残留是隐蔽的卫生问题，不进 TOFU 页难察觉；
+   依赖 tofu+users 双数据源，两处加载后都同步（与 __CHANGEME__ 徽标同一语义） */
+function syncNavTofuBadge() {
+  const tb = $('#nav-tofu-badge'); if (!tb) return;
+  if (!S.tofu || !S.users) { tb.style.display = 'none'; return; }
+  const live = new Set((S.users.stanzas || []).map(s => `${s.source||''}|${s.require_username||''}|${s.open_ports||''}`));
+  const n = (S.tofu.bindings || []).filter(b => !live.has(b.stanza_key)).length;
+  tb.style.display = n ? '' : 'none';
+  if (n) { tb.textContent = n; tb.title = `${n} 条绑定的授权已删除/禁用，不再生效，点击前往清理`; }
 }
 
 /* 该设备的最近一条敲门事件（点击直达事件页该设备筛选） */
