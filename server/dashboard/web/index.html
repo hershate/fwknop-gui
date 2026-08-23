@@ -2399,7 +2399,10 @@ function updateEvActiveStrip() {
   el.innerHTML = '<span class="hint" style="font-size:11.5px">筛选中：</span>' +
     parts.map(([k, label]) => `<span class="tag hl" style="cursor:pointer" data-rmf="${k}" title="${esc(label)}（点击移除此筛选）">${esc(label)} ✕</span>`).join('') +
     backBtn +
+    '<button class="btn ghost small" id="ev-copylink" style="padding:2px 8px;font-size:11.5px" title="复制当前事件视图的链接（含「仅看异常」状态），发给同事即见同一画面">复制视图链接</button>' +
     '<button class="btn ghost small" id="ev-clear-all" style="padding:2px 8px;font-size:11.5px">全部清除</button>';
+  /* 复制当前视图链接：地址栏 hash 已随筛选同步（~bad），直接取 location.href */
+  $('#ev-copylink').onclick = () => copyText(location.href, '视图链接 ');
   $$('#ev-active [data-rmf]').forEach(t => t.onclick = () => {
     const k = t.dataset.rmf;
     if (k === 'filter') S.evFilter = 'all';
