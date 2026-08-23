@@ -583,7 +583,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
   <div class="auth-card" id="auth-setup" style="display:none">
     <div class="auth-brand">
       <svg width="30" height="30"><use href="#i-shield"/></svg>
-      <div><div class="t1">首次启动初始化</div><div class="t2">fwknop 运维面板 <span class="auth-ver">v2.7.0</span></div></div>
+      <div><div class="t1">首次启动初始化</div><div class="t2">fwknop 运维面板 <span class="auth-ver">v2.7.0</span><span class="auth-alias" style="display:none;color:var(--accent)"></span></div></div>
     </div>
     <p class="desc">欢迎使用 fwknop 运维面板。作为面向网络提供服务的管理入口，面板在首次启动时必须完成初始化，之后所有访问都需要登录。</p>
     <ol class="auth-steps">
@@ -605,7 +605,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
   <div class="auth-card" id="auth-login" style="display:none">
     <div class="auth-brand">
       <svg width="30" height="30"><use href="#i-lock"/></svg>
-      <div><div class="t1">登录</div><div class="t2">fwknop 运维面板 <span class="auth-ver">v2.7.0</span></div></div>
+      <div><div class="t1">登录</div><div class="t2">fwknop 运维面板 <span class="auth-ver">v2.7.0</span><span class="auth-alias" style="display:none;color:var(--accent)"></span></div></div>
     </div>
     <p class="desc">请输入管理员密码。连续失败 5 次将锁定 60 秒；登录成功后会话有效期 12 小时（顶栏可见剩余时间）。<br><span class="hint" style="font-size:11.5px">忘记密码：停止面板，删除运行目录下的 dashboard_auth.json（默认 /var/run/fwknop/），重启后回到初始化页重设。</span></p>
     <label for="login-pw">管理员密码（或 DASHBOARD_TOKEN）</label>
@@ -2783,6 +2783,12 @@ function syncPanelAlias() {
     ba.textContent = al ? `· ${al}` : '';
     ba.title = al ? '面板别名（本机设定，「关于」页可修改）' : '';
   }
+  /* 登录/初始化卡片同步：多实例混淆在登录前就开始，侧栏品牌位此时还不可见 */
+  $$('.auth-alias').forEach(el => {
+    el.style.display = al ? 'inline' : 'none';
+    el.textContent = al ? `· ${al}` : '';
+    el.title = al ? '面板别名（本机设定）' : '';
+  });
   if (typeof updateDocTitle === 'function') updateDocTitle();  /* 标题后缀即时生效 */
 }
 syncPanelAlias();  /* 启动即同步（别名本机可读，无需等概览加载） */
@@ -3924,6 +3930,18 @@ function syncAddToggle() {
   const b = $('#show-add');
   b.innerHTML = `<svg width="14" height="14"><use href="#i-plus"/></svg>${open ? '收起签发' : '签发新凭证'}`;
   b.setAttribute('aria-expanded', open ? 'true' : 'false');
+  /* 收起态草稿提醒：草稿仅在展开时可见，收起后零痕迹易被遗忘——按钮上
+     挂「有草稿」角标与年龄提示（与草稿恢复条同一非空口径：任一文本字段有值） */
+  if (!open && typeof ADD_DRAFT_KEY !== 'undefined') {
+    let d = null;
+    try { const p = JSON.parse(localStorage.getItem(ADD_DRAFT_KEY) || ''); if (p && typeof p === 'object') d = p; } catch (e) {}
+    if (d && ADD_FIELDS.some(k => d[k])) {
+      b.innerHTML += ` <span style="background:var(--amber-soft);color:var(--amber);border-radius:8px;padding:1px 7px;font-size:11px;margin-left:2px">有草稿</span>`;
+      b.title = `有未提交的签发草稿${d._ts ? `（保存于 ${fmtAgo(d._ts)}）` : ''}，展开自动恢复`;
+      return;
+    }
+  }
+  b.title = open ? '收起签发表单' : '展开签发新凭证表单（快捷键 n）';
 }
 $('#show-add').onclick = () => {
   const c = $('#add-card');
@@ -4275,7 +4293,8 @@ function loadAddDraft() {
   }
   syncTotpFields(); syncFpFields();  /* 恢复/新建后同步 TOTP 关联字段可用态 */
 }
-function clearAddDraft() { lsDel(ADD_DRAFT_KEY); }
+function clearAddDraft() { lsDel(ADD_DRAFT_KEY); syncAddToggle();  /* 清空后撤下「有草稿」角标 */ }
+syncAddToggle();  /* 启动即同步：页面载入时若存在草稿，收起态按钮立即挂角标 */
 $('#add-form').addEventListener('input', saveAddDraft);
 $('#add-form').addEventListener('change', saveAddDraft);
 
