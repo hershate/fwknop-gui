@@ -5134,6 +5134,8 @@ S.tofuQuery = localStorage.getItem('fwknop-tofu-query') || '';
 if (S.tofuQuery) $('#tofu-search').value = S.tofuQuery;
 S.pfQuery = localStorage.getItem('fwknop-pf-query') || '';
 if (S.pfQuery) $('#pf-search').value = S.pfQuery;
+S.oplogQuery = localStorage.getItem('fwknop-oplog-query') || '';
+if (S.oplogQuery) $('#oplog-search').value = S.oplogQuery;
 $('#pf-search').oninput = e => {
   S.pfQuery = e.target.value.trim();
   try { localStorage.setItem('fwknop-pf-query', S.pfQuery || ''); } catch (e2) {}
@@ -5434,6 +5436,7 @@ async function loadOpLog() {
   }
 }
 function renderOpLog() {
+  try { localStorage.setItem('fwknop-oplog-query', S.oplogQuery || ''); } catch (e) {}
   const d = S.oplog; if (!d) return;
   const all = (d.entries || []).slice().reverse();  /* 新→旧，与事件页同向 */
   /* 类别过滤：爆破刷屏（锁定桶有界但持续尝试每天仍可观）时真实操作不被
