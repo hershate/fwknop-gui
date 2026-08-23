@@ -224,6 +224,7 @@ v4 往返/v3 兼容/timeout+device_id 单测 **33/33 PASS**（`REF/build/test_de
 ---
 
 ## 变更日志
+- 2026-08-23：**WebUI 2.4.8 归档**（50 项 UX 迭代，commit `3f509492..` 起）。核心：关于页自助修改密码（新端点 /api/auth/password：验证当前密码+CSRF+限流复用，改密即失效其他设备会话，只读可用）；签发结果默认掩码密钥行；侧栏常驻「只读」徽章；键盘流贯通（用户页 n 直达签发、事件页 b 仅看异常、方案保存 Enter、搜索框 Esc 清空）；CSV 导出补授权名称列；审计备份逐文件时间+大小（/api/overview 增 sizes）；已禁用授权补禁用时刻（disabled_at）；登录/初始化页版本号动态化。回归 98→105 PASS（新增改密 6 用例）。详见 note/release/2.4.8.md。
 - 2026-08-23：**WebUI 2.4.7 归档**（24 项 UX 迭代，commit `93223d3c..` 起）。核心：PCAP_PORT_RANGE × TOTP_PORT_RANGE 双向跨配置校验（签发/stanza 编辑正向拦截 + 保存 fwknopd.conf 反向列出受影响授权）；事件/TOFU/授权三方反查闭环（禁用态+懒加载+序号直查）；标签页标题未读通知计数；时钟偏差警示提到概览顶部；方案 diff 覆盖 access.conf（/api/profiles/view 增 current_access_conf）；时间分布柱键盘可达。回归 98/98 PASS。详见 note/release/2.4.7.md。
 - 2026-08-23：**WebUI 2.4.6 归档**（37 项 UX 迭代，commit `501cd1fa..` 起）。核心：用户页批量撤销（活跃预警+逐个复用单撤销链路）；批量条「被筛选隐藏」标注；签发安全选项折叠+生效值摘要；搜索历史通用组件五框接入；浏览器前进/后退翻页；事件排行用户维度+异常角标；模板高亮一致性修复；首访引导命令纠错（fwknop -n）。回归 98/98 PASS。详见 note/release/2.4.6.md。
 - 2026-08-23：**WebUI 2.4.5 归档**（27 项 UX 迭代，commit `b53aadbb..9bc558a8`）。核心：审计日志管理闭环（面板清理 rename 备份 / ?bak= 白名单下载 / rmbak 删除 / overview 备份汇总）；签发结果「下载 cred.json」（URI→JSON v1 前端直转，端到端验证）；TOFU 悬空绑定检测 + 一键全选清理；事件来源/设备排行芯片；toast/通知历史纯文本插入消除 HTML 注入面；CSV 导出列错位修复。回归 98/98 PASS。详见 note/release/2.4.5.md。
