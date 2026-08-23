@@ -5423,7 +5423,9 @@ function collectDiag() {
    与 SPA 事件审计互补（那边记敲门，这边记管理动作）。关于页懒加载 */
 async function loadOpLog() {
   try {
-    const d = await api('/api/oplog?n=100');
+    /* 窗口可扩：默认最近 100 条，「加载更早」逐步扩到服务端上限 1000
+       （readOpLogTail 的 256KB 尾窗约覆盖上千条；更早历史用「导出」拿全量） */
+    const d = await api('/api/oplog?n=' + (S.oplogN || 100));
     S.oplog = d;
     /* 轮询重渲染避开交互中（文本选择/悬停），与 about/events 同一守卫范式 */
     if (!focusWithin('#oplog-body')) renderOpLog();
@@ -5475,6 +5477,20 @@ function renderOpLog() {
       <td style="white-space:nowrap">${e.ip ? `<span class="cp-cell" data-cp="${esc(e.ip)}" data-lab="来源 IP" title="点击复制来源 IP（爆破排查可直接贴进防火墙封禁）">${esc(e.ip)}</span>` : '—'}</td>
       <td>${e.ok ? '<span style="color:var(--green)" title="成功">✓</span>' : '<span style="color:var(--red)" title="失败/被拒">✗</span>'}</td>
     </tr>`).join('')}</tbody></table></div>`;
+  /* 「加载更早」：返回条数顶到当前窗口说明文件里可能还有更早记录；
+     逐步扩窗（100→300→1000 服务端上限），条数未涨即已到文件开头不再显示 */
+  const curN = S.oplogN || 100;
+  if (all.length >= curN && curN < 1000) {
+    $('#oplog-body').insertAdjacentHTML('beforeend',
+      `<div style="text-align:center;padding:10px 0 4px"><button class="btn ghost small" id="oplog-more"
+        title="向日志文件更深处读取（窗口 ${curN} → ${Math.min(curN * 3, 1000)} 条；更早的完整历史请用右上角「导出」）">${icon('i-list',13)} 加载更早（当前为最近 ${curN} 条）</button></div>`);
+    $('#oplog-more').onclick = async () => {
+      $('#oplog-more').disabled = true;
+      S.oplogN = Math.min(curN * 3, 1000);
+      await loadOpLog();
+      renderOpLog();  /* loadOpLog 的 focusWithin 守卫可能跳过重渲染，此处强制 */
+    };
+  }
   $$('#oplog-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, (c.dataset.lab || '') + ' '));
 }
 $('#oplog-filter').onchange = e => { S.oplogFilter = e.target.value; renderOpLog(); };
