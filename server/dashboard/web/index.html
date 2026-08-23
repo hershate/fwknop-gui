@@ -4413,6 +4413,7 @@ function collectDiag() {
     'SPA 协议: 4.0.0',
     '面板监听: ' + (d && d.panel ? d.panel.listen_addr : '?'),
     '运行目录: ' + (d && d.panel ? d.panel.run_dir : '?'),
+    '面板启动于: ' + (d && d.panel && d.panel.started ? fmtAbs(d.panel.started) : '?'),
     'fwknopd: ' + (d && d.daemon && d.daemon.alive ? `运行中 PID ${d.daemon.pid}` : '未运行'),
     '写操作: ' + (d && d.write_enabled ? '管理模式' : '只读'),
     '服务器时间: ' + (d && d.now ? fmtAbs(d.now) : '?') + `（浏览器偏差 ${drift}s）`,
@@ -4449,6 +4450,7 @@ function renderAbout() {
       '面板运行',
       `监听 <span class="cp-cell" data-cp="${esc(d.panel.listen_addr)}" title="点击复制监听地址">${esc(d.panel.listen_addr)}</span> · ` +
       `运行目录 <span class="cp-cell" data-cp="${esc(d.panel.run_dir)}" title="点击复制运行目录">${esc(d.panel.run_dir)}</span>` +
+      (d.panel.started ? ` · 已运行 <span title="面板进程启动于 ${fmtAbs(d.panel.started)}（重启后重新计时）">${fmtAgo(d.panel.started)}</span>` : '') +
       (d.write_enabled ? '' : ' · <span style="color:var(--amber)">只读模式</span>'),
     ]] : []),
     ['服务器时间', d && d.now ? `${fmtAbs(d.now)}${clockWarn ? '' : ' <span class="hint">（时钟正常）</span>'}` : '—'],

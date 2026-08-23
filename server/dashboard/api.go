@@ -82,6 +82,7 @@ func handleOverview(w http.ResponseWriter, r *http.Request) {
 			"listen_addr": cfg.Addr,
 			"run_dir":     cfg.RunDir,
 			"profile_dir": cfg.ProfileDir,
+			"started":     panelStarted.Unix(),
 		},
 		"daemon": map[string]interface{}{
 			"pid":      pid,

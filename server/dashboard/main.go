@@ -52,6 +52,10 @@ type Config struct {
 
 var cfg Config
 
+/* panelStarted 记录面板进程启动时刻，/api/overview 透出给关于页展示
+   「已运行时长」（判断面板是否中途重启过，排障常用） */
+var panelStarted = time.Now()
+
 func auditPath() string   { return filepath.Join(cfg.RunDir, "fwknopd_audit.log") }
 func metricsPath() string { return filepath.Join(cfg.RunDir, "fwknopd.metrics") }
 func tofuPath() string    { return filepath.Join(cfg.RunDir, "fwknop_tofu.state") }
