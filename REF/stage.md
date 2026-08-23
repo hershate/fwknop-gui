@@ -224,6 +224,7 @@ v4 往返/v3 兼容/timeout+device_id 单测 **33/33 PASS**（`REF/build/test_de
 ---
 
 ## 变更日志
+- 2026-08-23：**WebUI 2.4.5 归档**（27 项 UX 迭代，commit `b53aadbb..9bc558a8`）。核心：审计日志管理闭环（面板清理 rename 备份 / ?bak= 白名单下载 / rmbak 删除 / overview 备份汇总）；签发结果「下载 cred.json」（URI→JSON v1 前端直转，端到端验证）；TOFU 悬空绑定检测 + 一键全选清理；事件来源/设备排行芯片；toast/通知历史纯文本插入消除 HTML 注入面；CSV 导出列错位修复。回归 98/98 PASS。详见 note/release/2.4.5.md。
 - 2026-08-23：**WebUI 2.4.4 归档**（27 项 UX 迭代，commit `b9b2140b..48a29310`）。核心：无障碍补齐（概览卡/cp-cell 键盘可达、aria-live ×5、全局错误兜底 toast）；加载失败兜底（骨架屏超时→错误占位+重试，9 容器）；事件详情复制摘要/异常桌面通知/密度切换/「筛选中」标签条/详情解绑设备；配置视图指令查找框；签发三组常用值芯片；登录失败提示剩余尝试次数。回归 90/90 PASS。详见 note/release/2.4.4.md。
 - 2026-08-23：**WebUI 2.4.3 归档**（49 项 UX 迭代，commit `ee3adf3c..8d11283d`）。核心：签发一键生效（`apply=1` 自动写入 access.conf + 预检/备份/SIGHUP）；`fwknopd-admin user add --fw-timeout` 自定义访问超时（1-8388608，同 RCHK_MAX_FW_TIMEOUT）；自定义签发模板（localStorage）；事件筛选/搜索词/TOFU 排序全量持久化；快捷键帮助面板（? 键）；模态焦点返还；侧栏异常徽标/脏圆点/动态版本；写失败透传服务端错误文本。回归 89/89 PASS。详见 note/release/2.4.3.md。
 - 2026-08-23（2.4.2）：**WebUI 体验深化**（约 60 项 UX 迭代，逐项 commit）。签发全字段校验+键盘流闭环、事件行展开/CSV 导出/端口筛选、TOFU 批量解绑、配置编辑器行级高亮与保存拦截、方案应用 diff 确认、通知历史、会话剩余时间（auth/state 新增 session_exp）、模态焦点捕获、移动端手势等。回归 **84/84 PASS**。详见 note/release/2.4.2.md。
