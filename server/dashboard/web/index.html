@@ -3938,8 +3938,8 @@ function renderUsers() {
         try {
           const r = await api('/api/config/stanza/enable', { method:'POST',
             headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
-          if (r.error) toast('恢复失败：' + esc(r.error), 'err');
-          else { toast(`授权「${esc(name)}」已恢复`, 'ok'); loadUsers(); }
+          if (r.error) toast('恢复失败：' + r.error, 'err');
+          else { toast(`授权「${name}」已恢复`, 'ok'); loadUsers(); }
         } catch (e) {}
       });
   });
@@ -3960,8 +3960,8 @@ function renderUsers() {
         try {
           const fd = new FormData(); fd.append('name', name);
           const r = await api('/api/admin/rm', { method:'POST', body: fd });
-          if (r.error) toast('撤销失败：' + esc(r.error), 'err');
-          else { toast(`授权「${esc(name)}」已撤销`, 'ok'); loadUsers(); }
+          if (r.error) toast('撤销失败：' + r.error, 'err');
+          else { toast(`授权「${name}」已撤销`, 'ok'); loadUsers(); }
         } catch (e) {}
       }, true);
   });
@@ -4827,7 +4827,7 @@ $('#add-form').addEventListener('submit', async ev => {
         showPage('events');
       };
     } else { gu.style.display = 'none'; ge.style.display = 'none'; }
-    if (r.error) { toast('签发失败：' + esc(r.error), 'err', 6000); $('#add-next').style.display = 'none'; }
+    if (r.error) { toast('签发失败：' + r.error, 'err', 6000); $('#add-next').style.display = 'none'; }
     else {
       toast(f.apply.checked
         ? `凭证「${nm}」已签发并写入 access.conf（已热加载），请复制授权 URI 分发给用户`
@@ -5065,7 +5065,7 @@ function unbindDevice(sk, dev) {
         const fd = new FormData();
         fd.append('stanza_key', sk); fd.append('device_id', dev);
         const r = await api('/api/admin/tofu/unbind', { method:'POST', body: fd });
-        if (r.error) toast('解绑失败：' + esc(r.error), 'err');
+        if (r.error) toast('解绑失败：' + r.error, 'err');
         else { toast('设备已解绑：若授权启用了 TOFU 宽限期，该设备下次敲门会自动重新绑定；否则需加入指纹白名单', 'ok', 8000); loadTOFU(); }
       } catch (e) {}
     }, true);
@@ -5338,7 +5338,7 @@ function renderConfig() {
       <div class="t">配置文件不存在</div><div class="d">${esc(d.path)}</div></div>`;
     return;
   }
-  $('#config-sub').textContent = `${esc(d.path)} · ${d.entries.length} 项生效指令 · 修改于 ${fmtAbs(d.mtime)}`;
+  $('#config-sub').textContent = `${d.path} · ${d.entries.length} 项生效指令 · 修改于 ${fmtAbs(d.mtime)}`;
 
   if (S.rawMode) {
     /* 逐行渲染带行号（行号不可选中，复制原文时不会混入），指令名高亮保持；
@@ -6736,7 +6736,7 @@ function renderProfiles() {
       try {
         const r = await api('/api/profiles/note', { method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ name, note: v }) });
-        if (r.error) { toast('备注保存失败：' + esc(r.error), 'err'); renderProfiles(); return; }
+        if (r.error) { toast('备注保存失败：' + r.error, 'err'); renderProfiles(); return; }
         toast(v ? '备注已更新' : '备注已清除', 'ok', 1500);
       } catch (e) { /* 网络层错误 api() 已统一兜底 toast */ }
       loadProfiles();
@@ -6794,7 +6794,7 @@ function renderProfiles() {
         const r = await api('/api/profiles/apply', { method:'POST',
           headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
         if (r.error) { toast('切换失败（配置未变）', 'err'); infoModal('方案切换 — 失败', r.output + '\n' + r.error, true); }
-        else { toast(`已切换到方案「${esc(name)}」`, 'ok'); infoModal('方案切换 — 完成', r.output); loadConfig(); loadUsers(); loadProfiles(); loadOverview(); }
+        else { toast(`已切换到方案「${name}」`, 'ok'); infoModal('方案切换 — 完成', r.output); loadConfig(); loadUsers(); loadProfiles(); loadOverview(); }
       } catch (e) {}
     };
   });
@@ -6830,7 +6830,7 @@ function renderProfiles() {
         const r = await api('/api/profiles/duplicate', { method:'POST',
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ name, target: inp.value.trim() }) });
-        if (r.error) { toast('另存副本失败：' + esc(r.error), 'err'); ok.disabled = false; }
+        if (r.error) { toast('另存副本失败：' + r.error, 'err'); ok.disabled = false; }
         else { closeModal(); toast(r.output || '副本已创建', 'ok'); loadProfiles(); }
       } catch (e) { ok.disabled = false; }
     };
@@ -6842,7 +6842,7 @@ function renderProfiles() {
         try {
           const r = await api('/api/profiles/delete', { method:'POST',
             headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
-          if (r.error) toast('删除失败：' + esc(r.error), 'err');
+          if (r.error) toast('删除失败：' + r.error, 'err');
           else { toast('方案已删除', 'ok'); loadProfiles(); }
         } catch (e) {}
       }, true);
@@ -6888,7 +6888,7 @@ $('#pf-save').onclick = () => {
       try {
         const r = await api('/api/profiles/save', { method:'POST',
           headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, note }) });
-        if (r.error) toast('保存失败：' + esc(r.error), 'err');
+        if (r.error) toast('保存失败：' + r.error, 'err');
         else { toast(r.output || '方案已保存', 'ok'); $('#pf-name').value = ''; $('#pf-note').value = ''; loadProfiles(); }
       } catch (e) {}
     });
