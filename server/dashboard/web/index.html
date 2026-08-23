@@ -5547,9 +5547,11 @@ function collectDiag() {
     '访问授权: ' + (d && d.stanzas ? `${d.stanzas.active} 个生效 / ${d.stanzas.disabled} 个已禁用` : '?'),
     fstat('审计日志', F.audit), fstat('指标文件', F.metrics),
     fstat('TOFU 状态', F.tofu), fstat('授权配置', F.access_conf), fstat('服务配置', F.fwknopd_conf),
-    /* 备份堆积与近期异常是远程排障高频追问项，一并打包 */
+    /* 备份堆积与近期异常是远程排障高频追问项，一并打包；登录失败计数同理
+       （「面板是否正被试密码」安全分诊第一眼要看，概览接口本就有该字段） */
     '审计备份: ' + (d && d.audit_backups ? `${d.audit_backups.count} 个（${fmtSize(d.audit_backups.size)}）` : '—'),
     '近 15 分钟异常事件: ' + countRecentBad() + ' 条',
+    '近 15 分钟登录失败: ' + ((d && d.auth_fail_15m) || 0) + ' 次',
   ].join('\n');
 }
 /* 面板操作日志（管理面审计）：谁签发了凭证、谁改了配置、何时登录过——
