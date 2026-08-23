@@ -472,6 +472,21 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	clearLoginFail(ip)
+	/* 上次登录回顾（GitHub 式安全可见性）：响应附带「最近一次成功登录的
+	   时间/IP + 此后的失败尝试数」，他人摸进来过或爆破未遂都能第一时间
+	   察觉。先扫尾部再写本次记录——本次登录不应把自己算进去 */
+	var lastLogin *OpEntry
+	failedSince := 0
+	for _, e := range readOpLogTail(500) {
+		switch e.Op {
+		case "登录":
+			ce := e
+			lastLogin = &ce
+			failedSince = 0
+		case "登录失败":
+			failedSince++
+		}
+	}
 	tok, err := newSession()
 	if err != nil {
 		http.Error(w, "创建会话失败", http.StatusInternalServerError)
@@ -479,7 +494,13 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	logOp(r, "登录", "", true)
 	setSessionCookie(w, r, tok)
-	writeJSON(w, map[string]interface{}{"ok": true, "msg": "登录成功"})
+	resp := map[string]interface{}{"ok": true, "msg": "登录成功"}
+	if lastLogin != nil {
+		resp["last_login"] = map[string]interface{}{
+			"time": lastLogin.Time, "ip": lastLogin.IP, "failed_since": failedSince,
+		}
+	}
+	writeJSON(w, resp)
 }
 
 // handleLogout 注销当前会话。

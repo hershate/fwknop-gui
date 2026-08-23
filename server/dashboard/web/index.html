@@ -1444,6 +1444,15 @@ async function submitLogin() {
     S.sessionExp = Date.now() / 1000 + 12 * 3600;  /* 与服务端 sessionTTL（12h）一致 */
     tickSessTtl();
     toast(d.msg || '登录成功', 'ok');
+    /* 上次登录回顾：异常访问（他人登录/爆破未遂）在进门第一时间可见。
+       有失败尝试时换错误样式并延长驻留；稍作延迟不与「登录成功」叠读 */
+    if (d.last_login) {
+      const ll = d.last_login;
+      const failN = ll.failed_since || 0;
+      const failNote = failN ? `，此后有 ${failN} 次失败尝试${failN >= 3 ? '——若非本人操作，请到「关于」页修改密码并核查操作日志' : ''}` : '';
+      setTimeout(() => toast(`上次登录：${fmtAgo(ll.time)}（${ll.ip || '未知 IP'}）${failNote}`,
+        failN ? 'err' : 'ok', failN ? 9000 : 5000), 400);
+    }
     enterApp();
   } catch (e) { errEl.textContent = '网络错误，请重试'; btn.disabled = false; }
 }
