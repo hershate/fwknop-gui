@@ -2899,7 +2899,7 @@ function renderUsers() {
       ${dis.map(x => `<div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border-soft)">
         <span style="color:var(--muted)">${icon('i-lock',15)}</span>
         <b>${esc(x.name || '（未知）')}</b>
-        <span class="hint">第 ${x.start_line}–${x.end_line} 行 · 已注释禁用</span>
+        <span class="hint">第 ${x.start_line}–${x.end_line} 行 · 已注释禁用${x.disabled_at ? ' · 禁用于 ' + esc(x.disabled_at) : ''}</span>
         ${S.writeEnabled ? `<button class="btn ghost small" style="margin-left:auto" data-enable="${esc(x.name)}">${icon('i-play',13)}恢复</button>` : ''}
       </div>`).join('')}
       </div>

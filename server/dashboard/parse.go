@@ -156,9 +156,10 @@ const disabledPrefix = "# [disabled by fwknopd-admin rm "
 
 // DisabledStanza is a stanza previously commented out by `user rm`.
 type DisabledStanza struct {
-	Name      string `json:"name"`
-	StartLine int    `json:"start_line"`
-	EndLine   int    `json:"end_line"`
+	Name       string `json:"name"`
+	StartLine  int    `json:"start_line"`
+	EndLine    int    `json:"end_line"`
+	DisabledAt string `json:"disabled_at"` // 禁用时刻（注释前缀内的时间戳，可能为空）
 }
 
 // sensitiveDirectives never leave the backend unmasked.
@@ -211,11 +212,17 @@ func parseDisabledStanzas(path string) []DisabledStanza {
 		if strings.HasPrefix(line, disabledPrefix) {
 			if cur == nil {
 				cur = &DisabledStanza{StartLine: i + 1}
-				// extract name: # [disabled by fwknopd-admin rm '<name>' ...]
+				// extract name + time:
+				//   # [disabled by fwknopd-admin rm '<name>' YYYY-MM-DD HH:MM:SS] <orig>
 				rest := strings.TrimPrefix(line, disabledPrefix)
 				if strings.HasPrefix(rest, "'") {
 					if j := strings.Index(rest[1:], "'"); j >= 0 {
 						cur.Name = rest[1 : 1+j]
+						/* 引号后为「 YYYY-MM-DD HH:MM:SS]」，取 ] 前 19 字符时间戳 */
+						ts := strings.TrimPrefix(rest[1+j+1:], " ")
+						if k := strings.Index(ts, "]"); k >= 19 {
+							cur.DisabledAt = ts[:19]
+						}
 					}
 				}
 			}

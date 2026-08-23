@@ -407,6 +407,9 @@ if [ -x "$GOBIN" ]; then
         wget -qO- --post-data 'name=dashdemo' --header="$HDR" http://127.0.0.1:18099/api/admin/rm >/dev/null 2>&1
         wget -qO- --header="$TK" http://127.0.0.1:18099/api/users 2>/dev/null | grep -q '"disabled".*dashdemo' \
             && ok "已禁用 stanza 在列表中可见" || bad "已禁用 stanza 缺失"
+        wget -qO- --header="$TK" http://127.0.0.1:18099/api/users 2>/dev/null \
+            | grep -q '"disabled_at":"[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} ' \
+            && ok "已禁用 stanza 带禁用时刻（disabled_at）" || bad "disabled_at 缺失"
         wget -qO- --post-data '{"name":"dashdemo"}' --header="$HDR" --header="$J" \
             http://127.0.0.1:18099/api/config/stanza/enable 2>/dev/null | grep -q '已恢复' \
             && ok "stanza 恢复启用" || bad "stanza 恢复启用"
