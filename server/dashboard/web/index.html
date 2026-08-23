@@ -336,6 +336,9 @@ table.tb { width:100%; border-collapse:collapse; font-size:13px; }
   padding:14px 16px; font-size:12px; line-height:1.7; overflow-x:auto;
   white-space:pre-wrap; word-break:break-all; max-height:340px; overflow-y:auto;
 }
+/* 原文模式行号：右对齐灰字，user-select:none 使复制文本不含行号 */
+.out-pre .ln { display:inline-block; width:2.6em; margin-right:12px; text-align:right;
+  color:var(--faint); user-select:none; }
 .uri-box {
   display:flex; gap:8px; align-items:center; background:var(--accent-soft);
   border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);
@@ -3357,7 +3360,11 @@ function renderConfig() {
   $('#config-sub').textContent = `${esc(d.path)} · ${d.entries.length} 项生效指令 · 修改于 ${fmtAbs(d.mtime)}`;
 
   if (S.rawMode) {
-    const raw = esc(d.raw).replace(/^([A-Z_]+)(\s)/gm, '<span style="color:var(--accent);font-weight:600">$1</span>$2');
+    /* 逐行渲染带行号（行号不可选中，复制原文时不会混入），指令名高亮保持 */
+    const raw = esc(d.raw).split('\n').map((ln, i) =>
+      `<span class="rl"><span class="ln">${i + 1}</span>` +
+      ln.replace(/^([A-Z_]+)(\s)/, '<span style="color:var(--accent);font-weight:600">$1</span>$2') +
+      `</span>`).join('\n');
     $('#config-body').innerHTML = `<pre class="out-pre" style="max-height:none">${raw}</pre>`;
     return;
   }
