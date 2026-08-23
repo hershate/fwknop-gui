@@ -320,7 +320,10 @@ table.tb { width:100%; border-collapse:collapse; font-size:13px; }
   /* 吸附在顶栏之下：top:0 会被同为 sticky 的 #topbar（约 50px 高）完全遮住 */
   white-space:nowrap; position:sticky; top:50px; background:var(--panel); z-index:1;
 }
-.tb td { padding:9px 16px; border-bottom:1px solid var(--border-soft); vertical-align:middle; }
+.tb td { padding:9px 16px; border-bottom:1px solid var(--border-soft); vertical-align:middle;
+  /* 无空格长串（路径/stanza_key/指纹）不在 / 与 | 处自然断行，table auto
+     布局下会撑破列宽挤压邻列；anywhere 仅溢出时断行，正常文本不受影响 */
+  overflow-wrap:anywhere; }
 .tb.dense td { padding:4px 10px; font-size:12px; }
 .tb.dense .badge { font-size:10.5px; }
 /* 用户页紧凑模式：隐藏卡片明细（来源/端口/徽标/最近事件），只留标题行与操作按钮；
