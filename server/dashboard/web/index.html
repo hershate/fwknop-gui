@@ -861,7 +861,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="tb-wrap">
             <table class="tb">
               <thead><tr><th style="width:34px"><input type="checkbox" id="tofu-sel-all" title="全选/取消全选"></th>
-                <th class="th-sort" data-tsort="device_id">设备指纹</th><th class="th-sort" data-tsort="source">来源</th><th class="th-sort" data-tsort="username">用户</th><th class="th-sort" data-tsort="open_ports">开放端口</th><th style="width:150px">操作</th></tr></thead>
+                <th class="th-sort" data-tsort="device_id" tabindex="0" role="button" title="点击或 Enter 排序">设备指纹</th><th class="th-sort" data-tsort="source" tabindex="0" role="button" title="点击或 Enter 排序">来源</th><th class="th-sort" data-tsort="username" tabindex="0" role="button" title="点击或 Enter 排序">用户</th><th class="th-sort" data-tsort="open_ports" tabindex="0" role="button" title="点击或 Enter 排序">开放端口</th><th style="width:150px">操作</th></tr></thead>
               <tbody id="tofu-body"><tr><td colspan="6"><div class="skel" style="height:90px"></div></td></tr></tbody>
             </table>
           </div>
@@ -3577,6 +3577,10 @@ $$('.th-sort').forEach(th => th.onclick = () => {
   else S.tofuSort = { key: k, dir: 1 };
   localStorage.setItem('fwknop-tofu-sort', JSON.stringify(S.tofuSort));
   renderTOFU();
+});
+/* 排序表头键盘可达：Enter/空格触发同一排序逻辑（th 非原生可交互元素） */
+$$('.th-sort').forEach(th => th.onkeydown = ev => {
+  if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); th.click(); }
 });
 $('#users-search').oninput = e => { S.usersQuery = e.target.value.trim(); renderUsers(); };
 S.usersSort = localStorage.getItem('fwknop-users-sort') || 'conf';
