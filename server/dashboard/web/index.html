@@ -470,6 +470,11 @@ footer.foot { text-align:center; color:var(--faint); font-size:11.5px; padding:2
   .hide-sm, #auto-ttl { display:none; }
   .refresh-ctl { gap:6px; }
   #page-title { font-size:16px; }
+  /* 事件表窄屏减负：隐藏「设备指纹（截断难读）」与「SPA 端口（TOTP 落点，
+     次级排障信息）」两列——展开详情行内两字段完整保留，零信息损失，
+     手机上免横向长滚。主行第 4/6 格即这两列；详情行单格 colspan 不受影响 */
+  #page-events thead th:nth-child(4), #page-events thead th:nth-child(6),
+  #events-body tr.ev-click td:nth-child(4), #events-body tr.ev-click td:nth-child(6) { display:none; }
 }
 @media (max-width: 920px) {
   /* 窄屏兜底：事件/TOFU 大表已有 .tb-wrap 横向滚动；其余裸表（配置视图、
