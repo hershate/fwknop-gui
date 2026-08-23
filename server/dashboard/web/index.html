@@ -5317,7 +5317,13 @@ $('#tofu-csv').onclick = async () => {
     (orphanN ? `，含 ${orphanN} 条悬空绑定` : ''), 'ok', orphanN ? 5000 : 3000);
 };
 /* TOFU 列排序：同列再点切换升降序，选择持久化 */
-try { S.tofuSort = JSON.parse(localStorage.getItem('fwknop-tofu-sort') || 'null') || null; } catch (e) { S.tofuSort = null; }
+/* 白名单校验（与 evPer/ivl 同规）：手改/旧版遗留的非法键或方向值会让
+   排序静默失效、方向箭头误显 */
+try {
+  const t0 = JSON.parse(localStorage.getItem('fwknop-tofu-sort') || 'null');
+  S.tofuSort = t0 && ['device_id','source','username','open_ports'].includes(t0.key) && (t0.dir === 1 || t0.dir === -1)
+    ? t0 : null;
+} catch (e) { S.tofuSort = null; }
 $$('.th-sort').forEach(th => th.onclick = () => {
   const k = th.dataset.tsort;
   if (S.tofuSort && S.tofuSort.key === k) S.tofuSort.dir = -S.tofuSort.dir;
@@ -5364,7 +5370,8 @@ $('#users-csv').onclick = async () => {
   toast(`已导出 ${st.length} 个授权` + (S.usersQuery ? `（搜索「${S.usersQuery}」过滤后）` : '') +
     (cmN ? `，含 ${cmN} 个占位密钥待处理` : ''), 'ok', cmN ? 5000 : 3000);
 };
-S.usersSort = localStorage.getItem('fwknop-users-sort') || 'conf';
+S.usersSort = ['conf', 'name', 'active', 'bound'].includes(localStorage.getItem('fwknop-users-sort'))
+  ? localStorage.getItem('fwknop-users-sort') : 'conf';  /* 白名单校验（同 evPer 规），非法值落回配置顺序 */
 /* 恢复用户/TOFU 页搜索词（与事件筛选持久化一致的体验） */
 S.usersQuery = localStorage.getItem('fwknop-users-query') || '';
 if (S.usersQuery) $('#users-search').value = S.usersQuery;
@@ -5383,13 +5390,19 @@ S.evTimeAbs = !!localStorage.getItem('fwknop-ev-timeabs');
 /* 恢复上次的事件筛选（搜索词 / 类型芯片 / 时间范围），保持排查上下文 */
 try {
   const ef = JSON.parse(localStorage.getItem('fwknop-ev-filters') || '{}');
-  if (ef.q) { S.evQuery = ef.q; $('#event-search').value = ef.q; }
-  if (ef.filter && ef.filter !== 'all') S.evFilter = ef.filter;
-  if (ef.time && ef.time !== 'all') {
+  if (typeof ef.q === 'string' && ef.q) { S.evQuery = ef.q; $('#event-search').value = ef.q; }
+  /* 与 hash 恢复同规白名单：手改/旧版遗留的非法 filter 会把全表过滤为空，
+     非法 time 会静默落进 today 分支——两处都难以从界面反查原因 */
+  const flt = evHashFilter(ef.filter === 'bad', ef.filter);
+  if (flt !== 'all') S.evFilter = flt;
+  if (ef.time === 'custom' || EV_HASH_TIMES.includes(ef.time)) {
     S.evTime = ef.time; $('#ev-time').value = ef.time;
     $('#ev-custom').style.display = ef.time === 'custom' ? 'inline-flex' : 'none';
-    if (ef.from) { S.evFrom = ef.from; $('#ev-from').value = ef.from; }
-    if (ef.to) { S.evTo = ef.to; $('#ev-to').value = ef.to; }
+    const okD = v => typeof v === 'string' && !isNaN(new Date(v).getTime());
+    if (ef.time === 'custom') {
+      if (okD(ef.from)) { S.evFrom = ef.from; $('#ev-from').value = ef.from; }
+      if (okD(ef.to)) { S.evTo = ef.to; $('#ev-to').value = ef.to; }
+    }
   }
 } catch (e) {}
 $('#users-sort').value = S.usersSort;
