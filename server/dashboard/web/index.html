@@ -2271,10 +2271,10 @@ function renderStatusCards() {
         v:`偏大 <small>${fmtSize(a.size)} · 建议导出后清理${bakNote}</small>${clr}` };
       return { ic:'activity', c:'var(--blue)', bg:'var(--blue-soft)', k:'审计日志', pg:'about',
         tip: '审计日志正常；点击查看「关于」页文件状态与备份',
-        v:`正常 <small>${fmtSize(a.size)} · ${fmtAgo(a.mtime)}更新${bakNote}</small>${clr}` };
+        v:`正常 <small title="最后更新：${fmtAbs(a.mtime)}">${fmtSize(a.size)} · ${fmtAgo(a.mtime)}更新${bakNote}</small>${clr}` };
     })(),
     { ic:'bolt', c:'var(--amber)', bg:'var(--amber-soft)', k:'指标文件', pg:'about',
-      v: F.metrics && F.metrics.exists ? `正常 <small>${fmtAgo(F.metrics.mtime)}更新</small>` : '缺失',
+      v: F.metrics && F.metrics.exists ? `正常 <small title="最后更新：${fmtAbs(F.metrics.mtime)}">${fmtAgo(F.metrics.mtime)}更新</small>` : '缺失',
       tip: (F.metrics && F.metrics.exists ? 'fwknopd 周期重写的 Prometheus 指标，概览计数卡的数据源'
         : '指标文件不存在：检查 fwknopd.conf 的 ENABLE_AUDIT 是否为 N，或 fwknopd 尚未运行') + '；点击查看「关于」页文件状态' },
     { ic:'key', c: d.write_enabled ? 'var(--amber)' : 'var(--muted)',
@@ -3488,7 +3488,7 @@ function renderUsers() {
     /* 确认框附该授权用户最近事件摘要，辅助判断是否误撤活跃授权 */
     const st0 = (S.users && S.users.stanzas || []).find(x => (x.name || ('授权 #' + x.index)) === name);
     const last = st0 && st0.require_username ? (S.events || []).find(e => e.user === st0.require_username) : null;
-    const lastHtml = last ? `<br><span class="hint">最近敲门：${evMeta(last.event).label} · ${fmtAgo(last.time)} · ${esc(last.src_ip || '')}</span>`
+    const lastHtml = last ? `<br><span class="hint" title="${fmtAbs(last.time)}">最近敲门：${evMeta(last.event).label} · ${fmtAgo(last.time)} · ${esc(last.src_ip || '')}</span>`
       : '<br><span class="hint">该授权近期无敲门记录</span>';
     confirmDialog('撤销授权', `确定撤销「<b>${esc(name)}</b>」吗？${lastHtml}<br>
       对应 stanza 会被注释禁用（自动备份并可恢复），fwknopd 将收到 SIGHUP 重新加载，该凭证<b>立即失效</b>。`,
@@ -4359,6 +4359,7 @@ function renderTOFU() {
     toast(`已选中 ${orphanN} 条悬空绑定，点击「批量解绑」完成清理`, 'ok', 5000);
   };
   $('#tofu-file').textContent = d.file.exists ? `状态文件更新于 ${fmtAgo(d.file.mtime)}` : '状态文件不存在（首个设备完成 TOFU 绑定后自动创建）';
+  $('#tofu-file').title = d.file.exists ? `最后更新：${fmtAbs(d.file.mtime)}` : '';
   if (!bs.length) {
     /* 无绑定但近期有指纹未知拒绝：提示可能 TOFU 未启用/宽限已过，并给反查入口 */
     const now = Date.now() / 1000;
@@ -4427,7 +4428,7 @@ function renderTOFU() {
 /* 单台解绑（TOFU 表与事件详情共用）：确认框附最近敲门摘要，防误删活跃设备 */
 function unbindDevice(sk, dev) {
   const last = (S.events || []).find(e => e.device_id === dev);
-  const lastHtml = last ? `<br><span class="hint">最近敲门：${evMeta(last.event).label} · ${fmtAgo(last.time)} · ${esc(last.src_ip || '')}</span>`
+  const lastHtml = last ? `<br><span class="hint" title="${fmtAbs(last.time)}">最近敲门：${evMeta(last.event).label} · ${fmtAgo(last.time)} · ${esc(last.src_ip || '')}</span>`
     : '<br><span class="hint">该设备近期无敲门记录</span>';
   /* 标注对应授权：解绑影响范围明确；授权已删（悬空绑定）时琥珀预警。
      S.users 未加载时不判定（undefined），加载但找不到为 null */
