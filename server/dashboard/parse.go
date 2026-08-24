@@ -439,6 +439,10 @@ type FileInfo struct {
 	Exists bool   `json:"exists"`
 	Size   int64  `json:"size"`
 	Mtime  int64  `json:"mtime"`
+	/* 权限位（os.FileMode.Perm）：体检「凭证文件权限」项判定 access.conf /
+	   面板认证文件是否被组/其他用户可读——面板自身写入一律 0600，过宽
+	   多为手工编辑或迁移 umask 所致 */
+	Mode int64 `json:"mode"`
 }
 
 func statFile(path string) FileInfo {
@@ -447,6 +451,7 @@ func statFile(path string) FileInfo {
 		fi.Exists = true
 		fi.Size = st.Size()
 		fi.Mtime = st.ModTime().Unix()
+		fi.Mode = int64(st.Mode().Perm())
 	}
 	return fi
 }

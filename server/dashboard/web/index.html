@@ -8315,6 +8315,20 @@ async function runCheckup() {
     ? { st:'ok', t:'面板监听地址', d:'仅本机回环（' + la + '），凭证面不出网卡' }
     : { st:'warn', t:'面板监听非回环地址', d:la + '——明文 HTTP 下登录口令与管理操作可被链路嗅探，建议前置 TLS 反代，或改回回环地址 + SSH 隧道访问' });
 
+  /* 8.5 凭证文件权限：access.conf 含全部密钥材料、面板认证文件含管理员
+     口令散列——组/其他用户可读即本机低权用户可窃取凭证面。面板自身写入
+     一律 0600，过宽多为手工编辑或迁移 umask 所致；ov 失败无法判定 */
+  if (!ov) items.push({ st:'warn', t:'凭证文件权限', d:OV_DOWN });
+  else {
+    const F = ov.files || {};
+    const loose = [['access_conf','access.conf（含密钥材料）'], ['panel_auth','面板认证文件（含口令散列）']]
+      .filter(([k]) => { const f = F[k]; return f && f.exists && typeof f.mode === 'number' && (f.mode & 63); })
+      .map(([k, lab]) => `${lab} 权限 ${(F[k].mode & 511).toString(8).padStart(3, '0')}`);
+    items.push(loose.length
+      ? { st:'warn', t:'凭证文件权限过宽', d:loose.join('；') + '——本机同组/其他用户可读，建议 chmod 600 收紧' }
+      : { st:'ok', t:'凭证文件权限', d:'access.conf 与面板认证文件均仅属主可读写' });
+  }
+
   /* 9. 磁盘余量（运行目录所在分区）：写满后审计/操作日志静默中断、认证
      文件与方案保存失败——比单项配置错误更难排查的复合静默故障 */
   const dk = ov && ov.disk;

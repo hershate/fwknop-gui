@@ -133,6 +133,9 @@ func handleOverview(w http.ResponseWriter, r *http.Request) {
 			"access_conf":  statFile(cfg.AccessConf),
 			"fwknopd_conf": statFile(cfg.FwknopdConf),
 			"oplog":        statFile(opLogPath()),
+			/* 面板认证文件（口令散列）：与 access.conf 同属凭证面，体检
+			   「凭证文件权限」项检查其是否被组/其他用户可读 */
+			"panel_auth": statFile(authFilePath()),
 		},
 		"audit_backups": auditBackupStat(),
 		/* 运行目录分区余量：体检「磁盘余量」项的数据源（写满 = 审计/操作
