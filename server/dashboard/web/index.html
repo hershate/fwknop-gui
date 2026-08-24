@@ -6626,6 +6626,15 @@ function collectDiag() {
       return s ? `（${s}）` : '';
     })(),
     '近 15 分钟登录失败: ' + ((d && d.auth_fail_15m) || 0) + ' 次',
+    /* 上次一键体检摘要随包：远程分诊的第一眼健康态（体检结果本就存在本机
+       localStorage，同浏览器收集零成本）；「已变更」标记提示结果可能过期 */
+    '上次体检: ' + (() => {
+      let r = null;
+      try { r = JSON.parse(localStorage.getItem('fwknop-last-checkup') || 'null'); } catch (e) {}
+      if (!r || !r.t) return '从未运行';
+      return `${r.bad ? r.bad + ' 项异常 / ' : ''}${r.warn ? r.warn + ' 项注意 / ' : ''}${r.ok} 项通过（${fmtAbs(r.t)}）` +
+        (r.stale ? ' ⚠ 此后配置已变更，建议重检' : '');
+    })(),
   ].join('\n');
 }
 /* 面板操作日志（管理面审计）：谁签发了凭证、谁改了配置、何时登录过——
