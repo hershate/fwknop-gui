@@ -3586,26 +3586,26 @@ function renderEvents() {
       const detail = `<tr class="ev-detail" style="display:${open?'table-row':'none'}" data-detail="${esc(key)}">
         <td colspan="8"><div class="ev-kv">
           <div><div class="k">时间</div><div class="v"><span class="cp-cell" data-cp="${fmtAbs(e.time)}" title="点击复制绝对时间">${fmtAbs(e.time)}</span>（${fmtAgo(e.time)}）</div></div>
-          <div><div class="k">事件类型</div><div class="v">${esc(e.event||'—')}（${m.label}）${e.event ? `<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-evtype="${esc(e.event)}" title="筛选该类型的全部事件">${icon('i-search',12)}</button>` : ''}</div></div>
+          <div><div class="k">事件类型</div><div class="v">${hl9(e.event||'—')}（${hl9(m.label)}）${e.event ? `<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-evtype="${esc(e.event)}" title="筛选该类型的全部事件">${icon('i-search',12)}</button>` : ''}</div></div>
           <div><div class="k">授权索引（stanza）</div><div class="v">${(() => { if (e.stanza == null) return '—';
             const stz = (S.users && S.users.stanzas) || null;
             const hit = stz ? stz.find(s => s.index === e.stanza) : null;
             /* 已加载则序号旁直接显示授权名，不用点反查才知道是谁 */
-            const nm = hit && hit.name ? `（${esc(hit.name)}）` : '';
+            const nm = hit && hit.name ? `（${hl9(hit.name)}）` : '';
             if (stz && !hit)
-              return `${e.stanza}${nm} <span class="hint">已删除</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" disabled title="该 stanza 已不在当前配置（可能已撤销），无法反查">${icon('i-users',12)}</button>`;
-            return `${e.stanza}${nm}<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-evstanza="${e.stanza}" title="在用户与授权页查看该 stanza">${icon('i-users',12)}</button>`; })()}</div></div>
-          <div><div class="k">用户</div><div class="v">${e.user?`<span class="cp-cell" data-cp="${esc(e.user)}">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" data-lk="user" title="查看该用户的全部事件">${icon('i-search',12)}</button><button class="icon-btn" style="padding:2px 5px;margin-left:2px" data-ev2usr="${esc(e.user)}" title="在用户与授权页按该用户名定位授权">${icon('i-users',12)}</button>`:'—'}</div></div>
-          <div><div class="k">设备指纹（完整）</div><div class="v">${e.device_id?`<span class="cp-cell" data-cp="${esc(e.device_id)}">${esc(e.device_id)}</span>${(() => { const al = devAlias(e.device_id); return al ? ` <span class="hint" title="本机备注的设备别名">（${esc(al)}）</span>` : ''; })()}<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" data-lk="dev" title="查看该设备的全部事件">${icon('i-search',12)}</button>${(() => { const bd = S.tofu && S.tofu.bindings;
+              return `${hl9(e.stanza)}${nm} <span class="hint">已删除</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" disabled title="该 stanza 已不在当前配置（可能已撤销），无法反查">${icon('i-users',12)}</button>`;
+            return `${hl9(e.stanza)}${nm}<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-evstanza="${e.stanza}" title="在用户与授权页查看该 stanza">${icon('i-users',12)}</button>`; })()}</div></div>
+          <div><div class="k">用户</div><div class="v">${e.user?`<span class="cp-cell" data-cp="${esc(e.user)}">${hl9(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" data-lk="user" title="查看该用户的全部事件">${icon('i-search',12)}</button><button class="icon-btn" style="padding:2px 5px;margin-left:2px" data-ev2usr="${esc(e.user)}" title="在用户与授权页按该用户名定位授权">${icon('i-users',12)}</button>`:'—'}</div></div>
+          <div><div class="k">设备指纹（完整）</div><div class="v">${e.device_id?`<span class="cp-cell" data-cp="${esc(e.device_id)}">${hl9(e.device_id)}</span>${(() => { const al = devAlias(e.device_id); return al ? ` <span class="hint" title="本机备注的设备别名">（${hl9(al)}）</span>` : ''; })()}<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" data-lk="dev" title="查看该设备的全部事件">${icon('i-search',12)}</button>${(() => { const bd = S.tofu && S.tofu.bindings;
             /* TOFU 数据已加载且查无绑定 → 禁用反查按钮并说明；未加载保持可点（跳转后 tofu 页自会加载） */
             if (bd && !bd.some(x => x.device_id === e.device_id))
               return `<button class="icon-btn" style="padding:2px 5px;margin-left:2px" disabled title="该设备当前无 TOFU 绑定（可能已解绑或从未绑定）">${icon('i-fp',12)}</button>`;
             return `<button class="icon-btn" style="padding:2px 5px;margin-left:2px" data-devtofu="${esc(e.device_id)}" title="查该设备的 TOFU 绑定状态">${icon('i-fp',12)}</button>`; })()}`:'—'}</div></div>
-          <div><div class="k">来源 IP</div><div class="v">${e.src_ip?`<span class="cp-cell" data-cp="${esc(e.src_ip)}">${esc(e.src_ip)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.src_ip)}" data-lk="ip" title="查看该 IP 的全部事件">${icon('i-search',12)}</button>`:'—'}</div></div>
-          <div><div class="k" title="敲门包的目的端口：TOTP 跳变时随时间变化，是 SPA 包的「落点」，不是服务端口">SPA 端口</div><div class="v">${e.spa_port?`<span class="cp-cell" data-portq="${e.spa_port}" title="点击按 SPA 端口 ${e.spa_port} 筛选">${e.spa_port}</span>`:'—'}</div></div>
-          <div><div class="k" title="客户端请求放行的服务端口（须在授权 OPEN_PORTS 白名单内），敲门成功后防火墙放行该端口">目标端口</div><div class="v">${e.target_port?`<span class="cp-cell" data-portq="${e.target_port}" title="点击按目标端口 ${e.target_port} 筛选">${e.target_port}</span>`:'—'}</div></div>
-          <div><div class="k">原因（原始）</div><div class="v">${e.reason?`<span class="cp-cell" data-cp="${esc(e.reason)}">${esc(e.reason)}</span>`:'—'}</div></div>
-          <div><div class="k">原因（中文）</div><div class="v">${esc(reasonZh(e.reason))}</div></div>
+          <div><div class="k">来源 IP</div><div class="v">${e.src_ip?`<span class="cp-cell" data-cp="${esc(e.src_ip)}">${hl9(e.src_ip)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.src_ip)}" data-lk="ip" title="查看该 IP 的全部事件">${icon('i-search',12)}</button>`:'—'}</div></div>
+          <div><div class="k" title="敲门包的目的端口：TOTP 跳变时随时间变化，是 SPA 包的「落点」，不是服务端口">SPA 端口</div><div class="v">${e.spa_port?`<span class="cp-cell" data-portq="${e.spa_port}" title="点击按 SPA 端口 ${e.spa_port} 筛选">${hl9(e.spa_port)}</span>`:'—'}</div></div>
+          <div><div class="k" title="客户端请求放行的服务端口（须在授权 OPEN_PORTS 白名单内），敲门成功后防火墙放行该端口">目标端口</div><div class="v">${e.target_port?`<span class="cp-cell" data-portq="${e.target_port}" title="点击按目标端口 ${e.target_port} 筛选">${hl9(e.target_port)}</span>`:'—'}</div></div>
+          <div><div class="k">原因（原始）</div><div class="v">${e.reason?`<span class="cp-cell" data-cp="${esc(e.reason)}">${hl9(e.reason)}</span>`:'—'}</div></div>
+          <div><div class="k">原因（中文）</div><div class="v">${hl9(reasonZh(e.reason))}</div></div>
           ${(() => { const tip = reasonTip(e.reason); return tip ? `<div style="grid-column:1/-1"><div class="k">排障建议</div><div class="v" style="color:var(--muted)">${icon('i-info',13)} ${esc(tip)}</div></div>` : ''; })()}
           ${(() => { /* 建议动作化：读罢一步直达修改位置（写模式才给动作；stanza 已删则不给死按钮） */
             const r = e.reason || '';
