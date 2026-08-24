@@ -4349,14 +4349,22 @@ $('#add-batch').onclick = () => {
     }
     modalGuard = null; cancel.disabled = false;
     prog.textContent = `完成：成功 ${oks.length} / ${ns.length}` + (fails.length ? `，失败 ${fails.length}（见下方红字行）` : '');
+    const bar = document.createElement('div');
+    bar.style.cssText = 'display:flex;gap:8px;margin:8px 0;flex-wrap:wrap';
     if (oks.length) {
-      const bar = document.createElement('div');
-      bar.style.cssText = 'display:flex;gap:8px;margin:8px 0;flex-wrap:wrap';
       bar.append(
         mkBtn(`复制全部 URI（${oks.length} 条）`, '每行一条纯 URI，可循环 fwknop import', () => copyText(oks.map(x => x.uri).join('\n'), '全部授权 URI ')),
         mkBtn('复制分发清单（名称 + URI）', 'Tab 分隔的名称与 URI，分发对号用', () => copyText(oks.map(x => `${x.name}\t${x.uri}`).join('\n'), '分发清单 ')));
-      prog.after(bar);
     }
+    /* 闭环核验（成败都该看）：服务端对本批每份签发逐条记操作日志（含失败原因），
+       一键直达过滤视图；钻取即持久化（renderOpLog 固化口径同 586 轮） */
+    bar.append(mkBtn('前往操作日志核对', '操作日志已对本批每份签发逐条留痕，点击直达「签发凭证」过滤视图逐条核对', () => {
+      closeModal();
+      S.oplogQuery = '签发凭证'; const os4 = $('#oplog-search'); if (os4) os4.value = '签发凭证';
+      try { localStorage.setItem('fwknop-oplog-query', '签发凭证'); } catch (_) {}
+      showPage('about');
+    }));
+    prog.after(bar);
     toast(fails.length ? `批量签发完成：${oks.length} 成功，${fails.length} 失败（详见弹窗红字行）` : `批量签发完成：${oks.length} 份全部成功`, fails.length ? 'err' : 'ok', 5000);
     loadUsers();  /* 授权列表与占位徽标同步 */
   };
