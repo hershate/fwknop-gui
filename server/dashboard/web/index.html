@@ -4488,7 +4488,7 @@ $('#add-batch').onclick = () => {
     modalGuard = () => { toast('批量签发进行中，请等待完成', 'err'); return false; };
     const prog = $('#batch-prog'), out = $('#batch-out');
     prog.style.display = ''; out.style.display = ''; out.innerHTML = '';
-    const oks = [], fails = [];
+    const oks = [], fails = [], untried = [];
     const mkBtn = (txt, title, fn) => {
       const x = document.createElement('button');
       x.className = 'btn ghost small'; x.textContent = txt; x.title = title; x.onclick = fn;
@@ -4499,6 +4499,7 @@ $('#add-batch').onclick = () => {
       prog.textContent = `签发中 ${i + 1} / ${ns.length}：${nm}`;
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px';
+      let stop = false;
       try {
         const r = await api('/api/admin/add', { method:'POST', body: mkFd(nm) });
         const m = (r.output || '').match(/fwknop:\/\/\S+/);
@@ -4513,14 +4514,30 @@ $('#add-batch').onclick = () => {
           mkBtn('复制 URI', `复制「${nm}」的授权 URI`, () => copyText(m[0], `「${nm}」授权 URI `)),
           mkBtn('cred.json', `下载「${nm}」的 cred.json（客户端 fwknop import 直接导入）`, () => downloadCredJson(m[0])));
       } catch (e) {
-        fails.push({ name: nm, err: String((e && e.message) || e) });
+        const msg = String((e && e.message) || e);
+        fails.push({ name: nm, err: msg });
         row.style.color = 'var(--red)';
-        row.textContent = `✗ ${nm}：${(e && e.message) || e}`;
+        row.textContent = `✗ ${nm}：${msg}`;
+        /* 会话失效/只读模式：后续条目必然同败——提前终止，剩余标注「未尝试」
+           （与失败严格区分：未向服务端发起，不产生任何服务端状态变化） */
+        if (msg === 'unauthorized' || msg === 'forbidden') {
+          stop = true;
+          ns.slice(i + 1).forEach(n2 => untried.push(n2));
+        }
       }
       out.appendChild(row); out.scrollTop = out.scrollHeight;
+      if (stop) break;
     }
+    untried.forEach(n2 => {
+      const r2 = document.createElement('div');
+      r2.style.cssText = 'padding:4px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px;color:var(--muted)';
+      r2.textContent = `— ${n2}：未尝试（前序会话/权限失败，已中止）`;
+      out.appendChild(r2);
+    });
     modalGuard = null; cancel.disabled = false;
-    prog.textContent = `完成：成功 ${oks.length} / ${ns.length}` + (fails.length ? `，失败 ${fails.length}（见下方红字行）` : '');
+    prog.textContent = `完成：成功 ${oks.length} / ${ns.length}` +
+      (fails.length ? `，失败 ${fails.length}（见下方红字行）` : '') +
+      (untried.length ? `，未尝试 ${untried.length}（见灰字行）` : '');
     const bar = document.createElement('div');
     bar.style.cssText = 'display:flex;gap:8px;margin:8px 0;flex-wrap:wrap';
     if (oks.length) {
@@ -4537,7 +4554,9 @@ $('#add-batch').onclick = () => {
       showPage('about');
     }));
     prog.after(bar);
-    toast(fails.length ? `批量签发完成：${oks.length} 成功，${fails.length} 失败（详见弹窗红字行）` : `批量签发完成：${oks.length} 份全部成功`, fails.length ? 'err' : 'ok', 5000);
+    toast(fails.length || untried.length
+      ? `批量签发完成：${oks.length} 成功${fails.length ? `，${fails.length} 失败` : ''}${untried.length ? `，${untried.length} 未尝试` : ''}（详见弹窗）`
+      : `批量签发完成：${oks.length} 份全部成功`, fails.length || untried.length ? 'err' : 'ok', 5000);
     loadUsers();  /* 授权列表与占位徽标同步 */
   };
 };
