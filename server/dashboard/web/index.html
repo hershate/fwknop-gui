@@ -5614,14 +5614,38 @@ $('#add-form').addEventListener('submit', async ev => {
         : `凭证「${nm}」已签发（未写入配置），请立即复制授权 URI 分发给用户`, 'ok', 6000);
       clearAddDraft();
       if (f.server.value.trim()) { lsSet('fwknop-last-server', f.server.value.trim()); pushServerHistory(f.server.value.trim()); }
+      /* 连续签发保留策略选项：access/fw-timeout/totp/port-range/require-fingerprint/
+         tofu-timeout/require-totp-port-match/apply 同批次通常一致（与 tplMatches
+         判定的模板字段同集 + apply 开关），reset 前快照、之后回填——为团队签
+         10 份凭证不必每份重选模板。name/user 身份字段坚决清空：user 残留会让
+         下一份凭证误要求上一个人的用户名（签发成功但敲门被拒的静默故障） */
+      const keepVals = {};
+      ['access', 'fw-timeout', 'port-range', 'tofu-timeout'].forEach(k => { keepVals[k] = f[k].value; });
+      ['totp', 'require-fingerprint', 'require-totp-port-match', 'apply'].forEach(k => { keepVals[k] = f[k].checked; });
+      const actTpl = (() => { const c = $('#add-form .tpl-chip.active'); return c ? c.dataset.tpl : ''; })();
       f.reset();  /* 清空表单便于连续签发下一位用户（结果区不受影响） */
+      Object.keys(keepVals).forEach(k => {
+        if (typeof keepVals[k] === 'boolean') f[k].checked = keepVals[k]; else f[k].value = keepVals[k];
+      });
       /* reset 把服务器地址也清了——连续签发几乎都发往同一台服务器，按
          fwknop-last-server 静默重填（与草稿路径 5130 同一意图的连续签发段；
          静默而非闪烁：值是用户几秒前刚填的，且 5598 刚存入该键） */
       { const srv = localStorage.getItem('fwknop-last-server') || ''; if (srv) f.server.value = srv; }
       syncTotpFields(); syncFpFields();
-      $$('.tpl-chip').forEach(c => c.classList.remove('active'));
-      $('#tpl-desc').textContent = '';
+      /* 策略值已回填 → 模板匹配关系与签发前一致：恢复点亮的芯片与描述
+         （tplMatches 兜底，不匹配则保持清除；作用域限 #add-form——此前全局
+         清除会误伤事件页筛选方案芯片的激活高亮） */
+      const rt = actTpl && allTpl(actTpl);
+      if (rt && tplMatches(rt)) {
+        $$('#add-form .tpl-chip').forEach(c => c.classList.toggle('active', c.dataset.tpl === actTpl));
+        $('#tpl-desc').textContent = rt.desc;
+      } else {
+        $$('#add-form .tpl-chip').forEach(c => c.classList.remove('active'));
+        $('#tpl-desc').textContent = '';
+      }
+      /* 回填值即新一轮未提交内容：续存草稿——连续签发中途刷新策略现场不丢
+         （上面 clearAddDraft 清掉的是「已提交」的上一份草稿，语义不冲突） */
+      saveAddDraft();
       $('#add-next').style.display = '';  /* 连续签发入口：收起结果区回到表单顶部 */
       loadUsers();
     }
