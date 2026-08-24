@@ -8246,6 +8246,13 @@ async function runCheckup() {
       : { st:'ok', t:'磁盘余量', d:`运行目录分区可用 ${fmtSize(dk.avail)}（${pct}%）` });
   }
 
+  /* 10. 管理工具可用性（签发/撤销/解绑链路的前提；敲门处理不受影响，
+     但管理面全部写操作依赖它） */
+  const adm = ov && ov.admin_tool;
+  items.push(adm && adm.available
+    ? { st:'ok', t:'管理工具', d:'fwknopd-admin 可用，签发/撤销/解绑链路就绪' }
+    : { st:'bad', t:'管理工具不可用', d:'fwknopd-admin 不在 PATH 或未以 -admin 参数指定——签发/撤销/解绑等管理操作全部失败（fwknopd 敲门处理不受影响）' });
+
   const order = { bad:0, warn:1, skip:2, ok:3 };
   items.sort((a, b) => order[a.st] - order[b.st]);
   const nBad = items.filter(i => i.st === 'bad').length;
