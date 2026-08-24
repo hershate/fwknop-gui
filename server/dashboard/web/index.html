@@ -5674,7 +5674,10 @@ function renderTOFU() {
 /* 单台解绑（TOFU 表与事件详情共用）：确认框附最近敲门摘要，防误删活跃设备 */
 function unbindDevice(sk, dev) {
   const last = (S.events || []).find(e => e.device_id === dev);
-  const lastHtml = last ? `<br><span class="hint" title="${fmtAbs(last.time)}">最近敲门：${evMeta(last.event).label} · ${fmtAgo(last.time)} · ${esc(last.src_ip || '')}</span>`
+  /* 近期活跃（15 分钟，与徽标/批量解绑「在用」口径同窗）升级琥珀预警——
+     批量解绑有「⚠ 在用」标记，单台解绑此前只有中性提示，风险不同步 */
+  const recent = last && (Date.now() / 1000 - (last.time || 0) < 900);
+  const lastHtml = last ? `<br><span class="${recent ? '' : 'hint'}" title="${fmtAbs(last.time)}"${recent ? ' style="color:var(--amber)"' : ''}>${recent ? '⚠ 该设备近期活跃，解绑会立即中断其访问。' : ''}最近敲门：${evMeta(last.event).label} · ${fmtAgo(last.time)} · ${esc(last.src_ip || '')}</span>`
     : '<br><span class="hint">该设备近期无敲门记录</span>';
   /* 标注对应授权：解绑影响范围明确；授权已删（悬空绑定）时琥珀预警。
      S.users 未加载时不判定（undefined），加载但找不到为 null */
