@@ -740,6 +740,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <button class="btn ghost small" id="qa-add" title="跳到用户与授权页并展开签发新凭证表单"><svg width="14" height="14"><use href="#i-plus"/></svg>签发新凭证</button>
             <button class="btn ghost small" id="qa-bad" title="跳到事件页并只看异常（括号内为最近 15 分钟异常数）"><svg width="14" height="14"><use href="#i-warn"/></svg>仅看异常事件</button>
             <button class="btn ghost small" id="qa-diag" title="一键打包版本/时钟/服务/文件等非敏感状态，贴给运维即可定位"><svg width="14" height="14"><use href="#i-copy"/></svg>复制诊断信息</button>
+            <button class="btn ghost small" id="qa-checkup" title="一键体检：配置预检/服务运行/审计输出/防火墙可读/TOTP 监听一致性/占位密钥/时钟漂移逐项检查，异常项给出直达处置入口"><svg width="14" height="14"><use href="#i-shield"/></svg>一键体检</button>
             <button class="btn ghost small" id="qa-profile" title="把当前 fwknopd.conf + access.conf 快照保存为命名方案（配置方案页管理）"><svg width="14" height="14"><use href="#i-archive"/></svg>保存配置方案</button>
             <a class="btn ghost small" id="qa-audit" href="/api/audit/download" download title="下载完整审计日志（JSONL，文件名带服务器时间戳，多次导出互不覆盖）"><svg width="14" height="14"><use href="#i-download"/></svg>导出审计日志</a>
           </div>
@@ -8097,6 +8098,114 @@ $('#qa-profile').onclick = () => {
 };
 /* 与关于页「复制诊断信息」同一数据源（collectDiag），概览页一键打包 */
 $('#qa-diag').onclick = () => copyText(collectDiag(), '诊断信息 ');
+
+/* ==================== 一键体检 ====================
+   把散落各页的部署检查聚合成一份清单：全部数据来自既有端点（并行拉取），
+   每项给出 ✓/⚠/✗ 与直达处置入口。只读模式下写门禁项（预检/防火墙）自动
+   降级为「跳过」而非误判失败。 */
+async function runCheckup() {
+  openModal(`<h3>部署体检</h3>
+    <div id="ck-body"><div class="skel" style="height:140px"></div></div>
+    <div class="mf"><button class="btn" onclick="closeModal()">关闭</button></div>`, true);
+  const jobs = [
+    api('/api/overview').catch(() => null),
+    api('/api/config').catch(() => null),
+    api('/api/users').catch(() => null),
+  ];
+  /* 预检/防火墙规则走写门禁（requirePost/requireWrite 语义同款），只读模式跳过 */
+  if (S.writeEnabled) {
+    jobs.push(api('/api/service/validate', { method:'POST' }).catch(() => null));
+    jobs.push(api('/api/service/fwrules').catch(() => null));
+  }
+  const [ov, cfg, us, val, fwr] = await Promise.all(jobs);
+  const items = [];  /* {st:'ok'|'warn'|'bad'|'skip', t, d, act:{label, title, onclick}} */
+  const entries = (cfg && cfg.entries) || [];
+  const entVal = k => { const e = entries.find(x => x.key === k); return e ? String(e.value || '').trim() : ''; };
+  const drillConf = key => ({ label: '检查配置', title: `打开服务配置页并过滤「${key}」`, onclick: () => {
+    showPage('config');
+    setTimeout(() => {
+      const vf = $('#conf-view-filter');
+      if (vf) { vf.value = key; vf.dispatchEvent(new Event('input')); vf.focus(); }
+    }, 50);
+  } });
+
+  /* 1. 配置预检 */
+  if (!S.writeEnabled) items.push({ st:'skip', t:'配置预检', d:'只读模式不可用（预检属写门禁操作）' });
+  else if (!val) items.push({ st:'warn', t:'配置预检', d:'预检请求失败（网络/服务异常），请稍后在服务控制卡单独「校验配置」' });
+  else if (val.error) items.push({ st:'bad', t:'配置预检未通过', d:(val.error || '').slice(0, 160), act:{ label:'前往服务配置', title:'打开服务配置页检查 fwknopd.conf', onclick: () => showPage('config') } });
+  else items.push({ st:'ok', t:'配置预检通过', d:'fwknopd --exit-parse-config 解析两份配置无误' });
+
+  /* 2. fwknopd 运行状态 */
+  const alive = !!(ov && ov.daemon && ov.daemon.alive);
+  items.push(alive
+    ? { st:'ok', t:'fwknopd 运行中', d:'PID ' + ov.daemon.pid }
+    : { st:'bad', t:'fwknopd 未运行', d:S.writeEnabled ? '服务未运行，敲门不会被处理——可在概览页服务控制卡启动' : '服务未运行；只读模式请联系管理员启动' });
+
+  /* 3. 审计输出（面板事件/指标的数据源） */
+  const auditOff = entVal('ENABLE_AUDIT').toUpperCase() === 'N';
+  const auditFile = ov && ov.files && ov.files.audit;
+  if (auditOff) items.push({ st:'bad', t:'审计输出已关闭', d:'ENABLE_AUDIT N——事件页/指标卡将永远没有数据（audit.c 有事件才建文件）', act: drillConf('ENABLE_AUDIT') });
+  else if (auditFile && !auditFile.exists) items.push({ st:'warn', t:'审计文件尚不存在', d:'首个 SPA 事件产生后自动创建；若已有敲门仍无文件，检查 fwknopd 运行目录与 AUDIT_FILE 配置' });
+  else items.push({ st:'ok', t:'审计输出正常', d:'ENABLE_AUDIT 开启，事件/指标有数据源' });
+
+  /* 4. 防火墙规则可读（root 与后端可用性） */
+  if (!S.writeEnabled) items.push({ st:'skip', t:'防火墙规则', d:'只读模式不检查（读取规则属写门禁操作）' });
+  else if (!fwr) items.push({ st:'warn', t:'防火墙规则', d:'读取请求失败（网络/服务异常）' });
+  else if (fwr.error) items.push({ st:'bad', t:'防火墙规则不可读', d:'fwknopd --fw-list 失败——放行规则无法建立/过期（多为无 root 或防火墙后端异常）', act:{ label:'查看防火墙规则', title:'打开防火墙规则视图查看原始错误', onclick: () => openFwRules() } });
+  else items.push({ st:'ok', t:'防火墙规则可读', d:'fwknopd 可正常操纵防火墙后端' });
+
+  /* 5. TOTP 跳变与监听模式一致性（凭证可用性的静默杀手） */
+  const stz = (us && us.stanzas) || [];
+  const rngStz = stz.filter(s => (s.port_range || '').trim());
+  const pcapRange = entVal('PCAP_PORT_RANGE');
+  const udpMode = entVal('ENABLE_UDP_SERVER').toUpperCase() === 'Y';
+  const nfqMode = entVal('ENABLE_NFQ_CAPTURE').toUpperCase() === 'Y';
+  if (rngStz.length) {
+    if (udpMode) items.push({ st:'bad', t:'TOTP 跳变与监听模式冲突', d:`${rngStz.length} 个授权要求 TOTP 跳变，但当前为 UDP 固定端口监听——跳变端口的敲门无法被捕获（UDP 后端不支持端口范围）`, act: drillConf('ENABLE_UDP_SERVER') });
+    else if (!pcapRange && !nfqMode) items.push({ st:'bad', t:'TOTP 监听范围缺失', d:`${rngStz.length} 个授权要求 TOTP 跳变，但未配置 PCAP_PORT_RANGE——默认 BPF 仅抓 62201，跳变端口敲门无法被捕获`, act: drillConf('PCAP_PORT_RANGE') });
+    else if (pcapRange) {
+      const bad = rngStz.filter(s => {
+        const a = (s.port_range || '').split('-').map(Number), b = pcapRange.split('-').map(Number);
+        return !(b.length === 2 && a[0] >= b[0] && a[1] <= b[1]);
+      });
+      items.push(bad.length
+        ? { st:'bad', t:'TOTP 范围超出监听', d:`${bad.map(s => s.name || ('#' + s.index)).join('、')} 的跳变范围超出 PCAP_PORT_RANGE ${pcapRange}，范围外敲门无法被捕获`, act: drillConf('PCAP_PORT_RANGE') }
+        : { st:'ok', t:'TOTP 监听一致性', d:`${rngStz.length} 个 TOTP 授权的跳变范围均落在监听范围内` });
+    } else items.push({ st:'warn', t:'TOTP 监听一致性', d:'NFQ 抓包模式：请确认 iptables NFQUEUE 规则的端口范围覆盖各授权的跳变范围，否则跳变敲门无法被投递' });
+  } else items.push({ st:'ok', t:'TOTP 监听一致性', d:'无 TOTP 跳变授权（固定端口监听即可）' });
+
+  /* 6. 占位密钥（永远无法通过校验的死授权） */
+  const cm = stz.filter(s => s.changeme);
+  items.push(cm.length
+    ? { st:'bad', t:'占位密钥授权', d:`${cm.map(s => s.name || ('#' + s.index)).join('、')} 仍含 __CHANGEME__ 占位密钥，永远无法工作——请撤销后重新签发`, act:{ label:'前往用户页', title:'打开用户与授权页处理占位授权', onclick: () => showPage('users') } }
+    : { st:'ok', t:'密钥材料', d:'无 __CHANGEME__ 占位密钥残留' });
+
+  /* 7. 浏览器-服务器时钟漂移（TOTP/时效校验的同源风险信号） */
+  const drift = ov && ov.now ? Math.round(Date.now() / 1000 - ov.now) : 0;
+  items.push(Math.abs(drift) > 60
+    ? { st:'warn', t:'时钟漂移', d:`浏览器与服务器偏差约 ${Math.abs(drift)} 秒——若源于服务器失准，合法敲门会被判「过期」拒绝，请校准服务器 NTP` }
+    : { st:'ok', t:'时钟', d:'浏览器与服务器时钟偏差在 60 秒内' });
+
+  const order = { bad:0, warn:1, skip:2, ok:3 };
+  items.sort((a, b) => order[a.st] - order[b.st]);
+  const nBad = items.filter(i => i.st === 'bad').length;
+  const nWarn = items.filter(i => i.st === 'warn').length;
+  const icons = { bad:['✗','var(--red)'], warn:['⚠','var(--amber)'], skip:['—','var(--faint)'], ok:['✓','var(--green)'] };
+  $('#ck-body').innerHTML = `
+    <div class="hint" style="margin-bottom:10px">${nBad ? `<b style="color:var(--red)">${nBad} 项异常</b>，` : ''}${nWarn ? `<b style="color:var(--amber)">${nWarn} 项需注意</b>，` : ''}${items.filter(i => i.st === 'ok').length} 项通过${nBad || nWarn ? '' : '——部署状态良好'}</div>
+    ${items.map((it, i) => `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 2px;border-bottom:1px solid var(--border-soft)">
+      <span style="color:${icons[it.st][1]};font-weight:700;width:16px;text-align:center;flex:none">${icons[it.st][0]}</span>
+      <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px">${esc(it.t)}</div>
+        <div class="hint" style="overflow-wrap:anywhere">${esc(it.d)}</div></div>
+      ${it.act ? `<button class="btn ghost small" style="flex:none" data-ck="${i}" title="${esc(it.act.title || '')}">${esc(it.act.label)}</button>` : ''}
+    </div>`).join('')}`;
+  items.forEach((it, i) => {
+    if (!it.act) return;
+    const b = $('#ck-body').querySelector(`[data-ck="${i}"]`);
+    if (b) b.onclick = () => { closeModal(); it.act.onclick(); };
+  });
+}
+$('#qa-checkup').onclick = () => runCheckup();
 
 /* ==================== 配置方案 ==================== */
 async function loadProfiles() {
