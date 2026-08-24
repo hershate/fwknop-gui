@@ -1173,11 +1173,12 @@ function hlTerms(terms) {
   const re = new RegExp('(' + pats.join('|') + ')', 'gi');
   return t => esc(t).replace(re, '<mark>$1</mark>');
 }
-/* 事件搜索词 → 高亮词表（与 filteredEvents 词法一致）：前缀词取值部分
-   （user:alice→alice、port:22→22），裸词原样；空前缀值丢弃 */
+/* 事件搜索词 → 高亮词表（与 filteredEvents 词法逐字一致：先小写再切词再解
+   前缀——大写前缀键 USER:x 匹配器按前缀词处理，高亮也须取到值部分，否则整串
+   落为裸词无字面落点；空前缀值回退裸词与匹配器 hay.includes 分支一致） */
 function evQueryTerms() {
-  return (S.evQuery || '').trim().split(/\s+/).filter(Boolean)
-    .map(t => { const m = t.match(/^(user|ip|dev|port|stanza):(.*)$/); return m ? m[2] : t; })
+  return (S.evQuery || '').trim().toLowerCase().split(/\s+/).filter(Boolean)
+    .map(t => { const m = t.match(/^(user|ip|dev|port|stanza):(.*)$/); return (m && m[2]) ? m[2] : t; })
     .filter(Boolean);
 }
 /* 历史两种调用规约并存：字面量与 EVT 元数据带 i- 前缀（icon('i-copy')），
@@ -3564,9 +3565,13 @@ function renderEvents() {
   }
 
   if (!slice.length) {
+    /* 自定义区间起>终：区间恒空，任何筛选词都救不回——明说原因，不让用户
+       对着通用「无匹配」回头排查搜索词（起=终的一分钟窗口合法，严格大于才判反） */
+    const invertedRange = S.evTime === 'custom' && S.evFrom && S.evTo &&
+      new Date(S.evFrom).getTime() > new Date(S.evTo).getTime();
     $('#events-body').innerHTML = `<tr><td colspan="8"><div class="empty">
       ${icon('i-list', 40)}<div class="t">暂无匹配事件</div>
-      <div class="d">${(S.events||[]).length ? '当前筛选/搜索条件下无匹配' : 'fwknopd 收到 SPA 包后，事件会显示在这里'}</div>
+      <div class="d">${invertedRange ? '<span style="color:var(--amber)">自定义时间范围起点晚于终点，任何事件都不可能落在其中——请调整起止时间，或清空筛选</span>' : (S.events||[]).length ? '当前筛选/搜索条件下无匹配' : 'fwknopd 收到 SPA 包后，事件会显示在这里'}</div>
       ${(S.events||[]).length && hasFilter ? '<button class="btn ghost small" id="ev-reset" style="margin-top:12px">清空筛选与搜索，查看全部</button>' : ''}
       ${!(S.events||[]).length && S.writeEnabled ? '<button class="btn small" id="ev-goto-add" style="margin-top:12px">还没有授权？去签发凭证</button>' : ''}
     </div></td></tr>`;
