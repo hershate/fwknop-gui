@@ -4156,7 +4156,11 @@ function stanzaBadges(s) {
   /* 双缺警示持续可见：模板 desc 的一次性警示会随时间淡忘（排障授权忘了
      撤是真实事故模式）；琥珀非红——v3 过渡/短时排障是正当的临时状态 */
   if (weakStanza(s))
-    b.push(`<span class="tag" style="background:var(--amber-soft);color:var(--amber)" title="该授权既无 TOTP 端口跳变也无设备指纹绑定：任何持有密钥者可从任意设备敲门。v3 兼容/临时排障属有意弱化，排障完毕请立即撤销；长期授权建议「编辑」开启指纹绑定或重新签发">⚠ 无跳变·无指纹</span>`);
+    /* 弱姿态徽标可点（写模式）：title 建议「编辑开启指纹」，点击即直达编辑器
+       ——建议与动作之间不再隔一次找按钮；只读模式无编辑入口，保持纯展示 */
+    b.push(S.writeEnabled
+      ? `<button class="tag" style="cursor:pointer;border:0;background:var(--amber-soft);color:var(--amber)" data-weak-edit="${s.index}" title="该授权既无 TOTP 端口跳变也无设备指纹绑定：任何持有密钥者可从任意设备敲门。v3 兼容/临时排障属有意弱化，排障完毕请立即撤销；点击打开编辑器开启指纹绑定（或重新签发）">⚠ 无跳变·无指纹</button>`
+      : `<span class="tag" style="background:var(--amber-soft);color:var(--amber)" title="该授权既无 TOTP 端口跳变也无设备指纹绑定：任何持有密钥者可从任意设备敲门。v3 兼容/临时排障属有意弱化，排障完毕请立即撤销；长期授权建议开启指纹绑定或重新签发">⚠ 无跳变·无指纹</span>`);
   return b.join('');
 }
 
@@ -4313,6 +4317,8 @@ function renderUsers() {
   }).join('') + disHtml;
   }
   $$('#users-body [data-edit]').forEach(b => b.onclick = () => openStanzaEditor(+b.dataset.edit));
+  /* 弱姿态徽标钻取：与「编辑」钮同一入口（开启指纹的第一跳） */
+  $$('#users-body [data-weak-edit]').forEach(b => b.onclick = () => openStanzaEditor(+b.dataset.weakEdit));
   /* 批量撤销勾选：仅更新选择集与批量条，不重渲染（避免滚动丢失） */
   $$('#users-body .usr-sel').forEach(c => c.onchange = () => {
     if (!S.usersSel) S.usersSel = new Set();
