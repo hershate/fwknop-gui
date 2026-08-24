@@ -3023,6 +3023,10 @@ $('#nav-about-badge').onclick = ev => {
 $('#nav-usr-badge').onclick = ev => {
   ev.stopPropagation();
   S.usersQuery = '占位'; const us = $('#users-search'); if (us) us.value = '占位';
+  /* 钻取即持久化：renderUsers 每轮渲染都固化 S.usersQuery（3869），若钻取后
+     下一次轮询渲染抢在 showPage 前发生（或用户中途刷新），旧搜索词被回写、
+     钻取状态静默丢失——先落盘再切页，与事件/TOFU 钻取处的处理一致 */
+  try { localStorage.setItem('fwknop-users-query', '占位'); } catch (_) {}
   showPage('users');
 };
 /* 悬空绑定徽标钻取（与占位徽标同模式）：预填「悬空」搜索词直达问题行——
@@ -3030,6 +3034,8 @@ $('#nav-usr-badge').onclick = ev => {
 $('#nav-tofu-badge').onclick = ev => {
   ev.stopPropagation();
   S.tofuQuery = '悬空'; const tq = $('#tofu-search'); if (tq) tq.value = '悬空';
+  /* 钻取即持久化（renderTOFU 5165 每轮固化 S.tofuQuery，与上方占位徽标同理） */
+  try { localStorage.setItem('fwknop-tofu-query', '悬空'); } catch (_) {}
   showPage('tofu');
 };
 
