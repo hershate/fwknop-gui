@@ -238,6 +238,8 @@ select.ctl, input.ctl {
 .cp-cell { cursor:pointer; border-bottom:1px dashed var(--border); }
 /* 搜索命中高亮（hlTerms 产出）：accent-soft 底 + accent 字，明暗主题随变量自适应 */
 mark { background:var(--accent-soft); color:var(--accent); border-radius:3px; padding:0 1px; }
+/* 配置页结构化视图命中沿用原文模式的琥珀色系——同页两模式一种语言 */
+#config-body mark { background:var(--amber-soft); color:var(--amber); border-radius:2px; }
 .srch-wrap { position:relative; display:inline-flex; align-items:center; }
 .srch-wrap .ctl { padding-right:28px; }
 .srch-clear { position:absolute; right:5px; padding:2px 4px; color:var(--faint); display:none; }
@@ -6056,20 +6058,56 @@ function renderConfig() {
     }, 50);
   });
 }
+/* 结构化视图命中高亮：TreeWalker 只碰文本节点——cp-cell 的 data-cp 属性与
+   渲染期绑定的 onclick 全部原样保留（<mark> 包在文本节点原位，不动元素结构、
+   零 innerHTML 注入面）；多命中逐段包标，大小写不敏感与过滤口径一致 */
+function hlConfRow(tr, q) {
+  const walker = document.createTreeWalker(tr, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  const ql = q.toLowerCase();
+  nodes.forEach(n => {
+    const txt = n.nodeValue, low = txt.toLowerCase();
+    let i = low.indexOf(ql);
+    if (i < 0) return;
+    const frag = document.createDocumentFragment();
+    let pos = 0;
+    while (i >= 0) {
+      frag.appendChild(document.createTextNode(txt.slice(pos, i)));
+      const mk = document.createElement('mark');
+      mk.textContent = txt.slice(i, i + q.length);
+      frag.appendChild(mk);
+      pos = i + q.length;
+      i = low.indexOf(ql, pos);
+    }
+    frag.appendChild(document.createTextNode(txt.slice(pos)));
+    n.parentNode.replaceChild(frag, n);
+  });
+}
 /* 视图模式指令查找：按键名/说明过滤行，命中分组自动展开，清空后恢复原折叠状态 */
 $('#conf-view-filter').oninput = e => {
   /* 原文模式：行级过滤在 renderConfig 内完成（含命中高亮） */
   if (S.rawMode) { renderConfig(); return; }
-  const q = e.target.value.trim().toUpperCase();
+  const q = e.target.value.trim();
+  const QU = q.toUpperCase();
   let hitAll = 0;
   $$('#config-body .conf-grp').forEach(h => {
     const tb = h.nextElementSibling;
     if (!tb || tb.tagName !== 'TABLE') return;
     let hit = 0;
     tb.querySelectorAll('tbody tr').forEach(tr => {
-      const show = !q || tr.textContent.toUpperCase().includes(q);
+      /* 先拆上一轮 <mark> 并合并文本节点（含将隐藏的行——标记不跨词残留），
+         再按新词过滤与重标 */
+      if (tr.querySelector('mark')) {
+        tr.querySelectorAll('mark').forEach(mk => mk.replaceWith(...mk.childNodes));
+        tr.normalize();
+      }
+      const show = !QU || tr.textContent.toUpperCase().includes(QU);
       tr.style.display = show ? '' : 'none';
-      if (show) hit++;
+      if (show) {
+        hit++;
+        if (q) hlConfRow(tr, q);
+      }
     });
     hitAll += hit;
     h.style.display = hit ? '' : 'none';
