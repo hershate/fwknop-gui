@@ -5617,6 +5617,7 @@ $('#pf-search').oninput = e => {
   renderProfiles();
 };
 S.evTimeAbs = !!localStorage.getItem('fwknop-ev-timeabs');
+S.oplogTimeAbs = !!localStorage.getItem('fwknop-oplog-timeabs');
 /* 恢复上次的事件筛选（搜索词 / 类型芯片 / 时间范围），保持排查上下文 */
 try {
   const ef = JSON.parse(localStorage.getItem('fwknop-ev-filters') || '{}');
@@ -5981,7 +5982,7 @@ function renderOpLog() {
   $('#oplog-body').innerHTML = `<div class="tb-wrap"><table class="tb">
     <thead><tr><th>时间</th><th>操作</th><th>详情</th><th>来源 IP</th><th style="width:56px">结果</th></tr></thead>
     <tbody>${es.map(e => `<tr>
-      <td title="${esc(fmtAbs(e.time))}" style="white-space:nowrap">${esc(fmtAgo(e.time))}</td>
+      <td class="tmtoggle" title="${S.oplogTimeAbs ? '相对：' + fmtAgo(e.time) : fmtAbs(e.time)} · 点击切换时间制式" style="white-space:nowrap;color:var(--muted);cursor:pointer">${S.oplogTimeAbs ? esc(fmtAbs(e.time)) : esc(fmtAgo(e.time))}</td>
       <td style="white-space:nowrap">${esc(e.op)}</td>
       <td style="word-break:break-all">${e.detail ? `<span class="cp-cell" data-cp="${esc(e.detail)}" data-lab="详情" title="点击复制详情">${esc(e.detail)}</span>` : ''}${!e.ok && e.reason ? `<div style="color:var(--red);font-size:12px;margin-top:2px" title="失败原因（服务端记录的错误摘要）">原因：${esc(e.reason)}</div>` : ''}</td>
       <td style="white-space:nowrap">${e.ip ? `<span class="cp-cell" data-cp="${esc(e.ip)}" data-lab="来源 IP" title="点击复制来源 IP（爆破排查可直接贴进防火墙封禁）">${esc(e.ip)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-olip="${esc(e.ip)}" title="在事件页查看该 IP 的全部 SPA 事件（登录失败与敲门行为关联排查）">${icon('i-search',12)}</button>` : '—'}</td>
@@ -6007,6 +6008,13 @@ function renderOpLog() {
       `<div class="hint" style="text-align:center;padding:10px 0 4px">已到达服务端读取上限（最近 1000 条）；更早的完整历史请用右上角「导出」</div>`);
   }
   $$('#oplog-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, (c.dataset.lab || '') + ' '));
+  /* 时间制式切换（与事件页 tmtoggle 同构、同款持久化）：对齐服务器日志/
+     跨行比对要绝对时间，巡检扫读要相对时间（oplog 行无展开点击，无需阻止冒泡） */
+  $$('#oplog-body .tmtoggle').forEach(c => c.onclick = () => {
+    S.oplogTimeAbs = !S.oplogTimeAbs;
+    lsSet('fwknop-oplog-timeabs', S.oplogTimeAbs ? '1' : '');
+    renderOpLog();
+  });
   /* 来源 IP 跨面钻取：操作日志看到可疑 IP（如连番登录失败），一步看它的
      敲门行为（与防火墙规则表 fwr-src 同一 ip: 前缀口径） */
   $$('#oplog-body [data-olip]').forEach(b => b.onclick = () => {
