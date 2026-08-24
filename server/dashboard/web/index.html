@@ -7725,8 +7725,12 @@ $('#conf-save').onclick = async () => {
         if (r.error) { toast('配置保存失败（未落盘）', 'err');
           /* 预检错误行号定位：仅原文编辑模式给——textarea 内容即预检 payload，
              行号 1:1 可映射；结构化模式的 payload 是注释合并产物，行号不对应
-             任何可见视图（给了反而误导），故结构化路径刻意不给 */
-          const lm = confRawEdit && ((r.output || '') + '\n' + (r.error || '')).match(/in\s+\S*fwknopd\.conf\s+at line\s+(\d+)/);
+             任何可见视图——但错误原文引用出错行内容（" - '<内容>'"），首词即
+             指令名，转化为编辑器过滤定位（与行号无关，不误导） */
+          const outAll = (r.output || '') + '\n' + (r.error || '');
+          const lm = confRawEdit && outAll.match(/in\s+\S*fwknopd\.conf\s+at line\s+(\d+)/);
+          const badKey = !confRawEdit && (outAll.match(/at line \d+\.\s*\n\s*-\s*'([^']*)'/) || [])[1];
+          const filtKey = badKey ? (badKey.trim().split(/\s+/)[0] || '') : '';
           let jmpBtn = $('#conf-save-jump');
           if (lm) {
             const n = +lm[1];
@@ -7747,6 +7751,28 @@ $('#conf-save').onclick = async () => {
               ta.focus();
               /* 选中整行：视觉锚定错误行，且浏览器自动滚动到选区 */
               ta.setSelectionRange(pos, pos + lines[n - 1].length);
+            };
+            jmpBtn.style.display = '';
+          } else if (/^[A-Z][A-Z0-9_]*$/.test(filtKey)) {
+            if (!jmpBtn) {
+              jmpBtn = document.createElement('button');
+              jmpBtn.id = 'conf-save-jump';
+              jmpBtn.className = 'btn ghost small';
+              jmpBtn.style.cssText = 'margin-top:6px';
+              el.after(jmpBtn);
+            }
+            jmpBtn.textContent = `在编辑器中过滤「${filtKey}」`;
+            jmpBtn.onclick = () => {
+              $('#conf-filter').value = filtKey;
+              applyConfFilter();
+              const first = $$('#conf-edit-rows > div').find(row =>
+                row.style.display !== 'none' && !row.classList.contains('ce-gone') &&
+                (row.querySelector('.ce-key').value.trim().toUpperCase() === filtKey));
+              if (first) {
+                first.scrollIntoView({ behavior: SB(), block: 'center' });
+                const vi = first.querySelector('.ce-val');
+                if (vi) vi.focus();
+              } else toast(`编辑器中未找到指令「${filtKey}」（该行可能来自注释合并区）`, 'err', 4000);
             };
             jmpBtn.style.display = '';
           } else if (jmpBtn) jmpBtn.style.display = 'none';
