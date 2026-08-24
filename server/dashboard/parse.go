@@ -344,7 +344,9 @@ func parseAccessConf(path string) ([]Stanza, error) {
 			s.RequireSourceAddress = strings.HasPrefix(strings.ToUpper(val), "Y")
 		case "KEY_BASE64", "KEY":
 			s.HasKey = true
-		case "HMAC_KEY_BASE64":
+		case "HMAC_KEY", "HMAC_KEY_BASE64":
+			/* 与 KEY/KEY_BASE64 同规：access.c:1940/2708 两种写法都接受——手抄
+			   或上游迁移来的 HMAC_KEY 明文写法不能被面板误判为「无 HMAC」 */
 			s.HasHMAC = true
 		case "GPG_DECRYPT_ID":
 			s.HasGPG = true
