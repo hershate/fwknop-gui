@@ -8205,9 +8205,12 @@ async function runCheckup() {
   else if (val.error) items.push({ st:'bad', t:'配置预检未通过', d:(val.error || '').slice(0, 160), act:{ label:'前往服务配置', title:'打开服务配置页检查 fwknopd.conf', onclick: () => showPage('config') } });
   else items.push({ st:'ok', t:'配置预检通过', d:'fwknopd --exit-parse-config 解析两份配置无误' });
 
-  /* 2. fwknopd 运行状态 */
+  /* 2. fwknopd 运行状态（ov 拉取失败时 alive 恒 false——不能把「读不到」
+     报成「未运行」，这是面板自己吓自己的最严重误报） */
   const alive = !!(ov && ov.daemon && ov.daemon.alive);
-  items.push(alive
+  const OV_DOWN = '概览数据拉取失败（网络/服务异常），本项无法判定';
+  items.push(!ov ? { st:'warn', t:'fwknopd 运行状态', d:OV_DOWN }
+    : alive
     ? { st:'ok', t:'fwknopd 运行中', d:'PID ' + ov.daemon.pid }
     : { st:'bad', t:'fwknopd 未运行', d:S.writeEnabled ? '服务未运行，敲门不会被处理——可在概览页服务控制卡启动' : '服务未运行；只读模式请联系管理员启动' });
 
@@ -8228,7 +8231,11 @@ async function runCheckup() {
   if (!cfg) items.push({ st:'warn', t:'审计输出', d:'配置数据拉取失败（网络/服务异常），ENABLE_AUDIT 状态无法判定' });
   else if (auditOff) items.push({ st:'bad', t:'审计输出已关闭', d:'ENABLE_AUDIT N——事件页/指标卡将永远没有数据（audit.c 有事件才建文件）', act: drillConf('ENABLE_AUDIT') });
   else if (auditFile && !auditFile.exists) items.push({ st:'warn', t:'审计文件尚不存在', d:'首个 SPA 事件产生后自动创建；若已有敲门仍无文件，检查 fwknopd 运行目录与 AUDIT_FILE 配置' });
-  else items.push({ st:'ok', t:'审计输出正常', d:'ENABLE_AUDIT 开启，事件/指标有数据源' });
+  /* ov 失败时文件状态未知：开关已验证为开（文件本就随首个事件才创建，
+     缺失非硬故障），标注未验证而非沉默 */
+  else items.push(auditFile
+    ? { st:'ok', t:'审计输出正常', d:'ENABLE_AUDIT 开启，事件/指标有数据源' }
+    : { st:'ok', t:'审计输出', d:'ENABLE_AUDIT 开启（审计文件状态因概览数据拉取失败未验证）' });
 
   /* 4. 防火墙规则可读（root 与后端可用性）；只读也可查（GET 无写门禁） */
   if (!fwr) items.push({ st:'warn', t:'防火墙规则', d:'读取请求失败（网络/服务异常）' });
@@ -8270,9 +8277,11 @@ async function runCheckup() {
     ? { st:'bad', t:'占位密钥授权', d:`${cm.map(s => s.name || ('#' + s.index)).join('、')} 仍含 __CHANGEME__ 占位密钥，永远无法工作——请撤销后重新签发`, act:{ label:'前往用户页', title:'打开用户与授权页处理占位授权', onclick: () => showPage('users') } }
     : { st:'ok', t:'密钥材料', d:'无 __CHANGEME__ 占位密钥残留' });
 
-  /* 7. 浏览器-服务器时钟漂移（TOTP/时效校验的同源风险信号） */
+  /* 7. 浏览器-服务器时钟漂移（TOTP/时效校验的同源风险信号）；ov 失败时
+     drift 落 0 会误报「偏差正常」 */
   const drift = ov && ov.now ? Math.round(Date.now() / 1000 - ov.now) : 0;
-  items.push(Math.abs(drift) > 60
+  items.push(!ov ? { st:'warn', t:'时钟', d:OV_DOWN }
+    : Math.abs(drift) > 60
     ? { st:'warn', t:'时钟漂移', d:`浏览器与服务器偏差约 ${Math.abs(drift)} 秒——若源于服务器失准，合法敲门会被判「过期」拒绝，请校准服务器 NTP` }
     : { st:'ok', t:'时钟', d:'浏览器与服务器时钟偏差在 60 秒内' });
 
@@ -8298,9 +8307,10 @@ async function runCheckup() {
   }
 
   /* 10. 管理工具可用性（签发/撤销/解绑链路的前提；敲门处理不受影响，
-     但管理面全部写操作依赖它） */
+     但管理面全部写操作依赖它）；ov 失败时不可用是假象 */
   const adm = ov && ov.admin_tool;
-  items.push(adm && adm.available
+  items.push(!ov ? { st:'warn', t:'管理工具', d:OV_DOWN }
+    : adm.available
     ? { st:'ok', t:'管理工具', d:'fwknopd-admin 可用，签发/撤销/解绑链路就绪' }
     : { st:'bad', t:'管理工具不可用', d:'fwknopd-admin 不在 PATH 或未以 -admin 参数指定——签发/撤销/解绑等管理操作全部失败（fwknopd 敲门处理不受影响）' });
 
