@@ -6607,6 +6607,15 @@ function collectDiag() {
     fstat('审计日志', F.audit), fstat('指标文件', F.metrics),
     fstat('TOFU 状态', F.tofu), fstat('授权配置', F.access_conf), fstat('服务配置', F.fwknopd_conf),
     fstat('操作日志', F.oplog),
+    /* 凭证文件权限随包（与体检 8.5 项同判定）：远程分诊不用先让对方跑体检
+       就能看到 access.conf/认证文件是否被组或他人可读；概览缺失时标未知 */
+    '凭证文件权限: ' + (() => {
+      if (!d) return '?';
+      const loose = [['access_conf','access.conf'], ['panel_auth','面板认证文件']]
+        .filter(([k]) => { const f = F[k]; return f && f.exists && typeof f.mode === 'number' && (f.mode & 63); })
+        .map(([k, lab]) => `${lab}(${(F[k].mode & 511).toString(8).padStart(3, '0')})`);
+      return loose.length ? '⚠ ' + loose.join('、') + ' 可被组/其他用户读取，建议 chmod 600' : '正常（仅属主可读写）';
+    })(),
     /* 磁盘余量：远程分诊「日志/事件不写了」的第一嫌疑是分区写满（概览已带
        Statfs 余量，随包零成本） */
     '磁盘余量: ' + (() => { const dk = d && d.disk;
