@@ -2387,6 +2387,27 @@ async function loadOverview() {
          持续状态计数而非瞬时感知，勿改成同款隐藏） */
       if (afn) { afb.textContent = afn > 99 ? '99+' : afn; afb.title = `最近 15 分钟 ${afn} 次登录失败，点击前往操作日志核查来源 IP`; afb.setAttribute('aria-label', afb.title); }
       updateDocTitle();  /* 登录失败数进标签页标题（后台标签感知爆破；其余路径复用上次轮询值） */
+      /* 面板爆破桌面通知（复用异常通知开关）：后台标签且计数环比上升时提醒；
+         10 分钟至多一条防持续爆破刷屏；首载只建基线不通知（与 evPrevNewest
+         同款语义）。不并入声音提示——前台对持续爆破每 10 分钟一响是噪音，
+         通知的 tag 覆盖 + 标题 ‼ 前缀已构成完整提醒链 */
+      const afPrev = S.authFailPrev;
+      if (S.evNotify && document.hidden && afPrev !== undefined && afn > afPrev &&
+          Date.now() - (S.authFailNotifiedAt || 0) > 600000 &&
+          'Notification' in window && Notification.permission === 'granted') {
+        S.authFailNotifiedAt = Date.now();
+        const n3 = new Notification(`fwknop 面板登录失败 ×${afn}`, {
+          body: `最近 15 分钟 ${afn} 次登录失败，若非本人误输请核查来源 IP`,
+          tag: 'fwknop-authfail',  /* 同 tag 覆盖，连发不刷屏 */
+        });
+        n3.onclick = () => {
+          window.focus();
+          S.oplogQuery = '登录失败'; const os5 = $('#oplog-search'); if (os5) os5.value = '登录失败';
+          try { localStorage.setItem('fwknop-oplog-query', '登录失败'); } catch (_) {}
+          showPage('about');
+        };
+      }
+      S.authFailPrev = afn;
     }
   } catch (e) {
     setConn(false);
@@ -2856,7 +2877,7 @@ function syncEvNotifyBtn() {
   b.innerHTML = `<svg width="14" height="14"><use href="#i-bell"/></svg>异常桌面通知${denied ? '·权限被撤' : S.evNotify ? '·开' : ''}`;
   b.title = denied
     ? '通知权限已在浏览器侧被撤销，当前开关形同虚设：请在站点设置中恢复授权，或再次点击关闭本开关'
-    : '后台标签页收到异常事件时弹桌面通知（需浏览器授权）；点击通知直达「仅看异常」视图';
+    : '后台标签页收到异常事件、或面板登录失败计数上升时弹桌面通知（需浏览器授权；爆破提醒 10 分钟至多一条）；点击通知直达对应排查视图';
 }
 $('#ev-notify').onclick = async () => {
   if (!S.evNotify) {
@@ -2868,7 +2889,7 @@ $('#ev-notify').onclick = async () => {
     }
     S.evNotify = true;
     lsSet('fwknop-ev-notify', '1');
-    toast('已开启：标签页在后台时，新异常事件将弹桌面通知', 'ok', 4000);
+    toast('已开启：标签页在后台时，新异常事件与面板登录失败上升将弹桌面通知', 'ok', 4000);
   } else {
     S.evNotify = false;
     lsDel('fwknop-ev-notify');
