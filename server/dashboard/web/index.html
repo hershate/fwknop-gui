@@ -4516,9 +4516,13 @@ $('#add-batch').onclick = () => {
     <div class="mf"><button class="btn ghost" id="batch-cancel">关闭</button>
       <button class="btn" id="batch-go" disabled>开始签发</button></div>`);
   const ta = $('#batch-names'), go = $('#batch-go'), cancel = $('#batch-cancel');
+  /* 名单草稿（与签发表单草稿同规）：onboarding 名单动辄几十行，误触 Esc/遮罩
+     关闭不该全丢；开始签发即清（结果区已承载逐份状态），手动清空同步清草稿 */
+  try { ta.value = localStorage.getItem('fwknop-batch-names') || ''; } catch (e) {}
   const names = () => ta.value.split('\n').map(s => s.trim()).filter(Boolean);
   const takenSet = () => new Set([...((S.users && S.users.stanzas) || []), ...((S.users && S.users.disabled) || [])].map(x => x.name));
   ta.oninput = () => {
+    try { localStorage.setItem('fwknop-batch-names', ta.value); } catch (e) {}
     const ns = names();
     let err = '';
     if (ns.length > 50) err = `超过单次上限（${ns.length} / 50）`;
@@ -4535,9 +4539,11 @@ $('#add-batch').onclick = () => {
     else fmtHint($('#batch-hint'), true, ns.length ? `✓ 将签发 ${ns.length} 份（共享当前表单设置）` : '', '');
     go.disabled = !!err || !ns.length;
   };
+  if (ta.value) ta.oninput();  /* 草稿恢复后立即校验计数/重名，状态不自欺 */
   go.onclick = async () => {
     const ns = names();
     if (!ns.length) return;
+    try { localStorage.removeItem('fwknop-batch-names'); } catch (e) {}  /* 名单已交由结果区承载 */
     /* 与单签同一道重名闸：提示时 S.users 可能未加载（打开面板直接进批量） */
     if (!S.users) { try { await loadUsers(); } catch (e) {} }
     const t = ns.find(n => takenSet().has(n));
@@ -6550,7 +6556,7 @@ function renderAbout() {
      清单外新键默认被清——对「卫生重置」误清新偏好无害，误留新历史才违背承诺 */
   const rl = $('#about-reset-local');
   if (rl) rl.onclick = () => {
-    const PRESERVE = ['fwknop-dev-alias', 'fwknop-panel-alias', 'fwknop-add-custom-tpls', 'fwknop-add-draft'];
+    const PRESERVE = ['fwknop-dev-alias', 'fwknop-panel-alias', 'fwknop-add-custom-tpls', 'fwknop-add-draft', 'fwknop-batch-names'];
     const doomed = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
@@ -6558,7 +6564,7 @@ function renderAbout() {
     }
     confirmDialog('重置本机界面数据',
       `将清除本机保存的 <b>${doomed.length} 项</b>界面偏好与历史（搜索历史、服务器地址历史、密度/折叠/过滤记忆、主题、已消除的警示等）。<br>` +
-      `保留：面板别名、设备别名、自定义签发模板、签发草稿。<br>清除后页面自动刷新以应用默认状态。`,
+      `保留：面板别名、设备别名、自定义签发模板、签发草稿与批量名单草稿。<br>清除后页面自动刷新以应用默认状态。`,
       '清除并刷新', () => {
         doomed.forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
         /* 标签页级数据（通知历史/趋势采样）随刷新仍在同标签存活，一并清除 */
