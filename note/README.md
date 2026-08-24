@@ -21,6 +21,20 @@
 
 ## 发版说明
 
+- [release/2.8.0.md](release/2.8.0.md) — WebUI UX 第六批：凭证分发与排查效率主题，100 项提交（2026-08-24）
+- [release/2.7.0.md](release/2.7.0.md) — WebUI UX 第五批：操作日志轮转、审计链路批查等 39 项提交（2026-08-24）
+- [release/2.6.0.md](release/2.6.0.md) — WebUI UX 第四批：「重发 URI」等 44 项提交，回归升至 115 PASS（2026-08-23）
+- [release/2.5.0.md](release/2.5.0.md) — WebUI UX 第三批：侧栏徽标预警、键盘闭环、搜索语法升级（2026-08-23）
+- [release/2.4.9.md](release/2.4.9.md) — WebUI UX 第二批：排查现场可分享/可还原等 50 项迭代（2026-08-23）
+- [release/2.4.8.md](release/2.4.8.md) — 自助改密 + 键盘流贯通 + 可见性打磨（2026-08-23）
+- [release/2.4.7.md](release/2.4.7.md) — 跨配置一致性校验 + 反查闭环 + 可访问性补齐（2026-08-23）
+- [release/2.4.6.md](release/2.4.6.md) — 批量操作与一致性打磨（2026-08-23）
+- [release/2.4.5.md](release/2.4.5.md) — 审计备份生命周期 + 排查效率 + 安全硬化（2026-08-23）
+- [release/2.4.4.md](release/2.4.4.md) — 可访问性补齐 + 失败态兜底 + 效率微交互（2026-08-23）
+- [release/2.4.3.md](release/2.4.3.md) — 一键签发即生效 + 体验持续打磨（2026-08-23）
+- [release/2.4.2.md](release/2.4.2.md) — WebUI 体验深化（约 60 项迭代汇总）（2026-08-23）
+- [release/2.4.1.md](release/2.4.1.md) — WebUI 默认管理模式（写操作默认开启）（2026-08-23）
+- [release/2.4.0.md](release/2.4.0.md) — WebUI 首次启动初始化与强制鉴权（2026-08-23）
 - [release/2.3.0.md](release/2.3.0.md) — WebUI 全功能化：服务控制 / 可视化配置编辑 / 方案一键切换（2026-08-23）
 - [release/2.2.0.md](release/2.2.0.md) — WebUI 全面重设计（汉化）+ 服务端管理闭环（2026-08-23）
 - [release/2.1.0.md](release/2.1.0.md) — 零信任硬化 + 服务端管理易用性（阶段 2/4/6，2026-08-13）
@@ -31,7 +45,7 @@
 - **协议版本**：`FKO_PROTOCOL_VERSION` 由上游 `3.0.0` 升级为 **`4.0.0`**（[lib/fko.h:56](../lib/fko.h#L56)）。
 - **客户端版本号**：仍是 `2.6.11`（`fwknop client 2.6.11, FKO protocol version 4.0.0`）。
 - **已完成并验证**（Windows / MinGW）：阶段 1（TOTP+端口跳变）、阶段 3（v4 device_id）、阶段 5（CLI 易用性）、**Windows 便携版托盘程序**（[client/tray/](../client/tray/)）。
-- **已完成并验证**（Linux）：阶段 2（服务端范围监听）、阶段 4（零信任硬化+审计+`fwknopd-admin` 全命令集/授权 QR/凭证文件/TOFU）、阶段 6 测试（`test/run_fork_tests.sh` **61/61 PASS**）、阶段 5+ 的 **WebUI 运维面板（2.3.0：服务启停/配置可视化编辑/方案一键切换，完全汉化）** 与 TUI 壳。
+- **已完成并验证**（Linux）：阶段 2（服务端范围监听）、阶段 4（零信任硬化+审计+`fwknopd-admin` 全命令集/授权 QR/凭证文件/TOFU）、阶段 6 测试（`test/run_fork_tests.sh` **115/115 PASS**）、阶段 5+ 的 **WebUI 运维面板（当前 2.8.0：服务启停/配置可视化编辑/方案一键切换/签发闭环/一键体检，完全汉化）** 与 TUI 壳。
 - **待办**：透明代理 / Qt GUI（大型 greenfield）、打包与迁移文档。
 - **服务端管理决策（2026-08-13）**：CLI 先行、凭证默认加密（scrypt+AES-GCM）、TOFU 指纹绑定默认启用。详见 [03-二次开发增强方案.md §6](03-二次开发增强方案.md)。
 - **许可证**：GPL v2+（见 [COPYING](../COPYING)）。
