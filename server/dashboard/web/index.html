@@ -7547,7 +7547,10 @@ function renderProfiles() {
   });
   $$('#profiles-body [data-pv]').forEach(b => b.onclick = async () => {
     try {
-      if (!S.config) await loadConfig();  /* diff 需要当前配置原文 */
+      /* 恒重取：profiles 页轮询只拉方案列表（refreshNow 不含 loadConfig），
+         S.config 可能是很久以前在配置页加载的旧快照——diff 的「当前」侧
+         必须是点击时刻的真值 */
+      await loadConfig();
       const v = await api('/api/profiles/view?name=' + encodeURIComponent(b.dataset.pv));
       const curRaw = (S.config && S.config.raw) || '';
       openModal(`<h3>方案「${esc(b.dataset.pv)}」预览</h3>
@@ -7567,7 +7570,7 @@ function renderProfiles() {
     let diffHtml = '<div class="hint">差异加载中…</div>';
     let accDiffHtml = '';
     try {
-      if (!S.config) await loadConfig();
+      await loadConfig();  /* 恒重取（同预览）：diff 的「当前」侧须为点击时刻真值 */
       const v = await api('/api/profiles/view?name=' + encodeURIComponent(name));
       diffHtml = renderDiff(v.fwknopd_conf, (S.config && S.config.raw) || '');
       accDiffHtml = renderDiff(v.access_conf, v.current_access_conf || '');
@@ -7590,6 +7593,23 @@ function renderProfiles() {
       </div>`, true);
     $('#pf-apply-cancel').onclick = () => closeModal();
     $('#pf-apply-ok').onclick = async () => {
+      /* 确认前重取重算（乐观确认）：预览到确认之间配置/方案文件可能被他人
+         改动，展示的 diff 已过期——重算结果与展示快照逐字比对，漂移则重开
+         预览让用户复核新差异，一致才落盘（renderDiff 对相同输入确定） */
+      const okBtn = $('#pf-apply-ok');
+      okBtn.disabled = true;
+      try {
+        await loadConfig();
+        const v2 = await api('/api/profiles/view?name=' + encodeURIComponent(name));
+        const fk2 = renderDiff(v2.fwknopd_conf, (S.config && S.config.raw) || '');
+        const ac2 = renderDiff(v2.access_conf, v2.current_access_conf || '');
+        if (fk2 !== diffHtml || ac2 !== accDiffHtml) {
+          closeModal();
+          toast('配置或方案在预览期间已变化，差异已为您更新，请复核后再确认', 'err', 6000);
+          b.click();  /* 重开预览（新 diff）；用户重新确认 */
+          return;
+        }
+      } catch (e) { okBtn.disabled = false; toast('切换前复核失败（未做变更），请重试', 'err', 4000); return; }
       closeModal();
       try {
         const r = await api('/api/profiles/apply', { method:'POST',
