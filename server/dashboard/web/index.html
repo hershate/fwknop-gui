@@ -6632,6 +6632,7 @@ $('#conf-backups').onclick = async () => {
         <span style="font-size:12.5px" title="${fmtAbs(b.mtime)}">${fmtAgo(b.mtime)}</span>
         <span class="hint" style="font-size:11.5px">${fmtSize(b.size)}</span>
         <button class="btn ghost small" style="margin-left:auto;padding:2px 10px;font-size:12px" data-cbv="${esc(b.name)}" data-cbt="${esc(b.target)}" data-cbm="${b.mtime}" title="查看该备份与现役配置的差异（恢复将产生的变化；密钥已掩码）">差异</button>
+        <button class="btn ghost small" style="padding:2px 10px;font-size:12px" data-cbd="${esc(b.name)}" data-cbt="${esc(b.target)}" title="把该备份内容下载为文件（离线归档/贴工单用，不受 20 个滚动窗口限制）${b.target === 'access.conf' ? '；access.conf 密钥指令已掩码——结构归档/比对用，不能用于还原密钥' : ''}">下载</button>
         ${S.writeEnabled ? `<button class="btn ghost small" style="padding:2px 10px;font-size:12px" data-cbr="${esc(b.name)}" data-cbt="${esc(b.target)}" data-cbm="${b.mtime}" title="把 ${esc(b.target)} 回滚到该备份内容：先与另一现役文件联合预检（失败即放弃），当前内容自动再备份为 .bak（可再次回滚），随后热加载生效">恢复到此</button>` : '<span class="hint" style="font-size:11.5px">只读模式不可恢复</span>'}
       </div>`).join('') : '<div class="hint" style="padding:8px 2px">尚无备份——首次保存/编辑后自动产生</div>');
     openModal(`<h3>配置备份回滚</h3>
@@ -6640,6 +6641,24 @@ $('#conf-backups').onclick = async () => {
       ${sec('access.conf', bs.filter(b => b.target === 'access.conf'))}
       <div class="mf"><button class="btn" onclick="closeModal()">关闭</button></div>`, true);
     $$('#modal-root [data-cbr]').forEach(b => b.onclick = () => doConfRestore(b.dataset.cbr, b.dataset.cbt, +b.dataset.cbm));
+    /* 单个备份下载：复用 bakview 只读端点（access.conf 天然掩码，无密钥泄露面），
+       把「回滚窗口内的短期副本」变成可离线长期留存/外发的文件 */
+    $$('#modal-root [data-cbd]').forEach(b => b.onclick = async () => {
+      const name = b.dataset.cbd, target = b.dataset.cbt;
+      try {
+        const v = await api('/api/config/bakview?name=' + encodeURIComponent(name));
+        const blob = new Blob([v.bak], { type:'text/plain;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name;  /* 备份名即文件名（服务端白名单校过，无路径字符） */
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);  /* 与 ev-csv 同款 5s */
+        /* bakview 超 128KB 截断（尾部带标记行）——截断件外发会误导，须显式声明 */
+        const clipped = /# \.\.\. \(文件过大，已截断\)\s*$/.test(v.bak);
+        toast(`已下载备份 ${name}` + (target === 'access.conf' ? '（密钥指令已掩码）' : '') +
+          (clipped ? '（超 128KB 已截断，完整内容请在服务器上取原文件）' : ''), 'ok', clipped ? 5000 : 3000);
+      } catch (e) {}
+    });
     /* 差异预览：盲恢复逼着用户凭时间戳猜内容——与方案预览「切换前看清
        影响面」同一心智；弹窗内看完可就地恢复（同一 doConfRestore 闭环） */
     $$('#modal-root [data-cbv]').forEach(b => b.onclick = async () => {
