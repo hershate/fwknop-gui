@@ -8218,6 +8218,13 @@ async function runCheckup() {
     ? { st:'warn', t:'时钟漂移', d:`浏览器与服务器偏差约 ${Math.abs(drift)} 秒——若源于服务器失准，合法敲门会被判「过期」拒绝，请校准服务器 NTP` }
     : { st:'ok', t:'时钟', d:'浏览器与服务器时钟偏差在 60 秒内' });
 
+  /* 8. 面板监听地址（凭证面安全）：非回环 + 明文 HTTP = 登录口令/会话
+     Cookie/管理操作全程可被链路嗅探（概览警示条同款判定，聚合进清单） */
+  const la = ov && ov.panel && ov.panel.listen_addr;
+  if (la) items.push(panelLoopback(la)
+    ? { st:'ok', t:'面板监听地址', d:'仅本机回环（' + la + '），凭证面不出网卡' }
+    : { st:'warn', t:'面板监听非回环地址', d:la + '——明文 HTTP 下登录口令与管理操作可被链路嗅探，建议前置 TLS 反代，或改回回环地址 + SSH 隧道访问' });
+
   const order = { bad:0, warn:1, skip:2, ok:3 };
   items.sort((a, b) => order[a.st] - order[b.st]);
   const nBad = items.filter(i => i.st === 'bad').length;
