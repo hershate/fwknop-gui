@@ -28,8 +28,16 @@ import (
 // ------------------------------------------------------------------
 
 // backupPathFor returns the timestamped backup path for a file.
+// 同秒两次落盘会撞名（copyFile 静默覆盖，上一份备份即被销毁）——追加
+// -2/-3 序号防撞；白名单正则 configBakName 已同步放行该后缀。
 func backupPathFor(path string) string {
-	return fmt.Sprintf("%s.bak-%d", path, time.Now().Unix())
+	bak := fmt.Sprintf("%s.bak-%d", path, time.Now().Unix())
+	for i := 2; ; i++ {
+		if _, err := os.Stat(bak); os.IsNotExist(err) {
+			return bak
+		}
+		bak = fmt.Sprintf("%s.bak-%d-%d", path, time.Now().Unix(), i)
+	}
 }
 
 // copyFile copies src to dst with mode 0600.
@@ -736,7 +744,7 @@ type ConfigBackup struct {
 	Size   int64  `json:"size"`
 }
 
-var configBakName = regexp.MustCompile(`^(fwknopd|access)\.conf\.bak-\d+$`)
+var configBakName = regexp.MustCompile(`^(fwknopd|access)\.conf\.bak-\d+(-\d+)?$`)
 
 // listConfigBackups 汇总两份配置各自的自动备份，新的在前；每组截 20 个，
 // 防调试期高频保存撑大响应（与审计备份列表同一节制）。
