@@ -2228,10 +2228,12 @@ try {
   const pv = +(localStorage.getItem('fwknop-ivl') || 0);
   if ([3000, 5000, 10000, 30000, 60000].includes(pv)) { S.ivl = pv; $('#ivl-sel').value = String(pv); }
 } catch (e) {}
-$('#daemon-pill').onclick = () => {
+/* 直达概览页服务控制卡（跨页先切页再等渲染）；体检「未运行」钻取复用同一通道 */
+function goSvcCard() {
   const go = () => $('#svc-card').scrollIntoView({ behavior: SB(), block:'start' });
   if (S.page === 'overview') go(); else { showPage('overview'); setTimeout(go, 60); }
-};
+}
+$('#daemon-pill').onclick = goSvcCard;
 $('#refresh-btn').onclick = () => {
   const b = $('#refresh-btn');
   if (b.classList.contains('spinning')) return;  /* 防连点 */
@@ -8212,7 +8214,8 @@ async function runCheckup() {
   items.push(!ov ? { st:'warn', t:'fwknopd 运行状态', d:OV_DOWN }
     : alive
     ? { st:'ok', t:'fwknopd 运行中', d:'PID ' + ov.daemon.pid }
-    : { st:'bad', t:'fwknopd 未运行', d:S.writeEnabled ? '服务未运行，敲门不会被处理——可在概览页服务控制卡启动' : '服务未运行；只读模式请联系管理员启动' });
+    : { st:'bad', t:'fwknopd 未运行', d:S.writeEnabled ? '服务未运行，敲门不会被处理——可在概览页服务控制卡启动' : '服务未运行；只读模式请联系管理员启动',
+        act: S.writeEnabled ? { label:'前往服务控制', title:'打开概览页并滚动到服务控制卡（启动/重启 fwknopd）', onclick: goSvcCard } : null });
 
   /* 2.5 fwknopd 二进制 fork 校验：fork 与上游同印 2.6.11（-V 无法区分），
      fwknopd 对未知指令仅告警忽略——上游二进制会让 TOTP 跳变/设备绑定/审计
@@ -8312,7 +8315,8 @@ async function runCheckup() {
   items.push(!ov ? { st:'warn', t:'管理工具', d:OV_DOWN }
     : adm.available
     ? { st:'ok', t:'管理工具', d:'fwknopd-admin 可用，签发/撤销/解绑链路就绪' }
-    : { st:'bad', t:'管理工具不可用', d:'fwknopd-admin 不在 PATH 或未以 -admin 参数指定——签发/撤销/解绑等管理操作全部失败（fwknopd 敲门处理不受影响）' });
+    : { st:'bad', t:'管理工具不可用', d:'fwknopd-admin 不在 PATH 或未以 -admin 参数指定——签发/撤销/解绑等管理操作全部失败（fwknopd 敲门处理不受影响）',
+        act:{ label:'查看诊断', title:'打开「关于」页查看管理工具状态与打包诊断信息', onclick: () => showPage('about') } });
 
   /* 11. 生效授权存在性：零授权时其余各项全绿也「一切正常」，但没有任何
      凭证可用——部署完成度的最后一环，直达签发（只读模式无签发入口，仅提示）；
