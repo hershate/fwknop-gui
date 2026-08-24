@@ -811,7 +811,7 @@ func handleProfileExport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "打包失败："+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	logOpR(r, "导出方案", name, nil)
+	logOpR(r, "方案：导出", name, nil)
 	w.Header().Set("Content-Type", "application/gzip")
 	/* 文件名带服务器时间戳：多次导出互不覆盖（与审计下载同规） */
 	w.Header().Set("Content-Disposition", fmt.Sprintf(
@@ -842,7 +842,7 @@ func handleProfileImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err = importProfile(name, data)
-	logOpR(r, "导入方案", name, err)
+	logOpR(r, "方案：导入", name, err)
 	if err != nil {
 		adminResult(w, "", err) /* 失败不给成功文案，响应不自相矛盾 */
 		return
