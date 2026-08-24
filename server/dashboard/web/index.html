@@ -2145,6 +2145,7 @@ const CLI_CHEATSHEET = [
   ]],
   ['服务（fwknopd）', [
     ['fwknopd --exit-parse-config -f', '配置预检（不启动服务）'],
+    ['grep -ac PCAP_PORT_RANGE "$(command -v fwknopd)"', '校验 fwknopd 是否本 fork 构建（-V 与上游同印 2.6.11 无法区分；输出 0 = 疑似上游二进制或包装脚本，TOTP 跳变/设备绑定/审计静默失效。面板「一键体检」等价）'],
     ['journalctl -u fwknopd.service -n 200 --no-pager', '查看进程级日志（面板服务控制卡「服务日志」等价；无 systemd 时看 /var/log/syslog 中 fwknopd 行）'],
   ]],
   ['面板自身（fwknop-dashboard）', [
