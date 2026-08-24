@@ -8225,6 +8225,20 @@ async function runCheckup() {
     ? { st:'ok', t:'面板监听地址', d:'仅本机回环（' + la + '），凭证面不出网卡' }
     : { st:'warn', t:'面板监听非回环地址', d:la + '——明文 HTTP 下登录口令与管理操作可被链路嗅探，建议前置 TLS 反代，或改回回环地址 + SSH 隧道访问' });
 
+  /* 9. 磁盘余量（运行目录所在分区）：写满后审计/操作日志静默中断、认证
+     文件与方案保存失败——比单项配置错误更难排查的复合静默故障 */
+  const dk = ov && ov.disk;
+  if (!dk || dk.error) items.push({ st:'skip', t:'磁盘余量', d:'读取失败' + (dk && dk.error ? '：' + dk.error : '') });
+  else {
+    const pct = dk.total > 0 ? Math.round(100 * dk.avail / dk.total) : 100;
+    const bakAct = { label:'前往备份管理', title:'打开关于页：审计备份可逐个下载后删除，配置备份随轮转自动收敛', onclick: () => showPage('about') };
+    items.push((dk.avail < 100*1048576 || pct < 5)
+      ? { st:'bad', t:'磁盘余量不足', d:`运行目录分区仅剩 ${fmtSize(dk.avail)}（${pct}%）——写满后审计/操作日志静默中断，认证文件与方案保存失败，请立即清理`, act: bakAct }
+      : (dk.avail < 1073741824 || pct < 15)
+      ? { st:'warn', t:'磁盘余量偏低', d:`运行目录分区剩 ${fmtSize(dk.avail)}（${pct}%）——注意审计/配置备份堆积`, act: bakAct }
+      : { st:'ok', t:'磁盘余量', d:`运行目录分区可用 ${fmtSize(dk.avail)}（${pct}%）` });
+  }
+
   const order = { bad:0, warn:1, skip:2, ok:3 };
   items.sort((a, b) => order[a.st] - order[b.st]);
   const nBad = items.filter(i => i.st === 'bad').length;

@@ -122,6 +122,9 @@ func handleOverview(w http.ResponseWriter, r *http.Request) {
 			"oplog":        statFile(opLogPath()),
 		},
 		"audit_backups": auditBackupStat(),
+		/* 运行目录分区余量：体检「磁盘余量」项的数据源（写满 = 审计/操作
+		   日志静默中断 + 认证文件保存失败的复合静默故障） */
+		"disk": diskStat(cfg.RunDir),
 		/* 配置自动备份堆积（644 回滚体系的下游口径）：与审计备份同款的
 		   远程排障追问项，诊断打包「备份是否已堆积到需要清理」用 */
 		"config_backups": configBackupStat(),

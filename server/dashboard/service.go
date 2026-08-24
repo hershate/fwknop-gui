@@ -258,3 +258,17 @@ func fwknopdForkCheck() (bool, string, string, error) {
 	forkCheckCache.fork, forkCheckCache.note, forkCheckCache.ok = fork, note, true
 	return fork, p, note, nil
 }
+
+// diskStat 报告目录所在文件系统的余量（体检「磁盘余量」项：审计/操作
+// 日志/方案/认证文件全落在运行目录——分区写满后登录与记录同时静默失败，
+// 比任何单项配置错误都难排查）。Statfs 纯元数据调用，概览轮询可承受。
+func diskStat(dir string) map[string]interface{} {
+	var st syscall.Statfs_t
+	if err := syscall.Statfs(dir, &st); err != nil {
+		return map[string]interface{}{"error": err.Error()}
+	}
+	return map[string]interface{}{
+		"avail": int64(st.Bavail) * int64(st.Bsize),
+		"total": int64(st.Blocks) * int64(st.Bsize),
+	}
+}
