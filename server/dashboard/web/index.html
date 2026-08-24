@@ -2144,6 +2144,7 @@ const CLI_CHEATSHEET = [
   ]],
   ['服务（fwknopd）', [
     ['fwknopd --exit-parse-config -f', '配置预检（不启动服务）'],
+    ['journalctl -u fwknopd.service -n 200 --no-pager', '查看进程级日志（面板服务控制卡「服务日志」等价；无 systemd 时看 /var/log/syslog 中 fwknopd 行）'],
   ]],
   ['面板自身（fwknop-dashboard）', [
     ['fwknop-dashboard -version', '打印面板版本并退出（核对二进制版本）'],
