@@ -4060,6 +4060,9 @@ function tofuBindCount(s) {
   return ((S.tofu && S.tofu.bindings) || []).filter(x => x.stanza_key === key).length;
 }
 
+/* 双缺弱姿态单点判定：无 TOTP 跳变且无设备指纹——任何持有密钥者可从
+   任意设备敲门（legacy/debug 模板的有意弱化；徽标/CSV/搜索三处共用口径） */
+const weakStanza = s => !s.has_totp && !s.require_fingerprint;
 function stanzaBadges(s) {
   const b = [];
   if (s.has_key) b.push('<span class="tag">密钥已配置</span>');
@@ -4076,6 +4079,10 @@ function stanzaBadges(s) {
      只带用户名/来源，同用户多授权或宽来源（0.0.0.0/0）时会混入其他授权的设备 */
   if (n > 0) b.push(`<button class="tag hl" style="cursor:pointer;border:0" data-tofu-q="${esc(`${s.source||''}|${s.require_username||''}|${s.open_ports||''}`)}"
     title="该授权已自动绑定 ${n} 台设备，点击在 TOFU 绑定页精确查看（按 stanza_key 过滤）">${icon('i-fp',11)} 已绑定 ${n} 台设备</button>`);
+  /* 双缺警示持续可见：模板 desc 的一次性警示会随时间淡忘（排障授权忘了
+     撤是真实事故模式）；琥珀非红——v3 过渡/短时排障是正当的临时状态 */
+  if (weakStanza(s))
+    b.push(`<span class="tag" style="background:var(--amber-soft);color:var(--amber)" title="该授权既无 TOTP 端口跳变也无设备指纹绑定：任何持有密钥者可从任意设备敲门。v3 兼容/临时排障属有意弱化，排障完毕请立即撤销；长期授权建议「编辑」开启指纹绑定或重新签发">⚠ 无跳变·无指纹</span>`);
   return b.join('');
 }
 
@@ -4096,7 +4103,10 @@ function filteredStanzas() {
     String(s.index) === q || ('#' + s.index) === q ||
     /* 状态中文可读文案同样可搜（与事件页 reasonZh 检索同一心智）：按界面所见的
        「占位」字样定位 __CHANGEME__ 授权；侧栏占位徽标点击即预填此词 */
-    (s.changeme && ('占位密钥'.includes(q) || 'changeme'.includes(q))));
+    (s.changeme && ('占位密钥'.includes(q) || 'changeme'.includes(q))) ||
+    /* 弱姿态徽标文字可搜（界面所见即可检索）：「无跳变」「无指纹」「指纹」
+       等子串均命中该徽标 */
+    (weakStanza(s) && '无跳变·无指纹'.includes(q)));
 }
 /* 安全选项纯文本汇总（CSV 用）：与 stanzaBadges 同一判定口径，HTML 徽章的
    文字版；两处置换时须同步 */
@@ -4110,6 +4120,7 @@ function stanzaSecSummary(s) {
   else if (s.require_fingerprint) b.push('TOFU首用绑定');
   if (s.require_totp_port_match) b.push('端口因子校验');
   if (s.require_source_address) b.push('强制真实IP');
+  if (weakStanza(s)) b.push('⚠无跳变·无指纹');
   return b.join('; ');
 }
 function renderUsers() {
