@@ -6014,23 +6014,13 @@ function renderConfig() {
     const g = (CONF_META[e.key] || ['其他'])[0];
     (groups[g] = groups[g] || []).push(e);
   }
-  /* CONF_META 未收录指令的说明回退：从原文提取该指令行上方紧邻的注释块
-     （发行版配置逐指令详注——提取即准确，无转述失真风险；firewalld/ipfw/pf
-     等 32 个未收录指令免切原文模式回查）。空行/非注释行为块边界，裸 # 分隔行
-     跳过；超 60 字截断，完整注释悬停可见；找不到注释时沿用通用回退文案 */
-  const rawLns = (d.raw || '').split('\n');
+  /* CONF_META 未收录指令的说明回退：共享 confDescFallback 注释提取映射
+     （firewalld/ipfw/pf 等 32 个未收录指令免切原文模式回查）；超 60 字截断，
+     完整注释悬停可见；找不到注释时沿用通用回退文案 */
   const descCell = e => {
     const meta = (CONF_META[e.key] || [,''])[1];
     if (meta) return esc(meta);
-    const out = [];
-    for (let i = e.line - 2; i >= 0; i--) {
-      const t = (rawLns[i] || '').trim();
-      if (!t) break;
-      if (t === '#') continue;
-      if (t[0] === '#') { const c = t.replace(/^#+\s?/, '').trim(); if (c) out.unshift(c); continue; }
-      break;
-    }
-    const full = out.join(' ');
+    const full = confDescFallback()[e.key] || '';
     if (!full) return '（未收录说明，请参考 fwknopd.conf 注释）';
     return `<span title="${esc(full)}">${esc(full.length > 60 ? full.slice(0, 60) + '…' : full)}</span>`;
   };
@@ -7087,6 +7077,39 @@ function snapConfOrig() {
   confRows.forEach(([k, , d]) => { const key = k.trim(); if (key && !d) confOrigCnt[key] = (confOrigCnt[key] || 0) + 1; });
 }
 
+/* 未收录指令的注释回退映射（key→完整注释）：按 S.config 身份缓存，配置重载
+   后自动重建；提取规则同 614 轮 descCell（空行/非注释行为界，裸 # 跳过）。
+   视图模式与编辑器共用，避免两处各走一遍 walk-up */
+let confDescFb = null, confDescFbSrc = null;
+function confDescFallback() {
+  if (confDescFbSrc === S.config && confDescFb) return confDescFb;
+  confDescFbSrc = S.config;
+  confDescFb = {};
+  const d = S.config;
+  if (d && d.raw) {
+    const rawLns = d.raw.split('\n');
+    (d.entries || []).forEach(e => {
+      if (confDescFb[e.key] !== undefined) return;  /* 同名重复指令取首次 */
+      if ((CONF_META[e.key] || [,''])[1]) return;   /* 有收录说明不提取 */
+      const out = [];
+      for (let i = e.line - 2; i >= 0; i--) {
+        const t = (rawLns[i] || '').trim();
+        if (!t) break;
+        if (t === '#') continue;
+        if (t[0] === '#') { const c = t.replace(/^#+\s?/, '').trim(); if (c) out.unshift(c); continue; }
+        break;
+      }
+      if (out.length) confDescFb[e.key] = out.join(' ');
+    });
+  }
+  return confDescFb;
+}
+/* 编辑器行的说明片段（含截断与悬停全文）；无回退时空串（维持原空表现） */
+function confDescHint(key) {
+  const full = confDescFallback()[key] || '';
+  if (!full) return '';
+  return `<span title="${esc(full)}">${esc(full.length > 48 ? full.slice(0, 48) + '…' : full)}</span>`;
+}
 function confEntryRow(key, val, gone) {
   const meta = CONF_META[key];
   const yn = /^(Y|N)?$/.test(val) && (key.startsWith('ENABLE_') || key.startsWith('FLUSH_') || key.startsWith('EXIT_'));
@@ -7104,7 +7127,7 @@ function confEntryRow(key, val, gone) {
       : `<input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl ce-val" value="${esc(val)}" placeholder="值" aria-label="${esc(key) || '新指令行'} 的值" style="flex:1;font-family:var(--mono);font-size:12px"${dis}>`}
     <button class="icon-btn ce-revert" title="还原为本次打开编辑器时的值">${icon('i-undo',13)}</button>
     <button class="icon-btn ce-del" title="${gone ? '撤销删除，还原该行' : '删除该指令（保存后生效，删除前可撤销）'}">${icon(gone ? 'i-undo' : 'i-trash',13)}</button>
-    <div class="hint" style="flex:1;min-width:160px">${gone ? '<span style="color:var(--red)">已标记删除，保存后从配置移除</span>' : (meta ? esc(meta[1]) : '')}</div>
+    <div class="hint" style="flex:1;min-width:160px">${gone ? '<span style="color:var(--red)">已标记删除，保存后从配置移除</span>' : (meta ? esc(meta[1]) : confDescHint(key))}</div>
   </div>`;
 }
 
@@ -7137,6 +7160,10 @@ function markConfRows() {
     /* 值控件 aria-label 随当前键同步：键可改名，渲染时的静态标签会滞后
        （与上方还原钮 title 同一同步点、同一原因） */
     if (vi) vi.setAttribute('aria-label', (k || '新指令行') + ' 的值');
+    /* 说明随键改名同步（与 aria-label 同一同步点、同一原因）：渲染时静态
+       文本在改名后滞后——按新键重取收录说明/注释回退；墓碑行已在上方早退 */
+    const ceDesc = row.querySelector('.hint');
+    if (ceDesc) { const m2 = CONF_META[k]; ceDesc.innerHTML = m2 ? esc(m2[1]) : confDescHint(k); }
     /* 指令值类型校验：端口类 1-65535、端口范围类 X-Y、超时类正整数、
        开关类（ENABLE_/FLUSH_/EXIT_ 前缀）仅 Y/N，非法即红框 */
     let bad = '';
