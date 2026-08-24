@@ -8233,13 +8233,17 @@ async function runCheckup() {
   else if (fwr.error) items.push({ st:'bad', t:'防火墙规则不可读', d:'fwknopd --fw-list 失败——放行规则无法建立/过期（多为无 root 或防火墙后端异常）', act:{ label:'查看防火墙规则', title:'打开防火墙规则视图查看原始错误', onclick: () => openFwRules() } });
   else items.push({ st:'ok', t:'防火墙规则可读', d:'fwknopd 可正常操纵防火墙后端' });
 
-  /* 5. TOTP 跳变与监听模式一致性（凭证可用性的静默杀手） */
-  const stz = (us && us.stanzas) || [];
-  const rngStz = stz.filter(s => (s.port_range || '').trim());
+  /* 5. TOTP 跳变与监听模式一致性（凭证可用性的静默杀手）。
+     stz 为 null 表示授权数据拉取失败——下游 4 个派生项（TOTP/占位/生效/
+     悬空）若按空数组继续判，会把「读不到」误报成「没问题/全悬空」 */
+  const stz = us ? (us.stanzas || []) : null;
+  const US_DOWN = '授权数据拉取失败（网络/服务异常），本项无法判定';
+  const rngStz = (stz || []).filter(s => (s.port_range || '').trim());
   const pcapRange = entVal('PCAP_PORT_RANGE');
   const udpMode = entVal('ENABLE_UDP_SERVER').toUpperCase() === 'Y';
   const nfqMode = entVal('ENABLE_NFQ_CAPTURE').toUpperCase() === 'Y';
-  if (rngStz.length) {
+  if (!stz) items.push({ st:'warn', t:'TOTP 监听一致性', d:US_DOWN });
+  else if (rngStz.length) {
     if (udpMode) items.push({ st:'bad', t:'TOTP 跳变与监听模式冲突', d:`${rngStz.length} 个授权要求 TOTP 跳变，但当前为 UDP 固定端口监听——跳变端口的敲门无法被捕获（UDP 后端不支持端口范围）`, act: drillConf('ENABLE_UDP_SERVER') });
     else if (!pcapRange && !nfqMode) items.push({ st:'bad', t:'TOTP 监听范围缺失', d:`${rngStz.length} 个授权要求 TOTP 跳变，但未配置 PCAP_PORT_RANGE——默认 BPF 仅抓 62201，跳变端口敲门无法被捕获`, act: drillConf('PCAP_PORT_RANGE') });
     else if (pcapRange) {
@@ -8254,8 +8258,9 @@ async function runCheckup() {
   } else items.push({ st:'ok', t:'TOTP 监听一致性', d:'无 TOTP 跳变授权（固定端口监听即可）' });
 
   /* 6. 占位密钥（永远无法通过校验的死授权） */
-  const cm = stz.filter(s => s.changeme);
-  items.push(cm.length
+  const cm = (stz || []).filter(s => s.changeme);
+  items.push(!stz ? { st:'warn', t:'密钥材料', d:US_DOWN }
+    : cm.length
     ? { st:'bad', t:'占位密钥授权', d:`${cm.map(s => s.name || ('#' + s.index)).join('、')} 仍含 __CHANGEME__ 占位密钥，永远无法工作——请撤销后重新签发`, act:{ label:'前往用户页', title:'打开用户与授权页处理占位授权', onclick: () => showPage('users') } }
     : { st:'ok', t:'密钥材料', d:'无 __CHANGEME__ 占位密钥残留' });
 
@@ -8297,7 +8302,8 @@ async function runCheckup() {
      凭证可用——部署完成度的最后一环，直达签发（只读模式无签发入口，仅提示）；
      有已禁用授权时附恢复路径（撤销≠删除，注释块可一键还原） */
   const nDis = ((us && us.disabled) || []).length;
-  items.push(stz.length
+  items.push(!stz ? { st:'warn', t:'生效授权', d:US_DOWN }
+    : stz.length
     ? { st:'ok', t:'生效授权', d:`${stz.length} 个生效授权可用` + (nDis ? `（另有 ${nDis} 个已禁用）` : '') }
     : { st:'warn', t:'尚无生效授权', d:(S.writeEnabled
       ? '没有任何可用凭证——其余检查通过不代表已可投入使用，请签发首个凭证'
@@ -8310,6 +8316,7 @@ async function runCheckup() {
      列表失真）——live 集合与 tofuLiveKeys 同口径（生效 stanza 的
      source|用户|端口三元组），但用本轮拉取的真值而非全局缓存 */
   if (!tf) items.push({ st:'warn', t:'TOFU 绑定', d:'读取请求失败（网络/服务异常）' });
+  else if (!stz) items.push({ st:'warn', t:'TOFU 绑定', d:US_DOWN });
   else {
     const live = new Set(stz.map(s => `${s.source || ''}|${s.require_username || ''}|${s.open_ports || ''}`));
     const dang = (tf.bindings || []).filter(b => !live.has(b.stanza_key)).length;
