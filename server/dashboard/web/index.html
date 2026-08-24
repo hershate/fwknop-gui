@@ -8663,6 +8663,13 @@ function renderProfiles() {
         try {
           const r = await fetch('/api/profiles/export?name=' + encodeURIComponent(name),
             { headers: { 'X-Fwknop-Request': '1' } });
+          /* 裸 fetch 的 401 同样回登录页（与 api() 语义一致）：会话过期不该
+             只得到一句「HTTP 401」 */
+          if (r.status === 401) {
+            const le = $('#login-expired');
+            if (le) { le.textContent = '登录状态已失效（会话 12 小时到期、他处修改密码或面板重启均会使会话失效），请重新登录——之前的页面与事件筛选会自动还原。'; le.style.display = ''; }
+            closeModal(); showAuthView('auth-login'); return;
+          }
           if (!r.ok) { toast('导出失败（HTTP ' + r.status + '）：' + (await r.text()).slice(0, 200), 'err', 5000); return; }
           const blob = await r.blob();
           const a = document.createElement('a');
