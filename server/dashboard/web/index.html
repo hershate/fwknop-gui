@@ -7723,6 +7723,33 @@ $('#conf-save').onclick = async () => {
         el.style.display = ''; el.style.borderColor = r.error ? 'var(--red)' : 'var(--green)';
         el.textContent = (r.output || '') + (r.error ? '\n错误：' + r.error : '');
         if (r.error) { toast('配置保存失败（未落盘）', 'err');
+          /* 预检错误行号定位：仅原文编辑模式给——textarea 内容即预检 payload，
+             行号 1:1 可映射；结构化模式的 payload 是注释合并产物，行号不对应
+             任何可见视图（给了反而误导），故结构化路径刻意不给 */
+          const lm = confRawEdit && ((r.output || '') + '\n' + (r.error || '')).match(/in\s+\S*fwknopd\.conf\s+at line\s+(\d+)/);
+          let jmpBtn = $('#conf-save-jump');
+          if (lm) {
+            const n = +lm[1];
+            if (!jmpBtn) {
+              jmpBtn = document.createElement('button');
+              jmpBtn.id = 'conf-save-jump';
+              jmpBtn.className = 'btn ghost small';
+              jmpBtn.style.cssText = 'margin-top:6px';
+              el.after(jmpBtn);
+            }
+            jmpBtn.textContent = `定位到原文编辑第 ${n} 行`;
+            jmpBtn.onclick = () => {
+              const ta = $('#conf-raw-area');
+              const lines = ta.value.split('\n');
+              if (!(n >= 1 && n <= lines.length)) { toast(`第 ${n} 行不存在（当前 ${lines.length} 行，保存后又有改动？）`, 'err', 3000); return; }
+              let pos = 0;
+              for (let i = 0; i < n - 1; i++) pos += lines[i].length + 1;
+              ta.focus();
+              /* 选中整行：视觉锚定错误行，且浏览器自动滚动到选区 */
+              ta.setSelectionRange(pos, pos + lines[n - 1].length);
+            };
+            jmpBtn.style.display = '';
+          } else if (jmpBtn) jmpBtn.style.display = 'none';
           /* 并发冲突被拒后本地 mtime/raw 基线已过期，不刷新重试必再撞同一
              冲突——自动重拉配置（编辑器行保持不动）并前移基线：toast 已明示
              他人改动存在，重试即「知情后覆盖」，是人作出的决定 */
@@ -7733,6 +7760,7 @@ $('#conf-save').onclick = async () => {
             toast('配置已刷新为最新，请复核改动后重试保存', 'ok', 5000);
           } }
         else { toast('配置已保存并热加载', 'ok'); clearConfDirty();
+          const okJump = $('#conf-save-jump'); if (okJump) okJump.style.display = 'none';
           await loadConfig();
           /* 自己的保存也改变文件 mtime——基线随成功落盘前移，否则紧接着的
              下一次保存会撞「自己造成的」假冲突；预警条同步复位 */
