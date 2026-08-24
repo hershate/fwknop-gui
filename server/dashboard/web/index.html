@@ -5617,16 +5617,21 @@ $('#add-form').addEventListener('submit', async ev => {
     } else { gu.style.display = 'none'; ge.style.display = 'none'; }
     if (r.error) { toast('签发失败：' + r.error, 'err', 6000); $('#add-next').style.display = 'none'; }
     else {
-      /* 「已热加载」以最新已知服务状态为准：fwknopd 未运行时 SIGHUP 静默无效，
-         授权并不会生效——琥珀警示分态，避免凭证分发后「敲门无响应」的两难排障
-         （S.overview 轮询可能滞后数秒，属可接受近似，下一轮轮询即收敛） */
-      const daemonDead = f.apply.checked && S.overview && S.overview.daemon && !S.overview.daemon.alive;
+      /* 「已写入/已热加载」以服务端 output 实报为准（appendStanza 同步执行，其
+         msg 含 sighupBestEffort 实报）：比 S.overview 轮询态精确——无轮询滞后，
+         且能识别「自动写入失败」这一轮询态完全看不见的分支（apply 失败不置
+         r.error，此前会被误报为「已写入并热加载」） */
+      const outTxt = r.output || '';
+      const applyFail = f.apply.checked && /自动写入 access\.conf 失败/.test(outTxt);
+      const daemonDead = f.apply.checked && !applyFail && /未在运行/.test(outTxt);
       toast(f.apply.checked
-        ? (daemonDead
-          ? `凭证「${nm}」已签发并写入 access.conf，但 fwknopd 未运行——授权待服务启动后才会生效`
-          : `凭证「${nm}」已签发并写入 access.conf（已热加载），请复制授权 URI 分发给用户`)
+        ? (applyFail
+          ? `凭证「${nm}」已签发，但自动写入 access.conf 失败——请用下方「复制 stanza 段」手动落盘`
+          : daemonDead
+            ? `凭证「${nm}」已签发并写入 access.conf，但 fwknopd 未运行——授权待服务启动后才会生效`
+            : `凭证「${nm}」已签发并写入 access.conf（已热加载），请复制授权 URI 分发给用户`)
         : `凭证「${nm}」已签发（未写入配置），请立即复制授权 URI 分发给用户`,
-        daemonDead ? 'warn' : 'ok', 6000);
+        (applyFail || daemonDead) ? 'warn' : 'ok', 6000);
       clearAddDraft();
       if (f.server.value.trim()) { lsSet('fwknop-last-server', f.server.value.trim()); pushServerHistory(f.server.value.trim()); }
       /* 连续签发保留策略选项：access/fw-timeout/totp/port-range/require-fingerprint/
