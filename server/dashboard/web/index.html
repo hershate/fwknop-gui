@@ -8292,6 +8292,17 @@ async function runCheckup() {
     ? { st:'ok', t:'管理工具', d:'fwknopd-admin 可用，签发/撤销/解绑链路就绪' }
     : { st:'bad', t:'管理工具不可用', d:'fwknopd-admin 不在 PATH 或未以 -admin 参数指定——签发/撤销/解绑等管理操作全部失败（fwknopd 敲门处理不受影响）' });
 
+  /* 11. 生效授权存在性：零授权时其余各项全绿也「一切正常」，但没有任何
+     凭证可用——部署完成度的最后一环，直达签发（只读模式无签发入口，仅提示） */
+  items.push(stz.length
+    ? { st:'ok', t:'生效授权', d:`${stz.length} 个生效授权可用` }
+    : { st:'warn', t:'尚无生效授权', d:S.writeEnabled
+      ? '没有任何可用凭证——其余检查通过不代表已可投入使用，请签发首个凭证'
+      : '没有任何可用凭证；只读模式（-read-only）下无法签发，请联系管理员', act: S.writeEnabled ? { label:'前往签发', title:'打开用户与授权页并展开签发新凭证表单（推荐「标准 SSH」模板一键填充）', onclick: () => {
+      showPage('users');
+      setTimeout(() => { const ac = $('#add-card'); if (ac && ac.style.display === 'none') { const b = $('#show-add'); if (b) b.click(); } }, 60);
+    } } : null });
+
   const order = { bad:0, warn:1, skip:2, ok:3 };
   items.sort((a, b) => order[a.st] - order[b.st]);
   /* 竞态守卫两层：①已有更新一轮启动（myRun 落后）——静默退出，结果由
