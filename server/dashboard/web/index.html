@@ -3178,16 +3178,20 @@ $('#nav-about-badge').onclick = ev => {
   ev.stopPropagation();
   drillOpLog('登录失败');
 };
-/* 占位密钥徽标钻取（与 about/ev 徽标同模式）：不止导航——预填「占位」搜索词，
-   授权很多时问题卡片也不会滚出视野（filteredStanzas 对该词匹配 changeme 态） */
-$('#nav-usr-badge').onclick = ev => {
-  ev.stopPropagation();
+/* 占位密钥钻取（徽标与体检共用，与 drillTofuOrphan 同模式）：不止导航——
+   预填「占位」搜索词，授权很多时问题卡片也不会滚出视野（filteredStanzas
+   对该词匹配 changeme 态） */
+function drillUsersChangeme() {
   S.usersQuery = '占位'; const us = $('#users-search'); if (us) us.value = '占位';
   /* 钻取即持久化：renderUsers 每轮渲染都固化 S.usersQuery（3869），若钻取后
      下一次轮询渲染抢在 showPage 前发生（或用户中途刷新），旧搜索词被回写、
      钻取状态静默丢失——先落盘再切页，与事件/TOFU 钻取处的处理一致 */
   try { localStorage.setItem('fwknop-users-query', '占位'); } catch (_) {}
   showPage('users');
+}
+$('#nav-usr-badge').onclick = ev => {
+  ev.stopPropagation();
+  drillUsersChangeme();
 };
 /* 悬空绑定钻取（徽标与体检共用）：预填「悬空」搜索词直达问题行——
    filteredTofuBindings 对该词匹配 tofuOrphan 态，口径与徽标计数一致 */
@@ -8492,7 +8496,7 @@ async function runCheckup() {
   const cm = (stz || []).filter(s => s.changeme);
   items.push(!stz ? { st:'warn', t:'密钥材料', d:US_DOWN }
     : cm.length
-    ? { st:'bad', t:'占位密钥授权', d:`${cm.map(s => s.name || ('#' + s.index)).join('、')} 仍含 __CHANGEME__ 占位密钥，永远无法工作——请撤销后重新签发`, act:{ label:'前往用户页', title:'打开用户与授权页处理占位授权', onclick: () => showPage('users') } }
+    ? { st:'bad', t:'占位密钥授权', d:`${cm.map(s => s.name || ('#' + s.index)).join('、')} 仍含 __CHANGEME__ 占位密钥，永远无法工作——请撤销后重新签发`, act:{ label:'定位占位授权', title:'打开用户与授权页并预填「占位」搜索词，直达问题卡片（与侧栏徽标同一钻取）', onclick: drillUsersChangeme } }
     : { st:'ok', t:'密钥材料', d:'无 __CHANGEME__ 占位密钥残留' });
 
   /* 7. 浏览器-服务器时钟漂移（TOTP/时效校验的同源风险信号）；ov 失败时
