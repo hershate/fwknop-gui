@@ -5969,6 +5969,21 @@ async function loadConfig() {
     const d = await api('/api/config');
     S.config = d;
     syncConfExtWarn();  /* 编辑期外部修改预警/基线维护（函数内自判 confEditing） */
+    /* 指令名补全扩展：CONF_META 46 个常用 + 原文发现的其他指令（含注释掉的
+       待启用项）——firewalld/ipfw/pf 等高级指令手输易错。≥4 字符门槛滤掉
+       散文中的 UDP/NAT/SPA 缩写；个别散文全大写词误入无害（datalist 仅建议
+       不拦截，与 615 说明回退同一 raw 数据源） */
+    const dl = $('#conf-keys');
+    if (dl && d.raw) {
+      const keys = Object.keys(CONF_META);
+      const seen = new Set(keys);
+      const extra = [];
+      d.raw.split('\n').forEach(ln => {
+        const m = ln.match(/^#?\s?([A-Z][A-Z0-9_]{3,})\s+\S/);
+        if (m && !seen.has(m[1])) { seen.add(m[1]); extra.push(m[1]); }
+      });
+      dl.innerHTML = keys.concat(extra.sort()).map(k => `<option value="${k}">`).join('');
+    }
     if (S.page === 'config' && !focusWithin('#config-body')) renderConfig();
   } catch (e) {
     setConn(false);
