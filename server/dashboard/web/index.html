@@ -5597,6 +5597,10 @@ $('#add-form').addEventListener('submit', async ev => {
       clearAddDraft();
       if (f.server.value.trim()) { lsSet('fwknop-last-server', f.server.value.trim()); pushServerHistory(f.server.value.trim()); }
       f.reset();  /* 清空表单便于连续签发下一位用户（结果区不受影响） */
+      /* reset 把服务器地址也清了——连续签发几乎都发往同一台服务器，按
+         fwknop-last-server 静默重填（与草稿路径 5130 同一意图的连续签发段；
+         静默而非闪烁：值是用户几秒前刚填的，且 5598 刚存入该键） */
+      { const srv = localStorage.getItem('fwknop-last-server') || ''; if (srv) f.server.value = srv; }
       syncTotpFields(); syncFpFields();
       $$('.tpl-chip').forEach(c => c.classList.remove('active'));
       $('#tpl-desc').textContent = '';
