@@ -4642,6 +4642,7 @@ $('#add-batch').onclick = () => {
 
 /* access.conf 原文查看（密钥掩码，只读）：stanza 卡片只展示结构化字段，
    注释/空行/禁用块布局与 lint 实际解析的文本视图在这里；掩码原文可安全外发 */
+let arPresetJump = '';  /* lint「查看原文定位」带入的 stanza 标识（一次性消费） */
 $('#users-raw').onclick = async () => {
   try {
     const r = await api('/api/accessconf/view');
@@ -4686,10 +4687,11 @@ $('#users-raw').onclick = async () => {
           }
           if (target < 0) { toast(`未找到第 ${mN[1]} 个生效 stanza（注释禁用块不计入序号）`, 'err', 3500); return; }
         } else {
-          /* 名称：面板签发的 stanza 带「### user: 名」标记行；用户名：REQUIRE_USERNAME
-             值行（lint 对无名 stanza 退化用用户名作标识） */
+          /* 名称：面板签发的 stanza 带「### fwknopd-admin user: 名」标记行
+             （parse.go userMarker 同款）；用户名：REQUIRE_USERNAME 值行
+             （lint 对无名 stanza 退化用用户名作标识） */
           for (let i = 0; i < lines.length; i++) {
-            if (lines[i].trim() === '### user: ' + q) { target = i; break; }
+            if (lines[i].trim() === '### fwknopd-admin user: ' + q) { target = i; break; }
           }
           if (target < 0) {
             const reU = new RegExp('^#?\\s*REQUIRE_USERNAME\\s+' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*$');
@@ -4703,6 +4705,11 @@ $('#users-raw').onclick = async () => {
       row.style.background = 'var(--amber-soft)';
       row.scrollIntoView({ behavior: SB(), block: 'center' });
     };
+    /* lint 跟进入口带入的 stanza 标识：预填并立即跳转（一次性消费） */
+    if (arPresetJump && jmp) {
+      jmp.value = arPresetJump; arPresetJump = '';
+      jmp.onchange();
+    }
   } catch (e) {}
 };
 
@@ -4715,10 +4722,12 @@ $('#users-lint').onclick = async () => {
   try {
     const r = await api('/api/admin/lint', { method: 'POST' });
     /* 未通过时给后续动作（与预检失败→配置页同一心智）：lint 按 stanza 名/#序号
-       标识问题授权（无行号），原文视图跳行框粘贴该标识即直达定位；通过则无需动作 */
+       标识问题授权（无行号），提取首条 ERROR/WARN 的标识带入原文视图跳行框
+       直接定位（格式即 cmd_lint 的 "  ERROR   [标识] …" 行）；通过则无需动作 */
+    const lintFirstId = ((r.output || '').match(/^\s*(?:ERROR|WARN)\s+\[(.+?)\]/m) || [])[1] || '';
     infoModal('access.conf 一致性检查（fwknopd-admin lint）',
       (r.output || '（无输出）') + (r.error ? '\n\n退出状态：' + r.error : ''), !!r.error,
-      r.error ? { label: '查看原文定位', icon: 'i-list', title: '打开 access.conf 原文视图（lint 输出按 授权名/#序号 标识 stanza，在查看器跳行框粘贴即可直达；密钥已掩码）', onclick: () => $('#users-raw').click() } : null);
+      r.error ? { label: '查看原文定位', icon: 'i-list', title: `打开 access.conf 原文视图${lintFirstId ? `并直接定位到「${lintFirstId}」的 stanza` : ''}（密钥已掩码）`, onclick: () => { arPresetJump = lintFirstId; $('#users-raw').click(); } } : null);
   } catch (e) {} finally { btn.disabled = false; }
 };
 
