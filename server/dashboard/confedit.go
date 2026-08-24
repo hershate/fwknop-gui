@@ -9,8 +9,12 @@
 package main
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -640,6 +644,83 @@ func duplicateProfile(name, target string) error {
 	meta := ProfileMeta{Name: target, Note: note, Created: time.Now().Unix()}
 	data, _ := json.MarshalIndent(meta, "", "  ")
 	return os.WriteFile(filepath.Join(dst, "meta.json"), data, 0600)
+}
+
+// importProfile 从导出包（tar.gz 字节流）还原为新方案：仅接受三件套成员，
+// 目标名已存在即拒绝（不覆盖他人方案），任何一步失败清理半成品。
+/* 导入包即潜在持票凭证，但导入动作本身只写方案目录——不触碰现役配置
+   （生效仍需显式「应用」，applyProfile 会先预检再替换），故无需导入时
+   预检；且异机方案的路径类指令（FWKNOP_RUN_DIR 等）在本机合法但不可
+   预检通过，强行预检会误拦正常迁移。 */
+func importProfile(name string, data []byte) error {
+	if err := checkProfileName(name); err != nil {
+		return err
+	}
+	if _, err := os.Stat(profileDir(name)); err == nil {
+		return fmt.Errorf("方案「%s」已存在", name)
+	}
+	const maxMember = 512 * 1024 // 与 saveFwknopdConfRaw 的体积上限同规
+	gz, err := gzip.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return fmt.Errorf("不是有效的 gzip 包（须为本面板导出的方案 tar.gz）")
+	}
+	defer gz.Close()
+	tr := tar.NewReader(gz)
+	files := map[string][]byte{}
+	for {
+		hdr, terr := tr.Next()
+		if terr == io.EOF {
+			break
+		}
+		if terr != nil {
+			return fmt.Errorf("tar 包读取失败：%v", terr)
+		}
+		/* 只取三件套基础名：路径穿越（../）与陌生成员一并忽略 */
+		base := filepath.Base(hdr.Name)
+		if base != "fwknopd.conf" && base != "access.conf" && base != "meta.json" {
+			continue
+		}
+		if hdr.Size > maxMember {
+			return fmt.Errorf("成员 %s 超过体积上限（%d KB）", base, maxMember/1024)
+		}
+		buf, rerr := io.ReadAll(io.LimitReader(tr, maxMember+1))
+		if rerr != nil {
+			return fmt.Errorf("成员 %s 读取失败", base)
+		}
+		if len(buf) > maxMember {
+			return fmt.Errorf("成员 %s 超过体积上限（%d KB）", base, maxMember/1024)
+		}
+		files[base] = buf
+	}
+	if len(files["fwknopd.conf"]) == 0 || len(files["access.conf"]) == 0 {
+		return fmt.Errorf("包内缺少 fwknopd.conf 或 access.conf（须为本面板导出的方案包）")
+	}
+	dst := profileDir(name)
+	if err := os.MkdirAll(dst, 0700); err != nil {
+		return err
+	}
+	for _, f := range []string{"fwknopd.conf", "access.conf"} {
+		if err := os.WriteFile(filepath.Join(dst, f), files[f], 0600); err != nil {
+			os.RemoveAll(dst) // 半途而废不留残缺方案
+			return err
+		}
+	}
+	/* meta.json：沿用包内备注/创建时间，名称改写为导入名（允许改名导入）；
+	   包内缺失则补一份（Created 取导入时刻） */
+	var m ProfileMeta
+	if raw := files["meta.json"]; len(raw) > 0 {
+		_ = json.Unmarshal(raw, &m)
+	}
+	m.Name = name
+	if m.Created == 0 {
+		m.Created = time.Now().Unix()
+	}
+	mdata, _ := json.MarshalIndent(m, "", "  ")
+	if err := os.WriteFile(filepath.Join(dst, "meta.json"), mdata, 0600); err != nil {
+		os.RemoveAll(dst)
+		return err
+	}
+	return nil
 }
 
 // ------------------------------------------------------------------

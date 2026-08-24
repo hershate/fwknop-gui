@@ -146,6 +146,7 @@ func main() {
 	mux.HandleFunc("/api/profiles", guard(handleProfiles))
 	mux.HandleFunc("/api/profiles/view", guard(handleProfileView))
 	mux.HandleFunc("/api/profiles/export", guard(handleProfileExport))
+	mux.HandleFunc("/api/profiles/import", guard(handleProfileImport))
 	// 写操作（需登录 + -enable-write + CSRF 头）
 	mux.HandleFunc("/api/admin/add", guard(handleAdminAdd))
 	mux.HandleFunc("/api/admin/rm", guard(handleAdminRm))

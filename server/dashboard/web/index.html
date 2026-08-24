@@ -1072,6 +1072,8 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               <div class="field"><label for="pf-note">备注</label>
                 <input spellcheck="false" autocomplete="off" autocapitalize="off" id="pf-note" placeholder="用途说明（可选）"></div>
               <div class="field" style="align-self:end"><button class="btn" id="pf-save" title="把当前 fwknopd.conf + access.conf 快照保存为命名方案，随时一键套用"><svg width="15" height="15"><use href="#i-save"/></svg>保存方案</button></div>
+              <div class="field" style="align-self:end"><button class="btn ghost" id="pf-import" title="导入本面板导出的方案包（tar.gz），用于异机迁移/备份还原——仅写入方案列表，不触碰现役配置，预览确认后再「应用」"><svg width="15" height="15"><use href="#i-download"/></svg>导入方案包</button>
+                <input type="file" id="pf-import-file" accept=".tar.gz,.tgz,application/gzip" style="display:none" aria-label="选择方案包文件"></div>
             </div>
           </div>
         </div>
@@ -8329,6 +8331,55 @@ $('#pf-save').onclick = () => {
         else { toast(r.output || '方案已保存', 'ok'); $('#pf-name').value = ''; $('#pf-note').value = ''; loadProfiles(); }
       } catch (e) {}
     });
+};
+
+/* 导入方案包：文件选择 → 名称确认（默认取导出文件名中的方案名）→ 上传。
+   导入只写方案列表、不动现役配置，故流程内不再二次确认「应用」；
+   名称冲突服务端拒绝（不覆盖），与「另存副本」同一纪律 */
+$('#pf-import').onclick = () => { $('#pf-import-file').value = ''; $('#pf-import-file').click(); };
+$('#pf-import-file').onchange = e => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { toast('方案包过大（上限 2 MB）', 'err'); return; }
+  /* 导出文件名形如 fwknop-profile-<name>-<yyyymmdd-hhmmss>.tar.gz，预填方案名 */
+  const fm = file.name.match(/^fwknop-profile-([A-Za-z0-9][A-Za-z0-9._-]{0,63})-\d{8}-\d{6}\.tar\.gz$/);
+  openModal(`<h3>导入方案包</h3>
+    <div class="mb hint">文件：<code>${esc(file.name)}</code>（${fmtSize(file.size)}）。导入后出现在方案列表，预览确认内容后再「应用」生效——<b>不会</b>直接改动现役配置。</div>
+    <div class="field"><label>方案名</label>
+      <input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="pimp-name" value="${fm ? esc(fm[1]) : ''}" maxlength="64" placeholder="字母、数字、. _ -（≤64 字符）" style="width:100%">
+      <div class="auth-hint" aria-live="polite" id="pimp-hint"></div></div>
+    <div class="mf"><button class="btn ghost" id="pimp-cancel">取消</button>
+    <button class="btn" id="pimp-ok">导入</button></div>`);
+  const inp = $('#pimp-name'), hint = $('#pimp-hint'), ok = $('#pimp-ok');
+  inp.focus(); inp.select();
+  const check = () => {
+    const v = inp.value.trim();
+    const dup = ((S.profiles && S.profiles.profiles) || []).some(x => x.name === v);
+    hint.textContent = !v ? '' : !pfNameOK(v) ? '名称含非法字符' : dup ? '已存在同名方案（导入不覆盖）' : '';
+    hint.style.color = 'var(--red)';
+    ok.disabled = !v || !pfNameOK(v) || dup;
+  };
+  inp.addEventListener('input', check);
+  inp.addEventListener('keydown', ev => { if (ev.key === 'Enter' && !ok.disabled) ok.click(); });
+  check();
+  $('#pimp-cancel').onclick = () => closeModal();
+  ok.onclick = async () => {
+    if (ok.disabled) return;
+    ok.disabled = true;
+    try {
+      const r = await fetch('/api/profiles/import?name=' + encodeURIComponent(inp.value.trim()),
+        { method: 'POST', headers: { 'X-Fwknop-Request': '1', 'Content-Type': 'application/gzip' }, body: file });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || d.error) {
+        toast('导入失败：' + (d.error || ('HTTP ' + r.status)), 'err', 6000);
+        ok.disabled = false;  /* 失败保现场：改名/换文件后可重试 */
+        return;
+      }
+      closeModal();
+      toast(d.output || '方案已导入', 'ok', 5000);
+      loadProfiles();
+    } catch (e2) { toast('导入失败：网络错误，请重试', 'err'); ok.disabled = false; }
+  };
 };
 
 /* 全局脚本错误兜底：界面 JS 异常时以驻留 toast 暴露（用户可截图上报），

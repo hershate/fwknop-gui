@@ -812,6 +812,36 @@ func handleProfileExport(w http.ResponseWriter, r *http.Request) {
 	w.Write(buf.Bytes())
 }
 
+// handleProfileImport: POST /api/profiles/import?name=X，请求体为导出包 tar.gz。
+/* 与导出配对构成迁移闭环。导入只写方案目录、不触碰现役配置（生效仍需显式
+   应用并过预检），请求体整包限 2 MB（成员级 512 KB 上限在 importProfile）。 */
+func handleProfileImport(w http.ResponseWriter, r *http.Request) {
+	if !requireWrite(w, r) {
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "需要 POST", http.StatusMethodNotAllowed)
+		return
+	}
+	name := strings.TrimSpace(r.URL.Query().Get("name"))
+	data, err := io.ReadAll(io.LimitReader(r.Body, 2*1024*1024+1))
+	if err != nil {
+		http.Error(w, "读取上传内容失败", http.StatusBadRequest)
+		return
+	}
+	if len(data) > 2*1024*1024 {
+		http.Error(w, "方案包过大（上限 2 MB）", http.StatusBadRequest)
+		return
+	}
+	err = importProfile(name, data)
+	logOpR(r, "导入方案", name, err)
+	if err != nil {
+		adminResult(w, "", err) /* 失败不给成功文案，响应不自相矛盾 */
+		return
+	}
+	adminResult(w, "方案「"+name+"」已导入，预览确认后可「应用」生效", nil)
+}
+
 // handleProfileOp: JSON {name, note?, target?}；action 取自 URL 末段。
 func handleProfileOp(w http.ResponseWriter, r *http.Request) {
 	if !requirePost(w, r) {
