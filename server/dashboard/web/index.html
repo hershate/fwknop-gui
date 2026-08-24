@@ -4216,21 +4216,35 @@ function renderUsers() {
     if (!s) return;
     if ($('#add-card').style.display === 'none') $('#show-add').click();
     const f = $('#add-form');
-    f.name.value = '';
-    f.access.value = s.open_ports || '';
-    f.user.value = s.require_username || '';
-    f.totp.checked = !!s.port_range;
-    f['port-range'].value = s.port_range || '';
-    f['require-fingerprint'].checked = !!s.require_fingerprint;
-    f['tofu-timeout'].value = s.tofu_timeout > 0 ? String(s.tofu_timeout) : '';
-    f['fw-timeout'].value = s.fw_access_timeout || '';
-    f['require-totp-port-match'].checked = !!s.require_totp_port_match;
-    syncTotpFields(); syncFpFields();
-    ['name','access','user','port-range','tofu-timeout','fw-timeout'].forEach(n =>
-      f[n] && f[n].dispatchEvent(new Event('input')));  /* 联动校验 + 芯片高亮 + 草稿 */
-    saveAddDraft();
-    toast('已按该授权预填，请填写新名称', 'ok');
-    f.name.focus();
+    /* 覆盖守卫（与模板套用同规）：预填会清空名称并覆盖端口/用户/安全选项，
+       表单已有手填内容或草稿时先确认——预填后立即 saveAddDraft，误点无挽回 */
+    const dirty = f.name.value.trim() || f.access.value.trim() || f.user.value.trim() ||
+      f['port-range'].value.trim() || !f.totp.checked || !f['require-fingerprint'].checked ||
+      f['tofu-timeout'].value.trim() || f['require-totp-port-match'].checked || f['fw-timeout'].value.trim();
+    const doFill = () => {
+      f.name.value = '';
+      f.access.value = s.open_ports || '';
+      f.user.value = s.require_username || '';
+      f.totp.checked = !!s.port_range;
+      f['port-range'].value = s.port_range || '';
+      f['require-fingerprint'].checked = !!s.require_fingerprint;
+      f['tofu-timeout'].value = s.tofu_timeout > 0 ? String(s.tofu_timeout) : '';
+      f['fw-timeout'].value = s.fw_access_timeout || '';
+      f['require-totp-port-match'].checked = !!s.require_totp_port_match;
+      syncTotpFields(); syncFpFields();
+      ['name','access','user','port-range','tofu-timeout','fw-timeout'].forEach(n =>
+        f[n] && f[n].dispatchEvent(new Event('input')));  /* 联动校验 + 芯片高亮 + 草稿 */
+      saveAddDraft();
+      toast('已按该授权预填，请填写新名称', 'ok');
+      f.name.focus();
+    };
+    if (dirty) {
+      confirmDialog('签发类似将覆盖已填内容',
+        `当前签发表单已有内容（名称/端口/安全选项等），按「<b>${esc(s.name || ('授权 #' + s.index))}</b>」预填将<b>清空名称</b>并覆盖端口、用户与全部安全选项（服务器地址不受影响）。`,
+        '预填并覆盖', doFill, true);
+      return;
+    }
+    doFill();
   });
   /* 重发 URI：为已有授权重建 fwknop://（access.conf 不记录服务器地址，需补录；
      密钥材料不离开服务器，由 fwknopd-admin user qr 就地重建）。两步弹窗：
