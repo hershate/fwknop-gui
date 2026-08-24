@@ -8614,7 +8614,10 @@ async function runCheckup() {
     /* 时间与面板版本入报头：报告用途是贴工单/交接，缺了时间版本对方无法
        判断时效与口径（版本取页脚单点，免维护第二处） */
     const ver = ($('#foot-ver') || {}).textContent || '';
-    const head = `fwknop 部署体检 · ${fmtAbs(Date.now()/1000)} · 面板 v${ver}：${nBad ? nBad + ' 项异常，' : ''}${nWarn ? nWarn + ' 项需注意，' : ''}${nOk} 项通过`;
+    /* 面板别名随报头（多实例部署：报告外带后接收方能区分来自哪台，与诊断
+       打包同规；本机设定可能为空，空则不带） */
+    const al = panelAlias();
+    const head = `fwknop 部署体检 · ${fmtAbs(Date.now()/1000)} · 面板 v${ver}${al ? '（' + al + '）' : ''}：${nBad ? nBad + ' 项异常，' : ''}${nWarn ? nWarn + ' 项需注意，' : ''}${nOk} 项通过`;
     copyText(head + '\n' + items.map(it => `${marks[it.st]} ${it.t} — ${it.d}`).join('\n'), '体检结果 ');
   };
   rerunBtn.disabled = false;
