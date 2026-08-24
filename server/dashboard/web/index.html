@@ -6300,12 +6300,38 @@ function openStanzaEditor(index) {
     const both = [...sePortSet(ov)].filter(p => sePortSet(rv).has(p));
     if (both.length) seHint('RESTRICT_PORTS', false, `⚠ 端口 ${both.join('、')} 同时在开放列表中：禁止优先，开放项不生效`);
   };
+  /* 放行端口 ∩ TOTP 敲门范围（与签发卡片 accessRangeOverlap 同一警示口径）：
+     跳变落点命中放行端口时敲门包会送达该端口上的真实服务（fail2ban 误判/日志
+     噪声）。编辑语义两处与签发不同：OPEN_PORTS 留空=指令缺失=不限制端口
+     （acc_check_port_access 对空表不拦截），无可警示项跳过；TOTP_PORT_RANGE
+     留空按客户端签发默认 30000-60000 估（DEFAULT_PORT_RANGE） */
+  const seAccessRangeOverlap = () => {
+    const openEl = document.querySelector('#modal-root [data-sf="OPEN_PORTS"]');
+    const rangeEl = document.querySelector('#modal-root [data-sf="TOTP_PORT_RANGE"]');
+    if (!openEl || !rangeEl || rangeEl.disabled) return null;  /* 无 TOTP 种子：范围为死配置 */
+    const m = (rangeEl.value.trim() || '30000-60000').match(/^(\d{1,5})-(\d{1,5})$/);
+    if (!m) return null;  /* 范围非法：由其自身格式提示先行 */
+    const lo = +m[1], hi = +m[2], av = openEl.value.trim();
+    if (!av || !V.access(av)) return null;
+    const hits = av.split(',').filter(x => { const n = +x.split('/')[1]; return n >= lo && n <= hi; });
+    return hits.length ? hits : null;
+  };
   const seLiveCheck = el => {
     if (!el || !el.dataset || !el.dataset.sf || el.type === 'checkbox') return;
     const k = el.dataset.sf, v = el.value.trim();
-    if (!v) { seHint(k, null, ''); if (k === 'OPEN_PORTS' || k === 'RESTRICT_PORTS') seOverlapCheck(); return; }
+    if (!v) { seHint(k, null, ''); if (k === 'OPEN_PORTS' || k === 'RESTRICT_PORTS') seOverlapCheck();
+      /* 范围被清空 = 回落默认 30000-60000，OPEN_PORTS 的落入警示集合可能改变，联动重估 */
+      if (k === 'TOTP_PORT_RANGE') { const oe = document.querySelector('#modal-root [data-sf="OPEN_PORTS"]'); if (oe) seLiveCheck(oe); }
+      return; }
     if (k === 'OPEN_PORTS' || k === 'RESTRICT_PORTS') {
       if (!V.access(v)) { seHint(k, false, '✗ 格式应为 tcp/22 或 tcp/22,udp/53（端口 1-65535）'); return; }
+      /* 与 TOTP 敲门范围的重叠警示优先于「格式正确」（挂在 OPEN_PORTS 字段上；
+         RESTRICT 重叠提示挂在 RESTRICT_PORTS 上，两字段互不覆盖） */
+      const aro = k === 'OPEN_PORTS' && seAccessRangeOverlap();
+      if (aro) {
+        seHint(k, false, `⚠ ${aro.join('、')} 落在 TOTP 敲门范围内，敲门包可能送达该端口上的服务（fail2ban 误判风险），建议错开`);
+        seOverlapCheck(); return;
+      }
       seHint(k, true, '✓ 格式正确');
       seOverlapCheck();
     } else if (k === 'FW_ACCESS_TIMEOUT' || k === 'MAX_FW_TIMEOUT' || k === 'FINGERPRINT_TOFU_TIMEOUT') {
@@ -6316,6 +6342,10 @@ function openStanzaEditor(index) {
       /* S.config 未加载时 rangePcapConflict 返回 null，跨配置检查自然降级为仅格式 */
       const sv = rangePcapConflict(v);
       seHint(k, !sv, sv ? `✗ 超出服务端监听范围 ${sv}（PCAP_PORT_RANGE），范围外敲门无法被捕获` : '✓ 范围有效');
+      /* 范围变化联动重估 OPEN_PORTS 的落入区间警示（随范围生灭；无递归——
+         OPEN_PORTS 分支不回触本字段） */
+      const openEl = document.querySelector('#modal-root [data-sf="OPEN_PORTS"]');
+      if (openEl) seLiveCheck(openEl);
     }
   };
   $('#modal-root').oninput = ev => { seMarkDirty(); seLiveCheck(ev.target); };  /* oninput 赋值覆盖，重复打开不累积监听器 */
