@@ -4124,22 +4124,28 @@ function renderUsers() {
   $('#users-sub').textContent =
     (q ? `匹配 ${st.length} / ${all.length} 个授权 · ` : `${all.length} 个授权 · `) +
     (d.file.exists ? '更新于 ' + fmtAbs(d.file.mtime) : '文件不存在');
-  const dis = d.disabled || [];
+  const disAll = d.disabled || [];
   /* 禁用区可折叠：>5 条默认收起，减少长页干扰；折叠状态跟随会话 */
   /* 折叠状态记忆：用户显式折叠/展开后跨刷新保持；无偏好时沿用 >5 自动折叠 */
   if (S.disCollapsed === undefined) {
     const saved = localStorage.getItem('fwknop-dis-collapsed');
-    S.disCollapsed = saved === null ? dis.length > 5 : saved === '1';
+    S.disCollapsed = saved === null ? disAll.length > 5 : saved === '1';
   }
+  /* 搜索同样过滤禁用区（禁用条目只有名称可检索，端口/来源随注释化失效）：
+     搜已禁用授权名不该落得「无匹配」而结果躺在折叠区；搜索态禁用区强制
+     展开（与配置视图查找「命中分组自动展开」同一心智），清空恢复记忆折叠。
+     搜索态点折叠钮只翻转记忆偏好，显示保持展开至搜索清空 */
+  const dis = q ? disAll.filter(x => (x.name || '').toLowerCase().includes(q)) : disAll;
+  const disOpen = q ? true : !S.disCollapsed;
   const disHtml = dis.length ? `
     <div style="margin-top:6px">
-      <div class="form-sec" id="dis-toggle" role="button" aria-expanded="${S.disCollapsed ? 'false' : 'true'}" style="cursor:pointer;user-select:none" title="点击折叠/展开">
-        <span style="display:inline-block;transition:transform .15s;transform:rotate(${S.disCollapsed ? 0 : 90}deg)">▸</span>
-        已禁用的授权（${dis.length}）</div>
-      <div id="dis-list" style="display:${S.disCollapsed ? 'none' : ''}">
+      <div class="form-sec" id="dis-toggle" role="button" aria-expanded="${disOpen ? 'true' : 'false'}" style="cursor:pointer;user-select:none" title="点击折叠/展开">
+        <span style="display:inline-block;transition:transform .15s;transform:rotate(${disOpen ? 90 : 0}deg)">▸</span>
+        已禁用的授权（${q ? `${dis.length}/${disAll.length}` : dis.length}）</div>
+      <div id="dis-list" style="display:${disOpen ? '' : 'none'}">
       ${dis.map(x => `<div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border-soft)">
         <span style="color:var(--muted)">${icon('i-lock',15)}</span>
-        <b>${esc(x.name || '（未知）')}</b>
+        <b>${hlU(x.name || '（未知）')}</b>
         <span class="hint">第 ${x.start_line}–${x.end_line} 行 · 已注释禁用${x.disabled_at ? ' · 禁用于 ' + esc(x.disabled_at) : ''}</span>
         ${S.writeEnabled ? `<button class="btn ghost small" style="margin-left:auto" data-enable="${esc(x.name)}" title="恢复该授权：去掉注释并热加载，重新生效">${icon('i-play',13)}恢复</button>` : ''}
       </div>`).join('')}
@@ -4147,8 +4153,8 @@ function renderUsers() {
     </div>` : '';
   if (!st.length) {
     $('#users-body').innerHTML = `<div class="empty">${icon('i-users',40)}
-      <div class="t">${q ? '无匹配授权' : '还没有任何授权'}</div>
-      <div class="d">${q ? '试试更换搜索关键词' : '为第一位用户创建访问授权'}</div>
+      <div class="t">${q && !dis.length ? '无匹配授权' : q ? '现行授权无匹配' : '还没有任何授权'}</div>
+      <div class="d">${q ? (dis.length ? `下方已禁用区有 ${dis.length} 条匹配（已自动展开）` : '试试更换搜索关键词') : '为第一位用户创建访问授权'}</div>
       ${!q && S.writeEnabled ? `<button class="btn small" id="users-empty-add" style="margin-top:12px">${icon('i-plus',13)} 立即签发凭证</button>` : ''}</div>` + disHtml;
     const ea = $('#users-empty-add');
     if (ea) ea.onclick = () => {
