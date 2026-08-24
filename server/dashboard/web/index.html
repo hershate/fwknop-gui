@@ -8281,6 +8281,15 @@ async function runCheckup() {
 
   const order = { bad:0, warn:1, skip:2, ok:3 };
   items.sort((a, b) => order[a.st] - order[b.st]);
+  /* 竞态守卫：拉取期间用户可能已关闭体检并打开别的弹窗（openModal 会替换
+     #modal-root 内容，#ck-body 随之移除）——向空元素渲染会抛 TypeError 触发
+     全局「异步异常」toast。已关闭则静默丢弃结果（摘要仍留存，重开即见） */
+  const ckBody = $('#ck-body');
+  if (!ckBody) {
+    try { localStorage.setItem('fwknop-last-checkup', JSON.stringify({ t: Math.floor(Date.now() / 1000), bad: items.filter(i => i.st === 'bad').length, warn: items.filter(i => i.st === 'warn').length, ok: items.filter(i => i.st === 'ok').length })); } catch (e) {}
+    renderCheckupLast();
+    return;
+  }
   const nBad = items.filter(i => i.st === 'bad').length;
   const nWarn = items.filter(i => i.st === 'warn').length;
   const nOk = items.filter(i => i.st === 'ok').length;
@@ -8289,7 +8298,7 @@ async function runCheckup() {
   try { localStorage.setItem('fwknop-last-checkup', JSON.stringify({ t: Math.floor(Date.now() / 1000), bad: nBad, warn: nWarn, ok: nOk })); } catch (e) {}
   renderCheckupLast();
   const icons = { bad:['✗','var(--red)'], warn:['⚠','var(--amber)'], skip:['—','var(--faint)'], ok:['✓','var(--green)'] };
-  $('#ck-body').innerHTML = `
+  ckBody.innerHTML = `
     <div class="hint" style="margin-bottom:10px">${nBad ? `<b style="color:var(--red)">${nBad} 项异常</b>，` : ''}${nWarn ? `<b style="color:var(--amber)">${nWarn} 项需注意</b>，` : ''}${nOk} 项通过${nBad || nWarn ? '' : '——部署状态良好'}</div>
     ${items.map((it, i) => `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 2px;border-bottom:1px solid var(--border-soft)">
       <span style="color:${icons[it.st][1]};font-weight:700;width:16px;text-align:center;flex:none">${icons[it.st][0]}</span>
@@ -8299,7 +8308,7 @@ async function runCheckup() {
     </div>`).join('')}`;
   items.forEach((it, i) => {
     if (!it.act) return;
-    const b = $('#ck-body').querySelector(`[data-ck="${i}"]`);
+    const b = ckBody.querySelector(`[data-ck="${i}"]`);
     if (b) b.onclick = () => { closeModal(); it.act.onclick(); };
   });
   /* 结果外带：体检常为他人而跑（工单/交接/群聊求助），纯文本报告一键复制。
