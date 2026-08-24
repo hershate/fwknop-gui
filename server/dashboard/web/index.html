@@ -4655,7 +4655,9 @@ $('#users-batch-rm').onclick = () => {
       loadUsers(); loadTOFU();
       if (fail.length) infoModal('批量撤销 — 部分失败',
         `成功 ${ok.length} 个，失败 ${fail.length} 个${untried ? `，未尝试 ${untried} 个（会话/权限失败已提前中止，未向服务端发起）` : ''}：\n` + fail.join('\n'), true);
-      toast(`批量撤销完成：成功 ${ok.length} 个${fail.length ? `，失败 ${fail.length} 个` : ''}${untried ? `，未尝试 ${untried} 个` : ''}`, fail.length || untried ? 'err' : 'ok', 5000);
+      /* 与单撤销提示同款善后指路（批量撤销故意不展开禁用区，恢复路径靠文字
+         传达——现已有批量恢复，误撤可整体回退，不必逐条点） */
+      toast(`批量撤销完成：成功 ${ok.length} 个${fail.length ? `，失败 ${fail.length} 个` : ''}${untried ? `，未尝试 ${untried} 个` : ''}${ok.length && !fail.length && !untried ? '（误撤可在下方「已禁用的授权」区勾选后批量恢复）' : ''}`, fail.length || untried ? 'err' : 'ok', 6000);
     }, true);
 };
 
