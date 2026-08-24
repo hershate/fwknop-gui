@@ -3185,15 +3185,15 @@ $('#nav-usr-badge').onclick = ev => {
   try { localStorage.setItem('fwknop-users-query', '占位'); } catch (_) {}
   showPage('users');
 };
-/* 悬空绑定徽标钻取（与占位徽标同模式）：预填「悬空」搜索词直达问题行——
+/* 悬空绑定钻取（徽标与体检共用）：预填「悬空」搜索词直达问题行——
    filteredTofuBindings 对该词匹配 tofuOrphan 态，口径与徽标计数一致 */
-$('#nav-tofu-badge').onclick = ev => {
-  ev.stopPropagation();
+function drillTofuOrphan() {
   S.tofuQuery = '悬空'; const tq = $('#tofu-search'); if (tq) tq.value = '悬空';
   /* 钻取即持久化（renderTOFU 5165 每轮固化 S.tofuQuery，与上方占位徽标同理） */
   try { localStorage.setItem('fwknop-tofu-query', '悬空'); } catch (_) {}
   showPage('tofu');
-};
+}
+$('#nav-tofu-badge').onclick = ev => { ev.stopPropagation(); drillTofuOrphan(); };
 
 /* 异常事件集合：「仅看异常」快捷筛选用 */
 const BAD_EVTS = ['reject','replay','unknown_fingerprint','port_mismatch','aged'];
@@ -8341,7 +8341,7 @@ async function runCheckup() {
     const live = new Set(stz.map(s => `${s.source || ''}|${s.require_username || ''}|${s.open_ports || ''}`));
     const dang = (tf.bindings || []).filter(b => !live.has(b.stanza_key)).length;
     items.push(dang
-      ? { st:'warn', t:'TOFU 悬空绑定', d:`${dang} 条绑定的授权已删除/禁用，不再生效——建议清理避免列表失真`, act:{ label:'前往清理', title:'打开 TOFU 设备绑定页（可搜「悬空」定位残留行）', onclick: () => showPage('tofu') } }
+      ? { st:'warn', t:'TOFU 悬空绑定', d:`${dang} 条绑定的授权已删除/禁用，不再生效——建议清理避免列表失真`, act:{ label:'前往清理', title:'打开 TOFU 设备绑定页并预填「悬空」搜索词直达残留行', onclick: drillTofuOrphan } }
       : { st:'ok', t:'TOFU 绑定', d:`无悬空绑定（共 ${(tf.bindings || []).length} 条）` });
   }
 
