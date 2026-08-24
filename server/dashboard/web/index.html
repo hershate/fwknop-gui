@@ -2508,12 +2508,25 @@ function renderStatusCards() {
     if ((d.auth_fail_15m || 0) > 0) warnHtml += `<div class="warn-strip" style="margin-bottom:12px;border-color:var(--red)">${icon('i-warn',15)}<div style="flex:1">
       最近 15 分钟有 <b>${d.auth_fail_15m}</b> 次<b>登录失败</b>——若非本人误输，可能正在遭遇密码尝试，请到操作日志核查来源 IP。
       <button class="btn ghost small" id="ov-authfail-go" style="margin-left:8px;padding:1px 8px;font-size:11.5px" title="前往「关于」页操作日志，按「登录失败」搜索核查来源 IP">核查来源</button></div></div>`;
+    /* 磁盘余量被动预警：体检是主动项，盘满不会等人来检——余量低于阈值
+       （与体检「磁盘余量」同口径）进门即见，直达备份管理腾空间 */
+    const dk0 = d.disk;
+    if (dk0 && !dk0.error && dk0.total > 0) {
+      const pct0 = Math.round(100 * dk0.avail / dk0.total);
+      const dkLow = dk0.avail < 100*1048576 || pct0 < 5;
+      const dkNear = dk0.avail < 1073741824 || pct0 < 15;
+      if (dkLow || dkNear) warnHtml += `<div class="warn-strip" style="margin-bottom:12px${dkLow ? ';border-color:var(--red)' : ''}">${icon('i-warn',15)}<div style="flex:1">
+        运行目录分区余量${dkLow ? '告急' : '偏低'}：仅剩 <b>${fmtSize(dk0.avail)}</b>（${pct0}%）——${dkLow ? '写满后审计/操作日志静默中断、认证文件保存失败，请立即清理。' : '注意审计/配置备份堆积，适时清理。'}
+        <button class="btn ghost small" id="ov-disk-go" style="margin-left:8px;padding:1px 8px;font-size:11.5px" title="前往「关于」页管理审计/配置备份（可逐个下载后删除）">清理备份</button></div></div>`;
+    }
     cw.innerHTML = warnHtml;
     const afg = $('#ov-authfail-go');
     if (afg) afg.onclick = () => {
       S.oplogQuery = '登录失败'; const os2 = $('#oplog-search'); if (os2) os2.value = '登录失败';
       showPage('about');
     };
+    const dkg = $('#ov-disk-go');
+    if (dkg) dkg.onclick = () => showPage('about');
     const lbd = $('#ov-loopback-dismiss');
     if (lbd) lbd.onclick = () => {
       try { localStorage.setItem('fwknop-warn-loopback-dismissed', la); } catch (e2) {}
