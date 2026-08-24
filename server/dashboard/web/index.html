@@ -8419,8 +8419,12 @@ function renderCheckupLast() {
   let r = null;
   try { r = JSON.parse(localStorage.getItem('fwknop-last-checkup') || 'null'); } catch (e) {}
   if (!r || !r.t) { el.style.display = 'none'; return; }
+  /* 时效降级：绿色「全部通过」是健康断言，超过 24h 的旧绿不再配绿色——
+     期间进程可能已死、磁盘可能已满；红/琥珀是问题记录，不受时效降级 */
+  const old = Date.now() / 1000 - r.t > 86400;
   const [txt, col] = r.stale ? ['配置已变更，建议重检', 'var(--amber)']
-    : r.bad ? [`${r.bad} 项异常`, 'var(--red)'] : r.warn ? [`${r.warn} 项需注意`, 'var(--amber)'] : ['全部通过', 'var(--green)'];
+    : r.bad ? [`${r.bad} 项异常`, 'var(--red)'] : r.warn ? [`${r.warn} 项需注意`, 'var(--amber)']
+    : old ? ['曾全部通过（结果较旧）', 'var(--amber)'] : ['全部通过', 'var(--green)'];
   el.innerHTML = `· 上次体检 ${esc(fmtAgo(r.t))}：<b style="color:${col}">${txt}</b>`;
   el.title = r.stale
     ? `上次体检于 ${fmtAbs(r.t)}，此后配置/授权已被修改——结论不再可靠，点击重新体检`
