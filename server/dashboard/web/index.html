@@ -3135,12 +3135,12 @@ $('#nav-tofu-badge').onclick = ev => {
 
 /* 异常事件集合：「仅看异常」快捷筛选用 */
 const BAD_EVTS = ['reject','replay','unknown_fingerprint','port_mismatch','aged'];
-/* 近 15 分钟异常计数：标签页标题/侧栏徽标/快速操作标注/诊断信息共用同一口径，
-   单点定义防窗口值漂移（此前 900 硬编码在两处独立 filter 中） */
-const BAD_WINDOW_S = 900;
+/* 近 15 分钟「近期」窗口：异常计数（标签页标题/侧栏徽标/快速操作标注/诊断信息）
+   与确认框活跃预警（单/批撤销、单/批解绑）共用同一口径，单点定义防窗口值漂移 */
+const RECENT_WINDOW_S = 900;
 function countRecentBad() {
   const now = Date.now() / 1000;
-  return (S.events || []).filter(e => BAD_EVTS.includes(e.event) && now - (e.time || 0) < BAD_WINDOW_S).length;
+  return (S.events || []).filter(e => BAD_EVTS.includes(e.event) && now - (e.time || 0) < RECENT_WINDOW_S).length;
 }
 
 /* 审计 reason 中文可读化（与服务端 incoming_spa.c 的文案一一对应） */
@@ -4346,9 +4346,9 @@ function renderUsers() {
     /* 确认框附该授权用户最近事件摘要，辅助判断是否误撤活跃授权 */
     const st0 = (S.users && S.users.stanzas || []).find(x => (x.name || ('授权 #' + x.index)) === name);
     const last = st0 && st0.require_username ? (S.events || []).find(e => e.user === st0.require_username) : null;
-    /* 近期活跃（15 分钟，与徽标/批量撤销点名口径同窗）升级琥珀预警——批量
+    /* 近期活跃（与徽标/批量撤销点名同一 RECENT_WINDOW_S 口径）升级琥珀预警——批量
        撤销会点名活跃授权，单撤销此前只有中性提示，风险醒目度不同步 */
-    const recent = last && (Date.now() / 1000 - (last.time || 0) < 900);
+    const recent = last && (Date.now() / 1000 - (last.time || 0) < RECENT_WINDOW_S);
     const lastHtml = last ? `<br><span class="${recent ? '' : 'hint'}" title="${fmtAbs(last.time)}"${recent ? ' style="color:var(--amber)"' : ''}>${recent ? '⚠ 该授权近期活跃，撤销会立即中断其访问。' : ''}最近敲门：${evMeta(last.event).label} · ${fmtAgo(last.time)} · ${esc(last.src_ip || '')}</span>`
       : '<br><span class="hint">该授权近期无敲门记录</span>';
     /* TOFU 残留预警：撤销后该授权的设备绑定即成「悬空」（stanza 不再匹配），
@@ -4396,10 +4396,13 @@ $('#users-sel-clear').onclick = () => { S.usersSel = new Set(); renderUsers(); }
 $('#users-batch-rm').onclick = () => {
   const names = [...(S.usersSel || [])];
   if (!names.length) return;
-  /* 活跃预警：近期有敲门记录的授权在确认框中单独标出，防止误撤在用授权 */
+  /* 活跃预警：近期（RECENT_WINDOW_S，与单撤销/徽标同窗）有敲门记录的授权在
+     确认框中单独标出，防止误撤在用授权；此前口径是「加载窗口内任意事件」，
+     稀疏事件下昨天的事件也会误标活跃 */
+  const nowBR = Date.now() / 1000;
   const active = names.filter(n => {
     const s = ((S.users && S.users.stanzas) || []).find(x => (x.name || ('授权 #' + x.index)) === n);
-    return s && s.require_username && (S.events || []).some(e => e.user === s.require_username);
+    return s && s.require_username && (S.events || []).some(e => e.user === s.require_username && nowBR - (e.time || 0) < RECENT_WINDOW_S);
   });
   /* TOFU 残留预警（与单撤销同款口径）：统计所选授权合计绑定设备数 */
   const bindTotal = names.reduce((sum, n) => {
@@ -5677,9 +5680,9 @@ function renderTOFU() {
 /* 单台解绑（TOFU 表与事件详情共用）：确认框附最近敲门摘要，防误删活跃设备 */
 function unbindDevice(sk, dev) {
   const last = (S.events || []).find(e => e.device_id === dev);
-  /* 近期活跃（15 分钟，与徽标/批量解绑「在用」口径同窗）升级琥珀预警——
+  /* 近期活跃（与徽标/批量解绑「在用」同一 RECENT_WINDOW_S 口径）升级琥珀预警——
      批量解绑有「⚠ 在用」标记，单台解绑此前只有中性提示，风险不同步 */
-  const recent = last && (Date.now() / 1000 - (last.time || 0) < 900);
+  const recent = last && (Date.now() / 1000 - (last.time || 0) < RECENT_WINDOW_S);
   const lastHtml = last ? `<br><span class="${recent ? '' : 'hint'}" title="${fmtAbs(last.time)}"${recent ? ' style="color:var(--amber)"' : ''}>${recent ? '⚠ 该设备近期活跃，解绑会立即中断其访问。' : ''}最近敲门：${evMeta(last.event).label} · ${fmtAgo(last.time)} · ${esc(last.src_ip || '')}</span>`
     : '<br><span class="hint">该设备近期无敲门记录</span>';
   /* 标注对应授权：解绑影响范围明确；授权已删（悬空绑定）时琥珀预警。
@@ -5732,8 +5735,10 @@ $('#tofu-sel-clear').onclick = () => { S.tofuSel = new Set(); renderTOFU(); };
 $('#tofu-batch-unbind').onclick = () => {
   const items = [...(S.tofuSel || [])].map(k => k.split('\x01'));
   if (!items.length) return;
-  /* 与批量撤销同一模式：列出所选设备（超长滚动），近期有敲门的设备琥珀预警 */
-  const recentDevs = new Set((S.events || []).map(e => e.device_id).filter(Boolean));
+  /* 与批量撤销同一模式：列出所选设备（超长滚动），近期（RECENT_WINDOW_S，与
+     单台解绑/徽标同窗）有敲门的设备琥珀预警；此前口径是「加载窗口内任意事件」 */
+  const nowBU = Date.now() / 1000;
+  const recentDevs = new Set((S.events || []).filter(e => nowBU - (e.time || 0) < RECENT_WINDOW_S).map(e => e.device_id).filter(Boolean));
   const active = items.filter(([, dev]) => recentDevs.has(dev));
   confirmDialog('批量解绑设备', `确定解绑选中的 <b>${items.length}</b> 台设备吗？
     <div class="mono" style="margin:8px 0;max-height:20vh;overflow:auto;font-size:12px">${items.map(([, dev]) => { const al = devAlias(dev); return (al ? `<span style="color:var(--accent)">${esc(al)}</span>　` : '') + esc(dev.length > 32 ? dev.slice(0, 32) + '…' : dev) + (recentDevs.has(dev) ? ' <span style="color:var(--amber)" title="该设备近期有敲门记录，解绑会立即中断其访问">⚠ 在用</span>' : ''); }).join('<br>')}</div>
