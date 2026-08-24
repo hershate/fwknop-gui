@@ -6,6 +6,9 @@
 package main
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -741,6 +744,72 @@ func handleProfileView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, v)
+}
+
+// handleProfileExport: GET /api/profiles/export?name=X — 方案三件套打包 tar.gz。
+/* access.conf 含明文密钥——导出物即持票凭证（迁移/异地备份场景）：仅管理
+   模式可导出（requireWrite 内含 CSRF 头校验），并写操作日志（导出即标记，
+   与凭证签发同一纪律）。前端 fetch+blob 下载：只读/方案缺失等错误能以
+   toast 呈现，而非整页错误文本。方案名有 profileNameRe 白名单，文件名
+   注入不可能。 */
+func handleProfileExport(w http.ResponseWriter, r *http.Request) {
+	if !requireWrite(w, r) {
+		return
+	}
+	name := r.URL.Query().Get("name")
+	if err := checkProfileName(name); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	dir := profileDir(name)
+	conf, err := os.ReadFile(filepath.Join(dir, "fwknopd.conf"))
+	if err != nil {
+		http.Error(w, "方案缺少 fwknopd.conf", http.StatusNotFound)
+		return
+	}
+	acc, err := os.ReadFile(filepath.Join(dir, "access.conf"))
+	if err != nil {
+		http.Error(w, "方案缺少 access.conf", http.StatusNotFound)
+		return
+	}
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gz)
+	add := func(fn string, data []byte) error {
+		if err := tw.WriteHeader(&tar.Header{
+			Name: fn, Mode: 0600, Size: int64(len(data)), ModTime: time.Now(),
+		}); err != nil {
+			return err
+		}
+		_, err := tw.Write(data)
+		return err
+	}
+	if err = add("fwknopd.conf", conf); err == nil {
+		err = add("access.conf", acc)
+	}
+	/* meta.json 可能不存在（旧方案无备注），缺失不阻断导出 */
+	if err == nil {
+		if meta, merr := os.ReadFile(filepath.Join(dir, "meta.json")); merr == nil {
+			err = add("meta.json", meta)
+		}
+	}
+	if cerr := tw.Close(); err == nil {
+		err = cerr
+	}
+	if cerr := gz.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		http.Error(w, "打包失败："+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	logOpR(r, "导出方案", name, nil)
+	w.Header().Set("Content-Type", "application/gzip")
+	/* 文件名带服务器时间戳：多次导出互不覆盖（与审计下载同规） */
+	w.Header().Set("Content-Disposition", fmt.Sprintf(
+		`attachment; filename="fwknop-profile-%s-%s.tar.gz"`, name, time.Now().Format("20060102-150405")))
+	w.Header().Set("Content-Length", strconv.Itoa(buf.Len()))
+	w.Write(buf.Bytes())
 }
 
 // handleProfileOp: JSON {name, note?, target?}；action 取自 URL 末段。

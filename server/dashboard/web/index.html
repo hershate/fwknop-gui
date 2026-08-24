@@ -8102,6 +8102,7 @@ function renderProfiles() {
           ${S.writeEnabled ? `
           <button class="btn small" data-pa="${esc(p.name)}" title="应用该方案：预检 → 备份当前配置（.bak-时间戳）→ 替换 → 热加载；确认框内可见完整差异">${icon('i-play',13)}应用</button>
           <button class="btn ghost small" data-pdup="${esc(p.name)}" title="把该方案完整复制为一个新方案（不动当前生效配置），便于在其基础上做变体">${icon('i-copy',13)}另存副本</button>
+          <button class="btn ghost small" data-pexp="${esc(p.name)}" title="下载该方案完整快照（fwknopd.conf + access.conf + meta.json 打包 tar.gz）——含明文密钥，用于迁移/异地备份；操作记入操作日志">${icon('i-download',13)}导出</button>
           <button class="btn ghost small" data-pd="${esc(p.name)}" title="删除该方案文件（不影响当前生效配置）">${icon('i-trash',13)}删除</button>` : ''}
         </div>
       </div>
@@ -8259,6 +8260,29 @@ function renderProfiles() {
           else { toast('方案已删除', 'ok'); loadProfiles(); }
         } catch (e) {}
       }, true);
+  });
+  /* 方案导出：tar.gz 含明文密钥（迁移/异地备份）——确认框明示敏感性与日志
+     留痕；fetch+blob 下载（带 CSRF 头，requireWrite 要求），失败 toast 而非
+     整页错误。文件名取服务端 Content-Disposition（含时间戳，多次导出不覆盖） */
+  $$('#profiles-body [data-pexp]').forEach(b => b.onclick = () => {
+    const name = b.dataset.pexp;
+    confirmDialog('导出配置方案',
+      `方案「<b>${esc(name)}</b>」将打包为 tar.gz 下载（fwknopd.conf + access.conf + meta.json）。<br><b>access.conf 含明文密钥</b>——导出文件即持票凭证，请仅存于安全位置、经安全渠道传输（该操作会记入操作日志）。`,
+      '导出下载', async () => {
+        try {
+          const r = await fetch('/api/profiles/export?name=' + encodeURIComponent(name),
+            { headers: { 'X-Fwknop-Request': '1' } });
+          if (!r.ok) { toast('导出失败（HTTP ' + r.status + '）：' + (await r.text()).slice(0, 200), 'err', 5000); return; }
+          const blob = await r.blob();
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          const m = (r.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/);
+          a.download = m ? m[1] : `fwknop-profile-${name}.tar.gz`;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+          toast(`方案「${name}」已导出（含明文密钥，请妥善保管）`, 'ok', 5000);
+        } catch (e) { toast('导出失败：网络错误，请重试', 'err'); }
+      });
   });
 }
 
