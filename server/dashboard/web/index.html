@@ -439,6 +439,7 @@ body.users-dense #users-body .card .body { padding-bottom:6px; }
 }
 .toast.ok { border-left-color:var(--green); }
 .toast.err { border-left-color:var(--red); }
+.toast.warn { border-left-color:var(--amber); }
 /* 长路径/无空格报错文本不撑破 max-width：flex 子项需 min-width:0 才允许收缩换行 */
 .toast > div { min-width:0; overflow-wrap:anywhere; }
 @keyframes slidein { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:none; } }
@@ -4699,9 +4700,12 @@ $('#add-batch').onclick = () => {
       drillOpLog('签发凭证');
     }));
     prog.after(bar);
+    const daemonDead = f.apply.checked && S.overview && S.overview.daemon && !S.overview.daemon.alive;
+    const deadNote = daemonDead ? '；⚠ fwknopd 未运行，授权待服务启动后生效' : '';
     toast(fails.length || untried.length
-      ? `批量签发完成：${oks.length} 成功${fails.length ? `，${fails.length} 失败` : ''}${untried.length ? `，${untried.length} 未尝试` : ''}（详见弹窗）`
-      : `批量签发完成：${oks.length} 份全部成功`, fails.length || untried.length ? 'err' : 'ok', 5000);
+      ? `批量签发完成：${oks.length} 成功${fails.length ? `，${fails.length} 失败` : ''}${untried.length ? `，${untried.length} 未尝试` : ''}（详见弹窗）${deadNote}`
+      : `批量签发完成：${oks.length} 份全部成功${deadNote}`,
+      fails.length || untried.length ? 'err' : daemonDead ? 'warn' : 'ok', 5000);
     loadUsers();  /* 授权列表与占位徽标同步 */
   };
 };
@@ -5609,9 +5613,16 @@ $('#add-form').addEventListener('submit', async ev => {
     } else { gu.style.display = 'none'; ge.style.display = 'none'; }
     if (r.error) { toast('签发失败：' + r.error, 'err', 6000); $('#add-next').style.display = 'none'; }
     else {
+      /* 「已热加载」以最新已知服务状态为准：fwknopd 未运行时 SIGHUP 静默无效，
+         授权并不会生效——琥珀警示分态，避免凭证分发后「敲门无响应」的两难排障
+         （S.overview 轮询可能滞后数秒，属可接受近似，下一轮轮询即收敛） */
+      const daemonDead = f.apply.checked && S.overview && S.overview.daemon && !S.overview.daemon.alive;
       toast(f.apply.checked
-        ? `凭证「${nm}」已签发并写入 access.conf（已热加载），请复制授权 URI 分发给用户`
-        : `凭证「${nm}」已签发（未写入配置），请立即复制授权 URI 分发给用户`, 'ok', 6000);
+        ? (daemonDead
+          ? `凭证「${nm}」已签发并写入 access.conf，但 fwknopd 未运行——授权待服务启动后才会生效`
+          : `凭证「${nm}」已签发并写入 access.conf（已热加载），请复制授权 URI 分发给用户`)
+        : `凭证「${nm}」已签发（未写入配置），请立即复制授权 URI 分发给用户`,
+        daemonDead ? 'warn' : 'ok', 6000);
       clearAddDraft();
       if (f.server.value.trim()) { lsSet('fwknop-last-server', f.server.value.trim()); pushServerHistory(f.server.value.trim()); }
       /* 连续签发保留策略选项：access/fw-timeout/totp/port-range/require-fingerprint/
