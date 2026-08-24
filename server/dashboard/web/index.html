@@ -5800,6 +5800,11 @@ function renderOpLog() {
       await loadOpLog();
       renderOpLog();  /* loadOpLog 的 focusWithin 守卫可能跳过重渲染，此处强制 */
     };
+  } else if (curN >= 1000 && all.length >= 1000) {
+    /* 到顶终态说明：窗口已达服务端上限且条数顶满——日志很可能还有更早记录，
+       但按钮消失后「导出」指路不能一并消失（按钮 title 里的承诺在终态兑现） */
+    $('#oplog-body').insertAdjacentHTML('beforeend',
+      `<div class="hint" style="text-align:center;padding:10px 0 4px">已到达服务端读取上限（最近 1000 条）；更早的完整历史请用右上角「导出」</div>`);
   }
   $$('#oplog-body .cp-cell').forEach(c => c.onclick = () => copyText(c.dataset.cp, (c.dataset.lab || '') + ' '));
   /* 来源 IP 跨面钻取：操作日志看到可疑 IP（如连番登录失败），一步看它的
