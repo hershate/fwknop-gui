@@ -8112,13 +8112,15 @@ async function runCheckup() {
     api('/api/overview').catch(() => null),
     api('/api/config').catch(() => null),
     api('/api/users').catch(() => null),
+    /* 防火墙规则是只读 GET（handleFwList 无写门禁，svc-fwlist 钮只读也可用），
+       不随预检跳过 */
+    api('/api/service/fwrules').catch(() => null),
   ];
-  /* 预检/防火墙规则走写门禁（requirePost/requireWrite 语义同款），只读模式跳过 */
-  if (S.writeEnabled) {
-    jobs.push(api('/api/service/validate', { method:'POST' }).catch(() => null));
-    jobs.push(api('/api/service/fwrules').catch(() => null));
-  }
-  const [ov, cfg, us, val, fwr] = await Promise.all(jobs);
+  /* 预检走写门禁（requirePost），只读模式跳过；fwrules 只读不跳 */
+  if (S.writeEnabled) jobs.splice(3, 0, api('/api/service/validate', { method:'POST' }).catch(() => null));
+  let ov, cfg, us, val, fwr;
+  if (S.writeEnabled) [ov, cfg, us, val, fwr] = await Promise.all(jobs);
+  else [ov, cfg, us, fwr] = await Promise.all(jobs);
   const items = [];  /* {st:'ok'|'warn'|'bad'|'skip', t, d, act:{label, title, onclick}} */
   const entries = (cfg && cfg.entries) || [];
   const entVal = k => { const e = entries.find(x => x.key === k); return e ? String(e.value || '').trim() : ''; };
@@ -8149,9 +8151,8 @@ async function runCheckup() {
   else if (auditFile && !auditFile.exists) items.push({ st:'warn', t:'审计文件尚不存在', d:'首个 SPA 事件产生后自动创建；若已有敲门仍无文件，检查 fwknopd 运行目录与 AUDIT_FILE 配置' });
   else items.push({ st:'ok', t:'审计输出正常', d:'ENABLE_AUDIT 开启，事件/指标有数据源' });
 
-  /* 4. 防火墙规则可读（root 与后端可用性） */
-  if (!S.writeEnabled) items.push({ st:'skip', t:'防火墙规则', d:'只读模式不检查（读取规则属写门禁操作）' });
-  else if (!fwr) items.push({ st:'warn', t:'防火墙规则', d:'读取请求失败（网络/服务异常）' });
+  /* 4. 防火墙规则可读（root 与后端可用性）；只读也可查（GET 无写门禁） */
+  if (!fwr) items.push({ st:'warn', t:'防火墙规则', d:'读取请求失败（网络/服务异常）' });
   else if (fwr.error) items.push({ st:'bad', t:'防火墙规则不可读', d:'fwknopd --fw-list 失败——放行规则无法建立/过期（多为无 root 或防火墙后端异常）', act:{ label:'查看防火墙规则', title:'打开防火墙规则视图查看原始错误', onclick: () => openFwRules() } });
   else items.push({ st:'ok', t:'防火墙规则可读', d:'fwknopd 可正常操纵防火墙后端' });
 
