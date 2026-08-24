@@ -6065,7 +6065,7 @@ function renderAbout() {
   if (pwc) pwc.style.display = S.passwordSet === false ? 'none' : '';
   /* 文件行附大小与更新时间 */
   /* 文件路径点击即复制（cp-cell 全局委托，键盘可达由 MutationObserver 补齐） */
-  const frow = f => f ? `<span class="cp-cell" data-cp="${esc(f.path)}" title="点击复制完整路径">${esc(f.path)}</span>${f.exists ? ` <span class="hint">${fmtSize(f.size)} · ${fmtAgo(f.mtime)}更新</span>` : ' <span class="hint">（不存在）</span>'}` : '—';
+  const frow = f => f ? `<span class="cp-cell" data-cp="${esc(f.path)}" title="点击复制完整路径">${esc(f.path)}</span>${f.exists ? ` <span class="hint" title="最后更新：${fmtAbs(f.mtime)}">${fmtSize(f.size)} · ${fmtAgo(f.mtime)}更新</span>` : ' <span class="hint">（不存在）</span>'}` : '—';
   /* 时钟偏移检测：与概览共用 clockDriftWarn（>60s 触发，文案口径单点化） */
   const clockWarn = clockDriftWarn(d);
   /* 非回环监听警示：面板为明文 HTTP + 密码登录，绑到全网卡/外网地址会把凭证
