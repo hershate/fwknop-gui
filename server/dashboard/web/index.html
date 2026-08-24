@@ -6539,11 +6539,19 @@ function clockDriftWarn(d) {
   return `<div class="warn-strip" style="margin-bottom:12px">${icon('i-warn',15)}<div>
     浏览器与服务器时钟偏差约 <b>${Math.abs(drift)}</b> 秒（${drift > 0 ? '浏览器快' : '服务器快'}）。浏览器不参与 TOTP 校验，但面板的相对时间与倒计时会随之失真；若偏差源于服务器时钟失准（浏览器通常 NTP 准确），NTP 正常的敲门设备与服务器将呈同量级偏差，合法敲门会被判「过期」拒绝——请校准服务器 NTP。</div></div>`;
 }
-function collectDiag() {
+async function collectDiag() {
   const d = S.overview;
   const F = (d && d.files) || {};
   const drift = d && d.now ? Math.round(Date.now() / 1000 - d.now) : 0;
   const fstat = (k, f) => `${k}: ${f ? (f.exists ? f.path + ' (' + fmtSize(f.size) + ')' : f.path + '（不存在）') : '—'}`;
+  /* fwknopd 二进制 fork 校验入包：远程分诊「跳变/绑定不工作」的第一嫌疑
+     （上游二进制静默忽略 fork 指令，预检检不出），服务端有缓存不增负担 */
+  const fork = await api('/api/service/forkcheck').catch(() => null);
+  const forkTxt = !fork ? '校验请求失败'
+    : fork.error ? '不可用：' + fork.error
+    : fork.note ? fork.note
+    : fork.fork ? 'fork 构建（扩展指令标记齐全）'
+    : `⚠ 疑似上游二进制（${fork.path || '?'} 缺少 fork 扩展指令标记，TOTP 跳变/设备绑定/审计将静默失效）`;
   return [
     'fwknop 运维面板诊断信息',
     /* 面板别名：多实例部署时报障随附，接收方一眼确认来自哪台（本机设定，可能为空） */
@@ -6555,6 +6563,7 @@ function collectDiag() {
     '运行目录: ' + (d && d.panel ? d.panel.run_dir : '?'),
     '面板启动于: ' + (d && d.panel && d.panel.started ? fmtAbs(d.panel.started) : '?'),
     'fwknopd: ' + (d && d.daemon && d.daemon.alive ? `运行中 PID ${d.daemon.pid}` : '未运行'),
+    'fwknopd 二进制: ' + forkTxt,
     '写操作: ' + (d && d.write_enabled ? '管理模式' : '只读'),
     '服务器时间: ' + (d && d.now ? fmtAbs(d.now) : '?') + `（浏览器偏差 ${drift}s）`,
     '管理工具: ' + (d && d.admin_tool && d.admin_tool.available ? '可用' : '不可用'),
@@ -6810,7 +6819,7 @@ function renderAbout() {
       <button class="btn ghost small" id="about-diag" title="复制版本/时钟/服务/文件等非敏感诊断信息（报障时随附）">${icon('i-copy',13)} 复制诊断信息</button>
     </div>`;
   /* 一键打包排障所需的非敏感状态（版本/时钟/服务/文件），贴给运维即可定位 */
-  $('#about-diag').onclick = () => copyText(collectDiag(), '诊断信息 ');
+  $('#about-diag').onclick = async () => copyText(await collectDiag(), '诊断信息 ');
   /* 面板别名行内编辑：Enter/blur 保存、Esc 取消（done 幂等守卫防 Enter
      重渲染后 blur 二次触发）；保存即同步品牌位与标签页标题 */
   const aed = $('#about-alias-ed');
@@ -8107,7 +8116,7 @@ $('#qa-profile').onclick = () => {
   if (S.writeEnabled) $('#pf-name').focus();
 };
 /* 与关于页「复制诊断信息」同一数据源（collectDiag），概览页一键打包 */
-$('#qa-diag').onclick = () => copyText(collectDiag(), '诊断信息 ');
+$('#qa-diag').onclick = async () => copyText(await collectDiag(), '诊断信息 ');
 
 /* ==================== 一键体检 ====================
    把散落各页的部署检查聚合成一份清单：全部数据来自既有端点（并行拉取），
