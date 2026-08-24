@@ -2571,22 +2571,31 @@ async function loadMetrics() {
   }
 }
 
-/* 用采样差分绘制 SVG 迷你趋势 */
+/* 用采样差分绘制 SVG 迷你趋势：纵轴为速率（条/秒）而非原始增量——休眠/标签页
+   挂起醒来后的长间隔会把数小时的增量堆成一个误导性尖峰，并按 max 归一压扁其余
+   所有点；速率化后长间隔与常规 5s 间隔可比（稳态间隔均匀形状不变，亚秒 jitter
+   不可感知），空洞点只显该段平均速率不再虚高 */
 function sparkline(key) {
   const h = S.hist[key] || [];
   /* 采样不足时给出占位说明：避免误以为「无流量」（实际是趋势还没攒够点） */
   if (h.length < 2) return '<span class="hint" style="font-size:10px;opacity:.7" title="趋势图需要至少 2 次采样，随自动刷新出现">趋势采样中…</span>';
   const deltas = [];
-  for (let i = 1; i < h.length; i++) deltas.push(Math.max(0, h[i].v - h[i-1].v));
-  const max = Math.max(...deltas, 1);
+  for (let i = 1; i < h.length; i++) {
+    const raw = Math.max(0, h[i].v - h[i-1].v);
+    deltas.push({ raw, rate: raw / Math.max(h[i].t - h[i-1].t, 1) });
+  }
+  const max = Math.max(...deltas.map(d => d.rate), 0.001);
   const w = 66, hh = 22, n = deltas.length;
-  const pts = deltas.map((v, i) =>
-    `${(i/(n-1)*w).toFixed(1)},${(hh - v/max*(hh-2)).toFixed(1)}`).join(' ');
-  /* 每个采样点叠一个透明圆点 + <title>，hover 显示「时刻 +增量」 */
-  const dots = deltas.map((v, i) => {
-    const x = (i/(n-1)*w).toFixed(1), y = (hh - v/max*(hh-2)).toFixed(1);
+  const pts = deltas.map((d, i) =>
+    `${(i/(n-1)*w).toFixed(1)},${(hh - d.rate/max*(hh-2)).toFixed(1)}`).join(' ');
+  /* 每个采样点叠一个透明圆点 + <title>，hover 显示「时刻 +增量」；跨大间隔
+     的点补间隔说明（速率归一的缘由对悬停者可见，原始增量仍如实展示） */
+  const dots = deltas.map((d, i) => {
+    const x = (i/(n-1)*w).toFixed(1), y = (hh - d.rate/max*(hh-2)).toFixed(1);
     const tm = new Date((h[i+1].t)*1000).toLocaleTimeString('zh-CN', { hour12:false });
-    return `<circle cx="${x}" cy="${y}" r="4" fill="transparent"><title>${tm} 新增 ${v} 条</title></circle>`;
+    const dt = h[i+1].t - h[i].t;
+    const gap = dt >= 60 ? `（间隔 ${dt >= 3600 ? (dt/3600).toFixed(1) + ' 小时' : Math.round(dt/60) + ' 分钟'}，纵轴为速率）` : '';
+    return `<circle cx="${x}" cy="${y}" r="4" fill="transparent"><title>${tm} 新增 ${d.raw} 条${gap}</title></circle>`;
   }).join('');
   /* 读屏纯装饰：趋势点数据已在计数数字与 hover 点 title 里，aria-hidden
      避免读屏把 polyline 路径报成无意义图形序列 */
