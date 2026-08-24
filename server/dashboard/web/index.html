@@ -6124,6 +6124,14 @@ function renderOpLog() {
   const q = (S.oplogQuery || '').toLowerCase();
   const es = filteredOpLog();
   const failN = all.filter(e => !e.ok).length;
+  /* 类别选项计数回填：切换前即知各类存量（与事件芯片计数同一心智）；
+     基础文案存 dataset 防重复渲染时计数二次拼接；选中值不受文案变化影响 */
+  const catN = { all: all.length, fail: failN, acct: 0, stanza: 0, conf: 0, svc: 0 };
+  all.forEach(e => { catN[oplogCat(e.op)]++; });
+  $$('#oplog-filter option').forEach(o => {
+    if (!o.dataset.lab) o.dataset.lab = o.textContent;
+    o.textContent = `${o.dataset.lab}（${catN[o.value] || 0}）`;
+  });
   $('#oplog-sub').textContent = `管理面审计：签发 / 撤销 / 配置保存 / 服务控制 / 登录等 · 显示 ${es.length}/${all.length} 条` +
     (q ? `（搜索「${S.oplogQuery}」）` : '') +
     (failN ? ` · ${failN} 次失败` : '') + ` · 日志文件 ${fmtSize(d.size || 0)}`;
