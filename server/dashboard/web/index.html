@@ -5730,7 +5730,7 @@ $('#tofu-batch-unbind').onclick = () => {
   const recentDevs = new Set((S.events || []).map(e => e.device_id).filter(Boolean));
   const active = items.filter(([, dev]) => recentDevs.has(dev));
   confirmDialog('批量解绑设备', `确定解绑选中的 <b>${items.length}</b> 台设备吗？
-    <div class="mono" style="margin:8px 0;max-height:20vh;overflow:auto;font-size:12px">${items.map(([, dev]) => { const al = devAlias(dev); return (al ? `<span style="color:var(--accent)">${esc(al)}</span>　` : '') + esc(dev.length > 32 ? dev.slice(0, 32) + '…' : dev); }).join('<br>')}</div>
+    <div class="mono" style="margin:8px 0;max-height:20vh;overflow:auto;font-size:12px">${items.map(([, dev]) => { const al = devAlias(dev); return (al ? `<span style="color:var(--accent)">${esc(al)}</span>　` : '') + esc(dev.length > 32 ? dev.slice(0, 32) + '…' : dev) + (recentDevs.has(dev) ? ' <span style="color:var(--amber)" title="该设备近期有敲门记录，解绑会立即中断其访问">⚠ 在用</span>' : ''); }).join('<br>')}</div>
     ${active.length ? `<span style="color:var(--amber)">⚠ 其中 ${active.length} 台近期有敲门记录，解绑会立即中断其访问</span><br>` : ''}
     解绑后这些设备需重新完成 TOFU 首用绑定（或加入指纹白名单）才能继续敲门。`,
     `解绑 ${items.length} 台`, async () => {
