@@ -1047,6 +1047,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               <button type="button" class="tpl-chip" data-ctpl="udp">UDP 监听模式</button>
               <button type="button" class="tpl-chip" data-ctpl="nfq">NFQ 抓包模式</button>
               <button type="button" class="tpl-chip" data-ctpl="spahttp">SPA over HTTP</button>
+              <button type="button" class="tpl-chip" data-ctpl="aging">防重放收紧</button>
               <button type="button" class="tpl-chip" data-ctpl="noaudit">关闭审计输出</button>
             </div>
             <div class="tpl-desc" id="conf-tpl-desc"></div>
@@ -7755,6 +7756,13 @@ const CONF_TEMPLATES = {
        XFF 仅接受 IPv4。不替用户动 PCAP_FILTER：显式过滤器会顶掉既有 UDP 抓包 */
     desc: '允许 SPA 包封装进 HTTP GET 请求（穿透只放行 80/443 外出的严格出口防火墙）。仅开两个开关：抓包侧需自行覆盖 80/TCP（调 PCAP_FILTER 或抓包范围，本模板不动以免顶掉现有 UDP 监听）；客户端 UA 须以 Fwknop 开头（默认校验保持开启）；经反向代理时从 X-Forwarded-For 取真实来源（仅 IPv4）。',
     lines: [['ENABLE_SPA_OVER_HTTP', 'Y'], ['ENABLE_X_FORWARDED_FOR', 'Y']],
+  },
+  aging: {
+    /* 默认值已核实（fwknopd_common.h:103-105）：aging 默认 Y、窗口默认 120s、
+       摘要持久化默认 Y。模板价值=收紧窗口到 60s 并把三项落成显式基线（不受
+       未来默认值漂移影响）；RCHK 上限 100000s（同文件 :153），60 合法 */
+    desc: '防重放收紧：SPA 包时效窗口从默认 120 秒收紧到 60 秒，时效校验与重放摘要持久化（重启不丢缓存）显式开启。要求客户端与服务端时钟同步——TOTP 跳变本就有此前提；时钟偏差大的环境请把 60 调大。',
+    lines: [['ENABLE_SPA_PACKET_AGING', 'Y'], ['MAX_SPA_PACKET_AGE', '60'], ['ENABLE_DIGEST_PERSISTENCE', 'Y']],
   },
 };
 /* 快速模板芯片：hover/聚焦预览改动说明（与签发卡片模板同一交互），点击合并填充 */
