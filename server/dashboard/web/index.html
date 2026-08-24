@@ -6242,7 +6242,15 @@ function collectDiag() {
     /* 备份堆积与近期异常是远程排障高频追问项，一并打包；登录失败计数同理
        （「面板是否正被试密码」安全分诊第一眼要看，概览接口本就有该字段） */
     '审计备份: ' + (d && d.audit_backups ? `${d.audit_backups.count} 个（${fmtSize(d.audit_backups.size)}）` : '—'),
-    '近 15 分钟异常事件: ' + countRecentBad() + ' 条',
+    /* 异常构成明细：总数相同但「重放风暴」与「端口不匹配」是完全不同的
+       处置路径（前者攻击特征、后者配置错位），分诊第一眼就要看到 */
+    '近 15 分钟异常事件: ' + countRecentBad() + ' 条' + (() => {
+      const now = Date.now() / 1000;
+      const br = {};
+      (S.events || []).forEach(e => { if (BAD_EVTS.includes(e.event) && now - (e.time || 0) < RECENT_WINDOW_S) br[e.event] = (br[e.event] || 0) + 1; });
+      const s = BAD_EVTS.filter(k => br[k]).map(k => `${evMeta(k).label} ${br[k]}`).join('，');
+      return s ? `（${s}）` : '';
+    })(),
     '近 15 分钟登录失败: ' + ((d && d.auth_fail_15m) || 0) + ' 次',
   ].join('\n');
 }
