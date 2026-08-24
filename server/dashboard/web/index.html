@@ -4643,6 +4643,7 @@ $('#add-batch').onclick = () => {
 /* access.conf 原文查看（密钥掩码，只读）：stanza 卡片只展示结构化字段，
    注释/空行/禁用块布局与 lint 实际解析的文本视图在这里；掩码原文可安全外发 */
 let arPresetJump = '';  /* lint「查看原文定位」带入的 stanza 标识（一次性消费） */
+let confPresetLine = 0; /* 预检「定位第 N 行」带入的 fwknopd.conf 行号（原文模式消费） */
 $('#users-raw').onclick = async () => {
   try {
     const r = await api('/api/accessconf/view');
@@ -6117,6 +6118,8 @@ function renderConfig() {
   $('#config-sub').textContent = `${d.path} · ${d.entries.length} 项生效指令 · 修改于 ${fmtAbs(d.mtime)}`;
 
   if (S.rawMode) {
+    /* 预检「定位第 N 行」带入：先清查找过滤，保证目标行不被过滤掉（消费在下方渲染后） */
+    if (confPresetLine) { const vf0 = $('#conf-view-filter'); if (vf0 && vf0.value) vf0.value = ''; }
     /* 逐行渲染带行号（行号不可选中，复制原文时不会混入），指令名高亮保持；
        查找框在原文模式同样生效：按行过滤（含注释行）并琥珀高亮命中片段 */
     const q = ($('#conf-view-filter').value || '').trim();
@@ -6136,6 +6139,16 @@ function renderConfig() {
     $('#config-body').innerHTML = `<pre class="out-pre" style="max-height:none">${raw || '<span class="hint">（无匹配行）</span>'}</pre>`;
     const vn0 = $('#conf-view-filter-n');
     if (vn0) vn0.textContent = q ? `命中 ${hitN} 行` : '';
+    /* 预检定位消费：高亮错误行并滚动到位（一次性；行号超出说明文件已变动） */
+    if (confPresetLine) {
+      const n = confPresetLine; confPresetLine = 0;
+      const rl = $$('#config-body .rl');
+      if (n >= 1 && n <= rl.length) {
+        rl.forEach(x => { x.style.background = ''; });
+        rl[n - 1].style.background = 'var(--amber-soft)';
+        rl[n - 1].scrollIntoView({ behavior: SB(), block: 'center' });
+      } else toast(`第 ${n} 行不存在（配置文件预检后已变动？共 ${rl.length} 行）`, 'err', 3500);
+    }
     return;
   }
 
@@ -6768,8 +6781,25 @@ $('#svc-validate').onclick = async () => {
     const r = await api('/api/service/validate', { method:'POST' });
     const secs = ((Date.now() - t0) / 1000).toFixed(1);
     const out = (r.output || '') + (r.error ? '\n' + r.error : '');
-    if (r.error) infoModal('配置预检 — 未通过', out, true,
-      { label: '前往服务配置', title: '打开服务配置页检查 fwknopd.conf；若错误指向 access.conf，请到「用户与授权」页检查 stanza', onclick: () => showPage('config') });
+    /* 预检错误带「in <path> at line N」（config_init.c/access.c 同格式实证）：
+       按目标文件分流——fwknopd.conf 进原文模式行锚定，access.conf 走原文
+       查看器跳行（arPresetJump 数字=行号模式）；提取不到则退回页面导航 */
+    const lm = out.match(/in\s+(\S+)\s+at line\s+(\d+)/);
+    let act = { label: '前往服务配置', title: '打开服务配置页检查 fwknopd.conf；若错误指向 access.conf，请到「用户与授权」页检查 stanza', onclick: () => showPage('config') };
+    if (lm && /fwknopd\.conf$/.test(lm[1])) {
+      act = { label: `定位 fwknopd.conf 第 ${lm[2]} 行`, title: '打开服务配置页原文模式并高亮该错误行', onclick: () => {
+        confPresetLine = +lm[2];
+        showPage('config');
+        if (!S.rawMode) $('#raw-toggle').click(); else renderConfig();
+      } };
+    } else if (lm && /access\.conf$/.test(lm[1])) {
+      act = { label: `定位 access.conf 第 ${lm[2]} 行`, title: '打开 access.conf 原文视图并跳转到该错误行（密钥已掩码）', onclick: () => {
+        arPresetJump = lm[2];
+        showPage('users');
+        $('#users-raw').click();
+      } };
+    }
+    if (r.error) infoModal('配置预检 — 未通过', out, true, act);
     else infoModal(`配置预检 — 通过（耗时 ${secs} 秒）`, out);
   } catch (e) {}
 };
