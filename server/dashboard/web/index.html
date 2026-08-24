@@ -4095,7 +4095,15 @@ function renderUsers() {
           const fd = new FormData(); fd.append('name', name);
           const r = await api('/api/admin/rm', { method:'POST', body: fd });
           if (r.error) toast('撤销失败：' + r.error, 'err');
-          else { toast(`授权「${name}」已撤销`, 'ok'); loadUsers(); }
+          else {
+            /* 撤销成功后瞬态展开「已禁用」区（仅内存、不写 localStorage，不动
+               用户的折叠偏好）：刚撤销的 stanza 与其「恢复」按钮在动作现场
+               立即可见——恢复路径不靠按钮 title 悬停发现；批量撤销不展开
+               （故意批量操作，展开一长串反而是干扰） */
+            S.disCollapsed = false;
+            toast(`授权「${name}」已撤销（下方「已禁用的授权」区可恢复）`, 'ok');
+            loadUsers();
+          }
         } catch (e) {}
       }, true);
   });
