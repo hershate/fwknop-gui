@@ -1033,6 +1033,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             </div>
           </div>
           <div class="body">
+            <div class="warn-strip" id="conf-ext-warn" style="display:none;margin-bottom:10px"><svg width="15" height="15"><use href="#i-warn"/></svg><div>fwknopd.conf 已在您打开编辑器后被外部修改（其他终端或面板实例）。当前编辑内容以打开时的版本为底，直接保存将被「并发改动」拒绝——请先把未保存的改动复制出来备用，再关闭编辑器重新打开以加载最新版本。</div></div>
             <div class="tpl-row" style="margin-bottom:4px">
               <span class="tpl-label">快速模板：</span>
               <button type="button" class="tpl-chip" data-ctpl="totp">TOTP 端口跳变监听</button>
@@ -5891,6 +5892,7 @@ async function loadConfig() {
   try {
     const d = await api('/api/config');
     S.config = d;
+    syncConfExtWarn();  /* 编辑期外部修改预警/基线维护（函数内自判 confEditing） */
     if (S.page === 'config' && !focusWithin('#config-body')) renderConfig();
   } catch (e) {
     setConn(false);
@@ -6894,6 +6896,25 @@ let confEditing = false, confRawEdit = false, confRows = [], confDirty = false, 
    此前只有弹窗内的 modalGuard 确认，刷新页面 11 个字段的修改静默丢失 */
 let seDirty = false;
 
+/* 编辑器打开时的文件 mtime 基线：乐观并发锁的真正锚点——payload.mtime 若直接
+   取 S.config.mtime，配置页轮询（loadConfig 每周期刷新 S.config）会让基线随
+   外部改动自动前移，服务端锁只剩「上次轮询到保存之间」的 ≤ivl 窗口，注释
+   承诺的「加载后被他人改动则拒绝」落空；固定为打开编辑器时的 mtime */
+let confMtimeBase = 0;
+/* 编辑期外部修改被动预警（只警示不阻断，保存仍由 mtime 锁硬拦）：
+   脏编辑 + 文件 mtime 偏离基线 → 挂预警条，提示先复制改动再重开；
+   未脏时基线静默前移——无未保存内容可丢（且保存闸要求 confDirty，
+   未脏编辑器不可能落盘），不产生误报 */
+function syncConfExtWarn() {
+  const w = $('#conf-ext-warn'); if (!w) return;
+  const m = (S.config && S.config.mtime) || 0;
+  if (confEditing && m && confMtimeBase && m !== confMtimeBase) {
+    if (confDirty) { w.style.display = ''; return; }
+    confMtimeBase = m;
+  }
+  w.style.display = 'none';
+}
+
 /* 未保存修改保护：折叠编辑器 / 切页 / 关闭页面前确认 */
 function confGuardLeave() {
   if (confEditing && confDirty) return confirm('fwknopd.conf 编辑器有未保存的修改，确定丢弃吗？');
@@ -7080,6 +7101,8 @@ $('#conf-edit-btn').onclick = () => {
   $('#conf-editor').style.display = confEditing ? '' : 'none';
   if (confEditing) {
     clearConfDirty();
+    confMtimeBase = (S.config && S.config.mtime) || 0;  /* 并发锁基线锚定打开时刻（此后轮询不外移） */
+    syncConfExtWarn();
     /* 每次打开编辑器复位「仅看修改」：新会话从完整视图开始 */
     confOnlyChanged = false;
     const oc = $('#conf-only-changed');
@@ -7307,9 +7330,10 @@ $('#conf-save').onclick = async () => {
       payload = { mode:'structured', lines: editRows.map(([k, v]) => v ? k + ' ' + v : k) };
     }
   }
-  /* 乐观并发锁：带上加载时的文件 mtime，服务端发现加载后文件被他人改动
-     会拒绝保存（防止合并式落盘以旧快照为底静默回滚他人修改） */
-  payload.mtime = (S.config && S.config.mtime) || 0;
+  /* 乐观并发锁：带上「打开编辑器时」锚定的文件 mtime（confMtimeBase，不随
+     轮询前移），服务端发现打开后文件被他人改动会拒绝保存（防止合并式落盘
+     以旧快照为底静默回滚他人修改）；编辑器未开启过的路径回退现行行为 */
+  payload.mtime = confMtimeBase || (S.config && S.config.mtime) || 0;
   /* 反向跨配置校验：收窄/修改 PCAP_PORT_RANGE 可能使现有授权的 TOTP 范围
      越界（敲门静默丢失）。保存前在确认框中列出受影响授权，由运维确认。
      授权数据未加载时先懒加载（config 页直达场景） */
@@ -7353,9 +7377,20 @@ $('#conf-save').onclick = async () => {
         el.textContent = (r.output || '') + (r.error ? '\n错误：' + r.error : '');
         if (r.error) { toast('配置保存失败（未落盘）', 'err');
           /* 并发冲突被拒后本地 mtime/raw 基线已过期，不刷新重试必再撞同一
-             冲突——自动重拉配置（编辑器行保持不动），用户复核后重试即可 */
-          if (/并发改动/.test(r.error)) { loadConfig(); toast('配置已刷新为最新，请复核改动后重试保存', 'ok', 5000); } }
-        else { toast('配置已保存并热加载', 'ok'); clearConfDirty(); loadConfig();
+             冲突——自动重拉配置（编辑器行保持不动）并前移基线：toast 已明示
+             他人改动存在，重试即「知情后覆盖」，是人作出的决定 */
+          if (/并发改动/.test(r.error)) {
+            await loadConfig();
+            confMtimeBase = (S.config && S.config.mtime) || confMtimeBase;
+            syncConfExtWarn();
+            toast('配置已刷新为最新，请复核改动后重试保存', 'ok', 5000);
+          } }
+        else { toast('配置已保存并热加载', 'ok'); clearConfDirty();
+          await loadConfig();
+          /* 自己的保存也改变文件 mtime——基线随成功落盘前移，否则紧接着的
+             下一次保存会撞「自己造成的」假冲突；预警条同步复位 */
+          confMtimeBase = (S.config && S.config.mtime) || confMtimeBase;
+          syncConfExtWarn();
           harvestConfRows();  /* 先收割再快照：confRows 可能落后于 DOM（input 委托不回写），
             直接快照会把已保存的修改误判为「打开后新改动」，实比对随即使保存成功页误脏 */
           confRows = confRows.filter(r => !r[2]);  /* 已落盘的删除行从编辑器移除（删除至此不可逆） */
