@@ -4376,20 +4376,32 @@ $('#users-batch-rm').onclick = () => {
       const ok = [], fail = [];
       let done = 0;
       for (const nm of names) {  /* 逐个提交：复用单撤销服务端链路（备份+预检+SIGHUP） */
+        let stop = false;
         try {
           const fd = new FormData(); fd.append('name', nm);
           const r = await api('/api/admin/rm', { method:'POST', body: fd });
           if (r.error) fail.push(`${nm}：${r.error}`); else ok.push(nm);
-        } catch (e) { fail.push(`${nm}：网络错误`); }
+        } catch (e) {
+          const msg = String((e && e.message) || e);
+          /* 会话失效/只读模式：后续条目必然同败——提前终止（与批量签发同规），
+             剩余按「未尝试」计（未向服务端发起，无重名/残留顾虑） */
+          if (msg === 'unauthorized' || msg === 'forbidden') {
+            fail.push(`${nm}：${msg === 'unauthorized' ? '会话已失效' : '无写权限（只读模式）'}`);
+            stop = true;
+          } else fail.push(`${nm}：网络错误`);
+        }
         /* 进度入按钮文案（与批量解绑同一模式），大批量时不再像卡死 */
         btn.textContent = `撤销中 ${++done}/${names.length}…`;
+        if (stop) break;
       }
+      const untried = names.length - done;
       btn.disabled = false;
       btn.innerHTML = '<svg width="13" height="13"><use href="#i-trash"/></svg>批量撤销';
       S.usersSel = new Set();
       loadUsers(); loadTOFU();
-      if (fail.length) infoModal('批量撤销 — 部分失败', `成功 ${ok.length} 个，失败 ${fail.length} 个：\n` + fail.join('\n'), true);
-      toast(`批量撤销完成：成功 ${ok.length} 个${fail.length ? `，失败 ${fail.length} 个` : ''}`, fail.length ? 'err' : 'ok', 5000);
+      if (fail.length) infoModal('批量撤销 — 部分失败',
+        `成功 ${ok.length} 个，失败 ${fail.length} 个${untried ? `，未尝试 ${untried} 个（会话/权限失败已提前中止，未向服务端发起）` : ''}：\n` + fail.join('\n'), true);
+      toast(`批量撤销完成：成功 ${ok.length} 个${fail.length ? `，失败 ${fail.length} 个` : ''}${untried ? `，未尝试 ${untried} 个` : ''}`, fail.length || untried ? 'err' : 'ok', 5000);
     }, true);
 };
 
@@ -5684,18 +5696,26 @@ $('#tofu-batch-unbind').onclick = () => {
       btn.disabled = true;
       let ok = 0, fail = 0, done = 0;
       for (const [sk, dev] of items) {
+        let stop = false;
         try {
           const fd = new FormData();
           fd.append('stanza_key', sk); fd.append('device_id', dev);
           const r = await api('/api/admin/tofu/unbind', { method:'POST', body: fd });
           if (r.error) fail++; else ok++;
-        } catch (e) { fail++; }
+        } catch (e) {
+          const msg = String((e && e.message) || e);
+          fail++;
+          /* 会话失效/只读模式：后续必然同败——提前终止（与批量签发/撤销同规） */
+          if (msg === 'unauthorized' || msg === 'forbidden') stop = true;
+        }
         btn.textContent = `解绑中 ${++done}/${items.length}…`;
+        if (stop) break;
       }
+      const untried = items.length - done;
       btn.disabled = false;
       btn.innerHTML = '<svg width="13" height="13"><use href="#i-trash"/></svg>批量解绑';
       S.tofuSel = new Set();
-      toast(`批量解绑完成：成功 ${ok} 台${fail ? `，失败 ${fail} 台` : ''}。若授权启用了 TOFU 宽限期，设备下次敲门会自动重新绑定；否则需加入指纹白名单`, fail ? 'err' : 'ok', 8000);
+      toast(`批量解绑完成：成功 ${ok} 台${fail ? `，失败 ${fail} 台` : ''}${untried ? `，未尝试 ${untried} 台（会话/权限失败已提前中止）` : ''}。若授权启用了 TOFU 宽限期，设备下次敲门会自动重新绑定；否则需加入指纹白名单`, fail || untried ? 'err' : 'ok', 8000);
       loadTOFU();
     }, true);
 };
