@@ -4610,6 +4610,9 @@ $('#add-batch').onclick = () => {
       prog.textContent = `签发中 ${i + 1} / ${ns.length}：${nm}`;
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px';
+      /* 二维码行内容器（opt-in 展开；失败行恒 display:none 零占位） */
+      const qrBox = document.createElement('div');
+      qrBox.style.cssText = 'display:none;padding:4px 0 10px;border-bottom:1px solid var(--border-soft)';
       let stop = false;
       try {
         const r = await api('/api/admin/add', { method:'POST', body: mkFd(nm) });
@@ -4621,9 +4624,21 @@ $('#add-batch').onclick = () => {
         lab.textContent = '✓ ';
         const b = document.createElement('b'); b.textContent = nm;  /* textContent 防名称注入 */
         lab.appendChild(b);
+        /* 行内 opt-in 二维码（与重发弹窗同一掩码立场：默认不渲染——N 份密钥
+           二维码同屏泄露面太大；展开一次后保留渲染结果，收起/展开零重绘）。
+           场景：批量签发后面板投屏/共享屏幕，同事逐张手机扫码录入 */
+        const qrBtn = mkBtn('二维码', `展示「${nm}」的授权二维码（手机扫码录入；含密钥材料，注意可窥屏环境；再点收起）`, () => {
+          const showing = qrBox.style.display !== 'none';
+          qrBox.style.display = showing ? 'none' : '';
+          qrBtn.setAttribute('aria-pressed', showing ? 'false' : 'true');
+          qrBtn.textContent = showing ? '二维码' : '收起二维码';
+          if (!showing && !qrBox.dataset.done) { qrBox.dataset.done = '1'; renderUriQr(m[0], qrBox, nm); }
+        });
+        qrBtn.setAttribute('aria-pressed', 'false');
         row.append(lab,
           mkBtn('复制 URI', `复制「${nm}」的授权 URI`, () => copyText(m[0], `「${nm}」授权 URI `)),
-          mkBtn('cred.json', `下载「${nm}」的 cred.json（客户端 fwknop import 直接导入）`, () => downloadCredJson(m[0])));
+          mkBtn('cred.json', `下载「${nm}」的 cred.json（客户端 fwknop import 直接导入）`, () => downloadCredJson(m[0])),
+          qrBtn);
       } catch (e) {
         const msg = String((e && e.message) || e);
         fails.push({ name: nm, err: msg });
@@ -4636,7 +4651,7 @@ $('#add-batch').onclick = () => {
           ns.slice(i + 1).forEach(n2 => untried.push(n2));
         }
       }
-      out.appendChild(row); out.scrollTop = out.scrollHeight;
+      out.appendChild(row); out.appendChild(qrBox); out.scrollTop = out.scrollHeight;
       if (stop) break;
     }
     untried.forEach(n2 => {
