@@ -3600,6 +3600,7 @@ function renderEvents() {
           <div style="align-self:end"><button class="btn ghost small" data-evjson="${esc(key)}" title="复制该事件的完整 JSON（排障/上报用）">${icon('i-copy',12)} 复制原始 JSON</button>
           <button class="btn ghost small" data-evsum="${esc(key)}" title="复制一行中文摘要（聊天/工单用）">${icon('i-copy',12)} 复制摘要</button>
           ${e.time ? `<button class="btn ghost small" data-evctx="${e.time}" title="筛选该事件前后 5 分钟内的全部事件（还原现场上下文，可「↩ 上级视图」返回）">${icon('i-search',12)} 前后 5 分钟</button>` : ''}
+          ${e.src_ip ? `<button class="btn ghost small" data-evolip="${esc(e.src_ip)}" title="在操作日志查看该 IP 的面板操作记录（SPA 侧可疑来源是否也碰过管理面：登录失败/管理动作关联排查）">${icon('i-search',12)} 面板操作</button>` : ''}
           ${e.event === 'open' && e.src_ip ? `<button class="btn ghost small" data-evfw="${esc(e.src_ip)}" title="打开防火墙规则视图并高亮该来源的放行规则（敲门成功闭环的验证步：规则已生效=绿底命中；0 命中多为访问超时已到）">${icon('i-list',12)} 验证放行</button>` : ''}
           ${(() => { const bd = e.device_id && ((S.tofu && S.tofu.bindings) || []).find(x => x.device_id === e.device_id);
             return bd && S.writeEnabled ? ` <button class="btn ghost small" data-evub="${esc(bd.stanza_key)}" data-dev="${esc(e.device_id)}" title="该设备当前已绑定 TOFU，点击直接解绑">${icon('i-trash',12)} 解绑该设备</button>` : ''; })()}</div>
@@ -3760,6 +3761,14 @@ function renderEvents() {
       $('#ev-custom').style.display = 'inline-flex';
       fillEvRange(new Date((t - 300) * 1000), new Date((t + 300) * 1000));
       toast('已筛选该事件前后 5 分钟（点「↩ 上级视图」返回）', 'ok', 2500);
+    });
+    /* 该 IP 的面板操作反查（与 oplog 行 data-olip 反向对称）：SPA 侧看到可疑
+       来源，一步查它是否也碰过管理面；钻取即持久化（586 轮同规） */
+    $$('#events-body [data-evolip]').forEach(b => b.onclick = ev => {
+      ev.stopPropagation();
+      S.oplogQuery = b.dataset.evolip; const os6 = $('#oplog-search'); if (os6) os6.value = S.oplogQuery;
+      try { localStorage.setItem('fwknop-oplog-query', S.oplogQuery); } catch (_) {}
+      showPage('about');
     });
     /* open 事件「验证放行」：敲门成功 → 防火墙应有该来源的放行规则，一键打开
        规则视图并高亮核对（第三环：签发 → 敲门 → 放行验证） */
