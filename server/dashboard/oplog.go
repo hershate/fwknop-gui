@@ -84,8 +84,20 @@ func logOpFull(r *http.Request, op, detail string, ok bool, reason string) {
 
 // readOpLogTail 返回尾部 n 条（旧→新）。只读末尾 256KB 窗口
 // （覆盖约上千条），窗口起点可能落在行中间，丢弃首条残行。
+// 当前文件条数不足 n（多发生在 8MB 单代轮转后不久）时续读上一代
+// .bak 的尾部补齐——「加载更早」因此能跨轮转边界，列表与导出口径一致。
 func readOpLogTail(n int) []OpEntry {
-	f, err := os.Open(opLogPath())
+	out := readOpLogTailFrom(opLogPath(), n)
+	if len(out) < n {
+		if prev := readOpLogTailFrom(opLogPath()+".bak", n-len(out)); len(prev) > 0 {
+			out = append(prev, out...)
+		}
+	}
+	return out
+}
+
+func readOpLogTailFrom(path string, n int) []OpEntry {
+	f, err := os.Open(path)
 	if err != nil {
 		return nil
 	}
