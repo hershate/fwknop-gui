@@ -1018,6 +1018,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               <button class="btn ghost small" id="conf-collapse-all" title="收起全部分组">收起全部</button>
               <button class="btn ghost small" id="conf-edit-btn" style="display:none" title="打开结构化编辑器：增删改指令，含类型校验与重复预警"><svg width="14" height="14"><use href="#i-pencil"/></svg>编辑</button>
               <button class="btn ghost small" id="conf-save-profile" title="把当前 fwknopd.conf + access.conf 快照保存为命名方案（方案页）"><svg width="14" height="14"><use href="#i-archive"/></svg>存为方案</button>
+              <button class="btn ghost small" id="conf-backups" title="查看每次保存自动产生的 .bak 备份并一键回滚（恢复前与现役配置联合预检，当前内容自动再备份，随后热加载）"><svg width="14" height="14"><use href="#i-undo"/></svg>回滚备份</button>
               <button class="btn ghost small" id="raw-toggle" aria-pressed="false" title="查看 fwknopd.conf 原始文本（含注释，只读）">查看原文</button>
               <button class="btn ghost small" id="raw-copy" style="display:none" title="复制 fwknopd.conf 完整原文到剪贴板（留档/迁移用；始终为全文，不受查找过滤影响）"><svg width="14" height="14"><use href="#i-copy"/></svg>复制原文</button>
             </div>
@@ -6337,6 +6338,45 @@ $('#raw-copy').onclick = () => {
 $('#conf-save-profile').onclick = () => {
   showPage('profiles');
   if (S.writeEnabled) $('#pf-name').focus();
+};
+
+/* 配置备份回滚：每次落盘（配置保存/授权编辑/方案应用）自动产生的 .bak 单文件
+   备份，面板内可见即可恢复——此前只能 SSH 上服务器手动找回。恢复走与方案应用
+   同一管线（联合预检 → 当前内容再备份 → 原子替换 → 热加载），回滚本身也可再回滚 */
+$('#conf-backups').onclick = async () => {
+  try {
+    const r = await api('/api/config/backups');
+    const bs = r.backups || [];
+    const sec = (t, arr) => `<div class="form-sec" style="margin-top:10px">${t}（${arr.length}）</div>` +
+      (arr.length ? arr.map(b => `<div style="display:flex;align-items:center;gap:10px;padding:6px 2px;border-bottom:1px solid var(--border-soft)">
+        <span style="font-size:12.5px" title="${fmtAbs(b.mtime)}">${fmtAgo(b.mtime)}</span>
+        <span class="hint" style="font-size:11.5px">${fmtSize(b.size)}</span>
+        ${S.writeEnabled ? `<button class="btn ghost small" style="margin-left:auto;padding:2px 10px;font-size:12px" data-cbr="${esc(b.name)}" data-cbt="${esc(b.target)}" data-cbm="${b.mtime}" title="把 ${esc(b.target)} 回滚到该备份内容：先与另一现役文件联合预检（失败即放弃），当前内容自动再备份为 .bak（可再次回滚），随后热加载生效">恢复到此</button>` : '<span class="hint" style="margin-left:auto;font-size:11.5px">只读模式不可恢复</span>'}
+      </div>`).join('') : '<div class="hint" style="padding:8px 2px">尚无备份——首次保存/编辑后自动产生</div>');
+    openModal(`<h3>配置备份回滚</h3>
+      <div class="hint" style="margin-bottom:4px">每次保存先把原文件备份为 <code>.bak-时间戳</code>（此处各列最近 20 个）。恢复是把该备份内容写回对应配置文件，预检/再备份/热加载与「应用方案」同一管线。</div>
+      ${sec('fwknopd.conf', bs.filter(b => b.target === 'fwknopd.conf'))}
+      ${sec('access.conf', bs.filter(b => b.target === 'access.conf'))}
+      <div class="mf"><button class="btn" onclick="closeModal()">关闭</button></div>`, true);
+    $$('#modal-root [data-cbr]').forEach(b => b.onclick = () => {
+      const name = b.dataset.cbr, target = b.dataset.cbt, mt = +b.dataset.cbm;
+      /* 原生 confirm 而非 confirmDialog：单 modal-root 会被确认框顶掉，取消时
+         连备份列表上下文一并丢失（与通知清空/编辑器守卫同一取舍） */
+      if (!confirm(`确定把 ${target} 回滚到 ${fmtAbs(mt)} 的备份吗？\n\n恢复前自动联合预检（失败即放弃）；当前内容会再备份为 .bak（可再次回滚）；随后热加载生效。`)) return;
+      (async () => {
+        try {
+          const r2 = await api('/api/config/restore', { method:'POST',
+            headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
+          if (r2.error) infoModal('恢复失败', r2.error, true);
+          else {
+            infoModal('恢复完成', r2.output || '已恢复');
+            loadConfig();  /* 编辑器/原文视图同步真值 */
+            if (target === 'access.conf') loadUsers();  /* 授权卡片行号/字段已变 */
+          }
+        } catch (e) {}
+      })();
+    });
+  } catch (e) {}
 };
 
 /* ==================== 关于 ==================== */

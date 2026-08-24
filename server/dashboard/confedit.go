@@ -641,3 +641,86 @@ func duplicateProfile(name, target string) error {
 	data, _ := json.MarshalIndent(meta, "", "  ")
 	return os.WriteFile(filepath.Join(dst, "meta.json"), data, 0600)
 }
+
+// ------------------------------------------------------------------
+// 配置备份回滚：每次落盘（配置保存/stanza 编辑/方案应用）自动产生的
+// .bak-<unix> 单文件备份，此前只能在服务器上手动找回——面板内可见即可恢复。
+// ------------------------------------------------------------------
+
+// ConfigBackup 描述一个自动备份文件；恢复目标由文件名前缀判定。
+type ConfigBackup struct {
+	Target string `json:"target"` // "fwknopd.conf" | "access.conf"
+	Name   string `json:"name"`   // base name：<target>.bak-<unix>
+	Mtime  int64  `json:"mtime"`
+	Size   int64  `json:"size"`
+}
+
+var configBakName = regexp.MustCompile(`^(fwknopd|access)\.conf\.bak-\d+$`)
+
+// listConfigBackups 汇总两份配置各自的自动备份，新的在前；每组截 20 个，
+// 防调试期高频保存撑大响应（与审计备份列表同一节制）。
+func listConfigBackups() []ConfigBackup {
+	out := []ConfigBackup{}
+	for _, spec := range []struct{ target, path string }{
+		{"fwknopd.conf", cfg.FwknopdConf},
+		{"access.conf", cfg.AccessConf},
+	} {
+		names, _ := filepath.Glob(spec.path + ".bak-*")
+		var bs []ConfigBackup
+		for _, n := range names {
+			base := filepath.Base(n)
+			if !configBakName.MatchString(base) {
+				continue
+			}
+			st, err := os.Stat(n)
+			if err != nil {
+				continue
+			}
+			bs = append(bs, ConfigBackup{Target: spec.target, Name: base, Mtime: st.ModTime().Unix(), Size: st.Size()})
+		}
+		sort.SliceStable(bs, func(i, j int) bool { return bs[i].Mtime > bs[j].Mtime })
+		if len(bs) > 20 {
+			bs = bs[:20]
+		}
+		out = append(out, bs...)
+	}
+	return out
+}
+
+// restoreConfigBackup 把指定自动备份写回其目标文件，与方案应用同一管线
+// 纪律：联合预检（恢复对象用 .bak 路径、另一文件用现役，与落盘后的真实
+// 组合一致）→ atomicReplace（当前内容同样先备份，回滚本身也可再回滚）→
+// 尽力热加载。来源只是从方案快照换成 .bak。
+func restoreConfigBackup(name string) (string, error) {
+	if !configBakName.MatchString(name) {
+		return "", fmt.Errorf("非法备份文件名")
+	}
+	targetPath := cfg.AccessConf
+	if strings.HasPrefix(name, "fwknopd.conf") {
+		targetPath = cfg.FwknopdConf
+	}
+	base := filepath.Base(targetPath)
+	bakPath := targetPath + strings.TrimPrefix(name, base) // ".bak-<unix>"
+	if _, err := os.Stat(bakPath); err != nil {
+		return "", fmt.Errorf("备份文件不存在（可能已被清理）：%v", err)
+	}
+	confPath, accPath := cfg.FwknopdConf, cfg.AccessConf
+	if targetPath == cfg.FwknopdConf {
+		confPath = bakPath
+	} else {
+		accPath = bakPath
+	}
+	if out, err := validateConfig(confPath, accPath); err != nil {
+		return "", fmt.Errorf("该备份与现役配置联合预检未通过，已放弃恢复：%v\n%s", err, out)
+	}
+	data, err := os.ReadFile(bakPath)
+	if err != nil {
+		return "", fmt.Errorf("读取备份失败：%v", err)
+	}
+	bak, err := atomicReplace(targetPath, string(data))
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("已从 %s 恢复 %s\n恢复前的当前配置已备份：%s\n%s",
+		name, base, bak, sighupBestEffort()), nil
+}

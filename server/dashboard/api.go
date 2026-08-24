@@ -571,6 +571,30 @@ func handleFwList(w http.ResponseWriter, r *http.Request) {
 // 配置编辑（写操作）
 // ------------------------------------------------------------------
 
+// handleConfigBackups：GET /api/config/backups — 列出两份配置的自动备份
+// （面板内回滚的来源清单；只读，轮询刷新可见新备份）。
+func handleConfigBackups(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, map[string]interface{}{"backups": listConfigBackups()})
+}
+
+// handleConfigRestore：POST /api/config/restore {name} — 从自动备份回滚
+// 单个配置文件（联合预检 → 当前内容再备份 → 原子替换 → 热加载）。
+func handleConfigRestore(w http.ResponseWriter, r *http.Request) {
+	if !requireWrite(w, r) {
+		return
+	}
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
+		http.Error(w, "缺少备份名", http.StatusBadRequest)
+		return
+	}
+	out, err := restoreConfigBackup(req.Name)
+	logOpR(r, "恢复配置备份", req.Name, err)
+	adminResult(w, out, err)
+}
+
 // handleSaveFwknopdConf: JSON {mode:"structured", lines:[...]} 或
 // {mode:"raw", raw:"..."}。
 func handleSaveFwknopdConf(w http.ResponseWriter, r *http.Request) {
