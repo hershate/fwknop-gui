@@ -3766,8 +3766,16 @@ $('#ev-csv').onclick = async () => {
 /* ==================== 用户与授权 ==================== */
 async function loadUsers() {
   try {
+    const hadUsers = !!S.users;
     const d = await api('/api/users');
     S.users = d;
+    /* 首次加载完成后重放签发卡的名称校验：恢复草稿/快速操作时 S.users 可能
+       尚未加载，重名提示按空列表虚过——只补一次（后续轮询不重放，避免每 5s
+       打断输入）；提交闸另有重名硬拦双保险 */
+    if (!hadUsers) {
+      const nf = $('#add-form').name;
+      if (nf && nf.value.trim()) nf.dispatchEvent(new Event('input'));
+    }
     /* 占位密钥预警：__CHANGEME__ 授权永远无法工作，不进用户页就发现不了——
        侧栏琥珀徽标常驻提醒，点击导航直达处理 */
     const cm = (d.stanzas || []).filter(s => s.changeme).length;
@@ -4924,8 +4932,18 @@ $('#add-form').addEventListener('submit', async ev => {
   ev.preventDefault();
   const f = ev.target;
   const nm = f.name.value.trim();
+  if (!nm) { toast('请填写授权名称', 'err'); f.name.focus(); return; }
   if (nm.length > 100 || /[\s#"'`&]/.test(nm)) {
     toast('名称不能含空白、#、引号、反引号或 &，且不超过 100 字符', 'err'); f.name.focus(); return;
+  }
+  /* 重名提交闸（双保险）：input 提示依赖 S.users 已加载，恢复草稿/快速操作
+     时可能按空列表虚过——此处未加载先补载再判。同名会产生两个 ### user: 标记
+     段，解析与「恢复」语义都会混乱；已禁用授权同样占位（提示指路禁用区） */
+  if (!S.users) { try { await loadUsers(); } catch (e) {} }
+  if (((S.users && S.users.stanzas) || []).some(x => x.name === nm) ||
+      ((S.users && S.users.disabled) || []).some(x => x.name === nm)) {
+    toast(`名称「${nm}」已被占用（现有或已禁用授权同名），请更换名称或到「已禁用的授权」区处理同名授权`, 'err', 5000);
+    f.name.focus(); return;
   }
   /* 提交前全字段汇总校验：定位第一个非法字段并聚焦，给出字段名 */
   const fieldChecks = [
