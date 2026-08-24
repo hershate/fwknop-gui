@@ -851,6 +851,8 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <button type="button" class="tpl-chip" data-tpl="std">标准 SSH（推荐）</button>
                 <button type="button" class="tpl-chip" data-tpl="hardened">高安全 SSH（零信任）</button>
                 <button type="button" class="tpl-chip" data-tpl="multi">多服务网关</button>
+                <button type="button" class="tpl-chip" data-tpl="rdp">远程桌面 RDP</button>
+                <button type="button" class="tpl-chip" data-tpl="db">数据库运维口</button>
                 <button type="button" class="tpl-chip" data-tpl="vpn">VPN 长时放行（WireGuard 等）</button>
                 <button type="button" class="tpl-chip" data-tpl="legacy">兼容 v3 旧客户端</button>
                 <button type="button" class="tpl-chip" data-tpl="debug">临时排障（5 分钟）</button>
@@ -4886,6 +4888,16 @@ const ADD_TEMPLATES = {
   multi: {
     desc: '多服务网关：一次敲门同时开放 SSH / HTTPS / DNS，TOTP 跳变 + 指纹 + 首用自动绑定。',
     access: 'tcp/22,tcp/443,udp/53', totp: true, portRange: '30000-60000',
+    fingerprint: true, tofuTimeout: '86400', portMatch: false,
+  },
+  rdp: {
+    desc: 'Windows 远程桌面：RDP 管理口不直接暴露公网，敲门后才放通 3389（按实际端口改）。TOTP 跳变 + 指纹 + 首用自动绑定向 SSH 基线看齐。',
+    access: 'tcp/3389', totp: true, portRange: '30000-60000',
+    fingerprint: true, tofuTimeout: '86400', portMatch: false,
+  },
+  db: {
+    desc: '数据库运维口：默认 PostgreSQL 5432，按实际改 MySQL 3306 / Redis 6379 等。管理口只在敲门后放通，TOTP 跳变 + 指纹 + 首用自动绑定。',
+    access: 'tcp/5432', totp: true, portRange: '30000-60000',
     fingerprint: true, tofuTimeout: '86400', portMatch: false,
   },
   vpn: {
