@@ -250,8 +250,8 @@ func handleUsers(w http.ResponseWriter, r *http.Request) {
 
 // handleAuditDownload streams the audit log as an attachment（不含密钥）。
 /* 审计清理备份文件名白名单：仅允许 handleAdminAuditClear 产生的命名，
-   防 ?bak= 路径穿越。 */
-var auditBakName = regexp.MustCompile(`^fwknopd_audit\.log\.bak-\d{8}-\d{6}$`)
+   防 ?bak= 路径穿越。同秒重复清理的防撞后缀（-2/-3…）同样在允许之列。 */
+var auditBakName = regexp.MustCompile(`^fwknopd_audit\.log\.bak-\d{8}-\d{6}(-\d+)?$`)
 
 func handleAuditDownload(w http.ResponseWriter, r *http.Request) {
 	p := auditPath()
@@ -515,7 +515,15 @@ func handleAdminAuditClear(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]interface{}{"ok": false, "msg": "审计日志为空或不存在，无需清理"})
 		return
 	}
+	/* 同秒重复清理会撞名：os.Rename 静默覆盖目标，上一份备份即被销毁——
+	   追加 -2/-3 序号防撞（白名单正则已同步放行该后缀） */
 	bak := fmt.Sprintf("%s.bak-%s", p, time.Now().Format("20060102-150405"))
+	for i := 2; ; i++ {
+		if _, serr := os.Stat(bak); os.IsNotExist(serr) {
+			break
+		}
+		bak = fmt.Sprintf("%s.bak-%s-%d", p, time.Now().Format("20060102-150405"), i)
+	}
 	if err := os.Rename(p, bak); err != nil {
 		logOp(r, "清理审计日志", "备份失败："+err.Error(), false)
 		http.Error(w, "备份失败："+err.Error(), http.StatusInternalServerError)
