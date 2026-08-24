@@ -2374,14 +2374,11 @@ async function loadOverview() {
 
 function renderStatusCards() {
   const d = S.overview; if (!d) return;
-  /* 时钟偏差警示提到概览顶部：TOTP 敲门严格依赖客户端/服务器/浏览器时钟
-     一致，偏差 >60s 会在事件页表现为「过期」拒绝，根因却不在事件里 */
+  /* 时钟偏差警示提到概览顶部（与关于页共用 clockDriftWarn，文案口径单点化）：
+     服务器失准会让 NTP 正常的敲门设备被判「过期」拒绝，根因却不在事件里 */
   const cw = $('#ov-clock-warn');
   if (cw) {
-    const drift = d.now ? Math.round(Date.now() / 1000 - d.now) : 0;
-    let warnHtml = Math.abs(drift) > 60 ? `<div class="warn-strip" style="margin-bottom:12px">${icon('i-warn',15)}<div>
-      浏览器与服务器时钟偏差约 <b>${Math.abs(drift)}</b> 秒（${drift > 0 ? '浏览器快' : '服务器快'}）。
-      TOTP 动态口令严格依赖双方时钟一致，偏差过大会导致合法敲门被判超时，请校准 NTP。</div></div>` : '';
+    let warnHtml = clockDriftWarn(d);
     /* 非回环监听警示提升到概览顶部（此前仅「关于」页展示）：明文 HTTP + 密码
        登录绑到全网卡会把凭证暴露给链路嗅探——不点进关于页的 operator 也该在
        进门第一眼看到这条安全态势。
@@ -5714,6 +5711,18 @@ function panelLoopback(la) {
   const host = m6 ? m6[1] : (la.includes(':') ? la.slice(0, la.lastIndexOf(':')) : la);
   return !!host && (host.startsWith('127.') || host === '::1' || host === 'localhost');
 }
+/* 浏览器-服务器时钟漂移警示（概览/关于共用，>60s 触发）：文案须区分两层
+   后果——①浏览器不参与 TOTP 校验，漂移只让面板的相对时间/倒计时失真；
+   ②真正的风险是漂移若源于服务器失准（浏览器通常 NTP 准确），NTP 正常的
+   敲门设备与服务器将呈同量级偏差，合法敲门被判「过期」（aged）拒绝——
+   根因不在事件里。旧文案「TOTP 依赖双方时钟」紧贴浏览器偏差句，易误读
+   为浏览器是 TOTP 参与方 */
+function clockDriftWarn(d) {
+  const drift = d && d.now ? Math.round(Date.now() / 1000 - d.now) : 0;
+  if (Math.abs(drift) <= 60) return '';
+  return `<div class="warn-strip" style="margin-bottom:12px">${icon('i-warn',15)}<div>
+    浏览器与服务器时钟偏差约 <b>${Math.abs(drift)}</b> 秒（${drift > 0 ? '浏览器快' : '服务器快'}）。浏览器不参与 TOTP 校验，但面板的相对时间与倒计时会随之失真；若偏差源于服务器时钟失准（浏览器通常 NTP 准确），NTP 正常的敲门设备与服务器将呈同量级偏差，合法敲门会被判「过期」拒绝——请校准服务器 NTP。</div></div>`;
+}
 function collectDiag() {
   const d = S.overview;
   const F = (d && d.files) || {};
@@ -5883,14 +5892,8 @@ function renderAbout() {
   /* 文件行附大小与更新时间 */
   /* 文件路径点击即复制（cp-cell 全局委托，键盘可达由 MutationObserver 补齐） */
   const frow = f => f ? `<span class="cp-cell" data-cp="${esc(f.path)}" title="点击复制完整路径">${esc(f.path)}</span>${f.exists ? ` <span class="hint">${fmtSize(f.size)} · ${fmtAgo(f.mtime)}更新</span>` : ' <span class="hint">（不存在）</span>'}` : '—';
-  /* 时钟偏移检测：TOTP 依赖双方时钟，偏差超 60 秒给出显著警示 */
-  let clockWarn = '';
-  if (d && d.now) {
-    const drift = Math.round(Date.now() / 1000 - d.now);
-    if (Math.abs(drift) > 60) clockWarn = `<div class="warn-strip" style="margin-bottom:12px">${icon('i-warn',15)}<div>
-      浏览器与服务器时钟偏差约 <b>${Math.abs(drift)}</b> 秒（${drift > 0 ? '浏览器快' : '服务器快'}）。
-      TOTP 动态口令严格依赖双方时钟一致，偏差过大会导致合法敲门被判定超时，请校准 NTP。</div></div>`;
-  }
+  /* 时钟偏移检测：与概览共用 clockDriftWarn（>60s 触发，文案口径单点化） */
+  const clockWarn = clockDriftWarn(d);
   /* 非回环监听警示：面板为明文 HTTP + 密码登录，绑到全网卡/外网地址会把凭证
      暴露给链路嗅探；静态文档只说了默认回环，实际绑非回环时必须显著提示 */
   let listenWarn = '';
