@@ -6853,7 +6853,13 @@ function renderAbout() {
     })()],
     ['指标文件', frow(F.metrics)],
     ['TOFU 状态', frow(F.tofu)],
-    ['授权配置', frow(F.access_conf)],
+    /* 授权配置含全部密钥材料：权限过宽（组/他人可读）随行预警（与下方
+       面板认证文件行、体检 8.5 项同一判定） */
+    ['授权配置', frow(F.access_conf) + (() => {
+      const f = F.access_conf;
+      return f && f.exists && typeof f.mode === 'number' && (f.mode & 63)
+        ? ` <span style="color:var(--amber)" title="含密钥材料的文件可被本机同组/其他用户读取，建议 chmod 600 收紧">⚠ 权限 ${(f.mode & 511).toString(8).padStart(3, '0')} 过宽</span>` : '';
+    })()],
     ['服务配置', frow(F.fwknopd_conf)],
     ['操作日志', frow(F.oplog)],
     /* 面板认证文件（含口令散列）：其更新时间即「密码上次修改时间」——安全
