@@ -854,14 +854,14 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <div class="field">
                   <label for="af-name">凭证名称 <span class="req">*</span></label>
                   <input id="af-name" spellcheck="false" autocomplete="off" autocapitalize="off" name="name" placeholder="例如 prod-ssh" required>
-                  <div class="tip">作为 access.conf stanza 的标识 · 想不到名字？<a href="javascript:void 0" id="add-autoname" style="color:var(--accent)">用当前时间命名</a></div>
+                  <div class="tip">作为 access.conf stanza 的标识 · 想不到名字？<a href="javascript:void 0" role="button" id="add-autoname" style="color:var(--accent)">用当前时间命名</a></div>
                   <div class="auth-hint" aria-live="polite" id="add-name-hint"></div>
                 </div>
                 <div class="field">
                   <label for="af-server">SPA 服务器地址</label>
                   <input id="af-server" spellcheck="false" autocomplete="off" autocapitalize="off" name="server" list="server-history" placeholder="例如 203.0.113.10 或 vpn.example.com">
                   <datalist id="server-history"></datalist>
-                  <div class="tip">写入客户端配置，客户端向该地址发 SPA 包<span id="srv-hist-ctl" style="display:none"> · <span id="srv-hist-n"></span> 条历史 <a href="javascript:void 0" id="srv-hist-manage" style="color:var(--accent)">管理</a> <a href="javascript:void 0" id="srv-hist-clear" style="color:var(--faint)">清空</a></span></div>
+                  <div class="tip">写入客户端配置，客户端向该地址发 SPA 包<span id="srv-hist-ctl" style="display:none"> · <span id="srv-hist-n"></span> 条历史 <a href="javascript:void 0" role="button" id="srv-hist-manage" style="color:var(--accent)">管理</a> <a href="javascript:void 0" role="button" id="srv-hist-clear" style="color:var(--faint)">清空</a></span></div>
                   <div id="srv-hist-chips" style="display:none;flex-wrap:wrap;gap:6px;margin-top:6px"></div>
                   <div class="auth-hint" aria-live="polite" id="add-server-hint"></div>
                 </div>
@@ -1057,7 +1057,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               <div class="field"><label for="pf-name">方案名 <span class="req">*</span></label>
                 <input spellcheck="false" autocomplete="off" autocapitalize="off" id="pf-name" placeholder="例如：办公网-仅SSH">
                 <div class="auth-hint" aria-live="polite" id="pf-name-hint"></div>
-                <div class="tip">想不到名字？<a href="javascript:void 0" id="pf-autoname" style="color:var(--accent)">用当前时间命名</a></div></div>
+                <div class="tip">想不到名字？<a href="javascript:void 0" role="button" id="pf-autoname" style="color:var(--accent)">用当前时间命名</a></div></div>
               <div class="field"><label for="pf-note">备注</label>
                 <input spellcheck="false" autocomplete="off" autocapitalize="off" id="pf-note" placeholder="用途说明（可选）"></div>
               <div class="field" style="align-self:end"><button class="btn" id="pf-save" title="把当前 fwknopd.conf + access.conf 快照保存为命名方案，随时一键套用"><svg width="15" height="15"><use href="#i-save"/></svg>保存方案</button></div>
@@ -1942,6 +1942,14 @@ document.addEventListener('keydown', ev => {
   const el = ev.target && ev.target.closest ? ev.target.closest(KB_CLICK_SEL) : null;
   if (el) { ev.preventDefault(); el.click(); }
 });
+/* javascript:void 0 动作锚点带 role=button：Enter 原生激活，Space 需补——
+   角色承诺按钮语义，键盘行为必须兑现（不进 KB_CLICK_SEL：锚点 Enter
+   原生触发 click，Enter 委托会双触发） */
+document.addEventListener('keydown', ev => {
+  if (ev.key !== ' ') return;
+  const el = ev.target && ev.target.closest ? ev.target.closest('a[role="button"]') : null;
+  if (el) { ev.preventDefault(); el.click(); }
+});
 
 /* number 输入聚焦时滚轮会静默改值（跳页框误触常见），滚动即失焦防误改 */
 document.addEventListener('wheel', () => {
@@ -2431,7 +2439,7 @@ function renderStatusCards() {
     try { frDone = localStorage.getItem('fwknop-first-run-done') === '1'; } catch (e2) {}
     const showFr = stz && !stz.active && !stz.disabled && !frDone;
     fr.innerHTML = showFr ? `<div class="warn-strip" style="margin-bottom:12px;border-color:var(--accent)">${icon('i-info',15)}<div style="flex:1">
-      <b>三步上线 fwknop：</b>① <a href="javascript:void 0" id="fr-validate" style="color:var(--accent)">校验配置</a>并<a href="javascript:void 0" id="fr-start" style="color:var(--accent)">启动服务</a>${d.daemon.alive ? '（✓ 运行中）' : ''} → ② <a href="javascript:void 0" id="fr-issue" style="color:var(--accent)">签发首个凭证</a>（推荐「标准 SSH」模板一键填充）→ ③ 客户端导入签发结果中的 fwknop:// URI 或 cred.json（fwknop import 即完成）
+      <b>三步上线 fwknop：</b>① <a href="javascript:void 0" role="button" id="fr-validate" style="color:var(--accent)">校验配置</a>并<a href="javascript:void 0" role="button" id="fr-start" style="color:var(--accent)">启动服务</a>${d.daemon.alive ? '（✓ 运行中）' : ''} → ② <a href="javascript:void 0" role="button" id="fr-issue" style="color:var(--accent)">签发首个凭证</a>（推荐「标准 SSH」模板一键填充）→ ③ 客户端导入签发结果中的 fwknop:// URI 或 cred.json（fwknop import 即完成）
       <button class="btn ghost small" id="fr-dismiss" style="margin-left:8px;padding:1px 8px;font-size:11.5px" title="折叠本引导（授权出现后它也会自动消失）">不再显示</button>
     </div></div>` : '';
     if (showFr) {
@@ -2720,13 +2728,13 @@ function renderSummary() {
       guide.innerHTML = act > 0
         ? `${icon('i-info',15)}<div>已有 <b>${act}</b> 个生效授权，等待首次敲门。客户端敲门后事件会出现在这里；若已敲门仍无事件，按序排查：
         <b>①</b> 服务器防火墙/云安全组需放行 SPA 入向包（默认 UDP 62201，实际端口与抓包模式见
-        <a href="javascript:void 0" id="ov-guide-conf" style="color:var(--accent)">配置页</a>）
+        <a href="javascript:void 0" role="button" id="ov-guide-conf" style="color:var(--accent)">配置页</a>）
         <b>②</b> 确认客户端 URI 里的服务器地址指向本机
         <b>③</b> 确认上方 fwknopd 服务状态为「运行中」。</div>`
         /* 只读模式不能签发：①改为提示找管理员，而非指向不可用的签发入口 */
         : S.writeEnabled
         ? `${icon('i-info',15)}<div>还没有收到任何 SPA 敲门。上手三步：
-        <b>①</b> <a href="javascript:void 0" id="ov-guide-add" style="color:var(--accent)">用户与授权页「签发新凭证」</a> → <b>②</b> 把授权 URI 发给客户端
+        <b>①</b> <a href="javascript:void 0" role="button" id="ov-guide-add" style="color:var(--accent)">用户与授权页「签发新凭证」</a> → <b>②</b> 把授权 URI 发给客户端
         <code>fwknop import 'fwknop://…'</code> 导入（写入与凭证同名的 stanza）→ <b>③</b> 客户端执行
         <code>fwknop -n 凭证名称</code> 发起敲门，事件随即出现在这里。</div>`
         : `${icon('i-info',15)}<div>还没有收到任何 SPA 敲门。当前为只读模式（-read-only），
@@ -4821,7 +4829,7 @@ $('#add-form').name.addEventListener('input', ev => {
     return '';
   };
   const fillSuggest = cand => {
-    el.innerHTML = cand ? ` → 可用：<a href="javascript:void 0" id="name-sugg" style="color:inherit;text-decoration:underline">${esc(cand)}</a>` : '';
+    el.innerHTML = cand ? ` → 可用：<a href="javascript:void 0" role="button" id="name-sugg" style="color:inherit;text-decoration:underline">${esc(cand)}</a>` : '';
     const a = document.getElementById('name-sugg');
     if (a) a.onclick = () => {
       $('#add-form').name.value = cand;
@@ -7126,7 +7134,7 @@ function renderProfiles() {
   if (!ps.length) {
     $('#profiles-body').innerHTML = all.length
       ? `<div class="empty">${icon('i-list',40)}<div class="t">没有匹配「${esc(S.pfQuery)}」的方案</div>
-        <div class="d"><a href="javascript:void 0" id="pf-clear-q" style="color:var(--accent)">清空搜索</a>查看全部 ${all.length} 个方案</div></div>`
+        <div class="d"><a href="javascript:void 0" role="button" id="pf-clear-q" style="color:var(--accent)">清空搜索</a>查看全部 ${all.length} 个方案</div></div>`
       : `<div class="empty">${icon('i-archive',40)}
       <div class="t">还没有配置方案</div>
       <div class="d">${S.writeEnabled ? '在上方把当前配置保存为方案，之后可一键切换' : '只读模式（-read-only）下不可保存方案'}</div></div>`;
