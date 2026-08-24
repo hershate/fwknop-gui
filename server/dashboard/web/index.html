@@ -4706,6 +4706,10 @@ $('#users-raw').onclick = async () => {
       row.style.background = 'var(--amber-soft)';
       row.scrollIntoView({ behavior: SB(), block: 'center' });
     };
+    /* Enter 显式触发：此输入不在 form 内，按 Enter 不触发 change（失焦才触发），
+       弹窗里「输完按 Enter」是最自然手势；handler 幂等（重高亮同一行无叠加态），
+       值未变时重复查同一行号也能重定位 */
+    if (jmp) jmp.addEventListener('keydown', e => { if (e.key === 'Enter') jmp.onchange(); });
     /* lint 跟进入口带入的 stanza 标识：预填并立即跳转（一次性消费） */
     if (arPresetJump && jmp) {
       jmp.value = arPresetJump; arPresetJump = '';
