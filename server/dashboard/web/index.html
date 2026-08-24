@@ -236,6 +236,8 @@ select.ctl, input.ctl {
 
 /* 点击复制单元格 */
 .cp-cell { cursor:pointer; border-bottom:1px dashed var(--border); }
+/* 搜索命中高亮（hlTerms 产出）：accent-soft 底 + accent 字，明暗主题随变量自适应 */
+mark { background:var(--accent-soft); color:var(--accent); border-radius:3px; padding:0 1px; }
 .srch-wrap { position:relative; display:inline-flex; align-items:center; }
 .srch-wrap .ctl { padding-right:28px; }
 .srch-clear { position:absolute; right:5px; padding:2px 4px; color:var(--faint); display:none; }
@@ -1160,6 +1162,24 @@ function focusWithin(sel) {
 }
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* 搜索命中高亮（事件/用户/TOFU/操作日志四列表统一）：返回 text→HTML 闭包——
+   先 esc 再单趟交替正则包 <mark>：多词一次替换不会嵌套、后续词匹配不到 mark
+   标签自身；词与文本同走 esc 口径，& 等特殊字符一致命中；大小写不敏感与各
+   匹配器 lowerCase 口径一致。词表为空退化为纯 esc（调用点零分支）。虚拟状态词
+   （占位/悬空/失败/异常）在行文本中不字面出现则自然无高亮，不误标 */
+function hlTerms(terms) {
+  const pats = (terms || []).map(x => esc(String(x)).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).filter(Boolean);
+  if (!pats.length) return t => esc(t);
+  const re = new RegExp('(' + pats.join('|') + ')', 'gi');
+  return t => esc(t).replace(re, '<mark>$1</mark>');
+}
+/* 事件搜索词 → 高亮词表（与 filteredEvents 词法一致）：前缀词取值部分
+   （user:alice→alice、port:22→22），裸词原样；空前缀值丢弃 */
+function evQueryTerms() {
+  return (S.evQuery || '').trim().split(/\s+/).filter(Boolean)
+    .map(t => { const m = t.match(/^(user|ip|dev|port|stanza):(.*)$/); return m ? m[2] : t; })
+    .filter(Boolean);
+}
 /* 历史两种调用规约并存：字面量与 EVT 元数据带 i- 前缀（icon('i-copy')），
    状态卡 ic 字段不带（ic:'server'）。此前定义无条件拼 #i- 前缀，带前缀的
    调用产出 #i-i-copy——symbol 无此 id，use 静默渲染空白：全部按钮/徽章/
@@ -3518,6 +3538,8 @@ function renderEvents() {
   renderTopIps();
   renderEvHeat();
   const evs = filteredEvents();
+  /* 命中高亮闭包：本渲染周期一份正则（词表随搜索框每次输入变化） */
+  const hl9 = hlTerms(evQueryTerms());
   /* 缓存满 500 条时明示截断：更早事件仍在审计日志里，引导「导出原始」 */
   const capped = (S.events || []).length >= 500;
   /* 筛选/搜索生效时在副标题直接给出「匹配 N / 总 M」，不用数芯片 */
@@ -3610,13 +3632,13 @@ function renderEvents() {
         e.spa_port || 0, e.target_port || 0, e.stanza ?? '', e.reason || ''].join('|'));
       return `<tr class="ev-click${BAD_EVTS.includes(e.event) ? ' ev-bad' : ''}${fresh9 ? ' ev-fresh' : ''}" data-key="${esc(key)}" tabindex="0" role="button" aria-expanded="${open?'true':'false'}" title="点击或 Enter 展开/收起完整详情">
         <td class="mono tmtoggle" title="${S.evTimeAbs ? '相对：' + fmtAgo(e.time) : fmtAbs(e.time)} · 点击切换时间制式" style="white-space:nowrap;color:var(--muted);cursor:pointer">${S.evTimeAbs ? fmtAbs(e.time) : fmtAgo(e.time)}</td>
-        <td>${e.event ? `<span class="badge ${m.cls}" data-evf="${esc(e.event)}" style="cursor:pointer" title="点击筛选该类型全部事件 · 审计事件类型：${esc(e.event)}">${m.label}</span>` : `<span class="badge ${m.cls}" title="审计记录缺失事件类型字段">${m.label}</span>`}</td>
-        <td>${e.user ? `<span class="cp-cell" data-cp="${esc(e.user)}" title="点击复制用户名">${esc(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" data-lk="user" title="查看该用户的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
-        <td class="mono">${e.device_id ? `<span class="cp-cell" data-cp="${esc(e.device_id)}" title="点击复制完整指纹：${esc(e.device_id)}${devAlias(e.device_id) ? ' · 别名：' + esc(devAlias(e.device_id)) : ''}">${esc(e.device_id.slice(0,14))}…</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" data-lk="dev" title="查看该设备的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
-        <td class="mono">${e.src_ip ? `<span class="cp-cell" data-cp="${esc(e.src_ip)}" title="点击复制来源 IP">${esc(e.src_ip)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.src_ip)}" data-lk="ip" title="查看该 IP 的全部事件">${icon('i-search',12)}</button>` : '—'}</td>
-        <td class="mono">${e.spa_port ? `<span class="cp-cell" data-portq="${e.spa_port}" title="点击按 SPA 端口 ${e.spa_port} 筛选">${e.spa_port}</span>` : '—'}</td>
-        <td class="mono">${e.target_port ? `<span class="cp-cell" data-portq="${e.target_port}" title="点击按目标端口 ${e.target_port} 筛选">${e.target_port}</span>` : '—'}</td>
-        <td class="hint">${e.reason ? `<span class="cp-cell" data-reasonq="${esc(e.reason)}" title="点击按原因「${esc(e.reason)}」筛选">${esc(reasonZh(e.reason))}</span>` : esc(reasonZh(e.reason))}</td>
+        <td>${e.event ? `<span class="badge ${m.cls}" data-evf="${esc(e.event)}" style="cursor:pointer" title="点击筛选该类型全部事件 · 审计事件类型：${esc(e.event)}">${hl9(m.label)}</span>` : `<span class="badge ${m.cls}" title="审计记录缺失事件类型字段">${hl9(m.label)}</span>`}</td>
+        <td>${e.user ? `<span class="cp-cell" data-cp="${esc(e.user)}" title="点击复制用户名">${hl9(e.user)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.user)}" data-lk="user" title="查看该用户的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
+        <td class="mono">${e.device_id ? `<span class="cp-cell" data-cp="${esc(e.device_id)}" title="点击复制完整指纹：${esc(e.device_id)}${devAlias(e.device_id) ? ' · 别名：' + esc(devAlias(e.device_id)) : ''}">${hl9(e.device_id.slice(0,14))}…</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.device_id)}" data-lk="dev" title="查看该设备的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
+        <td class="mono">${e.src_ip ? `<span class="cp-cell" data-cp="${esc(e.src_ip)}" title="点击复制来源 IP">${hl9(e.src_ip)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-lookup="${esc(e.src_ip)}" data-lk="ip" title="查看该 IP 的全部事件">${icon('i-search',12)}</button>` : '—'}</td>
+        <td class="mono">${e.spa_port ? `<span class="cp-cell" data-portq="${e.spa_port}" title="点击按 SPA 端口 ${e.spa_port} 筛选">${hl9(e.spa_port)}</span>` : '—'}</td>
+        <td class="mono">${e.target_port ? `<span class="cp-cell" data-portq="${e.target_port}" title="点击按目标端口 ${e.target_port} 筛选">${hl9(e.target_port)}</span>` : '—'}</td>
+        <td class="hint">${e.reason ? `<span class="cp-cell" data-reasonq="${esc(e.reason)}" title="点击按原因「${esc(e.reason)}」筛选">${hl9(reasonZh(e.reason))}</span>` : hl9(reasonZh(e.reason))}</td>
       </tr>${detail}`;
     }).join('');
     /* 行内徽章点击 = 按该类型筛选（与类型芯片同一状态；stopPropagation
@@ -4082,6 +4104,7 @@ function renderUsers() {
   }
   updateUsersBatchBar();
   const q = (S.usersQuery || '').toLowerCase();
+  const hlU = hlTerms([S.usersQuery || '']);  /* 单串子串匹配 → 整串为一个高亮词 */
   const st = filteredStanzas();
   /* 排序：配置顺序（默认）/ 名称 / 最近活跃（按该用户最近事件时间倒序）/ 绑定设备数（倒序） */
   const lastEv = {};
@@ -4133,7 +4156,7 @@ function renderUsers() {
       <div class="head" style="border-bottom:0;padding-bottom:8px">
         <div style="display:flex;align-items:center;gap:10px">
           <div class="ic" style="width:34px;height:34px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center">${icon('i-users',17)}</div>
-          <div><div style="font-weight:700"><span class="cp-cell" data-cp="${esc(name)}" title="点击复制授权名称（CLI：fwknopd-admin user rm 等用）">${esc(name)}</span></div>
+          <div><div style="font-weight:700"><span class="cp-cell" data-cp="${esc(name)}" title="点击复制授权名称（CLI：fwknopd-admin user rm 等用）">${hlU(name)}</span></div>
           <div class="hint">stanza 第 ${s.index} 个 · 第 ${s.start_line}–${s.end_line} 行</div></div>
         </div>
         <div class="tools"><button class="btn ghost small" data-stev="${s.name ? esc(s.name) : String(s.index)}" title="在事件页查看命中该授权的全部事件（stanza: 前缀过滤；未设 REQUIRE_USERNAME 的授权无用户名可查，按授权维度更全）">${icon('i-search',13)}查事件</button>${S.writeEnabled ?
@@ -4147,10 +4170,10 @@ function renderUsers() {
         ${s.changeme ? `<div class="warn-strip">${icon('i-warn',15)}<div>该授权仍包含 <code>__CHANGEME__</code> 占位密钥，<b>无法正常工作</b>，请撤销后重新签发。</div></div>` : ''}
         <div class="uc-detail">
         <div class="form-grid" style="margin-bottom:10px">
-          <div><div class="hint">来源限制（SOURCE）</div><div class="mono">${s.source ? `<span class="cp-cell" data-cp="${esc(s.source)}" data-lab="来源限制" title="点击复制来源限制">${esc(s.source)}</span>` : '—'}</div></div>
-          <div><div class="hint">要求用户名</div><div class="mono">${s.require_username ? `<span class="cp-cell" data-cp="${esc(s.require_username)}" data-lab="用户名" title="点击复制用户名">${esc(s.require_username)}</span>` : '不校验'}</div></div>
-          <div><div class="hint">开放端口</div><div class="mono">${s.open_ports ? `<span class="cp-cell" data-cp="${esc(s.open_ports)}" data-lab="端口列表" title="点击复制端口列表">${esc(s.open_ports)}</span>` : '按包内请求'}</div></div>
-          ${s.restrict_ports ? `<div><div class="hint">禁止端口</div><div class="mono"><span class="cp-cell" data-cp="${esc(s.restrict_ports)}" data-lab="禁止端口" title="RESTRICT_PORTS：即使请求也不开放；点击复制">${esc(s.restrict_ports)}</span></div></div>` : ''}
+          <div><div class="hint">来源限制（SOURCE）</div><div class="mono">${s.source ? `<span class="cp-cell" data-cp="${esc(s.source)}" data-lab="来源限制" title="点击复制来源限制">${hlU(s.source)}</span>` : '—'}</div></div>
+          <div><div class="hint">要求用户名</div><div class="mono">${s.require_username ? `<span class="cp-cell" data-cp="${esc(s.require_username)}" data-lab="用户名" title="点击复制用户名">${hlU(s.require_username)}</span>` : '不校验'}</div></div>
+          <div><div class="hint">开放端口</div><div class="mono">${s.open_ports ? `<span class="cp-cell" data-cp="${esc(s.open_ports)}" data-lab="端口列表" title="点击复制端口列表">${hlU(s.open_ports)}</span>` : '按包内请求'}</div></div>
+          ${s.restrict_ports ? `<div><div class="hint">禁止端口</div><div class="mono"><span class="cp-cell" data-cp="${esc(s.restrict_ports)}" data-lab="禁止端口" title="RESTRICT_PORTS：即使请求也不开放；点击复制">${hlU(s.restrict_ports)}</span></div></div>` : ''}
           <div><div class="hint">访问超时</div><div class="mono">${esc(s.fw_access_timeout)||'默认 30'} 秒${fmtSecs(s.fw_access_timeout) ? ` <span class="hint">（${fmtSecs(s.fw_access_timeout)}）</span>` : ''}${s.max_fw_timeout ? ` <span class="hint" title="MAX_FW_TIMEOUT：客户端自定义超时的上限">· 上限 ${esc(s.max_fw_timeout)} 秒</span>` : ''}</div></div>
         </div>
         <div>${stanzaBadges(s)}</div>
@@ -5509,6 +5532,7 @@ function renderTOFU() {
   const d = S.tofu; if (!d) return;
   const all = d.bindings || [];
   const q = (S.tofuQuery || '').toLowerCase();
+  const hlT = hlTerms([S.tofuQuery || '']);  /* 单串子串匹配 → 整串为一个高亮词 */
   const aliasOf = devAliasMap();  /* 别名纳入检索：记人话名找设备 */
   const bs = filteredTofuBindings();
   /* 列排序：点击表头切换，默认保持文件顺序；选择持久化 */
@@ -5566,20 +5590,20 @@ function renderTOFU() {
   $('#tofu-body').innerHTML = bs.map(b => `<tr>
     <td>${S.writeEnabled ? `<input type="checkbox" class="tofu-sel" data-sk="${esc(b.stanza_key)}" data-dev="${esc(b.device_id)}"
       ${S.tofuSel.has(b.stanza_key + '\x01' + b.device_id) ? 'checked' : ''}>` : ''}</td>
-    <td class="mono" title="完整指纹：${esc(b.device_id)}">${esc(b.device_id && b.device_id.length > 16 ? b.device_id.slice(0, 16) + '…' : b.device_id)}
+    <td class="mono" title="完整指纹：${esc(b.device_id)}">${hlT(b.device_id && b.device_id.length > 16 ? b.device_id.slice(0, 16) + '…' : b.device_id)}
       <button class="icon-btn" style="padding:2px 6px;margin-left:6px" data-cp="${esc(b.device_id)}" title="复制指纹">${icon('i-copy',12)}</button>
       ${(() => { const al = aliasOf[b.device_id] || '';
-        return `<div style="margin-top:3px"><button class="icon-btn" style="padding:1px 5px;vertical-align:1px" data-alias="${esc(b.device_id)}" title="${al ? '编辑别名' : '起个别名'}（人话标注，如「小明的 Pixel」；仅存本浏览器，不参与安全判定）">${icon('i-pencil',11)}</button><span class="hint" style="font-size:11.5px">${al ? esc(al) : '未命名'}</span></div>`; })()}
+        return `<div style="margin-top:3px"><button class="icon-btn" style="padding:1px 5px;vertical-align:1px" data-alias="${esc(b.device_id)}" title="${al ? '编辑别名' : '起个别名'}（人话标注，如「小明的 Pixel」；仅存本浏览器，不参与安全判定）">${icon('i-pencil',11)}</button><span class="hint" style="font-size:11.5px">${al ? hlT(al) : '未命名'}</span></div>`; })()}
       ${orphanOf(b) ? `<div><span class="tag" style="background:var(--amber-soft);color:var(--amber);margin-top:3px" title="对应授权已删除/禁用，该绑定不再生效，建议解绑清理">⚠ 悬空绑定</span></div>` : ''}
       ${lastEventForDevice(b.device_id)}</td>
-    <td class="mono">${b.source ? `<span class="cp-cell" data-cp="${esc(b.source)}" title="点击复制来源限制" data-lab="来源限制">${esc(b.source)}</span>` : '—'}${(() => {
+    <td class="mono">${b.source ? `<span class="cp-cell" data-cp="${esc(b.source)}" title="点击复制来源限制" data-lab="来源限制">${hlT(b.source)}</span>` : '—'}${(() => {
       const stz = stanzaOf(b);
       if (!stz) return '';
       /* 反查词用「#序号」精确通道（用户页搜索对该形式全等匹配）：按授权名子串
          过滤会把「web2」带进「web」的结果里，同前缀多授权时定位不唯一 */
       return `<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-toustz="#${stz.index}" data-toustzn="${esc(stz.name || ('#' + stz.index))}" title="在用户与授权页查看对应授权「${esc(stz.name || ('#' + stz.index))}」">${icon('i-users',12)}</button>`; })()}</td>
-    <td>${b.username ? `${esc(b.username)}<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-uev2="${esc(b.username)}" title="查看该用户的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
-    <td class="mono">${b.open_ports ? `<span class="cp-cell" data-cp="${esc(b.open_ports)}" title="点击复制开放端口" data-lab="开放端口">${esc(b.open_ports)}</span>` : '—'}</td>
+    <td>${b.username ? `${hlT(b.username)}<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-uev2="${esc(b.username)}" title="查看该用户的全部事件">${icon('i-search',12)}</button>` : '<span class="hint">—</span>'}</td>
+    <td class="mono">${b.open_ports ? `<span class="cp-cell" data-cp="${esc(b.open_ports)}" title="点击复制开放端口" data-lab="开放端口">${hlT(b.open_ports)}</span>` : '—'}</td>
     <td>${S.writeEnabled ?
       `<button class="icon-btn" style="padding:2px 6px" data-cp="${esc(`fwknopd-admin tofu unbind '${b.stanza_key}' '${b.device_id}'`)}" data-lab="CLI 解绑命令" title="复制完整 CLI 解绑命令（fwknopd-admin tofu unbind，含 stanza_key 与设备指纹）">${icon('i-copy',12)}</button>
        <button class="btn ghost small" data-ub="${esc(b.stanza_key)}" data-dev="${esc(b.device_id)}" title="解除该设备的 TOFU 绑定（下次敲门需重新完成绑定）">${icon('i-trash',13)}解绑</button>` :
@@ -6172,6 +6196,7 @@ function renderOpLog() {
   const all = (d.entries || []).slice().reverse();  /* 新→旧，与事件页同向 */
   const f = S.oplogFilter || 'all';
   const q = (S.oplogQuery || '').toLowerCase();
+  const hlO = hlTerms([S.oplogQuery || '']);  /* 单串子串匹配 → 整串为一个高亮词 */
   const es = filteredOpLog();
   const failN = all.filter(e => !e.ok).length;
   /* 类别选项计数回填：切换前即知各类存量（与事件芯片计数同一心智）；
@@ -6203,9 +6228,9 @@ function renderOpLog() {
     <thead><tr><th>时间</th><th>操作</th><th>详情</th><th>来源 IP</th><th style="width:56px">结果</th></tr></thead>
     <tbody>${es.map(e => `<tr>
       <td class="tmtoggle" title="${S.oplogTimeAbs ? '相对：' + fmtAgo(e.time) : fmtAbs(e.time)} · 点击切换时间制式" style="white-space:nowrap;color:var(--muted);cursor:pointer">${S.oplogTimeAbs ? esc(fmtAbs(e.time)) : esc(fmtAgo(e.time))}</td>
-      <td style="white-space:nowrap">${esc(e.op)}</td>
-      <td style="word-break:break-all">${e.detail ? `<span class="cp-cell" data-cp="${esc(e.detail)}" data-lab="详情" title="点击复制详情">${esc(e.detail)}</span>` : ''}${!e.ok && e.reason ? `<div style="color:var(--red);font-size:12px;margin-top:2px" title="失败原因（服务端记录的错误摘要）">原因：${esc(e.reason)}</div>` : ''}</td>
-      <td style="white-space:nowrap">${e.ip ? `<span class="cp-cell" data-cp="${esc(e.ip)}" data-lab="来源 IP" title="点击复制来源 IP（爆破排查可直接贴进防火墙封禁）">${esc(e.ip)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-olip="${esc(e.ip)}" title="在事件页查看该 IP 的全部 SPA 事件（登录失败与敲门行为关联排查）">${icon('i-search',12)}</button>` : '—'}</td>
+      <td style="white-space:nowrap">${hlO(e.op)}</td>
+      <td style="word-break:break-all">${e.detail ? `<span class="cp-cell" data-cp="${esc(e.detail)}" data-lab="详情" title="点击复制详情">${hlO(e.detail)}</span>` : ''}${!e.ok && e.reason ? `<div style="color:var(--red);font-size:12px;margin-top:2px" title="失败原因（服务端记录的错误摘要）">原因：${hlO(e.reason)}</div>` : ''}</td>
+      <td style="white-space:nowrap">${e.ip ? `<span class="cp-cell" data-cp="${esc(e.ip)}" data-lab="来源 IP" title="点击复制来源 IP（爆破排查可直接贴进防火墙封禁）">${hlO(e.ip)}</span><button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-olip="${esc(e.ip)}" title="在事件页查看该 IP 的全部 SPA 事件（登录失败与敲门行为关联排查）">${icon('i-search',12)}</button>` : '—'}</td>
       <td>${e.ok ? '<span style="color:var(--green)" title="成功">✓</span>' : '<span style="color:var(--red)" title="失败/被拒">✗</span>'}</td>
     </tr>`).join('')}</tbody></table></div>`;
   /* 「加载更早」：返回条数顶到当前窗口说明文件里可能还有更早记录；
