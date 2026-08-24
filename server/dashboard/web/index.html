@@ -8439,10 +8439,12 @@ async function runCheckup() {
      fwknopd 对未知指令仅告警忽略——上游二进制会让 TOTP 跳变/设备绑定/审计
      静默失效且预检通过，是「配置全对但功能不工作」的最隐蔽部署错位 */
   if (!fork) items.push({ st:'skip', t:'fwknopd 二进制', d:'概览数据不可用（网络/服务异常），本项跳过' });
-  else if (fork.error) items.push({ st:'bad', t:'fwknopd 二进制不可用', d:fork.error + '——服务控制链路的全部操作都会失败' });
+  else if (fork.error) items.push({ st:'bad', t:'fwknopd 二进制不可用', d:fork.error + '——服务控制链路的全部操作都会失败',
+    act:{ label:'查看诊断', title:'打开「关于」页查看二进制路径与打包诊断信息（确认 -fwknopd 指向）', onclick: () => showPage('about') } });
   else if (fork.note) items.push({ st:'skip', t:'fwknopd 二进制', d:fork.note });
   else if (!fork.fork) items.push({ st:'bad', t:'fwknopd 疑似上游二进制',
-    d:(fork.path || 'fwknopd') + ' 缺少 fork 扩展指令标记——TOTP 跳变/设备绑定/审计等 fork 功能将静默失效（未知指令仅告警不报错，预检检不出）。请换用本 fork 构建的 fwknopd，面板以 -fwknopd 参数指定路径' });
+    d:(fork.path || 'fwknopd') + ' 缺少 fork 扩展指令标记——TOTP 跳变/设备绑定/审计等 fork 功能将静默失效（未知指令仅告警不报错，预检检不出）。请换用本 fork 构建的 fwknopd，面板以 -fwknopd 参数指定路径',
+    act:{ label:'查看诊断', title:'打开「关于」页查看二进制完整路径与打包诊断信息（换二进制前确认要替换的目标）', onclick: () => showPage('about') } });
   else items.push({ st:'ok', t:'fwknopd 二进制', d:'fork 扩展指令标记齐全' });
 
   /* 3. 审计输出（面板事件/指标的数据源）。cfg 拉取失败时 ENABLE_AUDIT
