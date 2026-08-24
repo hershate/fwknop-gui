@@ -7544,6 +7544,7 @@ function renderProfiles() {
   /* 方案名/备注过滤（与 用户/TOFU 页搜索同范式，词跨刷新记忆）；
      状态词「当前生效」同样可搜（界面所见标签即可检索，与 占位/悬空/异常 同一心智） */
   const q = (S.pfQuery || '').toLowerCase();
+  const hlP = hlTerms([S.pfQuery || '']);  /* 单串子串匹配 → 整串为一个高亮词（五列表收口） */
   const ps = q ? all.filter(p => (p.name || '').toLowerCase().includes(q) || (p.note || '').toLowerCase().includes(q) ||
     (p.current && '当前生效'.includes(q))) : all;
   /* 当前生效方案置顶（Array.sort 稳定，其余保持服务端按保存时间倒序），
@@ -7566,8 +7567,8 @@ function renderProfiles() {
       <div class="head" style="border-bottom:0;padding-bottom:6px">
         <div style="display:flex;align-items:center;gap:10px">
           <div style="width:34px;height:34px;border-radius:10px;background:var(--blue-soft);color:var(--blue);display:flex;align-items:center;justify-content:center">${icon('i-archive',17)}</div>
-          <div><div style="font-weight:700">${esc(p.name)}${p.current ? ' <span class="tag hl">当前生效</span>' : ''}</div>
-          <div class="hint">${p.created ? `保存于 ${fmtAbs(p.created)}（${fmtAgo(p.created)}）` : ''}${S.writeEnabled ? ` · <span class="pf-note-ed" data-pnote="${esc(p.name)}" title="点击编辑备注（Enter 保存 / Esc 取消 / 清空即删除）" style="cursor:pointer;border-bottom:1px dashed var(--border)">${p.note ? esc(p.note) : '＋ 备注'}</span>` : (p.note ? ' · ' + esc(p.note) : '')}</div></div>
+          <div><div style="font-weight:700">${hlP(p.name)}${p.current ? ' <span class="tag hl">当前生效</span>' : ''}</div>
+          <div class="hint">${p.created ? `保存于 ${fmtAbs(p.created)}（${fmtAgo(p.created)}）` : ''}${S.writeEnabled ? ` · <span class="pf-note-ed" data-pnote="${esc(p.name)}" title="点击编辑备注（Enter 保存 / Esc 取消 / 清空即删除）" style="cursor:pointer;border-bottom:1px dashed var(--border)">${p.note ? hlP(p.note) : '＋ 备注'}</span>` : (p.note ? ' · ' + hlP(p.note) : '')}</div></div>
         </div>
         <div class="tools">
           <button class="btn ghost small" data-pv="${esc(p.name)}" title="预览方案内容及其与当前配置的差异（密钥已掩码，只读不改动）">${icon('i-list',13)}预览</button>
