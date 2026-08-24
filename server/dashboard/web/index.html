@@ -6856,6 +6856,13 @@ function renderAbout() {
     ['授权配置', frow(F.access_conf)],
     ['服务配置', frow(F.fwknopd_conf)],
     ['操作日志', frow(F.oplog)],
+    /* 面板认证文件（含口令散列）：其更新时间即「密码上次修改时间」——安全
+       审计高频追问项；权限过宽（组/他人可读）随行预警，与体检 8.5 项同判定 */
+    ['面板认证文件', frow(F.panel_auth) + (() => {
+      const f = F.panel_auth;
+      return f && f.exists && typeof f.mode === 'number' && (f.mode & 63)
+        ? ` <span style="color:var(--amber)" title="含口令散列的文件可被本机同组/其他用户读取，建议 chmod 600 收紧">⚠ 权限 ${(f.mode & 511).toString(8).padStart(3, '0')} 过宽</span>` : '';
+    })()],
     /* 审计清理备份：列出全部 .bak 文件名（含备份时间与单文件大小）与面板内下载/删除入口 */
     ...((d && d.audit_backups && d.audit_backups.count) ? [[
       '审计备份',
