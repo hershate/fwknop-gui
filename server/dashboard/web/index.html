@@ -8526,7 +8526,8 @@ async function runCheckup() {
       .filter(([k]) => { const f = F[k]; return f && f.exists && typeof f.mode === 'number' && (f.mode & 63); })
       .map(([k, lab]) => `${lab} 权限 ${(F[k].mode & 511).toString(8).padStart(3, '0')}`);
     items.push(loose.length
-      ? { st:'warn', t:'凭证文件权限过宽', d:loose.join('；') + '——本机同组/其他用户可读，建议 chmod 600 收紧' }
+      ? { st:'warn', t:'凭证文件权限过宽', d:loose.join('；') + '——本机同组/其他用户可读，建议 chmod 600 收紧',
+          act:{ label:'查看文件路径', title:'打开「关于」页查看这些文件的完整路径与权限标注（chmod 600 需按路径执行）', onclick: () => showPage('about') } }
       : { st:'ok', t:'凭证文件权限', d:'access.conf 与面板认证文件均仅属主可读写' });
   }
 
