@@ -1127,6 +1127,10 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           </div>
         </div>
         <div class="card">
+          <div class="head"><h2>核心概念速览</h2><span class="sub">面板各处文案涉及的机制释义（与代码实际行为一致）</span></div>
+          <div class="body" id="about-glossary"></div>
+        </div>
+        <div class="card">
           <div class="head"><h2>常用命令速查</h2><span class="sub">点击右侧按钮复制</span></div>
           <div class="body" id="cli-cheatsheet"></div>
         </div>
@@ -2112,6 +2116,24 @@ $('#cli-cheatsheet').innerHTML = CLI_CHEATSHEET.map(([grp, rows]) => `
     <button class="icon-btn" style="padding:2px 6px" data-cp="${esc(c)}" data-lab="命令 " title="复制该命令">${icon('i-copy',12)}</button>
   </div>`).join('')}`).join('');
 $$('#cli-cheatsheet [data-cp]').forEach(b => b.onclick = () => copyText(b.dataset.cp, b.dataset.lab));
+
+/* 核心概念速览：释义全部对应代码实际行为——跳变落点校验见 incoming_spa.c，
+   空 OPEN_PORTS 不拦截见 access.c（acc_check_port_access），审计/操作日志
+   分工见 dashboard/oplog.go 头注释；不写超出代码实现的能力描述 */
+const GLOSSARY = [
+  ['SPA（单包授权）', '客户端把加密的开门请求塞进单个数据包发往服务器，fwknopd 验证通过才临时放行端口——未授权者探测不到端口存在（本面板为协议 4.0.0 fork）。'],
+  ['TOTP 端口跳变', '敲门落点端口不固定：由 TOTP 种子按当前时间窗（30 秒）算出，范围由授权的 TOTP_PORT_RANGE 限定。客户端凭证与服务端授权必须同种子同范围，才能算出同一落点。'],
+  ['强制 TOTP 端口匹配', '开启后服务端校验敲门落点必须等于该授权当前时间窗算出的端口——包被重放到其他端口也拒绝。修改 TOTP_PORT_RANGE 会使按旧范围签发的凭证失效，需重新签发分发。'],
+  ['TOFU 设备绑定', 'SPA v4 每包携带设备指纹。授权开启「要求设备指纹」后：设了 TOFU 宽限期则首台敲门设备自动绑定，否则绑定签发时本机指纹；此后只认已绑定设备，凭证转发到别的设备会被拒（事件「未知指纹」）。'],
+  ['悬空绑定', 'TOFU 绑定记录对应的授权已被删除/禁用后的残留条目——不再生效，建议到 TOFU 页清理（侧栏徽标计数即此类）。'],
+  ['占位密钥（__CHANGEME__）', '手工编写 access.conf 时留下的模板占位密钥——含它的授权永远无法通过校验，请撤销后到「用户与授权」重新签发。'],
+  ['PCAP 监听范围', 'fwknopd 实际抓包的端口区间（PCAP_PORT_RANGE）。TOTP 跳变范围必须落在其中，否则敲门包根本不会被监听看到——签发与编辑时面板会做超范围拦截/警示。'],
+  ['OPEN_PORTS（端口限制）', '授权允许打开的端口清单（如 tcp/22,udp/53）。留空表示不做端口限制（不是默认 tcp/22）；客户端可请求的子集还可由 RESTRICT_PORTS 进一步约束。'],
+  ['访问超时', 'FW_ACCESS_TIMEOUT：开门后放行规则的存活秒数，到期规则自动移除，再次访问需重新敲门；MAX_FW_TIMEOUT 是客户端可请求更长时间的上限。'],
+  ['审计日志 vs 操作日志', '审计日志由 fwknopd 写，记「谁敲了门」（SPA 事件页）；操作日志由面板写，记「谁动了管理面」（签发/撤销/改配置/登录改密，本页上方）。两份均为 JSONL，都可导出。'],
+];
+$('#about-glossary').innerHTML = `<table class="tb"><tbody>${GLOSSARY.map(([k, d]) =>
+  `<tr><td style="width:180px;white-space:nowrap;vertical-align:top">${esc(k)}</td><td class="hint">${esc(d)}</td></tr>`).join('')}</tbody></table>`;
 
 /* 关于页快捷键表与 ? 帮助同源渲染，杜绝两份清单漂移 */
 $('#about-kbd').innerHTML = KBD_HELP.map(([k, d]) =>
