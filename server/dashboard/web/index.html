@@ -7003,6 +7003,25 @@ function infoModal(title, text, isErr, action) {
   if (action) $('#im-act').onclick = () => { closeModal(); action.onclick(); };
 }
 
+/* 预检失败分流动作：错误带「in <path> at line N」（config_init.c/access.c 同
+   格式实证）时按目标文件行锚定——fwknopd.conf 进原文模式行锚定，access.conf
+   走原文查看器跳行（arPresetJump 数字=行号模式）；提取不到则退回页面导航。
+   服务卡「校验配置」与一键体检共用同一分流 */
+function validateFailAct(out) {
+  const lm = (out || '').match(/in\s+(\S+)\s+at line\s+(\d+)/);
+  if (lm && /fwknopd\.conf$/.test(lm[1])) return { label: `定位 fwknopd.conf 第 ${lm[2]} 行`, title: '打开服务配置页原文模式并高亮该错误行', onclick: () => {
+    confPresetLine = +lm[2];
+    showPage('config');
+    if (!S.rawMode) $('#raw-toggle').click(); else renderConfig();
+  } };
+  if (lm && /access\.conf$/.test(lm[1])) return { label: `定位 access.conf 第 ${lm[2]} 行`, title: '打开 access.conf 原文视图并跳转到该错误行（密钥已掩码）', onclick: () => {
+    arPresetJump = lm[2];
+    showPage('users');
+    $('#users-raw').click();
+  } };
+  return { label: '前往服务配置', title: '打开服务配置页检查 fwknopd.conf；若错误指向 access.conf，请到「用户与授权」页检查 stanza', onclick: () => showPage('config') };
+}
+
 /* ==================== 服务控制 ==================== */
 async function svcAction(action, label, done) {
   /* 执行期间禁用全部服务按钮并显示进度，防重复点击 */
@@ -7054,25 +7073,7 @@ $('#svc-validate').onclick = async () => {
     const r = await api('/api/service/validate', { method:'POST' });
     const secs = ((Date.now() - t0) / 1000).toFixed(1);
     const out = (r.output || '') + (r.error ? '\n' + r.error : '');
-    /* 预检错误带「in <path> at line N」（config_init.c/access.c 同格式实证）：
-       按目标文件分流——fwknopd.conf 进原文模式行锚定，access.conf 走原文
-       查看器跳行（arPresetJump 数字=行号模式）；提取不到则退回页面导航 */
-    const lm = out.match(/in\s+(\S+)\s+at line\s+(\d+)/);
-    let act = { label: '前往服务配置', title: '打开服务配置页检查 fwknopd.conf；若错误指向 access.conf，请到「用户与授权」页检查 stanza', onclick: () => showPage('config') };
-    if (lm && /fwknopd\.conf$/.test(lm[1])) {
-      act = { label: `定位 fwknopd.conf 第 ${lm[2]} 行`, title: '打开服务配置页原文模式并高亮该错误行', onclick: () => {
-        confPresetLine = +lm[2];
-        showPage('config');
-        if (!S.rawMode) $('#raw-toggle').click(); else renderConfig();
-      } };
-    } else if (lm && /access\.conf$/.test(lm[1])) {
-      act = { label: `定位 access.conf 第 ${lm[2]} 行`, title: '打开 access.conf 原文视图并跳转到该错误行（密钥已掩码）', onclick: () => {
-        arPresetJump = lm[2];
-        showPage('users');
-        $('#users-raw').click();
-      } };
-    }
-    if (r.error) infoModal('配置预检 — 未通过', out, true, act);
+    if (r.error) infoModal('配置预检 — 未通过', out, true, validateFailAct(out));
     else infoModal(`配置预检 — 通过（耗时 ${secs} 秒）`, out);
   } catch (e) {}
 };
@@ -8204,7 +8205,13 @@ async function runCheckup() {
   /* 1. 配置预检 */
   if (!S.writeEnabled) items.push({ st:'skip', t:'配置预检', d:'只读模式不可用（预检属写门禁操作）' });
   else if (!val) items.push({ st:'warn', t:'配置预检', d:'预检请求失败（网络/服务异常），请稍后在服务控制卡单独「校验配置」' });
-  else if (val.error) items.push({ st:'bad', t:'配置预检未通过', d:(val.error || '').slice(0, 160), act:{ label:'前往服务配置', title:'打开服务配置页检查 fwknopd.conf', onclick: () => showPage('config') } });
+  else if (val.error) {
+    /* 列表只放截断摘要；完整输出与「定位第 N 行」分流收进弹窗（与服务卡
+       「校验配置」失败同一呈现，体检里不再丢输出去向） */
+    const vout = (val.output || '') + (val.error ? '\n' + val.error : '');
+    items.push({ st:'bad', t:'配置预检未通过', d:(val.error || '').slice(0, 160),
+      act:{ label:'查看并定位', title:'查看完整预检输出，并按错误所指文件定位到行', onclick: () => infoModal('配置预检 — 未通过', vout, true, validateFailAct(vout)) } });
+  }
   else items.push({ st:'ok', t:'配置预检通过', d:'fwknopd --exit-parse-config 解析两份配置无误' });
 
   /* 2. fwknopd 运行状态（ov 拉取失败时 alive 恒 false——不能把「读不到」
