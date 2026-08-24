@@ -6224,6 +6224,8 @@ function collectDiag() {
   const fstat = (k, f) => `${k}: ${f ? (f.exists ? f.path + ' (' + fmtSize(f.size) + ')' : f.path + '（不存在）') : '—'}`;
   return [
     'fwknop 运维面板诊断信息',
+    /* 面板别名：多实例部署时报障随附，接收方一眼确认来自哪台（本机设定，可能为空） */
+    '面板别名: ' + (panelAlias() || '（未设置）'),
     '面板版本: v' + (d ? d.version : '?'),
     'SPA 协议: 4.0.0',
     '面板监听: ' + (d && d.panel ? d.panel.listen_addr : '?') +
