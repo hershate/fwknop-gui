@@ -6614,7 +6614,7 @@ function doConfRestore(name, target, mt) {
     try {
       const r = await api('/api/config/restore', { method:'POST',
         headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
-      if (r.error) infoModal('恢复失败', r.error, true);
+      if (r.error) infoModal('恢复失败', r.error, true, validateFailActScoped(r.error));
       else {
         infoModal('恢复完成', r.output || '已恢复');
         markCheckupStale();
@@ -7179,6 +7179,31 @@ function validateFailAct(out) {
     $('#users-raw').click();
   } };
   return { label: '前往服务配置', title: '打开服务配置页检查 fwknopd.conf；若错误指向 access.conf，请到「用户与授权」页检查 stanza', onclick: () => showPage('config') };
+}
+
+/* 恢复备份/应用方案失败的预检分流：这两条管线的预检对象含快照文件（备份
+   与现役联合预检、方案目录自预检），报错路径可能不是现役配置——validateFailAct
+   的「定位配置页第 N 行」只对现役路径正确，快照路径会把人指到无关内容。
+   按报错路径三分流：现役文件沿用行锚定；备份快照回备份管理核对；方案目录
+   打开方案预览（快照不可在线编辑，title 说明修复路径） */
+function validateFailActScoped(out, profileName) {
+  const lm = (out || '').match(/in\s+(\S+)\s+at line\s+(\d+)/);
+  if (lm) {
+    const livePaths = [(S.config && S.config.path) || '',
+      (S.users && S.users.file && S.users.file.path) || ''].filter(Boolean);
+    /* 路径面板未知（含 S.config 未加载时一切路径）才走分流；已知现役路径直接行锚定 */
+    if (!livePaths.includes(lm[1])) {
+      if (/\.bak-\d+(-\d+)?$/.test(lm[1]))
+        return { label: '打开配置备份管理', title: '预检报错位于备份快照内容（非现役配置）——可在备份管理中「差异/下载」逐行核对该备份；它本身有问题时请换其他备份恢复', onclick: () => $('#conf-backups').click() };
+      if (profileName)
+        return { label: '预览方案内容', title: '预检报错位于方案快照（非现役配置，方案不可在线编辑）——打开方案预览核对报错行；修复路径：改用其他方案，或在配置页修正后另存新方案', onclick: () => {
+          showPage('profiles');
+          setTimeout(() => { const b = $$('#profiles-body [data-pv]').find(x => x.dataset.pv === profileName); if (b) b.click(); }, 60);
+        } };
+      return { label: '前往服务配置', title: `报错路径 ${lm[1]} 不是面板已知的现役配置文件——请按输出中的实际路径在服务器上核对`, onclick: () => showPage('config') };
+    }
+  }
+  return validateFailAct(out);
 }
 
 /* ==================== 服务控制 ==================== */
@@ -8780,7 +8805,7 @@ function renderProfiles() {
       try {
         const r = await api('/api/profiles/apply', { method:'POST',
           headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
-        if (r.error) { toast('切换失败（配置未变）', 'err'); infoModal('方案切换 — 失败', r.output + '\n' + r.error, true); }
+        if (r.error) { toast('切换失败（配置未变）', 'err'); infoModal('方案切换 — 失败', r.output + '\n' + r.error, true, validateFailActScoped(r.output + '\n' + r.error, name)); }
         else { toast(`已切换到方案「${name}」`, 'ok'); markCheckupStale(); infoModal('方案切换 — 完成', r.output); loadConfig(); loadUsers(); loadProfiles(); loadOverview(); }
       } catch (e) {}
     };
