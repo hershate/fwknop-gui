@@ -649,12 +649,12 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
       <span class="ver" id="brand-ver">v2.7.0</span>
     </div>
     <button class="nav-item active" data-page="overview" title="概览（快捷键 1）"><svg><use href="#i-dash"/></svg>概览</button>
-    <button class="nav-item" data-page="events" title="SPA 事件（快捷键 2）"><svg><use href="#i-list"/></svg>SPA 事件<span class="nb-badge" id="nav-ev-badge" style="display:none" title="最近 15 分钟异常事件数（点击直达「仅看异常」）"></span></button>
-    <button class="nav-item" data-page="users" title="用户与授权（快捷键 3）"><svg><use href="#i-users"/></svg>用户与授权<span class="nb-badge amber" id="nav-usr-badge" style="display:none"></span></button>
-    <button class="nav-item" data-page="tofu" title="TOFU 设备绑定（快捷键 4）"><svg><use href="#i-fp"/></svg>TOFU 设备绑定<span class="nb-badge amber" id="nav-tofu-badge" style="display:none"></span></button>
-    <button class="nav-item" data-page="config" title="服务配置（快捷键 5）"><svg><use href="#i-cfg"/></svg>服务配置<span id="nav-conf-dot" style="display:none;color:var(--amber);font-size:16px;line-height:0;vertical-align:-1px" title="有未保存的配置修改（点击直达编辑器）"> ●</span></button>
+    <button class="nav-item" data-page="events" title="SPA 事件（快捷键 2）"><svg><use href="#i-list"/></svg>SPA 事件<span class="nb-badge" id="nav-ev-badge" style="display:none" role="button" aria-label="最近 15 分钟异常事件（点击直达「仅看异常」）" title="最近 15 分钟异常事件数（点击直达「仅看异常」）"></span></button>
+    <button class="nav-item" data-page="users" title="用户与授权（快捷键 3）"><svg><use href="#i-users"/></svg>用户与授权<span class="nb-badge amber" id="nav-usr-badge" style="display:none" role="button" aria-label="占位密钥授权提醒"></span></button>
+    <button class="nav-item" data-page="tofu" title="TOFU 设备绑定（快捷键 4）"><svg><use href="#i-fp"/></svg>TOFU 设备绑定<span class="nb-badge amber" id="nav-tofu-badge" style="display:none" role="button" aria-label="悬空 TOFU 绑定提醒"></span></button>
+    <button class="nav-item" data-page="config" title="服务配置（快捷键 5）"><svg><use href="#i-cfg"/></svg>服务配置<span id="nav-conf-dot" style="display:none;color:var(--amber);font-size:16px;line-height:0;vertical-align:-1px" role="button" aria-label="有未保存的配置修改（点击直达编辑器）" title="有未保存的配置修改（点击直达编辑器）"> ●</span></button>
     <button class="nav-item" data-page="profiles" title="配置方案（快捷键 6）"><svg><use href="#i-archive"/></svg>配置方案</button>
-    <button class="nav-item" data-page="about" title="关于（快捷键 7）"><svg><use href="#i-info"/></svg>关于<span class="nb-badge" id="nav-about-badge" style="display:none"></span></button>
+    <button class="nav-item" data-page="about" title="关于（快捷键 7）"><svg><use href="#i-info"/></svg>关于<span class="nb-badge" id="nav-about-badge" style="display:none" role="button" aria-label="登录失败提醒"></span></button>
     <div class="spacer"></div>
     <div class="side-foot">
       <div class="conn" id="conn-box" title="点击立即重连刷新" style="cursor:pointer" role="status" aria-live="polite"><span class="dot" id="conn-dot"></span><span id="conn-text">正在连接…</span>
@@ -2371,7 +2371,7 @@ async function loadOverview() {
          爆破时三位数会撑宽侧栏导航项；状态计数徽标在自身页面也常驻
          （与 ev 徽标「在事件页即视为已知悉」不同——占位/悬空/登录失败是
          持续状态计数而非瞬时感知，勿改成同款隐藏） */
-      if (afn) { afb.textContent = afn > 99 ? '99+' : afn; afb.title = `最近 15 分钟 ${afn} 次登录失败，点击前往操作日志核查来源 IP`; }
+      if (afn) { afb.textContent = afn > 99 ? '99+' : afn; afb.title = `最近 15 分钟 ${afn} 次登录失败，点击前往操作日志核查来源 IP`; afb.setAttribute('aria-label', afb.title); }
     }
   } catch (e) {
     setConn(false);
@@ -3006,7 +3006,9 @@ function updateDocTitle() {
   if (nb) {
     const show = bad > 0 && S.page !== 'events';
     nb.style.display = show ? '' : 'none';
-    if (show) nb.textContent = bad > 99 ? '99+' : bad;
+    /* 徽标是纯视觉 span：计数对读屏只是无上下文数字，aria-label 随计数
+       动态补全语义（title 静态不含计数，二者分工） */
+    if (show) { nb.textContent = bad > 99 ? '99+' : bad; nb.setAttribute('aria-label', `最近 15 分钟 ${bad} 个异常事件，点击直达「仅看异常」`); }
   }
 }
 /* 徽标点击直达「仅看异常」（阻止冒泡到导航按钮的默认切页，直接带筛选过去） */
@@ -3797,7 +3799,7 @@ async function loadUsers() {
     const cm = (d.stanzas || []).filter(s => s.changeme).length;
     const ub = $('#nav-usr-badge');
     ub.style.display = cm ? '' : 'none';
-    if (cm) { ub.textContent = cm > 99 ? '99+' : cm; ub.title = `${cm} 个授权仍是 __CHANGEME__ 占位密钥，无法正常工作，点击前往撤销并重签`; }
+    if (cm) { ub.textContent = cm > 99 ? '99+' : cm; ub.title = `${cm} 个授权仍是 __CHANGEME__ 占位密钥，无法正常工作，点击前往撤销并重签`; ub.setAttribute('aria-label', ub.title); }
     syncNavTofuBadge();  /* 悬空绑定判定依赖授权列表 */
     if (S.page === 'users' && !focusWithin('#users-body')) renderUsers();
     if (S.page === 'tofu') renderTOFU();  /* 悬空绑定检测依赖授权列表 */
@@ -5112,7 +5114,7 @@ function syncNavTofuBadge() {
   const live = tofuLiveKeys();  /* 判定口径单点化（与列表/搜索/导出共用） */
   const n = (S.tofu.bindings || []).filter(b => !live.has(b.stanza_key)).length;
   tb.style.display = n ? '' : 'none';
-  if (n) { tb.textContent = n > 99 ? '99+' : n; tb.title = `${n} 条绑定的授权已删除/禁用，不再生效，点击前往清理`; }
+  if (n) { tb.textContent = n > 99 ? '99+' : n; tb.title = `${n} 条绑定的授权已删除/禁用，不再生效，点击前往清理`; tb.setAttribute('aria-label', tb.title); }
 }
 
 /* 该设备的最近一条敲门事件（点击直达事件页该设备筛选） */
