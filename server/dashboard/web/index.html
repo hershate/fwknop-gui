@@ -3598,12 +3598,29 @@ function renderEvents() {
        对着通用「无匹配」回头排查搜索词（起=终的一分钟窗口合法，严格大于才判反） */
     const invertedRange = S.evTime === 'custom' && S.evFrom && S.evTo &&
       new Date(S.evFrom).getTime() > new Date(S.evTo).getTime();
+    /* 全空且审计文件不存在：两种可能——新装未收包（正常）或 ENABLE_AUDIT N
+       （事件页永远无数据源，audit.c 首个事件才 O_CREAT 建文件）。条件式提示
+       两种可能并指路配置页，避免「敲门成功却始终无事件」的无头排查 */
+    const afMissing = !(S.events||[]).length && S.overview && S.overview.files &&
+      S.overview.files.audit && !S.overview.files.audit.exists;
     $('#events-body').innerHTML = `<tr><td colspan="8"><div class="empty">
       ${icon('i-list', 40)}<div class="t">暂无匹配事件</div>
       <div class="d">${invertedRange ? '<span style="color:var(--amber)">自定义时间范围起点晚于终点，任何事件都不可能落在其中——请调整起止时间，或清空筛选</span>' : (S.events||[]).length ? '当前筛选/搜索条件下无匹配' : 'fwknopd 收到 SPA 包后，事件会显示在这里'}</div>
+      ${afMissing ? `<div class="hint" style="margin-top:8px;font-size:11.5px">审计日志文件尚不存在：新装未收包属正常；若已有敲门却始终无事件，请检查 <a href="javascript:void 0" role="button" id="ev-audit-cfg" style="color:var(--accent)">服务配置</a> 的 ENABLE_AUDIT 是否为 N（关闭审计后面板将无事件数据源）</div>` : ''}
       ${(S.events||[]).length && hasFilter ? '<button class="btn ghost small" id="ev-reset" style="margin-top:12px">清空筛选与搜索，查看全部</button>' : ''}
       ${!(S.events||[]).length && S.writeEnabled ? '<button class="btn small" id="ev-goto-add" style="margin-top:12px">还没有授权？去签发凭证</button>' : ''}
     </div></td></tr>`;
+    const acfg = $('#ev-audit-cfg');
+    /* 与排障动作 data-tip-conf 同链路（载配置 → 翻页 → 延时过滤定位），
+       但只走到「视图过滤」——空态提示只读模式也可见，不开编辑器 */
+    if (acfg) acfg.onclick = async () => {
+      if (!S.config) { try { await loadConfig(); } catch (e) {} }
+      showPage('config');
+      setTimeout(() => {
+        const vf = $('#conf-view-filter');
+        if (vf) { vf.value = 'ENABLE_AUDIT'; vf.dispatchEvent(new Event('input')); vf.focus(); }
+      }, 50);
+    };
     const rst = $('#ev-reset');
     if (rst) rst.onclick = resetEvFilters;
     /* 全空空态引导：直达用户页并展开签发卡片（与概览引导条①同一动作） */
