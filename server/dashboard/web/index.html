@@ -2367,7 +2367,11 @@ async function loadOverview() {
     if (afb) {
       const afn = d.auth_fail_15m || 0;
       afb.style.display = afn ? '' : 'none';
-      if (afn) { afb.textContent = afn; afb.title = `最近 15 分钟 ${afn} 次登录失败，点击前往操作日志核查来源 IP`; }
+      /* 显示 99+ 封顶（与 nav-ev-badge 同规，精确数保留在 title）：
+         爆破时三位数会撑宽侧栏导航项；状态计数徽标在自身页面也常驻
+         （与 ev 徽标「在事件页即视为已知悉」不同——占位/悬空/登录失败是
+         持续状态计数而非瞬时感知，勿改成同款隐藏） */
+      if (afn) { afb.textContent = afn > 99 ? '99+' : afn; afb.title = `最近 15 分钟 ${afn} 次登录失败，点击前往操作日志核查来源 IP`; }
     }
   } catch (e) {
     setConn(false);
@@ -3793,7 +3797,7 @@ async function loadUsers() {
     const cm = (d.stanzas || []).filter(s => s.changeme).length;
     const ub = $('#nav-usr-badge');
     ub.style.display = cm ? '' : 'none';
-    if (cm) { ub.textContent = cm; ub.title = `${cm} 个授权仍是 __CHANGEME__ 占位密钥，无法正常工作，点击前往撤销并重签`; }
+    if (cm) { ub.textContent = cm > 99 ? '99+' : cm; ub.title = `${cm} 个授权仍是 __CHANGEME__ 占位密钥，无法正常工作，点击前往撤销并重签`; }
     syncNavTofuBadge();  /* 悬空绑定判定依赖授权列表 */
     if (S.page === 'users' && !focusWithin('#users-body')) renderUsers();
     if (S.page === 'tofu') renderTOFU();  /* 悬空绑定检测依赖授权列表 */
@@ -5108,7 +5112,7 @@ function syncNavTofuBadge() {
   const live = tofuLiveKeys();  /* 判定口径单点化（与列表/搜索/导出共用） */
   const n = (S.tofu.bindings || []).filter(b => !live.has(b.stanza_key)).length;
   tb.style.display = n ? '' : 'none';
-  if (n) { tb.textContent = n; tb.title = `${n} 条绑定的授权已删除/禁用，不再生效，点击前往清理`; }
+  if (n) { tb.textContent = n > 99 ? '99+' : n; tb.title = `${n} 条绑定的授权已删除/禁用，不再生效，点击前往清理`; }
 }
 
 /* 该设备的最近一条敲门事件（点击直达事件页该设备筛选） */
