@@ -8180,12 +8180,13 @@ async function runCheckup() {
     /* 防火墙规则是只读 GET（handleFwList 无写门禁，svc-fwlist 钮只读也可用），
        不随预检跳过 */
     api('/api/service/fwrules').catch(() => null),
+    api('/api/tofu').catch(() => null),
   ];
   /* 预检走写门禁（requirePost），只读模式跳过；fwrules 只读不跳 */
   if (S.writeEnabled) jobs.splice(3, 0, api('/api/service/validate', { method:'POST' }).catch(() => null));
-  let ov, cfg, us, val, fwr;
-  if (S.writeEnabled) [ov, cfg, us, val, fwr] = await Promise.all(jobs);
-  else [ov, cfg, us, fwr] = await Promise.all(jobs);
+  let ov, cfg, us, val, fwr, tf;
+  if (S.writeEnabled) [ov, cfg, us, val, fwr, tf] = await Promise.all(jobs);
+  else [ov, cfg, us, fwr, tf] = await Promise.all(jobs);
   const fork = ov && ov.fwknopd_bin;  /* fork 校验已内嵌 overview（服务端缓存） */
   const items = [];  /* {st:'ok'|'warn'|'bad'|'skip', t, d, act:{label, title, onclick}} */
   const entries = (cfg && cfg.entries) || [];
@@ -8304,6 +8305,18 @@ async function runCheckup() {
       showPage('users');
       setTimeout(() => { const ac = $('#add-card'); if (ac && ac.style.display === 'none') { const b = $('#show-add'); if (b) b.click(); } }, 60);
     } } : null });
+
+  /* 12. TOFU 悬空绑定：授权删除/禁用后的残留绑定（不再生效，只让绑定
+     列表失真）——live 集合与 tofuLiveKeys 同口径（生效 stanza 的
+     source|用户|端口三元组），但用本轮拉取的真值而非全局缓存 */
+  if (!tf) items.push({ st:'warn', t:'TOFU 绑定', d:'读取请求失败（网络/服务异常）' });
+  else {
+    const live = new Set(stz.map(s => `${s.source || ''}|${s.require_username || ''}|${s.open_ports || ''}`));
+    const dang = (tf.bindings || []).filter(b => !live.has(b.stanza_key)).length;
+    items.push(dang
+      ? { st:'warn', t:'TOFU 悬空绑定', d:`${dang} 条绑定的授权已删除/禁用，不再生效——建议清理避免列表失真`, act:{ label:'前往清理', title:'打开 TOFU 设备绑定页（可搜「悬空」定位残留行）', onclick: () => showPage('tofu') } }
+      : { st:'ok', t:'TOFU 绑定', d:`无悬空绑定（共 ${(tf.bindings || []).length} 条）` });
+  }
 
   const order = { bad:0, warn:1, skip:2, ok:3 };
   items.sort((a, b) => order[a.st] - order[b.st]);
