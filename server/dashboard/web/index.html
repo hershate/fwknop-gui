@@ -8221,10 +8221,12 @@ async function runCheckup() {
     d:(fork.path || 'fwknopd') + ' 缺少 fork 扩展指令标记——TOTP 跳变/设备绑定/审计等 fork 功能将静默失效（未知指令仅告警不报错，预检检不出）。请换用本 fork 构建的 fwknopd，面板以 -fwknopd 参数指定路径' });
   else items.push({ st:'ok', t:'fwknopd 二进制', d:'fork 扩展指令标记齐全' });
 
-  /* 3. 审计输出（面板事件/指标的数据源） */
+  /* 3. 审计输出（面板事件/指标的数据源）。cfg 拉取失败时 ENABLE_AUDIT
+     无法判定——不能按「未关闭」继续推（空值 ≠ N 会被当成开启） */
   const auditOff = entVal('ENABLE_AUDIT').toUpperCase() === 'N';
   const auditFile = ov && ov.files && ov.files.audit;
-  if (auditOff) items.push({ st:'bad', t:'审计输出已关闭', d:'ENABLE_AUDIT N——事件页/指标卡将永远没有数据（audit.c 有事件才建文件）', act: drillConf('ENABLE_AUDIT') });
+  if (!cfg) items.push({ st:'warn', t:'审计输出', d:'配置数据拉取失败（网络/服务异常），ENABLE_AUDIT 状态无法判定' });
+  else if (auditOff) items.push({ st:'bad', t:'审计输出已关闭', d:'ENABLE_AUDIT N——事件页/指标卡将永远没有数据（audit.c 有事件才建文件）', act: drillConf('ENABLE_AUDIT') });
   else if (auditFile && !auditFile.exists) items.push({ st:'warn', t:'审计文件尚不存在', d:'首个 SPA 事件产生后自动创建；若已有敲门仍无文件，检查 fwknopd 运行目录与 AUDIT_FILE 配置' });
   else items.push({ st:'ok', t:'审计输出正常', d:'ENABLE_AUDIT 开启，事件/指标有数据源' });
 
@@ -8243,7 +8245,11 @@ async function runCheckup() {
   const udpMode = entVal('ENABLE_UDP_SERVER').toUpperCase() === 'Y';
   const nfqMode = entVal('ENABLE_NFQ_CAPTURE').toUpperCase() === 'Y';
   if (!stz) items.push({ st:'warn', t:'TOTP 监听一致性', d:US_DOWN });
-  else if (rngStz.length) {
+  else if (!rngStz.length) items.push({ st:'ok', t:'TOTP 监听一致性', d:'无 TOTP 跳变授权（固定端口监听即可）' });
+  /* cfg 拉取失败时 PCAP_PORT_RANGE/UDP/NFQ 全按空值推——会把「读不到」
+     误判成「监听范围缺失」，须在分支前拦截 */
+  else if (!cfg) items.push({ st:'warn', t:'TOTP 监听一致性', d:`${rngStz.length} 个授权要求 TOTP 跳变，但配置数据拉取失败，监听范围无法判定` });
+  else {
     if (udpMode) items.push({ st:'bad', t:'TOTP 跳变与监听模式冲突', d:`${rngStz.length} 个授权要求 TOTP 跳变，但当前为 UDP 固定端口监听——跳变端口的敲门无法被捕获（UDP 后端不支持端口范围）`, act: drillConf('ENABLE_UDP_SERVER') });
     else if (!pcapRange && !nfqMode) items.push({ st:'bad', t:'TOTP 监听范围缺失', d:`${rngStz.length} 个授权要求 TOTP 跳变，但未配置 PCAP_PORT_RANGE——默认 BPF 仅抓 62201，跳变端口敲门无法被捕获`, act: drillConf('PCAP_PORT_RANGE') });
     else if (pcapRange) {
@@ -8255,7 +8261,7 @@ async function runCheckup() {
         ? { st:'bad', t:'TOTP 范围超出监听', d:`${bad.map(s => s.name || ('#' + s.index)).join('、')} 的跳变范围超出 PCAP_PORT_RANGE ${pcapRange}，范围外敲门无法被捕获`, act: drillConf('PCAP_PORT_RANGE') }
         : { st:'ok', t:'TOTP 监听一致性', d:`${rngStz.length} 个 TOTP 授权的跳变范围均落在监听范围内` });
     } else items.push({ st:'warn', t:'TOTP 监听一致性', d:'NFQ 抓包模式：请确认 iptables NFQUEUE 规则的端口范围覆盖各授权的跳变范围，否则跳变敲门无法被投递' });
-  } else items.push({ st:'ok', t:'TOTP 监听一致性', d:'无 TOTP 跳变授权（固定端口监听即可）' });
+  }
 
   /* 6. 占位密钥（永远无法通过校验的死授权） */
   const cm = (stz || []).filter(s => s.changeme);
