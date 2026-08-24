@@ -6626,11 +6626,11 @@ function confEntryRow(key, val, gone) {
      「ENABLE_X N」——语义等价但配置 diff 多出意外行 */
   return `<div${gone ? ' class="ce-gone"' : ''} style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
     <input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl ce-key" list="conf-keys" value="${esc(key)}" placeholder="指令名" style="flex:0 0 250px;font-family:var(--mono);font-size:12px"${dis}>
-    ${yn ? `<select class="ctl ce-val" style="flex:0 0 110px"${dis}>
+    ${yn ? `<select class="ctl ce-val" style="flex:0 0 110px" aria-label="${esc(key) || '新指令行'} 的值"${dis}>
         ${val === '' ? '<option value="" selected>（空 = 否）</option>' : ''}
         <option value="Y" ${val==='Y'?'selected':''}>Y（是）</option>
         <option value="N" ${val==='N'?'selected':''}>N（否）</option></select>`
-      : `<input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl ce-val" value="${esc(val)}" placeholder="值" style="flex:1;font-family:var(--mono);font-size:12px"${dis}>`}
+      : `<input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl ce-val" value="${esc(val)}" placeholder="值" aria-label="${esc(key) || '新指令行'} 的值" style="flex:1;font-family:var(--mono);font-size:12px"${dis}>`}
     <button class="icon-btn ce-revert" title="还原为本次打开编辑器时的值">${icon('i-undo',13)}</button>
     <button class="icon-btn ce-del" title="${gone ? '撤销删除，还原该行' : '删除该指令（保存后生效，删除前可撤销）'}">${icon(gone ? 'i-undo' : 'i-trash',13)}</button>
     <div class="hint" style="flex:1;min-width:160px">${gone ? '<span style="color:var(--red)">已标记删除，保存后从配置移除</span>' : (meta ? esc(meta[1]) : '')}</div>
@@ -6663,6 +6663,9 @@ function markConfRows() {
       const orig = confOrig[k];
       rev.title = `还原为打开时的值：${orig.length > 40 ? orig.slice(0, 40) + '…' : (orig || '（空）')}`;
     }
+    /* 值控件 aria-label 随当前键同步：键可改名，渲染时的静态标签会滞后
+       （与上方还原钮 title 同一同步点、同一原因） */
+    if (vi) vi.setAttribute('aria-label', (k || '新指令行') + ' 的值');
     /* 指令值类型校验：端口类 1-65535、端口范围类 X-Y、超时类正整数、
        开关类（ENABLE_/FLUSH_/EXIT_ 前缀）仅 Y/N，非法即红框 */
     let bad = '';
