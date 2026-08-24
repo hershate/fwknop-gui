@@ -777,6 +777,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           </div>
           <div class="body" style="padding-bottom:6px">
             <div class="chips" id="event-chips"></div>
+            <div class="tpl-row" id="ev-presets" style="margin-top:6px;margin-bottom:0"></div>
             <div id="event-ratio" style="margin-top:8px"></div>
             <div id="ev-active" style="display:none;margin-top:8px;flex-wrap:wrap;gap:6px;align-items:center"></div>
             <div id="ev-topip" class="chips" style="display:none;margin-top:8px"></div>
@@ -3364,6 +3365,120 @@ function renderTopIps() {
   };
 }
 
+/* 筛选方案：「类型芯片 + 搜索词 + 时间窗」组合存为一键芯片——每日巡检/专项
+   复盘等固定视角不必每次重摆三处控件。预制两个常用视角；自定义方案
+   localStorage 持久化，交互与签发模板同规（单击套用、悬停预览口径、
+   独立 × 删除钮、当前筛选与方案完全一致时高亮——手动改任一控件即撤
+   高亮，防「当前=该方案」的误导） */
+const EV_PRESET_BUILTIN = {
+  '异常近 1 小时': { filter: 'bad', query: '', time: '1h', from: '', to: '' },
+  '今日全部': { filter: 'all', query: '', time: 'today', from: '', to: '' },
+};
+const EV_PRESET_KEY = 'fwknop-ev-presets';
+const evPresetRead = () => { try { return JSON.parse(localStorage.getItem(EV_PRESET_KEY) || '{}'); } catch (e) { return {}; } };
+const EV_TIME_LAB = { all: '全部时间', '5m': '最近 5 分钟', '1h': '最近 1 小时', today: '今日', custom: '自定义区间' };
+const evPresetDesc = p =>
+  `类型：${p.filter === 'bad' ? '仅看异常' : p.filter === 'all' ? '全部' : evMeta(p.filter).label}` +
+  ` · 时间：${EV_TIME_LAB[p.time] || p.time}` +
+  (p.query ? ` · 搜索「${p.query}」` : '') +
+  (p.time === 'custom' && p.from ? `（${p.from.replace('T', ' ')} 起${p.to ? '，至 ' + p.to.replace('T', ' ') : ''}）` : '');
+const evPresetMatch = p => (S.evFilter || 'all') === p.filter && (S.evQuery || '') === (p.query || '') &&
+  (S.evTime || 'all') === (p.time || 'all') &&
+  ((p.time || 'all') !== 'custom' || ((S.evFrom || '') === (p.from || '') && (S.evTo || '') === (p.to || '')));
+function applyEvPreset(p, label) {
+  S.evFilter = p.filter || 'all'; S.evQuery = p.query || '';
+  S.evTime = p.time || 'all'; S.evFrom = p.from || ''; S.evTo = p.to || '';
+  S.evPage = 0; S.evHeatStack = [];  /* 时间窗更换即放弃热力柱钻取栈（与手动切换同规） */
+  $('#event-search').value = S.evQuery;
+  $('#ev-time').value = S.evTime;
+  $('#ev-custom').style.display = S.evTime === 'custom' ? 'inline-flex' : 'none';
+  if (S.evTime === 'custom') { $('#ev-from').value = S.evFrom; $('#ev-to').value = S.evTo; }
+  renderEvents();
+  toast(`已套用筛选方案「${label}」`, 'ok', 2000);
+}
+function renderEvPresets() {
+  const box = $('#ev-presets'); if (!box) return;
+  box.innerHTML = '';
+  const label = document.createElement('span');
+  label.className = 'tpl-label'; label.textContent = '筛选方案：';
+  box.appendChild(label);
+  const mkChip = (name, p, builtin) => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'tpl-chip' + (evPresetMatch(p) ? ' active' : '');
+    chip.textContent = name;
+    chip.title = evPresetDesc(p) + (builtin ? '（预制；点击一键套用）' : '（点击一键套用）');
+    chip.onclick = () => applyEvPreset(p, name);
+    return chip;
+  };
+  Object.keys(EV_PRESET_BUILTIN).forEach(n => box.appendChild(mkChip(n, EV_PRESET_BUILTIN[n], true)));
+  Object.keys(evPresetRead()).forEach(n => {
+    /* 应用钮 + 独立删除钮拼为一粒芯片（键盘/读屏可达，与签发模板同规） */
+    const wrap = document.createElement('span');
+    wrap.className = 'tpl-chip-wrap';
+    wrap.appendChild(mkChip(n, evPresetRead()[n], false));
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'tpl-chip tpl-del-btn';
+    del.textContent = '✕';
+    del.title = `删除筛选方案「${n}」`;
+    del.setAttribute('aria-label', `删除筛选方案「${n}」`);
+    del.onclick = ev => {
+      ev.stopPropagation();
+      confirmDialog('删除筛选方案', `确定删除方案「<b>${esc(n)}</b>」吗？当前筛选不受影响。`, '删除', () => {
+        const m = evPresetRead(); delete m[n];
+        try { localStorage.setItem(EV_PRESET_KEY, JSON.stringify(m)); } catch (e) {}
+        renderEvPresets();
+        toast(`筛选方案「${n}」已删除`, 'ok', 1500);
+      }, true);
+    };
+    wrap.appendChild(del);
+    box.appendChild(wrap);
+  });
+  const save = document.createElement('button');
+  save.type = 'button'; save.className = 'tpl-chip';
+  save.textContent = '＋ 存当前';
+  save.title = '把当前类型芯片/搜索词/时间窗组合保存为筛选方案';
+  save.onclick = saveEvPresetModal;
+  box.appendChild(save);
+}
+function saveEvPresetModal() {
+  const cur = { filter: S.evFilter || 'all', query: S.evQuery || '', time: S.evTime || 'all', from: S.evFrom || '', to: S.evTo || '' };
+  if (cur.filter === 'all' && !cur.query && cur.time === 'all') {
+    toast('当前为默认视图（全部类型 / 无搜索 / 全部时间），无需保存——请先做筛选再存为方案', 'err', 4000);
+    return;
+  }
+  openModal(`<h3>保存为筛选方案</h3>
+    <div class="field"><label for="evp-name">方案名称</label>
+      <input spellcheck="false" autocomplete="off" autocapitalize="off" id="evp-name" maxlength="20" placeholder="例如 每日巡检 / 复盘某 IP">
+      <div class="auth-hint" aria-live="polite" id="evp-hint"></div></div>
+    <div class="hint" style="margin-bottom:8px">将保存：${esc(evPresetDesc(cur))}</div>
+    <div class="mf"><button class="btn ghost" id="evp-cancel">取消</button><button class="btn" id="evp-ok" disabled>保存方案</button></div>`);
+  const inp = $('#evp-name');
+  inp.focus();
+  const check = () => {
+    const v = inp.value.trim();
+    if (v && v in EV_PRESET_BUILTIN) { fmtHint($('#evp-hint'), false, '', '✗ 与预制方案同名，请换名'); $('#evp-ok').disabled = true; return; }
+    if (v && v in evPresetRead()) { fmtHint($('#evp-hint'), false, '', '✗ 已有同名方案（先删除旧的再存）'); $('#evp-ok').disabled = true; return; }
+    if (v) { fmtHint($('#evp-hint'), true, '✓ 可用', ''); $('#evp-ok').disabled = false; return; }
+    fmtHint($('#evp-hint'), true, '', ''); $('#evp-ok').disabled = true;
+  };
+  inp.oninput = check;
+  check();
+  $('#evp-cancel').onclick = () => closeModal();
+  const doSave = () => {
+    const v = inp.value.trim();
+    if (!v || v in EV_PRESET_BUILTIN || v in evPresetRead()) return;
+    const m = evPresetRead();
+    m[v] = cur;
+    try { localStorage.setItem(EV_PRESET_KEY, JSON.stringify(m)); } catch (e) {}
+    closeModal();
+    renderEvPresets();
+    toast(`筛选方案「${v}」已保存`, 'ok', 2500);
+  };
+  $('#evp-ok').onclick = doSave;
+  inp.onkeydown = e => { if (e.key === 'Enter' && !$('#evp-ok').disabled) doSave(); };
+}
 function renderEvents() {
   /* 筛选状态持久化：刷新/重开页面后恢复（所有变更路径都会经过本函数） */
   updateEvActiveStrip();
@@ -3376,6 +3491,7 @@ function renderEvents() {
   syncSearchClear();
   if (S.evPage === 0 && S.evFilter === 'all' && !S.evQuery) { $('#ev-new-pill').style.display = 'none'; S.evNewSince = 0; }
   renderEventChips();
+  renderEvPresets();
   renderTopIps();
   renderEvHeat();
   const evs = filteredEvents();
