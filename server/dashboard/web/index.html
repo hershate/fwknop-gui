@@ -6726,8 +6726,8 @@ function renderAbout() {
       `保留：面板别名、设备别名、自定义签发模板、签发草稿与批量名单草稿。<br>清除后页面自动刷新以应用默认状态。`,
       '清除并刷新', () => {
         doomed.forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
-        /* 标签页级数据（通知历史/趋势采样）随刷新仍在同标签存活，一并清除 */
-        ['fwknop-notif-log', 'fwknop-hist'].forEach(k => { try { sessionStorage.removeItem(k); } catch (e) {} });
+        /* 标签页级数据（通知历史+已读水位/趋势采样）随刷新仍在同标签存活，一并清除 */
+        ['fwknop-notif-log', 'fwknop-notif-read-ts', 'fwknop-hist'].forEach(k => { try { sessionStorage.removeItem(k); } catch (e) {} });
         toast('本机偏好与历史已清除，正在刷新…', 'ok', 1200);
         setTimeout(() => location.reload(), 900);
       }, true);
