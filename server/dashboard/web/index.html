@@ -761,6 +761,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <option value="5m">最近 5 分钟</option>
                 <option value="1h">最近 1 小时</option>
                 <option value="today">今日</option>
+                <option value="7d">最近 7 天</option>
                 <option value="custom">自定义区间…</option>
               </select>
               <span id="ev-custom" style="display:none;align-items:center;gap:4px">
@@ -1879,7 +1880,7 @@ function evHashFor(p) {
   return h;
 }
 /* 深链恢复筛选时的合法值白名单（hash 可手改，非法值落回默认） */
-const EV_HASH_TIMES = ['5m', '1h', 'today'];
+const EV_HASH_TIMES = ['5m', '1h', 'today', '7d'];
 function evHashFilter(bad, f) { return bad ? 'bad' : (EVT_ORDER.includes(f) ? f : 'all'); }
 
 function showPage(p) {
@@ -3188,6 +3189,7 @@ function timeFilteredEvents() {
     const now = Date.now() / 1000;
     const since = S.evTime === '5m' ? now - 300
       : S.evTime === '1h' ? now - 3600
+      : S.evTime === '7d' ? now - 7 * 86400  /* 低量部署的周视图：1h/今日近空、全部混龄的中间档 */
       : new Date().setHours(0, 0, 0, 0) / 1000;  /* today */
     evs = evs.filter(e => (e.time || 0) >= since);
   }
@@ -3214,7 +3216,7 @@ function updateEvActiveStrip() {
   if (S.evTime && S.evTime !== 'all') {
     /* 自定义区间在标签上直接显示起止（去掉年份与 T 分隔符），
        不用展开选择器回忆当前看的是哪段 */
-    let tl = { '5m':'最近 5 分钟', '1h':'最近 1 小时', today:'今日' }[S.evTime];
+    let tl = { '5m':'最近 5 分钟', '1h':'最近 1 小时', today:'今日', '7d':'最近 7 天' }[S.evTime];
     if (S.evTime === 'custom') {
       const f = (S.evFrom || '').replace('T', ' ').slice(5), t2 = (S.evTo || '').replace('T', ' ').slice(5);
       tl = `区间 ${f || '…'} ~ ${t2 || '…'}`;
@@ -3422,7 +3424,7 @@ const EV_PRESET_BUILTIN = {
 };
 const EV_PRESET_KEY = 'fwknop-ev-presets';
 const evPresetRead = () => { try { return JSON.parse(localStorage.getItem(EV_PRESET_KEY) || '{}'); } catch (e) { return {}; } };
-const EV_TIME_LAB = { all: '全部时间', '5m': '最近 5 分钟', '1h': '最近 1 小时', today: '今日', custom: '自定义区间' };
+const EV_TIME_LAB = { all: '全部时间', '5m': '最近 5 分钟', '1h': '最近 1 小时', today: '今日', '7d': '最近 7 天', custom: '自定义区间' };
 const evPresetDesc = p =>
   `类型：${p.filter === 'bad' ? '仅看异常' : p.filter === 'all' ? '全部' : evMeta(p.filter).label}` +
   ` · 时间：${EV_TIME_LAB[p.time] || p.time}` +
