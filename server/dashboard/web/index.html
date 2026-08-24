@@ -740,7 +740,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <button class="btn ghost small" id="qa-add" title="跳到用户与授权页并展开签发新凭证表单"><svg width="14" height="14"><use href="#i-plus"/></svg>签发新凭证</button>
             <button class="btn ghost small" id="qa-bad" title="跳到事件页并只看异常（括号内为最近 15 分钟异常数）"><svg width="14" height="14"><use href="#i-warn"/></svg>仅看异常事件</button>
             <button class="btn ghost small" id="qa-diag" title="一键打包版本/时钟/服务/文件等非敏感状态，贴给运维即可定位"><svg width="14" height="14"><use href="#i-copy"/></svg>复制诊断信息</button>
-            <button class="btn ghost small" id="qa-checkup" title="一键体检：配置预检/服务运行/审计输出/防火墙可读/TOTP 监听一致性/占位密钥/时钟漂移逐项检查，异常项给出直达处置入口"><svg width="14" height="14"><use href="#i-shield"/></svg>一键体检</button>
+            <button class="btn ghost small" id="qa-checkup" title="一键体检：配置预检/服务运行/审计输出/防火墙可读/TOTP 监听一致性/占位密钥/时钟漂移逐项检查，异常项给出直达处置入口"><svg width="14" height="14"><use href="#i-shield"/></svg>一键体检</button><span class="hint" id="qa-checkup-last" style="font-size:11.5px;display:none;cursor:pointer" role="button" title="点击重新体检"></span>
             <button class="btn ghost small" id="qa-profile" title="把当前 fwknopd.conf + access.conf 快照保存为命名方案（配置方案页管理）"><svg width="14" height="14"><use href="#i-archive"/></svg>保存配置方案</button>
             <a class="btn ghost small" id="qa-audit" href="/api/audit/download" download title="下载完整审计日志（JSONL，文件名带服务器时间戳，多次导出互不覆盖）"><svg width="14" height="14"><use href="#i-download"/></svg>导出审计日志</a>
           </div>
@@ -2616,6 +2616,7 @@ function renderStatusCards() {
       <div class="ic" style="color:${c.c};background:${c.bg}">${icon(c.ic, 19)}</div>
       <div><div class="k">${c.k}</div><div class="v">${c.v}</div></div>
     </div>`).join('');
+  renderCheckupLast();  /* 随轮询刷新相对时间（「N 分钟前」不滞后） */
 }
 
 /* 审计日志清理（事件委托，轮询重渲染不失效）：确认 → 备份并清空 → 刷新 */
@@ -8193,9 +8194,14 @@ async function runCheckup() {
   items.sort((a, b) => order[a.st] - order[b.st]);
   const nBad = items.filter(i => i.st === 'bad').length;
   const nWarn = items.filter(i => i.st === 'warn').length;
+  const nOk = items.filter(i => i.st === 'ok').length;
+  /* 结果留存：概览「一键体检」钮旁常驻上次摘要（本机 localStorage），
+     处置后不用立刻重跑也有健康快照可循；时间展示即时效性提示 */
+  try { localStorage.setItem('fwknop-last-checkup', JSON.stringify({ t: Math.floor(Date.now() / 1000), bad: nBad, warn: nWarn, ok: nOk })); } catch (e) {}
+  renderCheckupLast();
   const icons = { bad:['✗','var(--red)'], warn:['⚠','var(--amber)'], skip:['—','var(--faint)'], ok:['✓','var(--green)'] };
   $('#ck-body').innerHTML = `
-    <div class="hint" style="margin-bottom:10px">${nBad ? `<b style="color:var(--red)">${nBad} 项异常</b>，` : ''}${nWarn ? `<b style="color:var(--amber)">${nWarn} 项需注意</b>，` : ''}${items.filter(i => i.st === 'ok').length} 项通过${nBad || nWarn ? '' : '——部署状态良好'}</div>
+    <div class="hint" style="margin-bottom:10px">${nBad ? `<b style="color:var(--red)">${nBad} 项异常</b>，` : ''}${nWarn ? `<b style="color:var(--amber)">${nWarn} 项需注意</b>，` : ''}${nOk} 项通过${nBad || nWarn ? '' : '——部署状态良好'}</div>
     ${items.map((it, i) => `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 2px;border-bottom:1px solid var(--border-soft)">
       <span style="color:${icons[it.st][1]};font-weight:700;width:16px;text-align:center;flex:none">${icons[it.st][0]}</span>
       <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px">${esc(it.t)}</div>
@@ -8211,11 +8217,26 @@ async function runCheckup() {
      排序后的 items 与界面呈现同序，异常在前 */
   $('#ck-copy').onclick = () => {
     const marks = { bad:'✗', warn:'⚠', skip:'—', ok:'✓' };
-    const head = `fwknop 部署体检：${nBad ? nBad + ' 项异常，' : ''}${nWarn ? nWarn + ' 项需注意，' : ''}${items.filter(i => i.st === 'ok').length} 项通过`;
+    const head = `fwknop 部署体检：${nBad ? nBad + ' 项异常，' : ''}${nWarn ? nWarn + ' 项需注意，' : ''}${nOk} 项通过`;
     copyText(head + '\n' + items.map(it => `${marks[it.st]} ${it.t} — ${it.d}`).join('\n'), '体检结果 ');
   };
 }
+/* 概览「一键体检」钮旁的上次摘要：相对时间即时效性提示（结果可能已过期，
+   点一下即重跑）；异常红/注意琥珀/全过绿，一眼健康态 */
+function renderCheckupLast() {
+  const el = $('#qa-checkup-last');
+  if (!el) return;
+  let r = null;
+  try { r = JSON.parse(localStorage.getItem('fwknop-last-checkup') || 'null'); } catch (e) {}
+  if (!r || !r.t) { el.style.display = 'none'; return; }
+  const [txt, col] = r.bad ? [`${r.bad} 项异常`, 'var(--red)'] : r.warn ? [`${r.warn} 项需注意`, 'var(--amber)'] : ['全部通过', 'var(--green)'];
+  el.innerHTML = `· 上次体检 ${esc(fmtAgo(r.t))}：<b style="color:${col}">${txt}</b>`;
+  el.title = `上次体检于 ${fmtAbs(r.t)}（${r.ok} 项通过）——结果可能已过期，点击重新体检`;
+  el.style.display = '';
+  el.onclick = () => runCheckup();
+}
 $('#qa-checkup').onclick = () => runCheckup();
+renderCheckupLast();  /* 进概览即回填上次体检摘要（无需先跑一次） */
 
 /* ==================== 配置方案 ==================== */
 async function loadProfiles() {
