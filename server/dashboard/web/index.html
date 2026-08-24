@@ -6279,6 +6279,20 @@ function openStanzaEditor(index) {
     box.innerHTML = rows.length
       ? `<span style="color:var(--accent)">将改动 ${rows.length} 项：</span><br>` + rows.map(r => '· ' + esc(r)).join('<br>')
       : '';
+    /* 凭证失效预警（跨字段后果而非单字段格式问题，故挂清单区而非字段提示）：
+       范围被改动且端口匹配处于开启（含本次同改）时，已分发凭证仍按旧范围
+       计算跳变落点（客户端 fko_totp_port_now 以凭证内 range 为准），保存后
+       服务端按新范围校验必然拒绝——需重新签发分发。改回原值预警自动消失；
+       匹配关闭时服务端不校验落点，旧凭证不受影响不预警；原范围为空（匹配
+       开启即必然拒绝的死配置，本就没有可用旧凭证）不预警 */
+    {
+      const rangeEl2 = document.querySelector('#modal-root [data-sf="TOTP_PORT_RANGE"]');
+      const pmEl = document.querySelector('#modal-root [data-sf="REQUIRE_TOTP_PORT_MATCH"]');
+      if (s.has_totp && s.port_range && rangeEl2 && pmEl && pmEl.checked &&
+          rangeEl2.value.trim() !== String(s.port_range)) {
+        box.innerHTML += `<div style="color:var(--amber);margin-top:6px">⚠ 已分发凭证按旧范围计算跳变落点，保存后「强制 TOTP 端口匹配」将拒绝旧凭证——受影响客户端需重新签发并分发凭证</div>`;
+      }
+    }
     /* 全部改回原值时回到「尚未修改」态（input 即脏的标志位过粗，以清单为准） */
     if (!rows.length && seDirty) { seDirty = false; seSave.disabled = true; seSave.title = '尚未修改任何字段'; }
   }
