@@ -5682,7 +5682,11 @@ function unbindDevice(sk, dev) {
     `${s.source||''}|${s.require_username||''}|${s.open_ports||''}` === sk) || null) : undefined;
   const stzHtml = stz ? `<br><span class="hint">对应授权：${esc(stz.name || ('授权 #' + stz.index))}</span>`
     : stz === null ? '<br><span style="color:var(--amber)">⚠ 对应授权已不存在（悬空绑定），解绑即清理残留</span>' : '';
-  confirmDialog('解除设备绑定', `确定解绑设备<br><code>${esc(dev)}</code> 吗？${lastHtml}${stzHtml}<br>
+  /* 别名是操作者亲手起的「人话名」：确认对象身份时比指纹串直观（与 TOFU
+     列表/事件详情同一 devAlias 数据源） */
+  const al = devAlias(dev);
+  const alHtml = al ? `<br><span class="hint">设备别名：${esc(al)}</span>` : '';
+  confirmDialog('解除设备绑定', `确定解绑设备${alHtml}<br><code>${esc(dev)}</code> 吗？${lastHtml}${stzHtml}<br>
     解绑后该设备需重新完成 TOFU 首用绑定（或加入指纹白名单）才能继续敲门。`,
     '解绑', async () => {
       try {
