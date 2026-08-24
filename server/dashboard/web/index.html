@@ -2577,6 +2577,12 @@ function renderStatusCards() {
     const a0 = F.audit;
     qa.innerHTML = `<svg width="14" height="14"><use href="#i-download"/></svg>导出审计日志${a0 && a0.exists ? `（${fmtSize(a0.size)}）` : ''}`;
     qa.title = a0 && a0.exists ? `下载完整审计日志（JSONL · ${fmtSize(a0.size)} · 更新于 ${fmtAbs(a0.mtime)}）` : '审计日志文件不存在';
+    /* 文件不存在时拦下导航：404 响应无 Content-Disposition，浏览器可能把
+       错误文本存成 .jsonl 或裸跳错误页——都不如就地说明 + 指路体检 */
+    qa.onclick = (a0 && a0.exists) ? null : ev => {
+      ev.preventDefault();
+      toast('审计日志文件尚不存在（首个 SPA 事件产生后自动创建）——若已有敲门仍无文件，可跑「一键体检」排查审计输出', 'warn', 5000);
+    };
   }
   const cards = [
     { ic:'server', c: d.daemon.alive ? 'var(--green)' : 'var(--red)',
