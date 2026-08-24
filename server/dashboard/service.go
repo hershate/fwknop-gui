@@ -6,8 +6,10 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strconv"
@@ -140,4 +142,69 @@ func serviceRestart() (string, error) {
 func serviceFwList() (string, error) {
 	return runFwknopd(20*time.Second,
 		"-c", cfg.FwknopdConf, "-a", cfg.AccessConf, "--fw-list")
+}
+
+// tailBytes 读文件末尾至多 n 字节（syslog 可达 GB，全量读会拖垮面板）；
+// 截断起点可能落在某行中间，丢弃首个残行保证输出都是完整行。
+func tailBytes(path string, n int64) ([]byte, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	st, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	off := st.Size() - n
+	if off < 0 {
+		off = 0
+	}
+	if _, err := f.Seek(off, io.SeekStart); err != nil {
+		return nil, err
+	}
+	if off > 0 {
+		br := bufio.NewReader(f)
+		if _, err := br.ReadBytes('\n'); err != nil {
+			return nil, err
+		}
+		return io.ReadAll(br)
+	}
+	return io.ReadAll(f)
+}
+
+// serviceLog 尽力收集最近的 fwknopd 进程级日志：优先 systemd journal，
+// 退化为 syslog 文件按行过滤。审计日志只覆盖「处理过的 SPA 包」，
+// 启动失败/热加载失败/防火墙错误等进程级报错只进 syslog——启动失败
+// 提示「请查看系统日志」时，面板内得有得看。
+func serviceLog() (string, string) {
+	if _, err := exec.LookPath("journalctl"); err == nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		out, err := exec.CommandContext(ctx, "journalctl",
+			"-u", "fwknopd.service", "-n", "200", "--no-pager", "-o", "short-iso", "-q").CombinedOutput()
+		if err == nil && strings.TrimSpace(string(out)) != "" {
+			return "systemd 日志（journalctl -u fwknopd.service，最近 200 条）", string(out)
+		}
+	}
+	for _, p := range []string{"/var/log/syslog", "/var/log/messages"} {
+		data, err := tailBytes(p, 2*1024*1024)
+		if err != nil {
+			continue
+		}
+		var hit []string
+		for _, ln := range strings.Split(string(data), "\n") {
+			if strings.Contains(ln, "fwknopd") {
+				hit = append(hit, ln)
+			}
+		}
+		if len(hit) > 0 {
+			if len(hit) > 200 {
+				hit = hit[len(hit)-200:]
+			}
+			return fmt.Sprintf("%s 中含 fwknopd 的最近 %d 行（文件末尾 2 MB 内）", p, len(hit)),
+				strings.Join(hit, "\n")
+		}
+	}
+	return "", ""
 }

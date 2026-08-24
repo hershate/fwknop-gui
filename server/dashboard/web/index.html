@@ -726,6 +726,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               <span style="flex:0 0 8px"></span>
               <button class="btn ghost" id="svc-validate" title="fwknopd --exit-parse-config 预检当前配置，不落盘不改状态"><svg width="15" height="15"><use href="#i-check"/></svg>校验配置</button>
               <button class="btn ghost" id="svc-fwlist" title="查看当前防火墙放行规则（fwknopd --fw-list，需 root）"><svg width="15" height="15"><use href="#i-list"/></svg>防火墙规则</button>
+              <button class="btn ghost" id="svc-log" title="查看 fwknopd 进程级日志（systemd journal 或 syslog 中最近 200 条）——启动失败/敲门无响应时的进程级报错在这里，审计日志覆盖不到"><svg width="15" height="15"><use href="#i-activity"/></svg>服务日志</button>
             </div>
             <div class="hint" id="svc-hint" style="margin-top:10px"></div>
           </div>
@@ -7080,6 +7081,27 @@ const openFwRules = async (hlSrc) => {
   } catch (e) {}
 };
 $('#svc-fwlist').onclick = () => openFwRules();
+
+/* fwknopd 进程级日志：审计日志只覆盖「处理过的包」，启动失败/热加载失败/
+   防火墙错误等进程级报错只进 syslog——启动失败提示「请查看系统日志」时的
+   面板内出口。只读端点；弹窗内可刷新/复制（贴工单） */
+$('#svc-log').onclick = async () => {
+  try {
+    const d = await api('/api/service/log');
+    openModal(`<h3>fwknopd 服务日志</h3>
+      <div class="hint" style="margin-bottom:8px">${d.source ? esc(d.source)
+        : '未找到日志来源：未检测到 systemd journal（journalctl -u fwknopd.service）与 /var/log/{syslog,messages} 中的 fwknopd 记录。若 fwknopd 以其他单元名或日志路径运行，请在服务器上直接查看系统日志。'}</div>
+      ${d.lines ? `<pre class="out-pre" style="max-height:50vh">${esc(d.lines)}</pre>` : ''}
+      <div class="mf">${d.lines ? `<button class="btn ghost" id="sl-cp">${icon('i-copy',13)} 复制日志</button>` : ''}
+        <button class="btn ghost" id="sl-refresh">${icon('i-refresh',13)} 刷新</button>
+        <button class="btn" onclick="closeModal()">关闭</button></div>`, true);
+    const cp = $('#sl-cp');
+    if (cp) cp.onclick = () => copyText(d.lines, '服务日志 ');
+    /* 刷新重走完整点击路径：openModal 会替换弹窗内容（焦点返还已被
+       isConnected 守卫容忍——原「刷新」钮随旧弹窗移除） */
+    $('#sl-refresh').onclick = () => $('#svc-log').click();
+  } catch (e) {}
+};
 
 /* ==================== stanza 在线编辑（仅非密钥指令） ==================== */
 const STANZA_FIELDS = [

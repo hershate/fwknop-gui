@@ -595,6 +595,14 @@ func handleFwList(w http.ResponseWriter, r *http.Request) {
 	adminResult(w, out, err)
 }
 
+// handleServiceLog：GET /api/service/log — fwknopd 进程级日志（只读）。
+// 审计日志只覆盖「处理过的 SPA 包」；启动失败/热加载失败/防火墙错误等
+// 进程级报错只进 syslog，启动失败提示「请查看系统日志」时这里给出口。
+func handleServiceLog(w http.ResponseWriter, r *http.Request) {
+	src, lines := serviceLog()
+	writeJSON(w, map[string]interface{}{"source": src, "lines": lines})
+}
+
 // ------------------------------------------------------------------
 // 配置编辑（写操作）
 // ------------------------------------------------------------------
