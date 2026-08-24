@@ -4726,6 +4726,22 @@ function applyAddTemplate(key, chip) {
   const t = allTpl(key);
   if (!t) return;
   const f = $('#add-form');
+  /* 覆盖守卫：表单安全选项既不等于所点模板、也非初始默认（用户手填或草稿
+     恢复的内容）时先确认——套用后立即 saveAddDraft，误点芯片连草稿一并被
+     模板值覆盖，无挽回路径；名称/服务器地址/「写入」开关不在覆盖范围 */
+  const pristine = !f.access.value.trim() && f.totp.checked && !f['port-range'].value.trim() &&
+    f['require-fingerprint'].checked && !f['tofu-timeout'].value.trim() &&
+    !f['require-totp-port-match'].checked && !f['fw-timeout'].value.trim();
+  if (!pristine && !tplMatches(t)) {
+    confirmDialog('套用模板将覆盖已填选项',
+      `当前表单的安全选项已非默认值（含您手填或草稿恢复的内容），套用「<b>${esc(chip.dataset.label || chip.textContent)}</b>」将把端口/跳变/指纹/超时等安全选项覆盖为模板值（名称与服务器地址不受影响）。`,
+      '套用并覆盖', () => applyAddTemplateNow(key, chip, t), true);
+    return;
+  }
+  applyAddTemplateNow(key, chip, t);
+}
+function applyAddTemplateNow(key, chip, t) {
+  const f = $('#add-form');
   f.access.value = t.access;
   f.totp.checked = t.totp;
   f['port-range'].value = t.portRange;
