@@ -4418,7 +4418,7 @@ function renderUsers() {
           const r = await api('/api/config/stanza/enable', { method:'POST',
             headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
           if (r.error) toast('恢复失败：' + r.error, 'err');
-          else { toast(`授权「${name}」已恢复`, 'ok'); loadUsers(); }
+          else { toast(`授权「${name}」已恢复`, 'ok'); markCheckupStale(); loadUsers(); }
         } catch (e) {}
       });
   });
@@ -4450,6 +4450,7 @@ function renderUsers() {
                （故意批量操作，展开一长串反而是干扰） */
             S.disCollapsed = false;
             toast(`授权「${name}」已撤销（下方「已禁用的授权」区可恢复）`, 'ok');
+            markCheckupStale();
             loadUsers();
           }
         } catch (e) {}
@@ -4523,6 +4524,7 @@ $('#users-batch-rm').onclick = () => {
       btn.disabled = false;
       btn.innerHTML = '<svg width="13" height="13"><use href="#i-trash"/></svg>批量撤销';
       S.usersSel = new Set();
+      if (ok.length) markCheckupStale();
       loadUsers(); loadTOFU();
       if (fail.length) infoModal('批量撤销 — 部分失败',
         `成功 ${ok.length} 个，失败 ${fail.length} 个${untried ? `，未尝试 ${untried} 个（会话/权限失败已提前中止，未向服务端发起）` : ''}：\n` + fail.join('\n'), true);
@@ -4734,6 +4736,7 @@ $('#add-batch').onclick = () => {
       ? `批量签发完成：${oks.length} 成功${fails.length ? `，${fails.length} 失败` : ''}${untried.length ? `，${untried.length} 未尝试` : ''}（详见弹窗）${deadNote}`
       : `批量签发完成：${oks.length} 份全部成功${deadNote}`,
       fails.length || untried.length ? 'err' : daemonDead ? 'warn' : 'ok', 5000);
+    if (oks.length && f.apply.checked) markCheckupStale();
     loadUsers();  /* 授权列表与占位徽标同步 */
   };
 };
@@ -5656,6 +5659,7 @@ $('#add-form').addEventListener('submit', async ev => {
             : `凭证「${nm}」已签发并写入 access.conf（已热加载），请复制授权 URI 分发给用户`)
         : `凭证「${nm}」已签发（未写入配置），请立即复制授权 URI 分发给用户`,
         (applyFail || daemonDead) ? 'warn' : 'ok', 6000);
+      if (f.apply.checked && !applyFail) markCheckupStale();  /* access.conf 已变，体检前提失效 */
       clearAddDraft();
       if (f.server.value.trim()) { lsSet('fwknop-last-server', f.server.value.trim()); pushServerHistory(f.server.value.trim()); }
       /* 连续签发保留策略选项：access/fw-timeout/totp/port-range/require-fingerprint/
@@ -6472,6 +6476,7 @@ function doConfRestore(name, target, mt) {
       if (r.error) infoModal('恢复失败', r.error, true);
       else {
         infoModal('恢复完成', r.output || '已恢复');
+        markCheckupStale();
         loadConfig();  /* 编辑器/原文视图同步真值 */
         if (target === 'access.conf') loadUsers();  /* 授权卡片行号/字段已变 */
       }
@@ -6973,7 +6978,9 @@ async function svcAction(action, label, done) {
         : null;
       infoModal(label + ' — 失败', out, true, cfgAct);
     }
-    else { toast(label + '成功（耗时 ' + secs + ' 秒）', 'ok'); if (out.trim()) infoModal(label, out); }
+    else { toast(label + '成功（耗时 ' + secs + ' 秒）', 'ok'); if (out.trim()) infoModal(label, out);
+      /* 启停/重启直接推翻体检的「运行状态」项结论，留存摘要降级为重检建议 */
+      markCheckupStale(); }
   } catch (e) {}
   btns.forEach(b => b.disabled = !S.writeEnabled);
   $('#svc-hint').textContent = '';
@@ -7432,7 +7439,7 @@ function openStanzaEditor(index) {
       }
       modalGuard = null;
       closeModal();
-      toast('授权已更新', 'ok'); loadUsers();
+      toast('授权已更新', 'ok'); markCheckupStale(); loadUsers();
     } catch (e) { $('#se-save').disabled = false; }
   };
 }
@@ -8036,6 +8043,7 @@ $('#conf-save').onclick = async () => {
           const reloadDead = /未在运行/.test(r.output || '');
           toast(reloadDead ? '配置已保存；fwknopd 未在运行，新配置将在服务启动后生效'
                            : '配置已保存并热加载', reloadDead ? 'warn' : 'ok');
+          markCheckupStale();  /* 配置变了，体检结论的前提随之失效 */
           clearConfDirty();
           const okJump = $('#conf-save-jump'); if (okJump) okJump.style.display = 'none';
           await loadConfig();
@@ -8229,11 +8237,26 @@ function renderCheckupLast() {
   let r = null;
   try { r = JSON.parse(localStorage.getItem('fwknop-last-checkup') || 'null'); } catch (e) {}
   if (!r || !r.t) { el.style.display = 'none'; return; }
-  const [txt, col] = r.bad ? [`${r.bad} 项异常`, 'var(--red)'] : r.warn ? [`${r.warn} 项需注意`, 'var(--amber)'] : ['全部通过', 'var(--green)'];
+  const [txt, col] = r.stale ? ['配置已变更，建议重检', 'var(--amber)']
+    : r.bad ? [`${r.bad} 项异常`, 'var(--red)'] : r.warn ? [`${r.warn} 项需注意`, 'var(--amber)'] : ['全部通过', 'var(--green)'];
   el.innerHTML = `· 上次体检 ${esc(fmtAgo(r.t))}：<b style="color:${col}">${txt}</b>`;
-  el.title = `上次体检于 ${fmtAbs(r.t)}（${r.ok} 项通过）——结果可能已过期，点击重新体检`;
+  el.title = r.stale
+    ? `上次体检于 ${fmtAbs(r.t)}，此后配置/授权已被修改——结论不再可靠，点击重新体检`
+    : `上次体检于 ${fmtAbs(r.t)}（${r.ok} 项通过）——结果可能已过期，点击重新体检`;
   el.style.display = '';
   el.onclick = () => runCheckup();
+}
+/* 任何改动配置/授权的成功写操作都会推翻体检前提（TOTP 一致性、占位密钥、
+   预检结论），把留存摘要降级为「建议重检」而非继续展示旧结论 */
+function markCheckupStale() {
+  try {
+    const r = JSON.parse(localStorage.getItem('fwknop-last-checkup') || 'null');
+    if (r && r.t && !r.stale) {
+      r.stale = true;
+      localStorage.setItem('fwknop-last-checkup', JSON.stringify(r));
+      renderCheckupLast();
+    }
+  } catch (e) {}
 }
 $('#qa-checkup').onclick = () => runCheckup();
 renderCheckupLast();  /* 进概览即回填上次体检摘要（无需先跑一次） */
@@ -8394,7 +8417,7 @@ function renderProfiles() {
         const r = await api('/api/profiles/apply', { method:'POST',
           headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
         if (r.error) { toast('切换失败（配置未变）', 'err'); infoModal('方案切换 — 失败', r.output + '\n' + r.error, true); }
-        else { toast(`已切换到方案「${name}」`, 'ok'); infoModal('方案切换 — 完成', r.output); loadConfig(); loadUsers(); loadProfiles(); loadOverview(); }
+        else { toast(`已切换到方案「${name}」`, 'ok'); markCheckupStale(); infoModal('方案切换 — 完成', r.output); loadConfig(); loadUsers(); loadProfiles(); loadOverview(); }
       } catch (e) {}
     };
   });
