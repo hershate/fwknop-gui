@@ -2530,13 +2530,14 @@ function renderStatusCards() {
     try { frDone = localStorage.getItem('fwknop-first-run-done') === '1'; } catch (e2) {}
     const showFr = stz && !stz.active && !stz.disabled && !frDone;
     fr.innerHTML = showFr ? `<div class="warn-strip" style="margin-bottom:12px;border-color:var(--accent)">${icon('i-info',15)}<div style="flex:1">
-      <b>三步上线 fwknop：</b>① <a href="javascript:void 0" role="button" id="fr-validate" style="color:var(--accent)">校验配置</a>并<a href="javascript:void 0" role="button" id="fr-start" style="color:var(--accent)">启动服务</a>${d.daemon.alive ? '（✓ 运行中）' : ''} → ② <a href="javascript:void 0" role="button" id="fr-issue" style="color:var(--accent)">签发首个凭证</a>（推荐「标准 SSH」模板一键填充）→ ③ 客户端导入签发结果中的 fwknop:// URI 或 cred.json（fwknop import 即完成）
+      <b>三步上线 fwknop：</b>① <a href="javascript:void 0" role="button" id="fr-validate" style="color:var(--accent)">校验配置</a>并<a href="javascript:void 0" role="button" id="fr-start" style="color:var(--accent)">启动服务</a>${d.daemon.alive ? '（✓ 运行中）' : ''} → ② <a href="javascript:void 0" role="button" id="fr-issue" style="color:var(--accent)">签发首个凭证</a>（推荐「标准 SSH」模板一键填充）→ ③ 客户端导入签发结果中的 fwknop:// URI 或 cred.json（fwknop import 即完成）；部署收尾可<a href="javascript:void 0" role="button" id="fr-checkup" style="color:var(--accent)">跑一遍一键体检</a>全面核对
       <button class="btn ghost small" id="fr-dismiss" style="margin-left:8px;padding:1px 8px;font-size:11.5px" title="折叠本引导（授权出现后它也会自动消失）">不再显示</button>
     </div></div>` : '';
     if (showFr) {
       $('#fr-validate').onclick = () => $('#svc-validate').click();
       $('#fr-start').onclick = () => $('#svc-start').click();
       $('#fr-issue').onclick = () => $('#qa-add').click();
+      $('#fr-checkup').onclick = () => runCheckup();
       $('#fr-dismiss').onclick = () => {
         try { localStorage.setItem('fwknop-first-run-done', '1'); } catch (e2) {}
         fr.innerHTML = '';
