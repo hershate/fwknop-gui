@@ -6014,6 +6014,26 @@ function renderConfig() {
     const g = (CONF_META[e.key] || ['其他'])[0];
     (groups[g] = groups[g] || []).push(e);
   }
+  /* CONF_META 未收录指令的说明回退：从原文提取该指令行上方紧邻的注释块
+     （发行版配置逐指令详注——提取即准确，无转述失真风险；firewalld/ipfw/pf
+     等 32 个未收录指令免切原文模式回查）。空行/非注释行为块边界，裸 # 分隔行
+     跳过；超 60 字截断，完整注释悬停可见；找不到注释时沿用通用回退文案 */
+  const rawLns = (d.raw || '').split('\n');
+  const descCell = e => {
+    const meta = (CONF_META[e.key] || [,''])[1];
+    if (meta) return esc(meta);
+    const out = [];
+    for (let i = e.line - 2; i >= 0; i--) {
+      const t = (rawLns[i] || '').trim();
+      if (!t) break;
+      if (t === '#') continue;
+      if (t[0] === '#') { const c = t.replace(/^#+\s?/, '').trim(); if (c) out.unshift(c); continue; }
+      break;
+    }
+    const full = out.join(' ');
+    if (!full) return '（未收录说明，请参考 fwknopd.conf 注释）';
+    return `<span title="${esc(full)}">${esc(full.length > 60 ? full.slice(0, 60) + '…' : full)}</span>`;
+  };
   /* 分组可折叠，折叠状态持久化 */
   if (!S.confCollapsed) {
     try { S.confCollapsed = new Set(JSON.parse(localStorage.getItem('fwknop-conf-groups') || '[]')); }
@@ -6031,7 +6051,7 @@ function renderConfig() {
       list.map(e => `<tr>
         <td class="mono" style="color:var(--accent);font-weight:600"><span class="cp-cell" data-cp="${esc(e.key)}" title="点击复制指令名">${esc(e.key)}</span>${S.writeEnabled ? `<button class="icon-btn" style="padding:2px 5px;margin-left:4px" data-ce-edit="${esc(e.key)}" title="在编辑器中定位该指令">${icon('i-pencil',12)}</button>` : ''}</td>
         <td class="mono"><span class="cp-cell" data-cp="${esc(e.value)}" title="点击复制当前值">${esc(e.value)}</span></td>
-        <td class="hint">${esc((CONF_META[e.key] || [,''])[1] || '（未收录说明，请参考 fwknopd.conf 注释）')}</td>
+        <td class="hint">${descCell(e)}</td>
       </tr>`).join('') + `</tbody></table>`;
   }
   $('#config-body').innerHTML = html || `<div class="empty"><div class="t">配置为空</div></div>`;
