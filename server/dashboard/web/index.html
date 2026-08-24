@@ -946,6 +946,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
               </div>
               <div style="margin-top:18px; display:flex; gap:10px;">
                 <button class="btn" type="submit" id="add-submit" title="生成密钥并签发；勾选「签发后写入」时自动写入 access.conf 并热加载（Enter 亦可提交）"><svg width="15" height="15"><use href="#i-key"/></svg>签发凭证</button>
+                <button class="btn ghost" type="button" id="add-batch" title="按名单批量签发多份凭证：每行一个名称，共享当前表单的安全选项与服务器设置（团队 onboarding 一键部署）">批量签发…</button>
                 <button class="btn ghost" type="button" id="add-cancel" title="收起签发表单（已填内容自动保留为草稿，下次展开恢复）">收起</button>
               </div>
             </form>
@@ -4252,6 +4253,114 @@ $('#show-add').onclick = () => {
   }
 };
 $('#add-cancel').onclick = () => { $('#add-card').style.display = 'none'; syncAddToggle(); };
+/* 批量签发：团队 onboarding 一键部署。名单每行一个名称，共享当前表单的
+   服务器地址/端口/安全选项（与单签同一 FormData 规则、同一 /api/admin/add
+   端点，服务端逐条记操作日志）；逐份顺序签发——并发写 access.conf 有竞争，
+   且结果需逐份对应；单份失败不中断，结果清单内逐条复制/下载 */
+$('#add-batch').onclick = () => {
+  const f = $('#add-form');
+  openModal(`<h3>批量签发凭证</h3>
+    <div class="warn-strip" style="margin-bottom:10px">${icon('i-info',15)}<div>每行一个授权名称，<b>共享当前表单的全部设置</b>（服务器地址、OPEN_PORTS、TOTP/指纹等安全选项——可先以快速模板填充再打开本窗）。逐份顺序签发，单份失败不中断；结果含密钥材料，请经安全渠道逐份分发。${f.server.value.trim() ? '' : '<br>⚠ 服务器地址当前未填：URI 主机将为占位符「server」，客户端导入后需自行替换。'}</div></div>
+    <div class="field"><label for="batch-names">授权名单（每行一个，一次最多 50 份）</label>
+      <textarea id="batch-names" rows="7" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="alice&#10;bob&#10;edge-node-01" style="font-family:var(--mono);font-size:12.5px"></textarea>
+      <div class="auth-hint" aria-live="polite" id="batch-hint"></div></div>
+    <div id="batch-prog" style="display:none;margin-bottom:8px;font-size:12.5px"></div>
+    <div id="batch-out" style="display:none;max-height:36vh;overflow:auto;margin-bottom:10px"></div>
+    <div class="mf"><button class="btn ghost" id="batch-cancel">关闭</button>
+      <button class="btn" id="batch-go" disabled>开始签发</button></div>`);
+  const ta = $('#batch-names'), go = $('#batch-go'), cancel = $('#batch-cancel');
+  const names = () => ta.value.split('\n').map(s => s.trim()).filter(Boolean);
+  const takenSet = () => new Set([...((S.users && S.users.stanzas) || []), ...((S.users && S.users.disabled) || [])].map(x => x.name));
+  ta.oninput = () => {
+    const ns = names();
+    let err = '';
+    if (ns.length > 50) err = `超过单次上限（${ns.length} / 50）`;
+    else {
+      const bad = ns.find(n => /[\s#"'`&]/.test(n) || n.length > 100);
+      if (bad) err = `「${bad}」含非法字符（空白/#/引号/反引号/&）或超过 100 字符`;
+      else {
+        const seen = new Set(); const d = ns.find(n => seen.has(n) || !seen.add(n));
+        if (d) err = `名单内重复：「${d}」`;
+        else if (S.users) { const t = ns.find(n => takenSet().has(n)); if (t) err = `「${t}」已被现有或已禁用授权占用`; }
+      }
+    }
+    if (err) fmtHint($('#batch-hint'), false, '', '✗ ' + err);
+    else fmtHint($('#batch-hint'), true, ns.length ? `✓ 将签发 ${ns.length} 份（共享当前表单设置）` : '', '');
+    go.disabled = !!err || !ns.length;
+  };
+  go.onclick = async () => {
+    const ns = names();
+    if (!ns.length) return;
+    /* 与单签同一道重名闸：提示时 S.users 可能未加载（打开面板直接进批量） */
+    if (!S.users) { try { await loadUsers(); } catch (e) {} }
+    const t = ns.find(n => takenSet().has(n));
+    if (t) { fmtHint($('#batch-hint'), false, '', `✗ 「${t}」已被现有或已禁用授权占用`); return; }
+    /* 与单签提交完全同款的共享参数（仅 name 逐份替换；条件附加保持一致：
+       TOTP 关不提交范围、指纹关不提交宽限期——死配置不入 stanza） */
+    const mkFd = nm => {
+      const fd = new FormData();
+      fd.append('name', nm);
+      if (f.server.value.trim()) fd.append('server', f.server.value.trim());
+      if (f.access.value.trim()) fd.append('access', f.access.value.trim());
+      if (f.user.value.trim()) fd.append('user', f.user.value.trim());
+      if (!f.totp.checked) fd.append('totp', 'off');
+      if (f.totp.checked && f['port-range'].value.trim()) fd.append('port-range', f['port-range'].value.trim());
+      if (!f['require-fingerprint'].checked) fd.append('require-fingerprint', 'off');
+      if (f['require-fingerprint'].checked && f['tofu-timeout'].value.trim()) fd.append('tofu-timeout', f['tofu-timeout'].value.trim());
+      if (f['fw-timeout'].value.trim()) fd.append('fw-timeout', f['fw-timeout'].value.trim());
+      if (f.totp.checked && f['require-totp-port-match'].checked) fd.append('require-totp-port-match', '1');
+      if (f.apply.checked) fd.append('apply', '1');
+      return fd;
+    };
+    go.disabled = true; ta.disabled = true; cancel.disabled = true;
+    modalGuard = () => { toast('批量签发进行中，请等待完成', 'err'); return false; };
+    const prog = $('#batch-prog'), out = $('#batch-out');
+    prog.style.display = ''; out.style.display = ''; out.innerHTML = '';
+    const oks = [], fails = [];
+    const mkBtn = (txt, title, fn) => {
+      const x = document.createElement('button');
+      x.className = 'btn ghost small'; x.textContent = txt; x.title = title; x.onclick = fn;
+      return x;
+    };
+    for (let i = 0; i < ns.length; i++) {
+      const nm = ns[i];
+      prog.textContent = `签发中 ${i + 1} / ${ns.length}：${nm}`;
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px';
+      try {
+        const r = await api('/api/admin/add', { method:'POST', body: mkFd(nm) });
+        const m = (r.output || '').match(/fwknop:\/\/\S+/);
+        if (r.error || !m) throw new Error(r.error || '输出中未找到授权 URI（详见服务端日志）');
+        oks.push({ name: nm, uri: m[0] });
+        const lab = document.createElement('span');
+        lab.style.flex = '1';
+        lab.textContent = '✓ ';
+        const b = document.createElement('b'); b.textContent = nm;  /* textContent 防名称注入 */
+        lab.appendChild(b);
+        row.append(lab,
+          mkBtn('复制 URI', `复制「${nm}」的授权 URI`, () => copyText(m[0], `「${nm}」授权 URI `)),
+          mkBtn('cred.json', `下载「${nm}」的 cred.json（客户端 fwknop import 直接导入）`, () => downloadCredJson(m[0])));
+      } catch (e) {
+        fails.push({ name: nm, err: String((e && e.message) || e) });
+        row.style.color = 'var(--red)';
+        row.textContent = `✗ ${nm}：${(e && e.message) || e}`;
+      }
+      out.appendChild(row); out.scrollTop = out.scrollHeight;
+    }
+    modalGuard = null; cancel.disabled = false;
+    prog.textContent = `完成：成功 ${oks.length} / ${ns.length}` + (fails.length ? `，失败 ${fails.length}（见下方红字行）` : '');
+    if (oks.length) {
+      const bar = document.createElement('div');
+      bar.style.cssText = 'display:flex;gap:8px;margin:8px 0;flex-wrap:wrap';
+      bar.append(
+        mkBtn(`复制全部 URI（${oks.length} 条）`, '每行一条纯 URI，可循环 fwknop import', () => copyText(oks.map(x => x.uri).join('\n'), '全部授权 URI ')),
+        mkBtn('复制分发清单（名称 + URI）', 'Tab 分隔的名称与 URI，分发对号用', () => copyText(oks.map(x => `${x.name}\t${x.uri}`).join('\n'), '分发清单 ')));
+      prog.after(bar);
+    }
+    toast(fails.length ? `批量签发完成：${oks.length} 成功，${fails.length} 失败（详见弹窗红字行）` : `批量签发完成：${oks.length} 份全部成功`, fails.length ? 'err' : 'ok', 5000);
+    loadUsers();  /* 授权列表与占位徽标同步 */
+  };
+};
 
 /* access.conf 原文查看（密钥掩码，只读）：stanza 卡片只展示结构化字段，
    注释/空行/禁用块布局与 lint 实际解析的文本视图在这里；掩码原文可安全外发 */
