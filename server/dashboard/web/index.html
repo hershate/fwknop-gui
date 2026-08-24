@@ -6457,6 +6457,9 @@ async function loadOpLog() {
    「仅看失败」聚焦被拒/失败动作，排查爆破与误操作的第一入口 */
 function oplogCat(op) {
   if (/^(登录|注销|初始化面板|修改密码)/.test(op)) return 'acct';
+  /* 「恢复配置备份」以「恢复」开头但属配置类——精确规则必须先于下方
+     stanza 前缀正则，否则配置回滚被误归为授权操作 */
+  if (op === '恢复配置备份') return 'conf';
   if (/^(签发|撤销|恢复|编辑授权|重发授权|解绑)/.test(op)) return 'stanza';
   if (/^(保存 fwknopd\.conf|方案：)/.test(op)) return 'conf';
   return 'svc';  /* 服务控制：* / 清理审计日志 / 删除审计备份 */
