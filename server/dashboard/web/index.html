@@ -771,7 +771,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
                 <button class="btn ghost small" id="ev-preset-24h" title="填充为「此刻往前 24 小时」" style="padding:4px 8px;font-size:11.5px">最近 24h</button>
                 <button class="btn ghost small" id="ev-preset-yday" title="填充为「昨天 00:00 至 23:59」（含首尾分钟）" style="padding:4px 8px;font-size:11.5px">昨日全天</button>
               </span>
-              <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="event-search" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口 / 授权 / 异常…（支持 user:/ip:/dev:/port:/stanza: 前缀）" title="全字段子串匹配；搜「异常」等价于「仅看异常」芯片（拒绝/重放/未知指纹/端口不匹配/过期）；空格分隔多关键词为 AND（如「admin 22」）；前缀语法精确限定字段：user:admin、ip:192.168、dev:指纹前缀、port:22（SPA 与目标端口都匹配）、stanza:3 或 stanza:授权名，前缀词与裸词可混用（「user:admin port:22」）；快捷键 / 聚焦" style="width:290px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+              <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="event-search" aria-label="搜索事件" placeholder="搜索用户 / IP / 指纹 / 原因 / 端口 / 授权 / 异常…（支持 user:/ip:/dev:/port:/stanza: 前缀）" title="全字段子串匹配；搜「异常」等价于「仅看异常」芯片（拒绝/重放/未知指纹/端口不匹配/过期）；空格分隔多关键词为 AND（如「admin 22」）；前缀语法精确限定字段：user:admin、ip:192.168、dev:指纹前缀、port:22（SPA 与目标端口都匹配）、stanza:3 或 stanza:授权名，前缀词与裸词可混用（「user:admin port:22」）；快捷键 / 聚焦" style="width:290px"><button class="icon-btn srch-clear" data-for="event-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
               <button class="btn ghost small" id="ev-density" title="切换表格行密度（紧凑模式一屏看更多事件）">紧凑</button>
               <button class="btn ghost small" id="ev-expand-all" title="展开/收起当前页全部事件详情（对比多条事件字段用；快捷键 x）">展开全部</button>
               <button class="btn ghost small" id="ev-notify" title="后台标签页收到异常事件时弹桌面通知（需浏览器授权）；点击通知直达「仅看异常」视图"><svg width="14" height="14"><use href="#i-bell"/></svg>异常桌面通知</button>
@@ -809,7 +809,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
             <div class="head">
               <h2>访问授权（access.conf）</h2><span class="sub" id="users-sub"></span>
               <div class="tools">
-                <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="users-search" placeholder="搜索名称 / 用户 / 端口 / 来源 / 序号（#3）/ 占位…" title="匹配授权名称 / 要求用户名 / 端口 / 来源 / stanza 序号；搜「占位」定位 __CHANGEME__ 占位密钥授权（快捷键 / 聚焦）" style="width:240px"><button class="icon-btn srch-clear" data-for="users-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+                <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="users-search" aria-label="搜索授权" placeholder="搜索名称 / 用户 / 端口 / 来源 / 序号（#3）/ 占位…" title="匹配授权名称 / 要求用户名 / 端口 / 来源 / stanza 序号；搜「占位」定位 __CHANGEME__ 占位密钥授权（快捷键 / 聚焦）" style="width:240px"><button class="icon-btn srch-clear" data-for="users-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
                 <select class="ctl" id="users-sort" title="授权排序方式（选择跨刷新记忆）" style="padding:5px 8px;font-size:12.5px">
                   <option value="conf">按配置顺序</option>
                   <option value="name">按名称</option>
@@ -986,7 +986,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="head">
             <h2>TOFU 设备绑定</h2><span class="sub" id="tofu-sub">首次使用自动绑定的设备指纹</span>
             <div class="tools">
-              <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="tofu-search" placeholder="搜索指纹 / 别名 / 用户 / 端口 / 来源 / 悬空，支持 stanza_key 直贴…" style="width:270px" title="支持按设备别名检索；搜「悬空」定位授权已删的残留绑定；支持从 CLI 复制的整串 stanza_key（SOURCE|用户|端口）直接粘贴检索（快捷键 / 聚焦）"><button class="icon-btn srch-clear" data-for="tofu-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+              <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="tofu-search" aria-label="搜索 TOFU 绑定" placeholder="搜索指纹 / 别名 / 用户 / 端口 / 来源 / 悬空，支持 stanza_key 直贴…" style="width:270px" title="支持按设备别名检索；搜「悬空」定位授权已删的残留绑定；支持从 CLI 复制的整串 stanza_key（SOURCE|用户|端口）直接粘贴检索（快捷键 / 聚焦）"><button class="icon-btn srch-clear" data-for="tofu-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
               <button class="btn ghost small" id="tofu-density" title="切换表格行密度（紧凑模式一屏看更多设备）">紧凑</button>
               <button class="btn ghost small" id="tofu-csv" title="把当前搜索过滤后的绑定列表导出为 CSV（含设备别名与悬空状态；访问评审/迁移快照用，不含任何密钥）"><svg width="14" height="14"><use href="#i-download"/></svg>导出 CSV</button>
               <span class="hint" id="tofu-file"></span>
@@ -1013,7 +1013,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="head">
             <h2>fwknopd 配置</h2><span class="sub" id="config-sub"></span>
             <div class="tools">
-              <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="conf-view-filter" placeholder="查找指令 / 说明…" title="按指令名或说明文字过滤；「查看原文」模式下按行过滤（含注释）并高亮命中；快捷键 / 聚焦" style="width:150px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="conf-view-filter" title="清空查找" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span><span class="hint" id="conf-view-filter-n" style="font-size:11.5px"></span>
+              <span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="conf-view-filter" aria-label="查找配置指令" placeholder="查找指令 / 说明…" title="按指令名或说明文字过滤；「查看原文」模式下按行过滤（含注释）并高亮命中；快捷键 / 聚焦" style="width:150px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="conf-view-filter" title="清空查找" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span><span class="hint" id="conf-view-filter-n" style="font-size:11.5px"></span>
               <button class="btn ghost small" id="conf-expand-all" title="展开全部分组">展开全部</button>
               <button class="btn ghost small" id="conf-collapse-all" title="收起全部分组">收起全部</button>
               <button class="btn ghost small" id="conf-edit-btn" style="display:none" title="打开结构化编辑器：增删改指令，含类型校验与重复预警"><svg width="14" height="14"><use href="#i-pencil"/></svg>编辑</button>
@@ -1029,7 +1029,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
           <div class="head">
             <h2>编辑 fwknopd.conf</h2><span class="sub">保存前自动预检（fwknopd --exit-parse-config），通过后备份并热加载 · <span style="color:var(--amber)">▎</span>已修改 <span style="color:var(--green)">▎</span>新增</span>
             <div class="tools">
-              <input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="conf-filter" placeholder="过滤指令名…" title="按指令名过滤编辑行（大小写不敏感；快捷键 / 在编辑器打开时聚焦此处）" style="width:150px;padding:4px 8px;font-size:12.5px"><span class="hint" id="conf-filter-n" style="font-size:11.5px"></span>
+              <input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="conf-filter" aria-label="过滤编辑器指令行" placeholder="过滤指令名…" title="按指令名过滤编辑行（大小写不敏感；快捷键 / 在编辑器打开时聚焦此处）" style="width:150px;padding:4px 8px;font-size:12.5px"><span class="hint" id="conf-filter-n" style="font-size:11.5px"></span>
               <button class="btn ghost small" id="conf-only-changed" title="只显示本次编辑中已修改/新增/标记删除的行（大配置保存前快速复核改动面）" aria-pressed="false">仅看修改</button>
               <button class="btn ghost small" id="conf-add-row" title="追加一行新指令（键名带自动补全与说明）"><svg width="14" height="14"><use href="#i-plus"/></svg>新增指令</button>
               <button class="btn ghost small" id="conf-raw-edit" title="切换原文编辑：整份配置按文本直接修改（保存同样先预检+备份+热加载）">原文编辑</button>
@@ -1074,7 +1074,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
         </div>
         <div class="card">
           <div class="head"><h2>配置方案</h2><span class="sub" id="profiles-sub">一键切换整套服务端配置</span>
-            <div class="tools"><span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="pf-search" placeholder="搜索方案名 / 备注 / 当前…" title="按方案名或备注过滤，搜「当前」定位生效中方案（快捷键 / 聚焦；Esc 清空）" style="width:190px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="pf-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span></div></div>
+            <div class="tools"><span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="pf-search" aria-label="搜索配置方案" placeholder="搜索方案名 / 备注 / 当前…" title="按方案名或备注过滤，搜「当前」定位生效中方案（快捷键 / 聚焦；Esc 清空）" style="width:190px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="pf-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span></div></div>
           <div class="body" id="profiles-body"><div class="skel" style="height:80px"></div></div>
         </div>
       </section>
@@ -1087,7 +1087,7 @@ kbd{display:inline-block;padding:1px 7px;border:1px solid var(--border);border-b
         </div>
         <div class="card">
           <div class="head"><h2>面板操作日志</h2><span class="sub" id="oplog-sub">管理面审计：签发 / 撤销 / 配置保存 / 服务控制 / 登录等</span>
-            <div class="tools"><span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="oplog-search" placeholder="搜索操作 / 详情 / IP / 失败…" title="按操作名、详情文本、来源 IP 子串过滤，搜「失败」直达失败/被拒记录（与类别过滤叠加；快捷键 / 聚焦，Esc 清空）" style="width:170px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="oplog-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span><select class="ctl" id="oplog-filter" title="按类别过滤操作记录；「仅看失败」聚焦被拒/失败动作（排查爆破与误操作）" style="padding:3px 6px;font-size:12px">
+            <div class="tools"><span class="srch-wrap"><input spellcheck="false" autocomplete="off" autocapitalize="off" class="ctl" id="oplog-search" aria-label="搜索操作日志" placeholder="搜索操作 / 详情 / IP / 失败…" title="按操作名、详情文本、来源 IP 子串过滤，搜「失败」直达失败/被拒记录（与类别过滤叠加；快捷键 / 聚焦，Esc 清空）" style="width:170px;padding:4px 8px;font-size:12.5px"><button class="icon-btn srch-clear" data-for="oplog-search" title="清空搜索" tabindex="-1"><svg width="12" height="12"><use href="#i-x"/></svg></button></span><select class="ctl" id="oplog-filter" title="按类别过滤操作记录；「仅看失败」聚焦被拒/失败动作（排查爆破与误操作）" style="padding:3px 6px;font-size:12px">
               <option value="all">全部</option><option value="fail">仅看失败</option>
               <option value="acct">账户（登录/注销/改密）</option><option value="stanza">授权（签发/撤销/编辑等）</option>
               <option value="conf">配置与方案</option><option value="svc">服务与审计</option>
@@ -4658,7 +4658,7 @@ $('#users-raw').onclick = async () => {
     openModal(`<h3>access.conf 原文</h3>
       <div class="hint" style="margin-bottom:8px">修改于 ${fmtAbs(r.mtime)}（${fmtAgo(r.mtime)}）· 行号与授权卡片「第 X–Y 行」标注对应 · 密钥指令已掩码，复制外发安全；结构化编辑请用授权卡片</div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-        <input type="text" class="ctl" id="ar-jump" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="行号 / 授权名 / #序号" title="三种定位方式：①数字=行号（授权卡片「第 X–Y 行」标注）；②授权名/用户名=定位该 stanza 的 ### 标记行或 REQUIRE_USERNAME 行；③#N=lint 输出中未命名 stanza 的序号（第 N 个生效 SOURCE 块）" style="width:170px;padding:3px 6px;font-size:12px">
+        <input type="text" class="ctl" id="ar-jump" aria-label="跳转到行号、授权名或 #序号" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="行号 / 授权名 / #序号" title="三种定位方式：①数字=行号（授权卡片「第 X–Y 行」标注）；②授权名/用户名=定位该 stanza 的 ### 标记行或 REQUIRE_USERNAME 行；③#N=lint 输出中未命名 stanza 的序号（第 N 个生效 SOURCE 块）" style="width:170px;padding:3px 6px;font-size:12px">
         <span class="hint" style="font-size:11.5px">lint 报错（按名/#序号）与卡片行号标注直达定位</span>
       </div>
       <pre class="out-pre" id="ar-pre" style="max-height:52vh">${r.raw ? rawHtml : '<span class="hint">（空文件）</span>'}</pre>
