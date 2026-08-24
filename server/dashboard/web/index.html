@@ -2450,9 +2450,7 @@ async function loadOverview() {
         });
         n3.onclick = () => {
           window.focus();
-          S.oplogQuery = '登录失败'; const os5 = $('#oplog-search'); if (os5) os5.value = '登录失败';
-          try { localStorage.setItem('fwknop-oplog-query', '登录失败'); } catch (_) {}
-          showPage('about');
+          drillOpLog('登录失败');
         };
       }
       S.authFailPrev = afn;
@@ -3105,12 +3103,19 @@ $('#nav-ev-badge').onclick = ev => {
 };
 /* 「关于」徽标点击 = 直达 oplog 并预填「登录失败」搜索词（阻止冒泡到导航，
    与 nav-ev-badge 同一范式） */
+/* 操作日志钻取统一步态：设搜索词并重置类别过滤——类别过滤跨刷新持久化后，
+   残留类别会掩盖钻取结果（「登录失败」配 stanza 类别得 0 条，钻取像失效）；
+   词与过滤一并固化（renderOpLog 每轮也固化查询词） */
+function drillOpLog(q) {
+  S.oplogQuery = q; S.oplogFilter = 'all';
+  const os = $('#oplog-search'); if (os) os.value = q;
+  const of = $('#oplog-filter'); if (of) of.value = 'all';
+  try { localStorage.setItem('fwknop-oplog-query', q); localStorage.setItem('fwknop-oplog-filter', 'all'); } catch (_) {}
+  showPage('about');
+}
 $('#nav-about-badge').onclick = ev => {
   ev.stopPropagation();
-  S.oplogQuery = '登录失败'; const os3 = $('#oplog-search'); if (os3) os3.value = '登录失败';
-  /* 钻取即持久化（renderOpLog 5819 每轮固化 S.oplogQuery，与占位/悬空徽标同理） */
-  try { localStorage.setItem('fwknop-oplog-query', '登录失败'); } catch (_) {}
-  showPage('about');
+  drillOpLog('登录失败');
 };
 /* 占位密钥徽标钻取（与 about/ev 徽标同模式）：不止导航——预填「占位」搜索词，
    授权很多时问题卡片也不会滚出视野（filteredStanzas 对该词匹配 changeme 态） */
@@ -4605,9 +4610,7 @@ $('#add-batch').onclick = () => {
        一键直达过滤视图；钻取即持久化（renderOpLog 固化口径同 586 轮） */
     bar.append(mkBtn('前往操作日志核对', '操作日志已对本批每份签发逐条留痕，点击直达「签发凭证」过滤视图逐条核对', () => {
       closeModal();
-      S.oplogQuery = '签发凭证'; const os4 = $('#oplog-search'); if (os4) os4.value = '签发凭证';
-      try { localStorage.setItem('fwknop-oplog-query', '签发凭证'); } catch (_) {}
-      showPage('about');
+      drillOpLog('签发凭证');
     }));
     prog.after(bar);
     toast(fails.length || untried.length
@@ -5873,6 +5876,11 @@ S.pfQuery = localStorage.getItem('fwknop-pf-query') || '';
 if (S.pfQuery) $('#pf-search').value = S.pfQuery;
 S.oplogQuery = localStorage.getItem('fwknop-oplog-query') || '';
 if (S.oplogQuery) $('#oplog-search').value = S.oplogQuery;
+/* 类别过滤器一并持久化：搜索词跨刷新恢复而过滤器掉回「全部」是半恢复状态
+   （巡检「仅看失败」重载后视野悄然变宽）；白名单校验同 users-sort 规 */
+S.oplogFilter = ['all', 'fail', 'acct', 'stanza', 'conf', 'svc'].includes(localStorage.getItem('fwknop-oplog-filter'))
+  ? localStorage.getItem('fwknop-oplog-filter') : 'all';
+$('#oplog-filter').value = S.oplogFilter;
 /* 恢复值后同步各搜索框的 ✕ 清空钮：程序化赋值不触发 input 事件，
    events/users/tofu 靠各自渲染路径同步，pf/oplog 无渲染侧同步——此处统一补齐 */
 syncSearchClear();
@@ -6369,7 +6377,11 @@ function renderOpLog() {
     showPage('events');
   });
 }
-$('#oplog-filter').onchange = e => { S.oplogFilter = e.target.value; renderOpLog(); };
+$('#oplog-filter').onchange = e => {
+  S.oplogFilter = e.target.value;
+  try { localStorage.setItem('fwknop-oplog-filter', S.oplogFilter); } catch (e2) {}
+  renderOpLog();
+};
 $('#oplog-search').oninput = e => { S.oplogQuery = e.target.value.trim(); renderOpLog(); };
 attachSearchHistory($('#oplog-search'), 'fwknop-hist-oplog');
 /* 导出当前类别+搜索筛选结果为 CSV：事件/授权/TOFU 三个列表都有筛选感知导出，
