@@ -2179,6 +2179,7 @@ const GLOSSARY = [
   ['OPEN_PORTS（端口限制）', '授权允许打开的端口清单（如 tcp/22,udp/53）。留空表示不做端口限制（不是默认 tcp/22）；客户端可请求的子集还可由 RESTRICT_PORTS 进一步约束。'],
   ['访问超时', 'FW_ACCESS_TIMEOUT：开门后放行规则的存活秒数，到期规则自动移除，再次访问需重新敲门；MAX_FW_TIMEOUT 是客户端可请求更长时间的上限。'],
   ['审计日志 vs 操作日志', '审计日志由 fwknopd 写，记「谁敲了门」（SPA 事件页）；操作日志由面板写，记「谁动了管理面」（签发/撤销/改配置/登录改密，本页上方）。两份均为 JSONL，都可导出。'],
+  ['fork 与上游二进制', '本面板配套的是 fwknop 2.6.11 的二次开发 fork：TOTP 端口跳变、设备指纹（SPA v4）、审计输出、fwknopd-admin 均为 fork 扩展。fwknopd -V 与上游同印 2.6.11 无法区分，而未知指令仅告警忽略——装错上游二进制后这些功能静默失效。概览红色警示条与「一键体检」均可识别，CLI 可用速查表中的 grep 一行命令复核。'],
 ];
 $('#about-glossary').innerHTML = `<table class="tb"><tbody>${GLOSSARY.map(([k, d]) =>
   `<tr><td style="width:180px;white-space:nowrap;vertical-align:top">${esc(k)}</td><td class="hint">${esc(d)}</td></tr>`).join('')}</tbody></table>`;
