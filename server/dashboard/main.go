@@ -144,6 +144,7 @@ func main() {
 	mux.HandleFunc("/api/oplog/download", guard(handleOpLogDownload))
 	mux.HandleFunc("/api/service/fwrules", guard(handleFwList))
 	mux.HandleFunc("/api/service/log", guard(handleServiceLog))
+	mux.HandleFunc("/api/service/forkcheck", guard(handleForkCheck))
 	mux.HandleFunc("/api/profiles", guard(handleProfiles))
 	mux.HandleFunc("/api/profiles/view", guard(handleProfileView))
 	mux.HandleFunc("/api/profiles/export", guard(handleProfileExport))

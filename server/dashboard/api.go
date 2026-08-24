@@ -603,6 +603,21 @@ func handleServiceLog(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]interface{}{"source": src, "lines": lines})
 }
 
+// handleForkCheck：GET /api/service/forkcheck — fwknopd 二进制 fork 校验
+// （只读）。上游二进制会让 fork 功能静默失效且预检不报错（未知指令仅告警
+// 忽略），体检据此识别「配置全对但功能不工作」的部署错位。
+func handleForkCheck(w http.ResponseWriter, r *http.Request) {
+	fork, path, note, err := fwknopdForkCheck()
+	resp := map[string]interface{}{"path": path, "fork": fork}
+	if note != "" {
+		resp["note"] = note
+	}
+	if err != nil {
+		resp["error"] = err.Error()
+	}
+	writeJSON(w, resp)
+}
+
 // ------------------------------------------------------------------
 // 配置编辑（写操作）
 // ------------------------------------------------------------------

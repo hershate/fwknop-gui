@@ -7,6 +7,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -207,4 +209,52 @@ func serviceLog() (string, string) {
 		}
 	}
 	return "", ""
+}
+
+// fwknopd 二进制 fork 校验：fork 与上游同印 2.6.11（-V 无法区分），而
+// fwknopd 对未知指令仅告警忽略——上游二进制会让 TOTP 跳变/设备绑定/审计
+// 等 fork 功能静默失效，且 --exit-parse-config 预检照样通过。二进制 .rodata
+// 内嵌的 fork 扩展指令字符串是确定性标记；按 路径+mtime+size 缓存，
+// 体检按需调用，非轮询热路径。
+var forkCheckCache struct {
+	mu    sync.Mutex
+	path  string
+	mtime int64
+	size  int64
+	fork  bool
+	note  string
+	ok    bool // 缓存条目有效
+}
+
+// fwknopdForkCheck 返回 (是否 fork 构建, 解析后的二进制路径, 无法判定的说明, 错误)。
+// note 非空表示「无法判定」（如 libtool 包装脚本），不算失败。
+func fwknopdForkCheck() (bool, string, string, error) {
+	p, err := exec.LookPath(cfg.FwknopdBin)
+	if err != nil {
+		return false, cfg.FwknopdBin, "", fmt.Errorf("找不到 fwknopd 可执行文件（%s）", cfg.FwknopdBin)
+	}
+	fi, err := os.Stat(p)
+	if err != nil {
+		return false, p, "", fmt.Errorf("无法读取 fwknopd 二进制：%v", err)
+	}
+	forkCheckCache.mu.Lock()
+	defer forkCheckCache.mu.Unlock()
+	if forkCheckCache.ok && forkCheckCache.path == p &&
+		forkCheckCache.mtime == fi.ModTime().Unix() && forkCheckCache.size == fi.Size() {
+		return forkCheckCache.fork, p, forkCheckCache.note, nil
+	}
+	data, err := os.ReadFile(p)
+	if err != nil {
+		return false, p, "", fmt.Errorf("无法读取 fwknopd 二进制：%v", err)
+	}
+	fork, note := false, ""
+	if len(data) < 4 || !bytes.Equal(data[:4], []byte("\x7fELF")) {
+		note = "非 ELF 可执行文件（可能是包装脚本），无法判定"
+	} else {
+		fork = bytes.Contains(data, []byte("PCAP_PORT_RANGE")) &&
+			bytes.Contains(data, []byte("TOTP_PORT_RANGE"))
+	}
+	forkCheckCache.path, forkCheckCache.mtime, forkCheckCache.size = p, fi.ModTime().Unix(), fi.Size()
+	forkCheckCache.fork, forkCheckCache.note, forkCheckCache.ok = fork, note, true
+	return fork, p, note, nil
 }

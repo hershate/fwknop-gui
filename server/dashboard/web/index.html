@@ -8125,12 +8125,13 @@ async function runCheckup() {
     /* 防火墙规则是只读 GET（handleFwList 无写门禁，svc-fwlist 钮只读也可用），
        不随预检跳过 */
     api('/api/service/fwrules').catch(() => null),
+    api('/api/service/forkcheck').catch(() => null),
   ];
   /* 预检走写门禁（requirePost），只读模式跳过；fwrules 只读不跳 */
   if (S.writeEnabled) jobs.splice(3, 0, api('/api/service/validate', { method:'POST' }).catch(() => null));
-  let ov, cfg, us, val, fwr;
-  if (S.writeEnabled) [ov, cfg, us, val, fwr] = await Promise.all(jobs);
-  else [ov, cfg, us, fwr] = await Promise.all(jobs);
+  let ov, cfg, us, val, fwr, fork;
+  if (S.writeEnabled) [ov, cfg, us, val, fwr, fork] = await Promise.all(jobs);
+  else [ov, cfg, us, fwr, fork] = await Promise.all(jobs);
   const items = [];  /* {st:'ok'|'warn'|'bad'|'skip', t, d, act:{label, title, onclick}} */
   const entries = (cfg && cfg.entries) || [];
   const entVal = k => { const e = entries.find(x => x.key === k); return e ? String(e.value || '').trim() : ''; };
@@ -8153,6 +8154,16 @@ async function runCheckup() {
   items.push(alive
     ? { st:'ok', t:'fwknopd 运行中', d:'PID ' + ov.daemon.pid }
     : { st:'bad', t:'fwknopd 未运行', d:S.writeEnabled ? '服务未运行，敲门不会被处理——可在概览页服务控制卡启动' : '服务未运行；只读模式请联系管理员启动' });
+
+  /* 2.5 fwknopd 二进制 fork 校验：fork 与上游同印 2.6.11（-V 无法区分），
+     fwknopd 对未知指令仅告警忽略——上游二进制会让 TOTP 跳变/设备绑定/审计
+     静默失效且预检通过，是「配置全对但功能不工作」的最隐蔽部署错位 */
+  if (!fork) items.push({ st:'warn', t:'fwknopd 二进制', d:'校验请求失败（网络/服务异常）' });
+  else if (fork.error) items.push({ st:'bad', t:'fwknopd 二进制不可用', d:fork.error + '——服务控制链路的全部操作都会失败' });
+  else if (fork.note) items.push({ st:'skip', t:'fwknopd 二进制', d:fork.note });
+  else if (!fork.fork) items.push({ st:'bad', t:'fwknopd 疑似上游二进制',
+    d:(fork.path || 'fwknopd') + ' 缺少 fork 扩展指令标记——TOTP 跳变/设备绑定/审计等 fork 功能将静默失效（未知指令仅告警不报错，预检检不出）。请换用本 fork 构建的 fwknopd，面板以 -fwknopd 参数指定路径' });
+  else items.push({ st:'ok', t:'fwknopd 二进制', d:'fork 扩展指令标记齐全' });
 
   /* 3. 审计输出（面板事件/指标的数据源） */
   const auditOff = entVal('ENABLE_AUDIT').toUpperCase() === 'N';
