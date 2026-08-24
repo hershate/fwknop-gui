@@ -7964,7 +7964,14 @@ $('#conf-save').onclick = async () => {
             syncConfExtWarn();
             toast('配置已刷新为最新，请复核改动后重试保存', 'ok', 5000);
           } }
-        else { toast('配置已保存并热加载', 'ok'); clearConfDirty();
+        else {
+          /* 「并热加载」以服务端 output 实报为准：sighupBestEffort 在 fwknopd 未运行时
+             返回「未在运行，配置将在下次启动时生效」——toast 摘要同步分态，避免与
+             下方输出区（conf-save-out）的实报文案自相矛盾 */
+          const reloadDead = /未在运行/.test(r.output || '');
+          toast(reloadDead ? '配置已保存；fwknopd 未在运行，新配置将在服务启动后生效'
+                           : '配置已保存并热加载', reloadDead ? 'warn' : 'ok');
+          clearConfDirty();
           const okJump = $('#conf-save-jump'); if (okJump) okJump.style.display = 'none';
           await loadConfig();
           /* 自己的保存也改变文件 mtime——基线随成功落盘前移，否则紧接着的
