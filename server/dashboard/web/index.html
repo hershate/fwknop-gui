@@ -6638,6 +6638,13 @@ function openStanzaEditor(index) {
       <button class="btn" id="se-save" title="保存并热加载生效（Ctrl/⌘+S）">${icon('i-save',14)}保存并生效</button>
     </div>`, true);
   seDirty = false;  /* 模块级（beforeunload 守卫共享）；打开新编辑器时清零 */
+  /* 打开时字段值快照：保存按字段 diff 提交而非整表提交——并发会话对同
+     stanza 其他字段的改动不会被本编辑器的陈旧视图静默盖回（与 fwknopd.conf
+     乐观锁同类的覆盖面，此处按字段粒度收窄） */
+  const seOpenVals = {};
+  $$('#modal-root [data-sf]').forEach(el => {
+    seOpenVals[el.dataset.sf] = el.type === 'checkbox' ? (el.checked ? 'Y' : '') : el.value.trim();
+  });
   /* 未修改时禁用保存：避免零改动误触产生无意义的备份与热加载 */
   const seSave = $('#se-save');
   seSave.disabled = true;
@@ -6851,12 +6858,18 @@ function openStanzaEditor(index) {
     }
     const fields = {};
     $$('#modal-root [data-sf]').forEach(el => {
-      fields[el.dataset.sf] = el.type === 'checkbox' ? (el.checked ? 'Y' : '') : el.value.trim();
+      const v = el.type === 'checkbox' ? (el.checked ? 'Y' : '') : el.value.trim();
+      /* 只提交相对打开快照有变化的字段（服务端逐字段手术式落盘，未提交
+         的字段保持文件现状——并发会话的改动因此不被陈旧视图盖回） */
+      if (v !== (seOpenVals[el.dataset.sf] || '')) fields[el.dataset.sf] = v;
     });
     /* 死配置按删除处理（服务端 "" = 移除指令行）：与签发卡片「提交时忽略」同语义，
-       避免无指纹授权残留宽限期、无 TOTP 种子授权残留跳变指令 */
-    if (fields.REQUIRE_FINGERPRINT !== 'Y') fields.FINGERPRINT_TOFU_TIMEOUT = '';
+       避免无指纹授权残留宽限期、无 TOTP 种子授权残留跳变指令；判定取编辑器
+       当前态而非 diff 结果（本就死配置的残留即使用户未触碰也照常清理） */
+    const fpNow = (document.querySelector('#modal-root [data-sf="REQUIRE_FINGERPRINT"]') || {}).checked;
+    if (!fpNow) fields.FINGERPRINT_TOFU_TIMEOUT = '';
     if (!s.has_totp) { fields.TOTP_PORT_RANGE = ''; fields.REQUIRE_TOTP_PORT_MATCH = ''; }
+    if (!Object.keys(fields).length) { toast('没有需要保存的修改', 'ok', 2000); return; }
     $('#se-save').disabled = true;
     const eb0 = $('#se-err'); if (eb0) eb0.style.display = 'none';  /* 重试时收起上次错误 */
     try {
