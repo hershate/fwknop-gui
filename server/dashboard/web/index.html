@@ -6571,6 +6571,13 @@ async function collectDiag() {
     fstat('审计日志', F.audit), fstat('指标文件', F.metrics),
     fstat('TOFU 状态', F.tofu), fstat('授权配置', F.access_conf), fstat('服务配置', F.fwknopd_conf),
     fstat('操作日志', F.oplog),
+    /* 磁盘余量：远程分诊「日志/事件不写了」的第一嫌疑是分区写满（概览已带
+       Statfs 余量，随包零成本） */
+    '磁盘余量: ' + (() => { const dk = d && d.disk;
+      if (!dk) return '?';
+      if (dk.error) return '读取失败：' + dk.error;
+      const pct = dk.total > 0 ? Math.round(100 * dk.avail / dk.total) : 100;
+      return `运行目录分区可用 ${fmtSize(dk.avail)}（${pct}%）` + (dk.avail < 1073741824 || pct < 15 ? ' ⚠ 偏低' : ''); })(),
     /* 备份堆积与近期异常是远程排障高频追问项，一并打包；登录失败计数同理
        （「面板是否正被试密码」安全分诊第一眼要看，概览接口本就有该字段） */
     '审计备份: ' + (d && d.audit_backups ? `${d.audit_backups.count} 个（${fmtSize(d.audit_backups.size)}）` : '—'),
