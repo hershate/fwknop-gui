@@ -2386,6 +2386,7 @@ async function loadOverview() {
          （与 ev 徽标「在事件页即视为已知悉」不同——占位/悬空/登录失败是
          持续状态计数而非瞬时感知，勿改成同款隐藏） */
       if (afn) { afb.textContent = afn > 99 ? '99+' : afn; afb.title = `最近 15 分钟 ${afn} 次登录失败，点击前往操作日志核查来源 IP`; afb.setAttribute('aria-label', afb.title); }
+      updateDocTitle();  /* 登录失败数进标签页标题（后台标签感知爆破；其余路径复用上次轮询值） */
     }
   } catch (e) {
     setConn(false);
@@ -3005,12 +3006,14 @@ window.addEventListener('storage', ev => {
   else if (ev.key === DEV_ALIAS_KEY) renderTOFU();  /* renderTOFU 自带空数据守卫 */
 });
 
-/* 标签页标题显示最近 15 分钟异常事件数 + 未读通知数，后台标签也能感知 */
+/* 标签页标题显示高优先状态，后台标签也能感知：‼登录失败（面板被爆破，
+   最高严重级）→（N 异常）SPA 异常 →[N 错误]未读通知 */
 function updateDocTitle() {
   const bad = countRecentBad();
   const un = S.notifUnread || 0;
+  const af = (S.overview && S.overview.auth_fail_15m) || 0;
   const pg = (typeof PAGE_TITLES !== 'undefined' && PAGE_TITLES[S.page]) || '';
-  document.title = (bad ? `(${bad} 异常) ` : '') + (un ? `[${un > 99 ? '99+' : un} 错误] ` : '') +
+  document.title = (af ? `‼${af > 99 ? '99+' : af} 登录失败 ` : '') + (bad ? `(${bad} 异常) ` : '') + (un ? `[${un > 99 ? '99+' : un} 错误] ` : '') +
     (pg ? pg + ' · ' : '') + 'fwknop 运维面板' + panelInstSuffix();
   /* 概览快速操作同步标注：不用切到事件页就知道有几条异常 */
   const qb = $('#qa-bad');
