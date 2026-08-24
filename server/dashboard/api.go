@@ -116,8 +116,12 @@ func handleOverview(w http.ResponseWriter, r *http.Request) {
 			"tofu":         statFile(tofuPath()),
 			"access_conf":  statFile(cfg.AccessConf),
 			"fwknopd_conf": statFile(cfg.FwknopdConf),
+			"oplog":        statFile(opLogPath()),
 		},
 		"audit_backups": auditBackupStat(),
+		/* 配置自动备份堆积（644 回滚体系的下游口径）：与审计备份同款的
+		   远程排障追问项，诊断打包「备份是否已堆积到需要清理」用 */
+		"config_backups": configBackupStat(),
 		/* 近 15 分钟登录失败计数：面板开启期间正在发生的密码爆破/尝试，
 		   此前只能在关于页 oplog 或下次登录 toast 里察觉——概览轮询自带
 		   后进门即见。成本与 parseAccessConf 同级（256KB 尾窗扫读） */
@@ -151,6 +155,27 @@ func auditBackupStat() map[string]interface{} {
 	}
 	sort.Sort(sort.Reverse(sort.StringSlice(base)))  /* 新的在前 */
 	return map[string]interface{}{"count": len(names), "size": total, "names": base, "sizes": sizes}
+}
+
+// configBackupStat 汇总配置自动备份（.bak-<unix>）的数量与总字节——诊断
+// 「备份在堆积」追问项；与 listConfigBackups 的面板截断列表不同，此处
+// 是不截断的全量真值（白名单正则同款，散装 .bak 不计入）。
+func configBackupStat() map[string]interface{} {
+	var n int
+	var total int64
+	for _, p := range []string{cfg.FwknopdConf, cfg.AccessConf} {
+		names, _ := filepath.Glob(p + ".bak-*")
+		for _, name := range names {
+			if !configBakName.MatchString(filepath.Base(name)) {
+				continue
+			}
+			if st, err := os.Stat(name); err == nil {
+				n++
+				total += st.Size()
+			}
+		}
+	}
+	return map[string]interface{}{"count": n, "size": total}
 }
 
 func handleEvents(w http.ResponseWriter, r *http.Request) {

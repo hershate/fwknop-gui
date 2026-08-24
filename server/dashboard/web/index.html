@@ -6479,9 +6479,11 @@ function collectDiag() {
     '访问授权: ' + (d && d.stanzas ? `${d.stanzas.active} 个生效 / ${d.stanzas.disabled} 个已禁用` : '?'),
     fstat('审计日志', F.audit), fstat('指标文件', F.metrics),
     fstat('TOFU 状态', F.tofu), fstat('授权配置', F.access_conf), fstat('服务配置', F.fwknopd_conf),
+    fstat('操作日志', F.oplog),
     /* 备份堆积与近期异常是远程排障高频追问项，一并打包；登录失败计数同理
        （「面板是否正被试密码」安全分诊第一眼要看，概览接口本就有该字段） */
     '审计备份: ' + (d && d.audit_backups ? `${d.audit_backups.count} 个（${fmtSize(d.audit_backups.size)}）` : '—'),
+    '配置备份: ' + (d && d.config_backups ? `${d.config_backups.count} 个（${fmtSize(d.config_backups.size)}）` : '—'),
     /* 异常构成明细：总数相同但「重放风暴」与「端口不匹配」是完全不同的
        处置路径（前者攻击特征、后者配置错位），分诊第一眼就要看到 */
     '近 15 分钟异常事件: ' + countRecentBad() + ' 条' + (() => {
@@ -6701,6 +6703,7 @@ function renderAbout() {
     ['TOFU 状态', frow(F.tofu)],
     ['授权配置', frow(F.access_conf)],
     ['服务配置', frow(F.fwknopd_conf)],
+    ['操作日志', frow(F.oplog)],
     /* 审计清理备份：列出全部 .bak 文件名（含备份时间与单文件大小）与面板内下载/删除入口 */
     ...((d && d.audit_backups && d.audit_backups.count) ? [[
       '审计备份',
