@@ -46,7 +46,7 @@
 - **协议版本**：`FKO_PROTOCOL_VERSION` 由上游 `3.0.0` 升级为 **`4.0.0`**（[lib/fko.h:56](../lib/fko.h#L56)）。
 - **客户端版本号**：仍是 `2.6.11`（`fwknop client 2.6.11, FKO protocol version 4.0.0`）。
 - **已完成并验证**（Windows / MinGW）：阶段 1（TOTP+端口跳变）、阶段 3（v4 device_id）、阶段 5（CLI 易用性）、**Windows 便携版托盘程序**（[client/tray/](../client/tray/)）。
-- **已完成并验证**（Linux）：阶段 2（服务端范围监听）、阶段 4（零信任硬化+审计+`fwknopd-admin` 全命令集/授权 QR/凭证文件/TOFU）、阶段 6 测试（`test/run_fork_tests.sh` **115/115 PASS**）、阶段 5+ 的 **WebUI 运维面板（当前 2.9.0：服务启停/配置可视化编辑/方案一键切换/签发闭环/一键体检，完全汉化）** 与 TUI 壳。
+- **已完成并验证**（Linux）：阶段 2（服务端范围监听）、阶段 4（零信任硬化+审计+`fwknopd-admin` 全命令集/授权 QR/凭证文件/TOFU）、阶段 6 测试（`test/run_fork_tests.sh` **124/124 PASS**）、阶段 5+ 的 **WebUI 运维面板（当前 2.9.0：服务启停/配置可视化编辑/方案一键切换/签发闭环/一键体检，完全汉化）** 与 TUI 壳。
 - **待办**：透明代理 / Qt GUI（大型 greenfield）、打包与迁移文档。
 - **服务端管理决策（2026-08-13）**：CLI 先行、凭证默认加密（scrypt+AES-GCM）、TOFU 指纹绑定默认启用。详见 [03-二次开发增强方案.md §6](03-二次开发增强方案.md)。
 - **许可证**：GPL v2+（见 [COPYING](../COPYING)）。

@@ -277,6 +277,9 @@ if [ -x "$GOBIN" ]; then
         printf 'ANY|alice|tcp/22 ZGV2MQ==\n' > "$D/run/fwknop_tofu.state"
         "$ADMIN" user add dashdemo --server 203.0.113.10 --user alice --no-qr 2>/dev/null \
             | sed -n '/### fwknopd-admin user/,/^$/p' > "$D/access.conf"
+        # 明文 HMAC_KEY 写法 stanza（上游/手抄兼容形态，access.c:1940 同样接受；
+        # 面板解析器曾只认 HMAC_KEY_BASE64——防回归）
+        printf '\n### fwknopd-admin user: hmactest\nSOURCE ANY\nKEY_BASE64 aGVsbG8gd29ybGQ=\nHMAC_KEY plainhmac-testvalue\nOPEN_PORTS tcp/2299\n' >> "$D/access.conf"
         printf 'FWKNOP_RUN_DIR %s/run\nPCAP_INTF eth0\nPCAP_PORT_RANGE 30000-60000\n' "$D" > "$D/fwknopd.conf"
         DASHBOARD_TOKEN=fttok /tmp/ft_dashboard -run-dir "$D/run" -addr 127.0.0.1:18099 \
             -access-conf "$D/access.conf" -fwknopd-conf "$D/fwknopd.conf" \
@@ -311,14 +314,25 @@ if [ -x "$GOBIN" ]; then
             && ok "配置编辑器含快速模板（一键合并）" || bad "配置模板界面"
         wget -qO- --header="$TK" http://127.0.0.1:18099/api/overview 2>/dev/null | grep -q '"daemon"' \
             && ok "面板 /api/overview" || bad "面板 overview API"
+        grep -q '无头令牌已启用' /tmp/ft_dash.log \
+            && ok "启动日志提示无头令牌模式" || bad "启动日志令牌提示"
         wget -qO- --header="$TK" http://127.0.0.1:18099/api/users 2>/dev/null | grep -q 'dashdemo' \
             && ok "面板 /api/users 解析 access.conf" || bad "面板 users API"
         wget -qO- --header="$TK" http://127.0.0.1:18099/api/users 2>/dev/null | grep -q 'KEY_BASE64.*[A-Za-z0-9+/=]\{8\}' \
             && bad "面板 /api/users 泄露密钥" || ok "面板 /api/users 掩码密钥"
+        wget -qO- --header="$TK" http://127.0.0.1:18099/api/users 2>/dev/null \
+            | grep -q '"name":"hmactest"[^}]*"has_hmac":true' \
+            && ok "明文 HMAC_KEY 写法识别 has_hmac" || bad "明文 HMAC_KEY has_hmac"
         wget -qO- --header="$TK" http://127.0.0.1:18099/api/config 2>/dev/null | grep -q 'PCAP_PORT_RANGE' \
             && ok "面板 /api/config 解析 fwknopd.conf" || bad "面板 config API"
         wget -qO- --header="$TK" http://127.0.0.1:18099/api/tofu 2>/dev/null | grep -q '"stanza_key":"ANY|alice|tcp/22"' \
             && ok "面板 /api/tofu 结构化输出" || bad "面板 tofu API"
+        wget -qO- --header="$TK" http://127.0.0.1:18099/api/overview 2>/dev/null \
+            | grep -q '"access_conf":{[^}]*"mode":' \
+            && ok "overview 文件项透出权限位（mode）" || bad "overview mode 字段"
+        wget -qO- --header="$TK" http://127.0.0.1:18099/api/overview 2>/dev/null \
+            | grep -q '"panel_auth":{' \
+            && ok "overview 含面板认证文件项" || bad "overview panel_auth"
         # 写路径：要求令牌，然后经 admin CLI 包装执行解绑
         wget -qO- --post-data 'stanza_key=x&device_id=y' http://127.0.0.1:18099/api/admin/tofu/unbind 2>/dev/null \
             && bad "无令牌解绑应当失败" || ok "写端点要求令牌"
@@ -361,6 +375,22 @@ if [ -x "$GOBIN" ]; then
         wget -qO- --post-data "name=$BAK" --header='Authorization: Bearer fttok' \
             http://127.0.0.1:18099/api/admin/audit/rmbak 2>/dev/null | grep -q '已删除备份' \
             && [ ! -e "$D/run/$BAK" ] && ok "面板删除审计备份" || bad "备份删除"
+
+        # 同秒重复清理：备份名防撞序号化（-2）。预置当前至 +2 秒窗的占位备份，
+        # 保证清理时刻必撞名（确定性，不靠两次清理恰好同秒的运气）
+        for t in "$(date +%Y%m%d-%H%M%S)" "$(date -d '+1 sec' +%Y%m%d-%H%M%S)" "$(date -d '+2 sec' +%Y%m%d-%H%M%S)"; do
+            printf 'x\n' > "$D/run/fwknopd_audit.log.bak-$t"
+        done
+        printf '{"time":1723520001,"event":"open"}\n' > "$D/run/fwknopd_audit.log"
+        wget -qO- --post-data '' --header='Authorization: Bearer fttok' \
+            http://127.0.0.1:18099/api/admin/audit/clear >/dev/null 2>&1
+        ls "$D/run"/fwknopd_audit.log.bak-*-2 >/dev/null 2>&1 \
+            && ok "同秒撞名备份防撞（-2 序号）" || bad "备份防撞"
+        BAK2=$(basename "$D/run"/fwknopd_audit.log.bak-*-2 2>/dev/null | head -1)
+        wget -qO- --post-data "name=$BAK2" --header='Authorization: Bearer fttok' \
+            http://127.0.0.1:18099/api/admin/audit/rmbak 2>/dev/null | grep -q '已删除备份' \
+            && ok "防撞序号名过删除白名单" || bad "序号名白名单"
+        rm -f "$D/run"/fwknopd_audit.log.bak-*
 
         # 一键签发：apply=1 自动写入 access.conf（预检+备份），同名查重拒绝
         wget -qO- --post-data 'name=autoadd1&server=203.0.113.10&user=bob&apply=1' \
@@ -465,6 +495,8 @@ if [ -x "$GOBIN" ]; then
             && ok "未初始化：API 一律 401" || bad "未初始化 401"
         wget -qO- http://127.0.0.1:18098/api/auth/state 2>/dev/null | grep -q '"needs_setup":true' \
             && ok "auth/state 报告需要初始化" || bad "auth/state"
+        grep -q '尚未初始化' /tmp/ft_dash2.log \
+            && ok "启动日志提示未初始化引导" || bad "启动日志初始化提示"
         [ "$(code --post-data '{"password":"short1x","confirm":"short1x"}' --header="$CJ" \
             http://127.0.0.1:18098/api/setup)" = 400 ] \
             && ok "初始化拒绝过短密码" || bad "短密码校验"
@@ -562,6 +594,17 @@ except urllib.error.HTTPError as e:
         wget -qO- --header="$TK3" http://127.0.0.1:18097/api/overview 2>/dev/null | grep -q '"daemon"' \
             && ok "-read-only 读接口正常" || bad "-read-only 读接口"
         kill "$DPID3" 2>/dev/null; wait "$DPID3" 2>/dev/null; rm -rf "$D3"
+
+        # 操作日志跨轮转代际：当前文件不足窗口时列表续读上一代 .bak；
+        # 导出拼接两代（JSONL 串接，旧→新）
+        printf '{"time":1723500000,"op":"旧代标记","ok":true}\n' > "$D/run/dashboard_ops.jsonl.bak"
+        wget -qO- --header="$TK" 'http://127.0.0.1:18099/api/oplog?n=1000' 2>/dev/null \
+            | grep -q '旧代标记' \
+            && ok "操作日志列表跨代续读 .bak" || bad "oplog 跨代续读"
+        wget -qO- --header="$TK" http://127.0.0.1:18099/api/oplog/download 2>/dev/null > /tmp/ft_opdl.jsonl
+        grep -q '旧代标记' /tmp/ft_opdl.jsonl && grep -q '签发凭证' /tmp/ft_opdl.jsonl \
+            && ok "操作日志导出拼接两代" || bad "oplog 导出拼接"
+        rm -f "$D/run/dashboard_ops.jsonl.bak" /tmp/ft_opdl.jsonl
 
         kill "$DPID" 2>/dev/null; wait "$DPID" 2>/dev/null
         rm -f /tmp/ft_dashboard; rm -rf "$D"
