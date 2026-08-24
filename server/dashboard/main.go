@@ -173,6 +173,14 @@ func main() {
 
 	log.Printf("fwknop-dashboard %s listening on http://%s (run-dir=%s write=%v)",
 		version, cfg.Addr, cfg.RunDir, cfg.EnableWrite)
+	/* 启动即交代认证形态：未初始化时操作员在终端第一眼就知道首访要做什么；
+	   无头令牌模式明示启用（不打印令牌本体，日志不落秘密） */
+	if setupRequired() {
+		log.Printf("提示：尚未初始化——首次访问 http://%s 将引导设置管理员密码", cfg.Addr)
+	}
+	if cfg.Token != "" {
+		log.Printf("提示：DASHBOARD_TOKEN 无头令牌已启用（API 以 Authorization: Bearer 访问）")
+	}
 	srv := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           securityHeaders(mux),
