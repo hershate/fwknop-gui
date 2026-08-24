@@ -1206,6 +1206,13 @@ try {
   const nl0 = JSON.parse(sessionStorage.getItem('fwknop-notif-log') || '[]');
   S.notifLog = Array.isArray(nl0) ? nl0 : [];
 } catch (e) { S.notifLog = []; }
+/* 已读水位随历史一并恢复：否则刷新后水位归零，恢复出的全部历史都误挂
+   「新」标记，新旧分界完全失真（历史本身是 sessionStorage 会话级，水位同域）。
+   校验：有限正数且不在未来（容忍 60s 时钟回拨/跨标签页写时钟差） */
+try {
+  const rts0 = parseFloat(sessionStorage.getItem('fwknop-notif-read-ts') || '');
+  if (isFinite(rts0) && rts0 > 0 && rts0 <= Date.now() / 1000 + 60) S.notifReadTs = rts0;
+} catch (e) {}
 function notifLog(msg, kind) {
   if (!Array.isArray(S.notifLog)) S.notifLog = [];  /* 兜底：任何异常写入路径都不炸通知 */
   const last = S.notifLog[S.notifLog.length - 1];
@@ -1334,6 +1341,7 @@ $('#notif-btn').onclick = () => {
   };
   S.notifUnread = 0;
   S.notifReadTs = Date.now() / 1000;  /* 已读水位：下次打开时用于「新」标记 */
+  try { sessionStorage.setItem('fwknop-notif-read-ts', String(S.notifReadTs)); } catch (e) {}
   $('#notif-badge').style.display = 'none';
   $('#notif-btn').title = '通知历史';
   updateDocTitle();  /* 已读后标题中的未读计数同步清零 */
