@@ -1328,6 +1328,9 @@ $('#notif-btn').onclick = () => {
       <button class="btn ghost small" id="notif-erronly" style="padding:2px 10px;font-size:12px"></button>
     </div>
     <div id="notif-list" style="max-height:50vh;overflow:auto"></div>
+    /* 窗口透明度（与事件页 500 条/oplog 到顶说明同一心智）：满 50 条后更早
+       记录静默丢弃——不标注时用户翻到底会误判「这就是全部历史」 */
+    ${(S.notifLog || []).length >= 50 ? `<div class="hint" style="font-size:11.5px;margin-top:6px" title="通知历史为本机界面记录（sessionStorage，标签页级），最多保留最近 50 条，更早的已自动丢弃；持久留档请用下方「导出」">窗口：最近 50 条 · 更早已自动丢弃（导出可留档）</div>` : ''}
     <div class="mf">
       <button class="btn ghost" id="notif-export" title="把当前视图（含「仅看错误」过滤）的通知历史下载为文本文件">导出</button>
       <button class="btn ghost" id="notif-clear" title="清空本会话的通知历史（仅界面记录，不影响审计日志）">清空历史</button>
