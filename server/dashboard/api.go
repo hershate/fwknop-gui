@@ -93,6 +93,19 @@ func handleOverview(w http.ResponseWriter, r *http.Request) {
 			"pid_file": cfg.PidFile,
 			"started":  started,
 		},
+		/* fwknopd 二进制 fork 校验（结果有缓存，非每轮读盘）：上游二进制
+		   静默忽略 fork 指令——概览进门即见比等人体检更符合该故障的隐蔽性 */
+		"fwknopd_bin": func() map[string]interface{} {
+			fork, path, note, err := fwknopdForkCheck()
+			m := map[string]interface{}{"fork": fork, "path": path}
+			if note != "" {
+				m["note"] = note
+			}
+			if err != nil {
+				m["error"] = err.Error()
+			}
+			return m
+		}(),
 		"admin_tool": map[string]interface{}{
 			"available": adminOK,
 			"status":    adminText,

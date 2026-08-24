@@ -2508,6 +2508,14 @@ function renderStatusCards() {
     if ((d.auth_fail_15m || 0) > 0) warnHtml += `<div class="warn-strip" style="margin-bottom:12px;border-color:var(--red)">${icon('i-warn',15)}<div style="flex:1">
       最近 15 分钟有 <b>${d.auth_fail_15m}</b> 次<b>登录失败</b>——若非本人误输，可能正在遭遇密码尝试，请到操作日志核查来源 IP。
       <button class="btn ghost small" id="ov-authfail-go" style="margin-left:8px;padding:1px 8px;font-size:11.5px" title="前往「关于」页操作日志，按「登录失败」搜索核查来源 IP">核查来源</button></div></div>`;
+    /* fwknopd 非 fork 二进制的被动预警：比盘满更隐蔽——-V 与上游同印
+       2.6.11 无法区分，未知指令仅告警忽略，装错二进制后「配置全对但
+       TOTP/绑定/审计全不工作」。红色常驻直到换二进制（结果服务端缓存，
+       换二进制 mtime 变化自动重判） */
+    const fb = d.fwknopd_bin;
+    if (fb && !fb.error && !fb.note && fb.fork === false) warnHtml += `<div class="warn-strip" style="margin-bottom:12px;border-color:var(--red)">${icon('i-warn',15)}<div style="flex:1">
+      <b>fwknopd 疑似上游二进制</b>（${esc(fb.path || '?')}）：TOTP 跳变/设备绑定/审计等 fork 功能将<b>静默失效</b>——未知指令仅告警不报错，预检检不出。请换用本 fork 构建的 fwknopd，面板以 <code>-fwknopd</code> 参数指定路径。
+      <button class="btn ghost small" id="ov-fork-go" style="margin-left:8px;padding:1px 8px;font-size:11.5px" title="打开一键体检查看全部检查项">运行体检</button></div></div>`;
     /* 磁盘余量被动预警：体检是主动项，盘满不会等人来检——余量低于阈值
        （与体检「磁盘余量」同口径）进门即见，直达备份管理腾空间 */
     const dk0 = d.disk;
@@ -2527,6 +2535,8 @@ function renderStatusCards() {
     };
     const dkg = $('#ov-disk-go');
     if (dkg) dkg.onclick = () => showPage('about');
+    const fkg = $('#ov-fork-go');
+    if (fkg) fkg.onclick = () => runCheckup();
     const lbd = $('#ov-loopback-dismiss');
     if (lbd) lbd.onclick = () => {
       try { localStorage.setItem('fwknop-warn-loopback-dismissed', la); } catch (e2) {}
@@ -6553,15 +6563,16 @@ function clockDriftWarn(d) {
   return `<div class="warn-strip" style="margin-bottom:12px">${icon('i-warn',15)}<div>
     浏览器与服务器时钟偏差约 <b>${Math.abs(drift)}</b> 秒（${drift > 0 ? '浏览器快' : '服务器快'}）。浏览器不参与 TOTP 校验，但面板的相对时间与倒计时会随之失真；若偏差源于服务器时钟失准（浏览器通常 NTP 准确），NTP 正常的敲门设备与服务器将呈同量级偏差，合法敲门会被判「过期」拒绝——请校准服务器 NTP。</div></div>`;
 }
-async function collectDiag() {
+function collectDiag() {
   const d = S.overview;
   const F = (d && d.files) || {};
   const drift = d && d.now ? Math.round(Date.now() / 1000 - d.now) : 0;
   const fstat = (k, f) => `${k}: ${f ? (f.exists ? f.path + ' (' + fmtSize(f.size) + ')' : f.path + '（不存在）') : '—'}`;
   /* fwknopd 二进制 fork 校验入包：远程分诊「跳变/绑定不工作」的第一嫌疑
-     （上游二进制静默忽略 fork 指令，预检检不出），服务端有缓存不增负担 */
-  const fork = await api('/api/service/forkcheck').catch(() => null);
-  const forkTxt = !fork ? '校验请求失败'
+     （上游二进制静默忽略 fork 指令，预检检不出）；数据随 overview 内嵌
+     （服务端缓存），同步零成本 */
+  const fork = d && d.fwknopd_bin;
+  const forkTxt = !fork ? '?'
     : fork.error ? '不可用：' + fork.error
     : fork.note ? fork.note
     : fork.fork ? 'fork 构建（扩展指令标记齐全）'
@@ -6840,7 +6851,7 @@ function renderAbout() {
       <button class="btn ghost small" id="about-diag" title="复制版本/时钟/服务/文件等非敏感诊断信息（报障时随附）">${icon('i-copy',13)} 复制诊断信息</button>
     </div>`;
   /* 一键打包排障所需的非敏感状态（版本/时钟/服务/文件），贴给运维即可定位 */
-  $('#about-diag').onclick = async () => copyText(await collectDiag(), '诊断信息 ');
+  $('#about-diag').onclick = () => copyText(collectDiag(), '诊断信息 ');
   /* 面板别名行内编辑：Enter/blur 保存、Esc 取消（done 幂等守卫防 Enter
      重渲染后 blur 二次触发）；保存即同步品牌位与标签页标题 */
   const aed = $('#about-alias-ed');
@@ -8137,7 +8148,7 @@ $('#qa-profile').onclick = () => {
   if (S.writeEnabled) $('#pf-name').focus();
 };
 /* 与关于页「复制诊断信息」同一数据源（collectDiag），概览页一键打包 */
-$('#qa-diag').onclick = async () => copyText(await collectDiag(), '诊断信息 ');
+$('#qa-diag').onclick = () => copyText(collectDiag(), '诊断信息 ');
 
 /* ==================== 一键体检 ====================
    把散落各页的部署检查聚合成一份清单：全部数据来自既有端点（并行拉取），
@@ -8155,13 +8166,13 @@ async function runCheckup() {
     /* 防火墙规则是只读 GET（handleFwList 无写门禁，svc-fwlist 钮只读也可用），
        不随预检跳过 */
     api('/api/service/fwrules').catch(() => null),
-    api('/api/service/forkcheck').catch(() => null),
   ];
   /* 预检走写门禁（requirePost），只读模式跳过；fwrules 只读不跳 */
   if (S.writeEnabled) jobs.splice(3, 0, api('/api/service/validate', { method:'POST' }).catch(() => null));
-  let ov, cfg, us, val, fwr, fork;
-  if (S.writeEnabled) [ov, cfg, us, val, fwr, fork] = await Promise.all(jobs);
-  else [ov, cfg, us, fwr, fork] = await Promise.all(jobs);
+  let ov, cfg, us, val, fwr;
+  if (S.writeEnabled) [ov, cfg, us, val, fwr] = await Promise.all(jobs);
+  else [ov, cfg, us, fwr] = await Promise.all(jobs);
+  const fork = ov && ov.fwknopd_bin;  /* fork 校验已内嵌 overview（服务端缓存） */
   const items = [];  /* {st:'ok'|'warn'|'bad'|'skip', t, d, act:{label, title, onclick}} */
   const entries = (cfg && cfg.entries) || [];
   const entVal = k => { const e = entries.find(x => x.key === k); return e ? String(e.value || '').trim() : ''; };
@@ -8188,7 +8199,7 @@ async function runCheckup() {
   /* 2.5 fwknopd 二进制 fork 校验：fork 与上游同印 2.6.11（-V 无法区分），
      fwknopd 对未知指令仅告警忽略——上游二进制会让 TOTP 跳变/设备绑定/审计
      静默失效且预检通过，是「配置全对但功能不工作」的最隐蔽部署错位 */
-  if (!fork) items.push({ st:'warn', t:'fwknopd 二进制', d:'校验请求失败（网络/服务异常）' });
+  if (!fork) items.push({ st:'skip', t:'fwknopd 二进制', d:'概览数据不可用（网络/服务异常），本项跳过' });
   else if (fork.error) items.push({ st:'bad', t:'fwknopd 二进制不可用', d:fork.error + '——服务控制链路的全部操作都会失败' });
   else if (fork.note) items.push({ st:'skip', t:'fwknopd 二进制', d:fork.note });
   else if (!fork.fork) items.push({ st:'bad', t:'fwknopd 疑似上游二进制',
