@@ -2526,7 +2526,8 @@ $('#status-cards').addEventListener('click', ev => {
         if (r.ok) {
           /* 增量轮询模式下必须重置本地事件缓存：否则 since 水位悬空，
              清空后的空审计文件永远不会把旧事件替换下去 */
-          S.events = []; S.evNewest = 0; S.evPrevNewest = 0;
+          S.events = []; S.evNewest = 0; S.evPrevNewest = 0; S.evNewSince = 0;
+          $('#ev-new-pill').style.display = 'none';  /* 水位全重置，残留 pill 是死引导 */
           if (S.evFresh) S.evFresh.clear();
           if (S.evExpanded) S.evExpanded.clear();
           /* 回执弹窗：给出备份文件名与面板内下载入口，闭环「清理后取回」 */
@@ -2771,12 +2772,18 @@ async function loadEvents() {
     /* 新事件检测：停在非第一页或带筛选时提示「有 N 条新事件」 */
     const newest = (S.events[0] && S.events[0].time) || 0;
     if (S.evNewest && newest > S.evNewest) {
-      const n = S.events.filter(e => (e.time || 0) > S.evNewest).length;
       const viewing = S.evPage > 0 || S.evFilter !== 'all' || !!S.evQuery;
       const pill = $('#ev-new-pill');
-      if (S.page === 'events' && viewing && n) {
-        pill.textContent = `↑ 有 ${n} 条新事件，点击查看`;
-        pill.style.display = '';
+      if (S.page === 'events' && viewing) {
+        /* 锚定基线：pill 未展示时以「上次已见水位」为起点，展示期间基线不动，
+           计数随轮询单调累积——旧实现每轮只报当批新增（evNewest 每轮推进），
+           连到两批后 pill 数字反而变小，点击所见比文案多（承诺不一致） */
+        if (pill.style.display === 'none' || !S.evNewSince) S.evNewSince = S.evNewest;
+        const n = S.events.filter(e => (e.time || 0) > S.evNewSince).length;
+        if (n) {
+          pill.textContent = `↑ 有 ${n} 条新事件，点击查看`;
+          pill.style.display = '';
+        }
       }
     }
     S.evNewest = newest;
@@ -2934,6 +2941,7 @@ $('#ev-expand-all').onclick = () => {
 
 $('#ev-new-pill').onclick = () => {
   S.evPage = 0; S.evFilter = 'all'; S.evQuery = ''; $('#event-search').value = '';
+  S.evNewSince = 0;  /* 已回到最新现场，累积基线清零 */
   $('#ev-new-pill').style.display = 'none';
   renderEvents();
 };
@@ -3313,7 +3321,7 @@ function renderEvents() {
     }));
   } catch (e) {}
   syncSearchClear();
-  if (S.evPage === 0 && S.evFilter === 'all' && !S.evQuery) $('#ev-new-pill').style.display = 'none';
+  if (S.evPage === 0 && S.evFilter === 'all' && !S.evQuery) { $('#ev-new-pill').style.display = 'none'; S.evNewSince = 0; }
   renderEventChips();
   renderTopIps();
   renderEvHeat();
