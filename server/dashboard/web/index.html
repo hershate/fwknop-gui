@@ -8252,7 +8252,8 @@ async function runCheckup() {
   const auditFile = ov && ov.files && ov.files.audit;
   if (!cfg) items.push({ st:'warn', t:'审计输出', d:'配置数据拉取失败（网络/服务异常），ENABLE_AUDIT 状态无法判定' });
   else if (auditOff) items.push({ st:'bad', t:'审计输出已关闭', d:'ENABLE_AUDIT N——事件页/指标卡将永远没有数据（audit.c 有事件才建文件）', act: drillConf('ENABLE_AUDIT') });
-  else if (auditFile && !auditFile.exists) items.push({ st:'warn', t:'审计文件尚不存在', d:'首个 SPA 事件产生后自动创建；若已有敲门仍无文件，检查 fwknopd 运行目录与 AUDIT_FILE 配置' });
+  else if (auditFile && !auditFile.exists) items.push({ st:'warn', t:'审计文件尚不存在', d:'首个 SPA 事件产生后自动创建；若已有敲门仍无文件，检查 fwknopd 运行目录与 AUDIT_FILE 配置',
+    act:{ label:'查看事件页', title:'打开事件页查看空态分流提示（「尚无事件」与「审计缺失」的现场判别）', onclick: () => showPage('events') } });
   /* ov 失败时文件状态未知：开关已验证为开（文件本就随首个事件才创建，
      缺失非硬故障），标注未验证而非沉默 */
   else items.push(auditFile
