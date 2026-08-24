@@ -8155,11 +8155,18 @@ $('#qa-diag').onclick = () => copyText(collectDiag(), '诊断信息 ');
    把散落各页的部署检查聚合成一份清单：全部数据来自既有端点（并行拉取），
    每项给出 ✓/⚠/✗ 与直达处置入口。只读模式下写门禁项（预检/防火墙）自动
    降级为「跳过」而非误判失败。 */
+let ckRunSeq = 0;  /* 体检运行序号：并发两轮（连点/关窗重开）时只有最新轮
+    有权渲染与留存摘要——#ck-body 同名存在不代表属于本轮，须按序号验明正身 */
 async function runCheckup() {
+  const myRun = ++ckRunSeq;
   openModal(`<h3>部署体检</h3>
-    <div id="ck-body"><div class="skel" style="height:140px"></div></div>
+    <div id="ck-body" data-ckrun="${myRun}"><div class="skel" style="height:140px"></div></div>
     <div class="mf"><button class="btn ghost" id="ck-rerun" title="处置异常后原地重跑全部检查，不用关窗重开">${icon('i-refresh',13)} 重新检查</button><button class="btn ghost" id="ck-copy" title="把体检结果复制为纯文本（贴工单/交接/群聊用）">${icon('i-copy',13)} 复制结果</button><button class="btn" onclick="closeModal()">关闭</button></div>`, true);
-  $('#ck-rerun').onclick = () => runCheckup();
+  const rerunBtn = $('#ck-rerun');
+  rerunBtn.onclick = () => runCheckup();
+  /* 拉取期间禁连点：两轮并发体检后到者（未必是最新轮）覆盖新结果 */
+  rerunBtn.disabled = true;
+  $('#ck-copy').disabled = true;  /* 结果未出前复制只会拿到空报告 */
   const jobs = [
     api('/api/overview').catch(() => null),
     api('/api/config').catch(() => null),
@@ -8281,11 +8288,12 @@ async function runCheckup() {
 
   const order = { bad:0, warn:1, skip:2, ok:3 };
   items.sort((a, b) => order[a.st] - order[b.st]);
-  /* 竞态守卫：拉取期间用户可能已关闭体检并打开别的弹窗（openModal 会替换
-     #modal-root 内容，#ck-body 随之移除）——向空元素渲染会抛 TypeError 触发
-     全局「异步异常」toast。已关闭则静默丢弃结果（摘要仍留存，重开即见） */
+  /* 竞态守卫两层：①已有更新一轮启动（myRun 落后）——静默退出，结果由
+     新轮落地；②弹窗已被其他弹窗替换/关闭（#ck-body 不在或不属本轮）——
+     不渲染，但摘要仍留存本机（概览重开即见），避免向 null 渲染抛 TypeError */
+  if (myRun !== ckRunSeq) return;
   const ckBody = $('#ck-body');
-  if (!ckBody) {
+  if (!ckBody || ckBody.dataset.ckrun !== String(myRun)) {
     try { localStorage.setItem('fwknop-last-checkup', JSON.stringify({ t: Math.floor(Date.now() / 1000), bad: items.filter(i => i.st === 'bad').length, warn: items.filter(i => i.st === 'warn').length, ok: items.filter(i => i.st === 'ok').length })); } catch (e) {}
     renderCheckupLast();
     return;
@@ -8318,6 +8326,8 @@ async function runCheckup() {
     const head = `fwknop 部署体检：${nBad ? nBad + ' 项异常，' : ''}${nWarn ? nWarn + ' 项需注意，' : ''}${nOk} 项通过`;
     copyText(head + '\n' + items.map(it => `${marks[it.st]} ${it.t} — ${it.d}`).join('\n'), '体检结果 ');
   };
+  rerunBtn.disabled = false;
+  $('#ck-copy').disabled = false;
 }
 /* 概览「一键体检」钮旁的上次摘要：相对时间即时效性提示（结果可能已过期，
    点一下即重跑）；异常红/注意琥珀/全过绿，一眼健康态 */
