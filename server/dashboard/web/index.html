@@ -8758,6 +8758,15 @@ $('#pf-import-file').onchange = e => {
     try {
       const r = await fetch('/api/profiles/import?name=' + encodeURIComponent(inp.value.trim()),
         { method: 'POST', headers: { 'X-Fwknop-Request': '1', 'Content-Type': 'application/gzip' }, body: file });
+      /* 裸 fetch 不能用 api()（File body），但 401/403/429 语义必须一致——
+         否则会话过期只得到一句「HTTP 401」，既不回登录页也无原因说明 */
+      if (r.status === 401) {
+        const le = $('#login-expired');
+        if (le) { le.textContent = '登录状态已失效（会话 12 小时到期、他处修改密码或面板重启均会使会话失效），请重新登录——之前的页面与事件筛选会自动还原。'; le.style.display = ''; }
+        closeModal(); showAuthView('auth-login'); return;
+      }
+      if (r.status === 403) { toast('写操作被拒绝：只读模式（-read-only）或缺少防跨站请求头', 'err'); ok.disabled = false; return; }
+      if (r.status === 429) { toast('失败次数过多，已被临时锁定', 'err'); ok.disabled = false; return; }
       const d = await r.json().catch(() => ({}));
       if (!r.ok || d.error) {
         toast('导入失败：' + (d.error || ('HTTP ' + r.status)), 'err', 6000);
