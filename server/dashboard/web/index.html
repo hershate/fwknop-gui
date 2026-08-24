@@ -5646,6 +5646,15 @@ $('#add-form').addEventListener('submit', async ev => {
       /* 回填值即新一轮未提交内容：续存草稿——连续签发中途刷新策略现场不丢
          （上面 clearAddDraft 清掉的是「已提交」的上一份草稿，语义不冲突） */
       saveAddDraft();
+      /* reset 不触发 input：name/user 已清空但即时校验提示残留（绿勾/红字挂在
+         空输入框下误导下一份填写）——按各 input 处理器的空值分支口径复位；
+         策略字段 hint 与回填值一致（值没变），server 重填同值/同空亦然，不动 */
+      ['#add-name-hint', '#add-user-hint'].forEach(sel => {
+        const h = $(sel); if (h) { h.textContent = ''; h.className = 'auth-hint'; }
+      });
+      /* 草稿恢复条使命完成：「已恢复」的那份草稿已提交，续存的是新一轮回填，
+         条继续挂着语义陈旧——且其上「清空表单」按钮会连回填的策略值一并清掉 */
+      { const ds = $('#add-draft-strip'); if (ds) ds.style.display = 'none'; }
       $('#add-next').style.display = '';  /* 连续签发入口：收起结果区回到表单顶部 */
       loadUsers();
     }
