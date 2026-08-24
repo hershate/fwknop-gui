@@ -4584,7 +4584,10 @@ $('#add-batch').onclick = () => {
     if (parts.length < 2) return;
     e.preventDefault();
     const st = ta.selectionStart, en = ta.selectionEnd;
-    ta.value = ta.value.slice(0, st) + parts.join('\n') + ta.value.slice(en);
+    const ins = parts.join('\n');
+    ta.value = ta.value.slice(0, st) + ins + ta.value.slice(en);
+    /* 光标停在插入内容末尾（value 赋值默认跳全文末尾）：连续粘贴多段时位置可预期 */
+    ta.selectionStart = ta.selectionEnd = st + ins.length;
     ta.oninput();
     toast(`已按分隔符拆分为 ${parts.length} 行（误拆可 Ctrl+Z 撤销）`, 'ok', 2500);
   });
