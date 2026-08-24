@@ -4656,21 +4656,50 @@ $('#users-raw').onclick = async () => {
     openModal(`<h3>access.conf 原文</h3>
       <div class="hint" style="margin-bottom:8px">修改于 ${fmtAbs(r.mtime)}（${fmtAgo(r.mtime)}）· 行号与授权卡片「第 X–Y 行」标注对应 · 密钥指令已掩码，复制外发安全；结构化编辑请用授权卡片</div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-        <input type="number" class="ctl" id="ar-jump" min="1" max="${(r.raw || '').split('\n').length}" placeholder="跳行" title="输入行号回车跳转并高亮——lint 报错行号与授权卡片「第 X–Y 行」标注在此直接定位（不用滚屏找行号）" style="width:88px;padding:3px 6px;font-size:12px">
-        <span class="hint" style="font-size:11.5px">lint 报错 / 卡片行号直达定位</span>
+        <input type="text" class="ctl" id="ar-jump" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="行号 / 授权名 / #序号" title="三种定位方式：①数字=行号（授权卡片「第 X–Y 行」标注）；②授权名/用户名=定位该 stanza 的 ### 标记行或 REQUIRE_USERNAME 行；③#N=lint 输出中未命名 stanza 的序号（第 N 个生效 SOURCE 块）" style="width:170px;padding:3px 6px;font-size:12px">
+        <span class="hint" style="font-size:11.5px">lint 报错（按名/#序号）与卡片行号标注直达定位</span>
       </div>
       <pre class="out-pre" id="ar-pre" style="max-height:52vh">${r.raw ? rawHtml : '<span class="hint">（空文件）</span>'}</pre>
       <div class="mf"><button class="btn ghost" id="ar-cp" title="复制掩码原文（密钥已掩码，可安全贴入工单/评审/文档；不含行号）">${icon('i-copy',13)} 复制掩码原文</button><button class="btn" onclick="closeModal()">关闭</button></div>`, true);
     $('#ar-cp').onclick = () => copyText(r.raw || '', 'access.conf 掩码原文 ');
-    /* 跳行：lint 行号/卡片「第 X–Y 行」的交叉引用闭环——直接定位并琥珀高亮，
-       不再滚屏肉眼找行号；高亮保持到下次跳转（对照多行时不闪没） */
+    /* 定位跳转：lint 按 stanza 名/#序号标识、卡片按行号标注——三模式同入一口。
+       高亮保持到下次跳转（对照多行时不闪没） */
     const jmp = $('#ar-jump');
     if (jmp) jmp.onchange = () => {
-      const n = Math.round(+jmp.value);
+      const q = jmp.value.trim();
       const rows = $$('#ar-pre .rl');
-      if (!(n >= 1 && n <= rows.length)) { toast(`行号范围 1-${rows.length}`, 'err', 2500); jmp.value = ''; return; }
+      if (!q || !rows.length) return;
+      const lines = (r.raw || '').split('\n');
+      let target = -1;
+      if (/^\d+$/.test(q)) {
+        const n = +q;
+        if (n >= 1 && n <= rows.length) target = n - 1;
+        else { toast(`行号范围 1-${rows.length}`, 'err', 2500); jmp.value = ''; return; }
+      } else {
+        const mN = q.match(/^#(\d+)$/);
+        if (mN) {
+          /* #N = lint 对未命名 stanza 的序号（stanza_display_name）：第 N 个未注释
+             SOURCE 行——注释禁用块不参与 lint 解析，序号口径一致 */
+          let seen = 0;
+          for (let i = 0; i < lines.length; i++) {
+            if (/^SOURCE\s/.test(lines[i])) { seen++; if (seen === +mN[1]) { target = i; break; } }
+          }
+          if (target < 0) { toast(`未找到第 ${mN[1]} 个生效 stanza（注释禁用块不计入序号）`, 'err', 3500); return; }
+        } else {
+          /* 名称：面板签发的 stanza 带「### user: 名」标记行；用户名：REQUIRE_USERNAME
+             值行（lint 对无名 stanza 退化用用户名作标识） */
+          for (let i = 0; i < lines.length; i++) {
+            if (lines[i].trim() === '### user: ' + q) { target = i; break; }
+          }
+          if (target < 0) {
+            const reU = new RegExp('^#?\\s*REQUIRE_USERNAME\\s+' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*$');
+            for (let i = 0; i < lines.length; i++) { if (reU.test(lines[i])) { target = i; break; } }
+          }
+          if (target < 0) { toast(`未找到「${q}」的 stanza 标记/用户名行（手写未命名 stanza 请改用 #序号或行号）`, 'err', 4000); return; }
+        }
+      }
       rows.forEach(x => { x.style.background = ''; });
-      const row = rows[n - 1];
+      const row = rows[target];
       row.style.background = 'var(--amber-soft)';
       row.scrollIntoView({ behavior: SB(), block: 'center' });
     };
@@ -4685,11 +4714,11 @@ $('#users-lint').onclick = async () => {
   btn.disabled = true;
   try {
     const r = await api('/api/admin/lint', { method: 'POST' });
-    /* 未通过时给后续动作（与预检失败→配置页同一心智）：lint 行号与原文
-       视图行号一一对应，一键直达定位；通过则无需动作 */
+    /* 未通过时给后续动作（与预检失败→配置页同一心智）：lint 按 stanza 名/#序号
+       标识问题授权（无行号），原文视图跳行框粘贴该标识即直达定位；通过则无需动作 */
     infoModal('access.conf 一致性检查（fwknopd-admin lint）',
       (r.output || '（无输出）') + (r.error ? '\n\n退出状态：' + r.error : ''), !!r.error,
-      r.error ? { label: '查看原文定位', icon: 'i-list', title: '打开 access.conf 原文视图（含行号，与 lint 输出的行号一一对应；密钥已掩码）', onclick: () => $('#users-raw').click() } : null);
+      r.error ? { label: '查看原文定位', icon: 'i-list', title: '打开 access.conf 原文视图（lint 输出按 授权名/#序号 标识 stanza，在查看器跳行框粘贴即可直达；密钥已掩码）', onclick: () => $('#users-raw').click() } : null);
   } catch (e) {} finally { btn.disabled = false; }
 };
 
