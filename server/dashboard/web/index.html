@@ -1307,6 +1307,10 @@ $('#notif-btn').onclick = () => {
   $('#notif-btn').title = '通知历史';
   updateDocTitle();  /* 已读后标题中的未读计数同步清零 */
   $('#notif-clear').onclick = () => {
+    /* 防误触确认：按钮夹在「导出」与「关闭」之间，误点即不可逆清空。用原生
+       confirm 而非 confirmDialog——单 modal-root 会被确认框顶掉，取消时连
+       通知面板上下文一并丢失（与 stanza 编辑器 modalGuard 同一取舍） */
+    if (!confirm('清空本会话的全部通知记录？（仅界面记录，不影响审计日志）')) return;
     S.notifLog = [];
     try { sessionStorage.removeItem('fwknop-notif-log'); } catch (e) {}
     closeModal(); toast('通知历史已清空', 'ok', 1500);
