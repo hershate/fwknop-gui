@@ -577,6 +577,17 @@ func handleConfigBackups(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]interface{}{"backups": listConfigBackups()})
 }
 
+// handleConfigBakView：GET /api/config/bakview?name= — 备份与现役的同口径
+// 内容（access.conf 双侧密钥掩码），供回滚前 diff 预览；只读。
+func handleConfigBakView(w http.ResponseWriter, r *http.Request) {
+	v, err := viewConfigBackup(r.URL.Query().Get("name"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	writeJSON(w, v)
+}
+
 // handleConfigRestore：POST /api/config/restore {name} — 从自动备份回滚
 // 单个配置文件（联合预检 → 当前内容再备份 → 原子替换 → 热加载）。
 func handleConfigRestore(w http.ResponseWriter, r *http.Request) {

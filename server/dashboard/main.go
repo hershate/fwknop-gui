@@ -137,6 +137,7 @@ func main() {
 	mux.HandleFunc("/api/users", guard(handleUsers))
 	mux.HandleFunc("/api/config", guard(handleConfig))
 	mux.HandleFunc("/api/config/backups", guard(handleConfigBackups))
+	mux.HandleFunc("/api/config/bakview", guard(handleConfigBakView))
 	mux.HandleFunc("/api/accessconf/view", guard(handleAccessConfView))
 	mux.HandleFunc("/api/audit/download", guard(handleAuditDownload))
 	mux.HandleFunc("/api/oplog", guard(handleOpLog))

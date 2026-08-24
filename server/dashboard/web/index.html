@@ -6343,6 +6343,24 @@ $('#conf-save-profile').onclick = () => {
 /* 配置备份回滚：每次落盘（配置保存/授权编辑/方案应用）自动产生的 .bak 单文件
    备份，面板内可见即可恢复——此前只能 SSH 上服务器手动找回。恢复走与方案应用
    同一管线（联合预检 → 当前内容再备份 → 原子替换 → 热加载），回滚本身也可再回滚 */
+/* 恢复执行单点化：列表行与差异弹窗两处入口共用（确认 → 恢复 → 视图同步） */
+function doConfRestore(name, target, mt) {
+  /* 原生 confirm 而非 confirmDialog：单 modal-root 会被确认框顶掉，取消时
+     连备份列表/差异上下文一并丢失（与通知清空/编辑器守卫同一取舍） */
+  if (!confirm(`确定把 ${target} 回滚到 ${fmtAbs(mt)} 的备份吗？\n\n恢复前自动联合预检（失败即放弃）；当前内容会再备份为 .bak（可再次回滚）；随后热加载生效。`)) return;
+  (async () => {
+    try {
+      const r = await api('/api/config/restore', { method:'POST',
+        headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
+      if (r.error) infoModal('恢复失败', r.error, true);
+      else {
+        infoModal('恢复完成', r.output || '已恢复');
+        loadConfig();  /* 编辑器/原文视图同步真值 */
+        if (target === 'access.conf') loadUsers();  /* 授权卡片行号/字段已变 */
+      }
+    } catch (e) {}
+  })();
+}
 $('#conf-backups').onclick = async () => {
   try {
     const r = await api('/api/config/backups');
@@ -6351,30 +6369,28 @@ $('#conf-backups').onclick = async () => {
       (arr.length ? arr.map(b => `<div style="display:flex;align-items:center;gap:10px;padding:6px 2px;border-bottom:1px solid var(--border-soft)">
         <span style="font-size:12.5px" title="${fmtAbs(b.mtime)}">${fmtAgo(b.mtime)}</span>
         <span class="hint" style="font-size:11.5px">${fmtSize(b.size)}</span>
-        ${S.writeEnabled ? `<button class="btn ghost small" style="margin-left:auto;padding:2px 10px;font-size:12px" data-cbr="${esc(b.name)}" data-cbt="${esc(b.target)}" data-cbm="${b.mtime}" title="把 ${esc(b.target)} 回滚到该备份内容：先与另一现役文件联合预检（失败即放弃），当前内容自动再备份为 .bak（可再次回滚），随后热加载生效">恢复到此</button>` : '<span class="hint" style="margin-left:auto;font-size:11.5px">只读模式不可恢复</span>'}
+        <button class="btn ghost small" style="margin-left:auto;padding:2px 10px;font-size:12px" data-cbv="${esc(b.name)}" data-cbt="${esc(b.target)}" data-cbm="${b.mtime}" title="查看该备份与现役配置的差异（恢复将产生的变化；密钥已掩码）">差异</button>
+        ${S.writeEnabled ? `<button class="btn ghost small" style="padding:2px 10px;font-size:12px" data-cbr="${esc(b.name)}" data-cbt="${esc(b.target)}" data-cbm="${b.mtime}" title="把 ${esc(b.target)} 回滚到该备份内容：先与另一现役文件联合预检（失败即放弃），当前内容自动再备份为 .bak（可再次回滚），随后热加载生效">恢复到此</button>` : '<span class="hint" style="font-size:11.5px">只读模式不可恢复</span>'}
       </div>`).join('') : '<div class="hint" style="padding:8px 2px">尚无备份——首次保存/编辑后自动产生</div>');
     openModal(`<h3>配置备份回滚</h3>
-      <div class="hint" style="margin-bottom:4px">每次保存先把原文件备份为 <code>.bak-时间戳</code>（此处各列最近 20 个）。恢复是把该备份内容写回对应配置文件，预检/再备份/热加载与「应用方案」同一管线。</div>
+      <div class="hint" style="margin-bottom:4px">每次保存先把原文件备份为 <code>.bak-时间戳</code>（此处各列最近 20 个）。恢复是把该备份内容写回对应配置文件，预检/再备份/热加载与「应用方案」同一管线；「差异」先看内容再定。</div>
       ${sec('fwknopd.conf', bs.filter(b => b.target === 'fwknopd.conf'))}
       ${sec('access.conf', bs.filter(b => b.target === 'access.conf'))}
       <div class="mf"><button class="btn" onclick="closeModal()">关闭</button></div>`, true);
-    $$('#modal-root [data-cbr]').forEach(b => b.onclick = () => {
-      const name = b.dataset.cbr, target = b.dataset.cbt, mt = +b.dataset.cbm;
-      /* 原生 confirm 而非 confirmDialog：单 modal-root 会被确认框顶掉，取消时
-         连备份列表上下文一并丢失（与通知清空/编辑器守卫同一取舍） */
-      if (!confirm(`确定把 ${target} 回滚到 ${fmtAbs(mt)} 的备份吗？\n\n恢复前自动联合预检（失败即放弃）；当前内容会再备份为 .bak（可再次回滚）；随后热加载生效。`)) return;
-      (async () => {
-        try {
-          const r2 = await api('/api/config/restore', { method:'POST',
-            headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
-          if (r2.error) infoModal('恢复失败', r2.error, true);
-          else {
-            infoModal('恢复完成', r2.output || '已恢复');
-            loadConfig();  /* 编辑器/原文视图同步真值 */
-            if (target === 'access.conf') loadUsers();  /* 授权卡片行号/字段已变 */
-          }
-        } catch (e) {}
-      })();
+    $$('#modal-root [data-cbr]').forEach(b => b.onclick = () => doConfRestore(b.dataset.cbr, b.dataset.cbt, +b.dataset.cbm));
+    /* 差异预览：盲恢复逼着用户凭时间戳猜内容——与方案预览「切换前看清
+       影响面」同一心智；弹窗内看完可就地恢复（同一 doConfRestore 闭环） */
+    $$('#modal-root [data-cbv]').forEach(b => b.onclick = async () => {
+      const name = b.dataset.cbv, target = b.dataset.cbt, mt = +b.dataset.cbm;
+      try {
+        const v = await api('/api/config/bakview?name=' + encodeURIComponent(name));
+        openModal(`<h3>备份差异：${esc(v.target)}</h3>
+          <div class="hint" style="margin-bottom:6px">备份（${fmtAbs(mt)}）与现役配置的差异——<b>- 行</b>为备份独有（恢复后生效）、<b>+ 行</b>为现役独有（恢复后消失）${v.target === 'access.conf' ? '；密钥指令双侧掩码：同位置仅密钥值不同的差异不体现，授权增删仍完整可见' : ''}。</div>
+          ${renderDiff(v.bak, v.current)}
+          <div class="mf">${S.writeEnabled ? `<button class="btn ghost" id="cbv-restore">${icon('i-undo',14)} 恢复到此备份</button>` : ''}<button class="btn" onclick="closeModal()">关闭</button></div>`, true);
+        const rb = $('#cbv-restore');
+        if (rb) rb.onclick = () => doConfRestore(name, target, mt);
+      } catch (e) {}
     });
   } catch (e) {}
 };

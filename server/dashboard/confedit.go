@@ -687,20 +687,30 @@ func listConfigBackups() []ConfigBackup {
 	return out
 }
 
-// restoreConfigBackup 把指定自动备份写回其目标文件，与方案应用同一管线
-// 纪律：联合预检（恢复对象用 .bak 路径、另一文件用现役，与落盘后的真实
-// 组合一致）→ atomicReplace（当前内容同样先备份，回滚本身也可再回滚）→
-// 尽力热加载。来源只是从方案快照换成 .bak。
-func restoreConfigBackup(name string) (string, error) {
+// configBakPaths 把校验过的备份名解析为（目标现役路径, 备份全路径）——
+// restore 与 bakview 共用同一推导，杜绝两处规则漂移。
+func configBakPaths(name string) (string, string, error) {
 	if !configBakName.MatchString(name) {
-		return "", fmt.Errorf("非法备份文件名")
+		return "", "", fmt.Errorf("非法备份文件名")
 	}
 	targetPath := cfg.AccessConf
 	if strings.HasPrefix(name, "fwknopd.conf") {
 		targetPath = cfg.FwknopdConf
 	}
+	bakPath := targetPath + strings.TrimPrefix(name, filepath.Base(targetPath)) // ".bak-<unix>"
+	return targetPath, bakPath, nil
+}
+
+// restoreConfigBackup 把指定自动备份写回其目标文件，与方案应用同一管线
+// 纪律：联合预检（恢复对象用 .bak 路径、另一文件用现役，与落盘后的真实
+// 组合一致）→ atomicReplace（当前内容同样先备份，回滚本身也可再回滚）→
+// 尽力热加载。来源只是从方案快照换成 .bak。
+func restoreConfigBackup(name string) (string, error) {
+	targetPath, bakPath, err := configBakPaths(name)
+	if err != nil {
+		return "", err
+	}
 	base := filepath.Base(targetPath)
-	bakPath := targetPath + strings.TrimPrefix(name, base) // ".bak-<unix>"
 	if _, err := os.Stat(bakPath); err != nil {
 		return "", fmt.Errorf("备份文件不存在（可能已被清理）：%v", err)
 	}
@@ -723,4 +733,42 @@ func restoreConfigBackup(name string) (string, error) {
 	}
 	return fmt.Sprintf("已从 %s 恢复 %s\n恢复前的当前配置已备份：%s\n%s",
 		name, base, bak, sighupBestEffort()), nil
+}
+
+// viewConfigBackup 返回备份内容与现役同口径内容（target/bak/current）——
+// 回滚前 diff 预览：盲恢复逼着用户凭时间戳猜内容，与方案预览的
+// 「切换前看清影响面」同一心智。access.conf 双侧密钥指令均掩码
+// （与方案预览/access.conf 查看器同规），128KB 截断护栏同款。
+func viewConfigBackup(name string) (map[string]string, error) {
+	targetPath, bakPath, err := configBakPaths(name)
+	if err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(bakPath)
+	if err != nil {
+		return nil, fmt.Errorf("读取备份失败（可能已被清理）：%v", err)
+	}
+	const maxRaw = 128 * 1024
+	clip := func(s string) string {
+		if len(s) > maxRaw {
+			return s[:maxRaw] + "\n# ... (文件过大，已截断)"
+		}
+		return s
+	}
+	bak, cur := clip(string(data)), ""
+	if c, err := os.ReadFile(targetPath); err == nil {
+		cur = clip(string(c))
+	}
+	target := filepath.Base(targetPath)
+	if target == "access.conf" {
+		mask := func(raw string) string {
+			lines := strings.Split(raw, "\n")
+			for i, l := range lines {
+				lines[i] = maskAccessConfLine(l)
+			}
+			return strings.Join(lines, "\n")
+		}
+		bak, cur = mask(bak), mask(cur)
+	}
+	return map[string]string{"target": target, "bak": bak, "current": cur}, nil
 }
