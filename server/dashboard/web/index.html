@@ -4573,6 +4573,21 @@ $('#add-batch').onclick = () => {
     go.disabled = !!err || !ns.length;
   };
   if (ta.value) ta.oninput();  /* 草稿恢复后立即校验计数/重名，状态不自欺 */
+  /* 粘贴分隔符名单自动拆行：从 Excel/邮件/聊天复制的名单常是
+     「alice, bob, carol」单行形态（逗号/分号/顿号，中英文），此前只能
+     校验报错后手动逐行换行。仅干预粘贴（手输不动）、仅无换行且拆出
+     多段时生效；拆出含空格的段由 oninput 校验照常拦截，toast 明示可撤销 */
+  ta.addEventListener('paste', e => {
+    const txt = (e.clipboardData || window.clipboardData).getData('text') || '';
+    if (txt.includes('\n') || !/[,;，、；]/.test(txt)) return;
+    const parts = txt.split(/[,;，、；]+/).map(s => s.trim()).filter(Boolean);
+    if (parts.length < 2) return;
+    e.preventDefault();
+    const st = ta.selectionStart, en = ta.selectionEnd;
+    ta.value = ta.value.slice(0, st) + parts.join('\n') + ta.value.slice(en);
+    ta.oninput();
+    toast(`已按分隔符拆分为 ${parts.length} 行（误拆可 Ctrl+Z 撤销）`, 'ok', 2500);
+  });
   go.onclick = async () => {
     const ns = names();
     if (!ns.length) return;
