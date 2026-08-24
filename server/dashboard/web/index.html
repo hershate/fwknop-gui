@@ -3016,6 +3016,8 @@ $('#nav-ev-badge').onclick = ev => {
 $('#nav-about-badge').onclick = ev => {
   ev.stopPropagation();
   S.oplogQuery = '登录失败'; const os3 = $('#oplog-search'); if (os3) os3.value = '登录失败';
+  /* 钻取即持久化（renderOpLog 5819 每轮固化 S.oplogQuery，与占位/悬空徽标同理） */
+  try { localStorage.setItem('fwknop-oplog-query', '登录失败'); } catch (_) {}
   showPage('about');
 };
 /* 占位密钥徽标钻取（与 about/ev 徽标同模式）：不止导航——预填「占位」搜索词，
