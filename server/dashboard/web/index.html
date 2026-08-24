@@ -1384,7 +1384,10 @@ function confirmDialog(title, body, okLabel, onOk, danger) {
     <button class="${danger ? 'btn danger' : 'btn'}" id="m-ok">${okLabel}</button></div>`);
   $('#m-cancel').onclick = () => closeModal();
   $('#m-ok').onclick = () => { closeModal(); onOk(); };
-  $('#m-cancel').focus();  /* 破坏性确认默认聚焦「取消」，防回车误触 */
+  /* 破坏性确认默认聚焦「取消」防回车误触；安全操作（danger 未置位：保存/启动/
+     热加载/恢复等）聚焦「确认」——Enter 即完成，键盘流不必再 Tab 一次。
+     与按钮主色视觉默认态一致（安全操作确认钮本就是主色高亮） */
+  (danger ? $('#m-cancel') : $('#m-ok')).focus();
 }
 
 async function copyText(t, label) {
