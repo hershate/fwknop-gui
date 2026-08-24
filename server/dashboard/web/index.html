@@ -6432,6 +6432,18 @@ function openStanzaEditor(index) {
       el.title = '该授权未配置 TOTP 种子（密钥不可在线编辑），跳变类指令不生效，保存时将移除';
     });
   }
+  /* 打开即做「只警示」初检：编辑器自带既有配置，存量问题（RESTRICT∩OPEN
+     重叠、OPEN_PORTS 落入 TOTP 敲门范围）进入即暴露，不必等到首次输入才
+     发现；不写 ✓ 成功提示（满屏绿勾是噪声）。须在死配置联动（disabled
+     标定）之后，否则无种子授权的范围字段被误判为生效 */
+  {
+    const openEl0 = document.querySelector('#modal-root [data-sf="OPEN_PORTS"]');
+    if (openEl0 && openEl0.value.trim()) {
+      const aro0 = seAccessRangeOverlap();
+      if (aro0) seHint('OPEN_PORTS', false, `⚠ ${aro0.join('、')} 落在 TOTP 敲门范围内，敲门包可能送达该端口上的服务（fail2ban 误判风险），建议错开`);
+    }
+    seOverlapCheck();
+  }
   $('#se-save').onclick = async () => {
     /* 保存前校验：端口列表 / 超时秒数 / TOTP 范围，非法即聚焦中止（与签发卡片规则同源） */
     const seChecks = {
