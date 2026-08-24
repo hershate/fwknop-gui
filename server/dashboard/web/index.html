@@ -4466,7 +4466,10 @@ function renderUsers() {
         try {
           const r = await api('/api/config/stanza/enable', { method:'POST',
             headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
-          if (r.error) toast('恢复失败：' + r.error, 'err');
+          /* 失败保留完整预检输出（此前只 toast r.error，多行输出被丢弃）；
+             报错在 .check 临时候选里也能锚定现役 access.conf 行（行数一致） */
+          if (r.error) infoModal('恢复授权 — 失败', (r.output ? r.output + '\n' : '') + r.error, true,
+            validateFailAct((r.output || '') + '\n' + r.error));
           else { toast(`授权「${name}」已恢复`, 'ok'); markCheckupStale(); loadUsers(); }
         } catch (e) {}
       });
@@ -7168,12 +7171,15 @@ function infoModal(title, text, isErr, action) {
    服务卡「校验配置」与一键体检共用同一分流 */
 function validateFailAct(out) {
   const lm = (out || '').match(/in\s+(\S+)\s+at line\s+(\d+)/);
-  if (lm && /fwknopd\.conf$/.test(lm[1])) return { label: `定位 fwknopd.conf 第 ${lm[2]} 行`, title: '打开服务配置页原文模式并高亮该错误行', onclick: () => {
+  /* `.check-<pid>` 临时候选文件（enableStanza/updateStanza 预检载体）：内容=现役
+     文件±注释前缀，行数一致——报错行号可直接锚定现役文件，按基底名分流 */
+  const p0 = lm ? lm[1].replace(/\.check-\d+$/, '') : '';
+  if (lm && /fwknopd\.conf$/.test(p0)) return { label: `定位 fwknopd.conf 第 ${lm[2]} 行`, title: '打开服务配置页原文模式并高亮该错误行', onclick: () => {
     confPresetLine = +lm[2];
     showPage('config');
     if (!S.rawMode) $('#raw-toggle').click(); else renderConfig();
   } };
-  if (lm && /access\.conf$/.test(lm[1])) return { label: `定位 access.conf 第 ${lm[2]} 行`, title: '打开 access.conf 原文视图并跳转到该错误行（密钥已掩码）', onclick: () => {
+  if (lm && /access\.conf$/.test(p0)) return { label: `定位 access.conf 第 ${lm[2]} 行`, title: '打开 access.conf 原文视图并跳转到该错误行（密钥已掩码）', onclick: () => {
     arPresetJump = lm[2];
     showPage('users');
     $('#users-raw').click();
