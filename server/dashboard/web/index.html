@@ -4208,6 +4208,11 @@ function renderUsers() {
     const live = new Set(all.map(s => s.name || ('授权 #' + s.index)));
     [...S.usersSel].forEach(n => { if (!live.has(n)) S.usersSel.delete(n); });
   }
+  /* 批量恢复选择集同理：剔除已不在禁用区的名字（恢复/外部改动后防残留） */
+  if (S.disSel) {
+    const disLive = new Set((d.disabled || []).map(x => x.name || ''));
+    [...S.disSel].forEach(n => { if (!disLive.has(n)) S.disSel.delete(n); });
+  }
   updateUsersBatchBar();
   const q = (S.usersQuery || '').toLowerCase();
   const hlU = hlTerms([S.usersQuery || '']);  /* 单串子串匹配 → 整串为一个高亮词 */
@@ -4242,7 +4247,14 @@ function renderUsers() {
         <span style="display:inline-block;transition:transform .15s;transform:rotate(${disOpen ? 90 : 0}deg)">▸</span>
         已禁用的授权（${q ? `${dis.length}/${disAll.length}` : dis.length}）</div>
       <div id="dis-list" style="display:${disOpen ? '' : 'none'}">
+      ${S.writeEnabled && dis.length ? `<div style="display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid var(--border)">
+        <button class="btn ghost small" id="dis-sel-all" style="padding:1px 8px;font-size:11.5px" title="勾选当前列出的全部禁用授权（搜索态只勾可见部分，配合批量恢复）">全选</button>
+        <button class="btn ghost small" id="dis-sel-none" style="padding:1px 8px;font-size:11.5px" title="清空批量恢复选择">清除</button>
+        <span id="dis-sel-count" class="hint" style="font-size:11.5px"></span>
+        <button class="btn small" id="dis-batch-en" style="margin-left:auto;display:none" title="逐个恢复全部已选授权：去掉注释并热加载（误批量撤销后的一键回退路径）">${icon('i-play',13)}批量恢复</button>
+      </div>` : ''}
       ${dis.map(x => `<div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border-soft)">
+        ${S.writeEnabled ? `<input type="checkbox" class="dis-sel" data-selname="${esc(x.name || '')}" ${S.disSel && S.disSel.has(x.name || '') ? 'checked' : ''} title="选择以批量恢复" style="width:auto">` : ''}
         <span style="color:var(--muted)">${icon('i-lock',15)}</span>
         <b>${hlU(x.name || '（未知）')}</b>
         <span class="hint"><span class="lk-cell" data-rawjump="${x.start_line}" title="在 access.conf 原文中定位该禁用块（注释行，密钥已掩码）">第 ${x.start_line}–${x.end_line} 行</span> · 已注释禁用${x.disabled_at ? ' · 禁用于 ' + esc(x.disabled_at) : ''}</span>
@@ -4458,6 +4470,27 @@ function renderUsers() {
         } catch (e) {}
       });
   });
+  /* 批量恢复勾选：仅更新选择集与工具条计数，不重渲染（避免滚动丢失） */
+  $$('#users-body .dis-sel').forEach(c => c.onchange = () => {
+    if (!S.disSel) S.disSel = new Set();
+    if (c.checked) S.disSel.add(c.dataset.selname); else S.disSel.delete(c.dataset.selname);
+    updateDisBatchBar();
+  });
+  const dAll = $('#dis-sel-all');
+  if (dAll) dAll.onclick = () => {
+    if (!S.disSel) S.disSel = new Set();
+    $$('#users-body .dis-sel').forEach(c => { c.checked = true; S.disSel.add(c.dataset.selname); });
+    updateDisBatchBar();
+  };
+  const dNone = $('#dis-sel-none');
+  if (dNone) dNone.onclick = () => {
+    S.disSel = new Set();
+    $$('#users-body .dis-sel').forEach(c => { c.checked = false; });
+    updateDisBatchBar();
+  };
+  const dBe = $('#dis-batch-en');
+  if (dBe) dBe.onclick = runDisBatchEnable;
+  updateDisBatchBar();
   $$('#users-body [data-rm]').forEach(b => b.onclick = () => {
     const name = b.dataset.rm;
     /* 确认框附该授权用户最近事件摘要，辅助判断是否误撤活跃授权 */
@@ -4492,6 +4525,64 @@ function renderUsers() {
         } catch (e) {}
       }, true);
   });
+}
+
+/* 禁用区批量恢复工具条：与批量撤销条同一模式；选择集仅存内存（刷新即清空）。
+   工具条随 dis-list 重渲染而生灭——元素不存在时静默返回，计数在渲染后由
+   renderUsers 绑定阶段补一次初始刷新 */
+function updateDisBatchBar() {
+  const cnt = $('#dis-sel-count');
+  if (!cnt) return;
+  const n = S.disSel ? S.disSel.size : 0;
+  /* 与批量撤销条同理：被搜索隐藏的已选授权同样会被批量恢复影响，显式标注 */
+  const vis = new Set($$('#users-body .dis-sel').map(c => c.dataset.selname));
+  const hidden = n ? [...S.disSel].filter(nm => !vis.has(nm)).length : 0;
+  cnt.innerHTML = n ? `已选 ${n} 个${hidden ? ` <span style="color:var(--amber)" title="有 ${hidden} 个已选授权被当前搜索隐藏，批量恢复同样对它们生效">（含 ${hidden} 个被筛选隐藏）</span>` : ''}` : '';
+  const btn = $('#dis-batch-en');
+  if (btn) btn.style.display = n ? '' : 'none';
+}
+/* 批量恢复：误批量撤销后的回退路径（单个恢复得逐条点）。逐个提交复用单恢复
+   服务端链路（去注释+预检+SIGHUP），会话/权限失败提前终止——与批量撤销同规 */
+function runDisBatchEnable() {
+  const names = [...(S.disSel || [])];
+  if (!names.length) return;
+  confirmDialog('批量恢复授权',
+    `将逐个恢复以下 <b>${names.length}</b> 个已禁用授权（去掉注释 + 预检 + 热加载，<b>立即重新生效</b>）：
+     <div class="mono" style="margin:8px 0;max-height:20vh;overflow:auto;font-size:12.5px">${names.map(esc).join('<br>')}</div>
+     确定继续吗？`,
+    `恢复 ${names.length} 个授权`, async () => {
+      const btn = $('#dis-batch-en');
+      const ok = [], fail = [];
+      let done = 0;
+      for (const nm of names) {
+        let stop = false;
+        try {
+          const r = await api('/api/config/stanza/enable', { method:'POST',
+            headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: nm }) });
+          if (r.error) fail.push(`${nm}：${r.error}`); else ok.push(nm);
+        } catch (e) {
+          const msg = String((e && e.message) || e);
+          /* 会话失效/只读模式：后续条目必然同败——提前终止（与批量撤销同规），
+             剩余按「未尝试」计（未向服务端发起） */
+          if (msg === 'unauthorized' || msg === 'forbidden') {
+            fail.push(`${nm}：${msg === 'unauthorized' ? '会话已失效' : '无写权限（只读模式）'}`);
+            stop = true;
+          } else fail.push(`${nm}：网络错误`);
+        }
+        /* 进度入按钮文案（与批量撤销同一模式）；轮询重渲染可能换掉按钮节点，
+           往已分离节点写文案无害 */
+        if (btn) { btn.disabled = true; btn.textContent = `恢复中 ${++done}/${names.length}…`; } else done++;
+        if (stop) break;
+      }
+      const untried = names.length - done;
+      if (btn) { btn.disabled = false; btn.innerHTML = `${icon('i-play',13)}批量恢复`; }
+      S.disSel = new Set();
+      if (ok.length) markCheckupStale();
+      loadUsers();
+      if (fail.length) infoModal('批量恢复 — 部分失败',
+        `成功 ${ok.length} 个，失败 ${fail.length} 个${untried ? `，未尝试 ${untried} 个（会话/权限失败已提前中止，未向服务端发起）` : ''}：\n` + fail.join('\n'), true);
+      toast(`批量恢复完成：成功 ${ok.length} 个${fail.length ? `，失败 ${fail.length} 个` : ''}${untried ? `，未尝试 ${untried} 个` : ''}`, fail.length || untried ? 'err' : 'ok', 5000);
+    });
 }
 
 /* 批量撤销操作条：与 TOFU 批量条同一模式；选择集仅存内存（刷新即清空） */
