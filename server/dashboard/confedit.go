@@ -375,6 +375,11 @@ type Profile struct {
 	ProfileMeta
 	Path    string `json:"path"`
 	Current bool   `json:"current"` // 与线上 fwknopd.conf + access.conf 完全一致
+	// Stanzas/Ports 是快照 access.conf 的内容摘要：多方案并存时不用逐个
+	// 打开预览即可区分「哪套有几个授权、放行哪些端口」。解析失败（快照
+	// 缺 access.conf）保持零值并按 omitempty 省略——不展示没有把握的信息。
+	Stanzas int    `json:"stanzas,omitempty"`
+	Ports   string `json:"ports,omitempty"`
 }
 
 func profileDir(name string) string { return filepath.Join(cfg.ProfileDir, name) }
@@ -436,11 +441,37 @@ func listProfiles() []Profile {
 		}
 		p.Current = fileEq(filepath.Join(dir, "fwknopd.conf"), cfg.FwknopdConf) &&
 			fileEq(filepath.Join(dir, "access.conf"), cfg.AccessConf)
+		if st, err := parseAccessConf(filepath.Join(dir, "access.conf")); err == nil {
+			p.Stanzas = len(st)
+			p.Ports = summaryPorts(st)
+		}
 		out = append(out, p)
 	}
 	/* 最新保存的排最前（ReadDir 只有目录名字典序）；无 meta 的旧方案按 0 沉底 */
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Created > out[j].Created })
 	return out
+}
+
+// summaryPorts 汇总各 stanza 的 OPEN_PORTS 为去重并集（保持出现序），超 6 个
+// 截断——卡片摘要只需一眼可辨的规模感，完整清单看「预览」。端口原样展示
+// （22/tcp 等协议后缀是 fwknopd 标准写法，用户认得，不做二次格式化）。
+func summaryPorts(st []Stanza) string {
+	seen := map[string]bool{}
+	var out []string
+	for _, s := range st {
+		for _, p := range strings.Split(s.OpenPorts, ",") {
+			p = strings.TrimSpace(p)
+			if p == "" || seen[p] {
+				continue
+			}
+			seen[p] = true
+			out = append(out, p)
+		}
+	}
+	if len(out) > 6 {
+		return strings.Join(out[:6], ",") + ",…"
+	}
+	return strings.Join(out, ",")
 }
 
 // fileEq reports whether two files' contents are byte-identical.
