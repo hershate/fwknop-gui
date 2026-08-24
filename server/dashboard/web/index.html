@@ -8107,7 +8107,7 @@ $('#qa-diag').onclick = () => copyText(collectDiag(), '诊断信息 ');
 async function runCheckup() {
   openModal(`<h3>部署体检</h3>
     <div id="ck-body"><div class="skel" style="height:140px"></div></div>
-    <div class="mf"><button class="btn ghost" id="ck-rerun" title="处置异常后原地重跑全部检查，不用关窗重开">${icon('i-refresh',13)} 重新检查</button><button class="btn" onclick="closeModal()">关闭</button></div>`, true);
+    <div class="mf"><button class="btn ghost" id="ck-rerun" title="处置异常后原地重跑全部检查，不用关窗重开">${icon('i-refresh',13)} 重新检查</button><button class="btn ghost" id="ck-copy" title="把体检结果复制为纯文本（贴工单/交接/群聊用）">${icon('i-copy',13)} 复制结果</button><button class="btn" onclick="closeModal()">关闭</button></div>`, true);
   $('#ck-rerun').onclick = () => runCheckup();
   const jobs = [
     api('/api/overview').catch(() => null),
@@ -8207,6 +8207,13 @@ async function runCheckup() {
     const b = $('#ck-body').querySelector(`[data-ck="${i}"]`);
     if (b) b.onclick = () => { closeModal(); it.act.onclick(); };
   });
+  /* 结果外带：体检常为他人而跑（工单/交接/群聊求助），纯文本报告一键复制。
+     排序后的 items 与界面呈现同序，异常在前 */
+  $('#ck-copy').onclick = () => {
+    const marks = { bad:'✗', warn:'⚠', skip:'—', ok:'✓' };
+    const head = `fwknop 部署体检：${nBad ? nBad + ' 项异常，' : ''}${nWarn ? nWarn + ' 项需注意，' : ''}${items.filter(i => i.st === 'ok').length} 项通过`;
+    copyText(head + '\n' + items.map(it => `${marks[it.st]} ${it.t} — ${it.d}`).join('\n'), '体检结果 ');
+  };
 }
 $('#qa-checkup').onclick = () => runCheckup();
 
