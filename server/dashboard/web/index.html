@@ -4346,7 +4346,10 @@ function renderUsers() {
     /* 确认框附该授权用户最近事件摘要，辅助判断是否误撤活跃授权 */
     const st0 = (S.users && S.users.stanzas || []).find(x => (x.name || ('授权 #' + x.index)) === name);
     const last = st0 && st0.require_username ? (S.events || []).find(e => e.user === st0.require_username) : null;
-    const lastHtml = last ? `<br><span class="hint" title="${fmtAbs(last.time)}">最近敲门：${evMeta(last.event).label} · ${fmtAgo(last.time)} · ${esc(last.src_ip || '')}</span>`
+    /* 近期活跃（15 分钟，与徽标/批量撤销点名口径同窗）升级琥珀预警——批量
+       撤销会点名活跃授权，单撤销此前只有中性提示，风险醒目度不同步 */
+    const recent = last && (Date.now() / 1000 - (last.time || 0) < 900);
+    const lastHtml = last ? `<br><span class="${recent ? '' : 'hint'}" title="${fmtAbs(last.time)}"${recent ? ' style="color:var(--amber)"' : ''}>${recent ? '⚠ 该授权近期活跃，撤销会立即中断其访问。' : ''}最近敲门：${evMeta(last.event).label} · ${fmtAgo(last.time)} · ${esc(last.src_ip || '')}</span>`
       : '<br><span class="hint">该授权近期无敲门记录</span>';
     /* TOFU 残留预警：撤销后该授权的设备绑定即成「悬空」（stanza 不再匹配），
        确认时一次说清善后路径，避免留下自己也不知道的死绑定 */
