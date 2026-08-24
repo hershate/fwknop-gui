@@ -146,9 +146,18 @@ func handleOpLog(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleOpLogDownload：GET /api/oplog/download — 完整日志导出（与审计导出同范式）。
+// 单代轮转后旧历史在 .bak：拼接 .bak + 当前文件，「完整」名副其实
+// （两份都是 JSONL，直接串接仍是合法 JSONL；顺序旧→新）。
 func handleOpLogDownload(w http.ResponseWriter, r *http.Request) {
+	bak, _ := os.Open(opLogPath() + ".bak") // 无上一代时 nil，下面判空跳过
+	if bak != nil {
+		defer bak.Close()
+	}
 	f, err := os.Open(opLogPath())
 	if err != nil {
+		if bak != nil {
+			bak.Close()
+		}
 		http.Error(w, "操作日志不存在（本版本起开始记录）", http.StatusNotFound)
 		return
 	}
@@ -157,9 +166,21 @@ func handleOpLogDownload(w http.ResponseWriter, r *http.Request) {
 	/* 文件名带服务器时间戳：多次导出互不覆盖（与审计导出同规） */
 	w.Header().Set("Content-Disposition",
 		`attachment; filename="dashboard_ops_`+time.Now().Format("20060102-150405")+`.jsonl"`)
-	/* Content-Length 给浏览器真实下载进度（与审计下载同规） */
+	/* Content-Length 给浏览器真实下载进度（与审计下载同规）；两文件拼接取总和 */
+	var total int64
+	if bak != nil {
+		if st, serr := bak.Stat(); serr == nil {
+			total += st.Size()
+		}
+	}
 	if st, serr := f.Stat(); serr == nil {
-		w.Header().Set("Content-Length", strconv.FormatInt(st.Size(), 10))
+		total += st.Size()
+	}
+	if total > 0 {
+		w.Header().Set("Content-Length", strconv.FormatInt(total, 10))
+	}
+	if bak != nil {
+		io.Copy(w, bak)
 	}
 	io.Copy(w, f)
 }
