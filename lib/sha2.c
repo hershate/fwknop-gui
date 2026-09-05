@@ -64,6 +64,9 @@
  *
  */
 
+/* R1 性能：启用未滚动变换（作者提供的编译期开关，仅指令调度不同，
+ * 数学与输出逐字节一致）。现代流水线 CPU 上减少分支开销。 */
+#define SHA2_UNROLL_TRANSFORM
 
 /*** SHA-256/384/512 Machine Architecture Definitions *****************/
 /*
