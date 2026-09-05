@@ -5201,7 +5201,7 @@ $$('#range-chips [data-pr]').forEach(c => { c.title = '点击填充该范围，�
   f['port-range'].value = (f['port-range'].value.trim() === c.dataset.pr) ? '' : c.dataset.pr;
   f['port-range'].dispatchEvent(new Event('input'));
   syncRangeChips();
-});
+}});
 $('#add-form')['port-range'].addEventListener('input', syncRangeChips);
 
 /* TOFU 宽限常用值芯片：点击填充，再点同一枚清除；「仅本机」直接清空 */
@@ -5216,7 +5216,7 @@ $$('#tofuto-chips [data-tfto]').forEach(c => { c.title = '点击填充该宽限�
     ? '' : c.dataset.tfto;
   f['tofu-timeout'].dispatchEvent(new Event('input'));
   syncTofutoChips();
-});
+}});
 $('#add-form')['tofu-timeout'].addEventListener('input', syncTofutoChips);
 
 /* 访问超时常用值芯片：点击填充，再点同一枚清除；与手动输入双向同步高亮 */
@@ -5230,7 +5230,7 @@ $$('#fwto-chips [data-fwto]').forEach(c => { c.title = '点击填充该超时，
   f['fw-timeout'].value = (f['fw-timeout'].value.trim() === c.dataset.fwto) ? '' : c.dataset.fwto;
   f['fw-timeout'].dispatchEvent(new Event('input'));  /* 联动校验 + 草稿 */
   syncFwtoChips();
-});
+}});
 $('#add-form')['fw-timeout'].addEventListener('input', syncFwtoChips);
 
 /* 常用端口快捷芯片：点击在 OPEN_PORTS 列表中切换该项，已含则移除 */
