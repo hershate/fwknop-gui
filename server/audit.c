@@ -41,6 +41,8 @@ static const char *const audit_metric_labels[AUDIT_EVENT_COUNT] = {
     "unknown_fingerprint", "port_mismatch", "aged", "tofu_bind"
 };
 
+static void audit_metrics_flush_throttled(const fko_srv_options_t *opts);
+
 /* Escape a string into out (JSON-safe: quotes and backslashes). in may be
  * NULL. out is NUL-terminated. Returns the number of bytes written. */
 static size_t
@@ -117,6 +119,20 @@ audit_log_event(const fko_srv_options_t *opts, audit_event_t ev,
     if(n < 0)
         return;
 
+    if((size_t)n >= sizeof(line))
+    {
+        /* 截断防护（审计轮·fwknopd 面）：user/device_id/reason 全取攻击者
+           可控字段的转义上界时整行可能超 512B。snprintf 截断会切掉行尾
+           \n——O_APPEND 追加的下一条事件就拼在本行残尾上，两条记录同时
+           作废（解析器整行丢弃，攻击者可用超长字段让审计流"断流"）。
+           改发有界降级行：保留事件名与时间，流完整性优先。 */
+        n = snprintf(line, sizeof(line),
+            "{\"time\":%ld,\"event\":\"%s\",\"truncated\":true}\n",
+            (long)time(NULL), audit_event_names[ev]);
+        if(n < 0)
+            return;
+    }
+
     /* Forward to syslog regardless (so audit is visible even without file). */
     log_msg(LOG_INFO, "audit: %.*s",
         (n > 0 && line[n-1] == '\n') ? n - 1 : n, line);
@@ -135,9 +151,25 @@ audit_log_event(const fko_srv_options_t *opts, audit_event_t ev,
         }
     }
 
-    /* Rewrite the metrics file so a scraper always sees fresh counters. */
-    audit_metrics_flush(opts);
+    /* Rewrite the metrics file so a scraper always sees fresh counters.
+       （1 秒节流：metrics 只服务监控抓取，1s 陈旧无感知；而 REPLAY/
+       UNKNOWN_FINGERPRINT 等攻击者可达路径逐包触发本函数，重放洪泛下
+       每包一次 tmp 写+rename 的磁盘搅动会放大成写路径 DoS。） */
+    audit_metrics_flush_throttled(opts);
     return;
+}
+
+/* 距上次成功落盘不足 1s 则跳过本次重写（计数器仍在内存累加，不丢数）。 */
+static void
+audit_metrics_flush_throttled(const fko_srv_options_t *opts)
+{
+    static time_t last_flush = 0;
+    time_t now = time(NULL);
+
+    if(last_flush != 0 && now == last_flush)
+        return;
+    last_flush = now;
+    audit_metrics_flush(opts);
 }
 
 void
