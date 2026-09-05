@@ -31,6 +31,49 @@ type AuditEvent struct {
 
 var auditMu sync.Mutex
 
+/* ------------------------------------------------------------------
+   R3 性能：mtime 缓存层。
+
+   parseMetrics / parseAccessConf / readTOFU 此前每次调用都全量
+   读文件+解析，而面板以 5s 轮询消费同一文件，文件只在 fwknopd
+   写入/管理操作时才变化。缓存键 = (mtime_ns, size)：文件未变时
+   常态成本为一次 os.Stat；文件变化（fwknopd 重写、面板 confedit
+   经 tmp+rename 写回 → mtime/size 变化）自动失效重读，陈旧窗口
+   不大于一次轮询间隔，且严格优于轮询语义本身。
+
+   返回值一律给副本：即使调用方修改返回的 map/slice（现无此用法，
+   属防御红线），也不会污染缓存。
+   ------------------------------------------------------------------ */
+
+type mtimeCache struct {
+	mu      sync.Mutex
+	mtimeNs int64
+	size    int64
+	valid   bool
+}
+
+// matches reports whether (size, mtimeNs) — caller-obtained via one
+// os.Stat — still describes the cached file. Stored key fields are only
+// written by store(), never by the check.
+func (c *mtimeCache) matches(size, mtimeNs int64) bool {
+	return c.valid && c.size == size && c.mtimeNs == mtimeNs
+}
+
+func (c *mtimeCache) store(size, mtimeNs int64) {
+	c.size, c.mtimeNs, c.valid = size, mtimeNs, true
+}
+
+func (c *mtimeCache) invalidate() { c.valid = false }
+
+var (
+	metricsCache    mtimeCache
+	metricsCacheVal map[string]float64
+	accessCache     mtimeCache
+	accessCacheVal  []Stanza
+	tofuCache       mtimeCache
+	tofuCacheVal    []TofuBinding
+)
+
 /* 审计尾读增量缓存：原实现每次调用全量读取并解析整个审计文件再截取尾部，
    文件随运行膨胀（概览状态卡自己都会提示「>200MB 拖慢事件页」）后，每次
    轮询都是 O(文件大小) 的 IO+JSON 解析。改为记录文件偏移只读增量：
@@ -102,9 +145,39 @@ func readAuditTail(n int) []AuditEvent {
 }
 
 // parseMetrics reads the Prometheus text file into a map[counter]value.
+// R3: 结果经 mtime 缓存（未变化时为一次 stat + map 副本）。
 func parseMetrics() map[string]float64 {
+	metricsCache.mu.Lock()
+	defer metricsCache.mu.Unlock()
+
+	p := metricsPath()
+	if st, err := os.Stat(p); err == nil {
+		size, ns := st.Size(), st.ModTime().UnixNano()
+		if metricsCacheVal != nil && metricsCache.matches(size, ns) {
+			out := make(map[string]float64, len(metricsCacheVal))
+			for k, v := range metricsCacheVal {
+				out[k] = v
+			}
+			return out
+		}
+		out := readMetricsFile(p)
+		metricsCache.store(size, ns)
+		metricsCacheVal = make(map[string]float64, len(out))
+		for k, v := range out {
+			metricsCacheVal[k] = v
+		}
+		return out
+	}
+	/* 文件不存在等错误语义与原实现一致（空 map） */
+	metricsCache.invalidate()
+	metricsCacheVal = nil
+	return readMetricsFile(p)
+}
+
+// readMetricsFile is the uncached metrics reader (parseMetrics 的落盘路径).
+func readMetricsFile(path string) map[string]float64 {
 	out := map[string]float64{}
-	f, err := os.Open(metricsPath())
+	f, err := os.Open(path)
 	if err != nil {
 		return out
 	}
@@ -142,7 +215,31 @@ type TofuBinding struct {
 }
 
 func readTOFU() []TofuBinding {
-	f, err := os.Open(tofuPath())
+	tofuCache.mu.Lock()
+	defer tofuCache.mu.Unlock()
+
+	p := tofuPath()
+	if st, err := os.Stat(p); err == nil {
+		size, ns := st.Size(), st.ModTime().UnixNano()
+		if tofuCacheVal != nil && tofuCache.matches(size, ns) {
+			out := make([]TofuBinding, len(tofuCacheVal))
+			copy(out, tofuCacheVal)
+			return out
+		}
+		out := readTofuFile(p)
+		tofuCache.store(size, ns)
+		tofuCacheVal = make([]TofuBinding, len(out))
+		copy(tofuCacheVal, out)
+		return out
+	}
+	tofuCache.invalidate()
+	tofuCacheVal = nil
+	return readTofuFile(p)
+}
+
+// readTofuFile is the uncached TOFU reader (readTOFU 的落盘路径).
+func readTofuFile(path string) []TofuBinding {
+	f, err := os.Open(path)
 	if err != nil {
 		return nil
 	}
@@ -284,7 +381,40 @@ func parseDisabledStanzas(path string) []DisabledStanza {
 	return out
 }
 
+// parseAccessConf parses access.conf stanzas (R3: mtime 缓存 + 副本返回).
+// access.conf 是管理操作的关键输入：缓存只在 (size, mtime_ns) 完全一致时
+// 命中；confedit 写回（tmp+rename）必然改变二者之一。返回副本，调用方
+// 改动不污染缓存。
 func parseAccessConf(path string) ([]Stanza, error) {
+	accessCache.mu.Lock()
+	defer accessCache.mu.Unlock()
+
+	if st, err := os.Stat(path); err == nil {
+		size, ns := st.Size(), st.ModTime().UnixNano()
+		if accessCacheVal != nil && accessCache.matches(size, ns) {
+			out := make([]Stanza, len(accessCacheVal))
+			copy(out, accessCacheVal)
+			return out, nil
+		}
+		stz, err := readAccessConf(path)
+		if err != nil {
+			accessCache.invalidate()
+			accessCacheVal = nil
+			return stz, err
+		}
+		accessCache.store(size, ns)
+		accessCacheVal = make([]Stanza, len(stz))
+		copy(accessCacheVal, stz)
+		return stz, nil
+	}
+	/* 文件不存在：错误语义与原实现一致 */
+	accessCache.invalidate()
+	accessCacheVal = nil
+	return readAccessConf(path)
+}
+
+// readAccessConf is the uncached stanza parser (parseAccessConf 的落盘路径).
+func readAccessConf(path string) ([]Stanza, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
