@@ -31,6 +31,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -385,6 +386,10 @@ func handleAuthState(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// setupGuard 原子门闩：关闭 handleSetup 的 TOCTOU 窗口（原实现先查
+// initialized 再落盘，两个并发初始化请求都能通过检查、先后覆盖写入）。
+var setupGuard int32
+
 // handleSetup 处理首次初始化：设置管理员密码。仅在未初始化时可用。
 func handleSetup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -398,6 +403,14 @@ func handleSetup(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "已初始化，不能重复设置", http.StatusConflict)
 		return
 	}
+	/* CAS 抢占初始化权：抢不到说明并发请求已进入初始化流程 */
+	if !atomic.CompareAndSwapInt32(&setupGuard, 0, 1) {
+		http.Error(w, "初始化正在进行中", http.StatusConflict)
+		return
+	}
+	defer atomic.StoreInt32(&setupGuard, 0) /* 失败后允许重试；成功后 init 检查自然拦截 */
+	/* 未认证端点，请求体收紧到 64KB（全局 8MB 是兜底，这里给紧箍咒） */
+	r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
 	var req struct {
 		Password string `json:"password"`
 		Confirm  string `json:"confirm"`
@@ -444,6 +457,8 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, `{"error":"失败次数过多，请 %d 秒后再试","retry_after":%d}`, sec, sec)
 		return
 	}
+	/* 未认证端点，请求体收紧到 64KB */
+	r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
 	var req struct {
 		Password string `json:"password"`
 	}
@@ -518,6 +533,12 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "需要 POST", http.StatusMethodNotAllowed)
 		return
 	}
+	/* 与其他写操作同规：防 CSRF 强制注销（恶意页面让在线管理员掉线）。
+	   前端本就带该头（bootAuth/倒计时路径），无交互变化 */
+	if !csrfOK(r) {
+		http.Error(w, "缺少防跨站请求头（X-Fwknop-Request）", http.StatusForbidden)
+		return
+	}
 	if tok := sessionFrom(r); tok != "" {
 		dropSession(tok)
 	}
@@ -545,6 +566,8 @@ func handlePassword(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "未设置管理员密码（Bearer 令牌模式无需改密）", http.StatusConflict)
 		return
 	}
+	/* 会话内端点同样收紧：防会话被劫持后用超大 JSON 体 OOM 面板 */
+	r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
 	var req struct {
 		OldPassword string `json:"old_password"`
 		Password    string `json:"password"`

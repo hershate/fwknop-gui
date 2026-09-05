@@ -43,6 +43,11 @@ import (
 
 const version = "2.9.1"
 
+// maxBodyBytes 全局请求体兜底上限（安全审计 R1）：正常最大的请求是配置
+// 方案导入 tar.gz（含两份配置文本），8MB 绰绰有余；超限直接 413，杜绝
+// 未认证端点被超大 JSON 撑爆内存。
+const maxBodyBytes = 8 << 20
+
 // uiHandler serves the embedded single-page UI (R4 性能).
 //
 // 页面 ~600KB 且编译期固定：启动时预压缩 gzip（BestCompression，仅一次）
@@ -227,9 +232,19 @@ func main() {
 		log.Printf("提示：DASHBOARD_TOKEN 无头令牌已启用（API 以 Authorization: Bearer 访问）")
 	}
 	srv := &http.Server{
-		Addr:              cfg.Addr,
-		Handler:           securityHeaders(mux),
+		Addr:    cfg.Addr,
+		Handler: http.MaxBytesHandler(securityHeaders(mux), maxBodyBytes),
+		/* 超时矩阵（网络暴露服务必备，防慢速连接耗尽 fd/goroutine）：
+		   - ReadHeaderTimeout 10s：慢速请求行/头部（slowloris 头部变体）
+		   - ReadTimeout 120s：完整读取请求体（含最大的配置导入 ~8MB 上限）
+		   - WriteTimeout 10min：响应写回。审计日志导出（gzip 大文件流式
+		     写）在慢链路上可能耗时，取宽裕上界；无长连接/SSE 端点
+		   - IdleTimeout 300s：keep-alive 空闲连接及时回收，防高频短请求
+		     长跑下连接堆积 */
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       120 * time.Second,
+		WriteTimeout:      10 * time.Minute,
+		IdleTimeout:       5 * time.Minute,
 	}
 	if err := srv.ListenAndServe(); err != nil {
 		log.Fatal(err)
