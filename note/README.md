@@ -19,6 +19,14 @@
 | [04-开发进度与构建验证.md](04-开发进度与构建验证.md) | 已完成/待办状态、构建与验证方法、关键不变量、提交规范 |
 | [05-Windows便携版托盘.md](05-Windows便携版托盘.md) | Windows 便携版托盘程序（子进程调用 fwknop.exe 真实敲门） |
 
+## 性能专项报告
+
+- [report/perf/R0-baseline.md](report/perf/R0-baseline.md) — 性能基线（C/Go 双侧，方法与判读）
+- [report/perf/R1-b64-sha.md](report/perf/R1-b64-sha.md) — 基础算子：base64 位打包 + SHA-256 展开（验包 2.8×）
+- [report/perf/R2-urandom-fd.md](report/perf/R2-urandom-fd.md) — urandom fd 缓存（产包累计 3.4×）
+- [report/perf/R3-cache.md](report/perf/R3-cache.md) — dashboard 轮询热路径 mtime 缓存（稳态 18~23×）
+- [report/perf/R4-http-gzip-etag.md](report/perf/R4-http-gzip-etag.md) — 页面预压缩 + 强 ETag（首载 1/3，重复访问 304）
+
 ## 发版说明
 
 - [release/2.9.1.md](release/2.9.1.md) — WebUI 2.9.1：一键体检成熟化（7→14 项+钻取闭环+可信度工程）+ 后端解析层修复，42 项提交，回归 124 PASS（2026-08-25）
