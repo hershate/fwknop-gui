@@ -1,0 +1,20 @@
+{
+ "label": "R0-baseline",
+ "median": {
+  "BenchmarkPerfReadAuditTail50": {
+   "ns_per_op": 183430.0,
+   "b_per_op": 4504,
+   "allocs_per_op": 6
+  },
+  "BenchmarkPerfParseMetrics": {
+   "ns_per_op": 151467.0,
+   "b_per_op": 4888,
+   "allocs_per_op": 14
+  },
+  "BenchmarkPerfParseAccessConf": {
+   "ns_per_op": 194262.0,
+   "b_per_op": 15128,
+   "allocs_per_op": 129
+  }
+ }
+}

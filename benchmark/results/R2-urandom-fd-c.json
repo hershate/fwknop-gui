@@ -1,0 +1,13 @@
+{
+ "label": "R2-urandom-fd",
+ "runs": 5,
+ "median_ns_per_op": {
+  "client_full_packet": 84247.7,
+  "server_verify_full": 13331.4,
+  "b64_encode_256B": 156.6,
+  "b64_decode_256B": 381.2,
+  "sha256_256B": 1363.3,
+  "hmac_sha256_256B": 2279.6,
+  "aes_cbc_enc_256B": 12105.1
+ }
+}

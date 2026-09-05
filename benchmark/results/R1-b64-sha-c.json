@@ -1,0 +1,13 @@
+{
+ "label": "R1-b64-sha",
+ "runs": 5,
+ "median_ns_per_op": {
+  "client_full_packet": 97784.1,
+  "server_verify_full": 11654.5,
+  "b64_encode_256B": 140.9,
+  "b64_decode_256B": 331.5,
+  "sha256_256B": 1176.2,
+  "hmac_sha256_256B": 1901.1,
+  "aes_cbc_enc_256B": 48714.1
+ }
+}

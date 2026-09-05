@@ -1,0 +1,13 @@
+{
+ "label": "R0-baseline",
+ "runs": 5,
+ "median_ns_per_op": {
+  "client_full_packet": 288625.8,
+  "server_verify_full": 32743.1,
+  "b64_encode_256B": 915.7,
+  "b64_decode_256B": 1008.9,
+  "sha256_256B": 3549.4,
+  "hmac_sha256_256B": 3999.9,
+  "aes_cbc_enc_256B": 89439.2
+ }
+}

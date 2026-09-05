@@ -129,3 +129,7 @@ config.h.in~
 
 # autotools/editor backups
 configure~
+
+# 性能基准编译产物
+benchmark/c_bench
+benchmark/results/.c-samples.*

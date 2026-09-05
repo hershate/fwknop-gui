@@ -1,0 +1,20 @@
+{
+ "label": "R3-cache",
+ "median": {
+  "BenchmarkPerfReadAuditTail50": {
+   "ns_per_op": 54678.0,
+   "b_per_op": 4504,
+   "allocs_per_op": 6
+  },
+  "BenchmarkPerfParseMetrics": {
+   "ns_per_op": 6572.0,
+   "b_per_op": 560,
+   "allocs_per_op": 5
+  },
+  "BenchmarkPerfParseAccessConf": {
+   "ns_per_op": 10820.0,
+   "b_per_op": 4352,
+   "allocs_per_op": 3
+  }
+ }
+}
