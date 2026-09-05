@@ -9,6 +9,7 @@
 package main
 
 import (
+	"sync"
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
@@ -30,6 +31,12 @@ import (
 // backupPathFor returns the timestamped backup path for a file.
 // 同秒两次落盘会撞名（copyFile 静默覆盖，上一份备份即被销毁）——追加
 // -2/-3 序号防撞；白名单正则 configBakName 已同步放行该后缀。
+// confWriteMu 串行化全部配置/方案写路径（并发审计第 3 轮）：写路径共用
+// path.tmp-PID 形态的临时文件名，同进程并发请求最坏交错会让未校验的
+// 内容被另一请求的 rename 提升落盘（绕过配置预检门禁）。各写入口互不
+// 嵌套调用（只共享底层原子原语），入口加锁无重入风险。
+var confWriteMu sync.Mutex
+
 func backupPathFor(path string) string {
 	bak := fmt.Sprintf("%s.bak-%d", path, time.Now().Unix())
 	for i := 2; ; i++ {
@@ -60,7 +67,7 @@ func atomicReplace(path, content string) (string, error) {
 	} else {
 		bak = ""
 	}
-	tmp := fmt.Sprintf("%s.tmp-%d", path, os.Getpid())
+	tmp := fmt.Sprintf("%s.tmp-%d-%d", path, os.Getpid(), time.Now().UnixNano())
 	if err := os.WriteFile(tmp, []byte(content), 0600); err != nil {
 		return "", err
 	}
@@ -88,6 +95,8 @@ func sighupBestEffort() string {
 // saveFwknopdConf validates then replaces fwknopd.conf with entries.
 // 每条 entry 形如 "KEY VALUE"（VALUE 为空则为纯指令行）。
 func saveFwknopdConf(lines []string) (string, error) {
+	confWriteMu.Lock()
+	defer confWriteMu.Unlock()
 	var b strings.Builder
 	b.WriteString("# fwknopd.conf — 由 fwknop 运维面板编辑于 " +
 		time.Now().Format("2006-01-02 15:04:05") + "\n" +
@@ -108,7 +117,7 @@ func saveFwknopdConfRaw(raw string) (string, error) {
 		return "", fmt.Errorf("配置内容过大")
 	}
 	// 预检：写入临时文件后用 fwknopd 自身解析校验
-	tmp := fmt.Sprintf("%s.check-%d", cfg.FwknopdConf, os.Getpid())
+	tmp := fmt.Sprintf("%s.check-%d-%d", cfg.FwknopdConf, os.Getpid(), time.Now().UnixNano())
 	if err := os.WriteFile(tmp, []byte(raw), 0600); err != nil {
 		return "", err
 	}
@@ -166,6 +175,8 @@ func stanzaEditableKeys() map[string]bool {
 // 若打开后他人并发增删授权，序号对应关系已移位，不加核验编辑会落到
 // 错误的 stanza 上；身份不符即拒绝（空串跳过该校验，向后兼容旧客户端）。
 func updateStanza(index int, fields map[string]string, expectName, expectSource string) (string, error) {
+	confWriteMu.Lock()
+	defer confWriteMu.Unlock()
 	allowed := stanzaEditableKeys()
 	for k, v := range fields {
 		if _, ok := allowed[k]; !ok {
@@ -230,7 +241,7 @@ func updateStanza(index int, fields map[string]string, expectName, expectSource 
 	}
 
 	content := strings.Join(out, "\n") + "\n"
-	tmp := fmt.Sprintf("%s.check-%d", cfg.AccessConf, os.Getpid())
+	tmp := fmt.Sprintf("%s.check-%d-%d", cfg.AccessConf, os.Getpid(), time.Now().UnixNano())
 	if err := os.WriteFile(tmp, []byte(content), 0600); err != nil {
 		return "", err
 	}
@@ -280,6 +291,8 @@ func extractPrintedStanza(out string) (string, error) {
 // appendStanza 将新签发的 stanza 追加到 access.conf 末尾。
 // 与 updateStanza 同一安全流程：同名查重 → 预检 → 备份 → 原子替换 → SIGHUP。
 func appendStanza(name, stanza string) (string, error) {
+	confWriteMu.Lock()
+	defer confWriteMu.Unlock()
 	if strings.TrimSpace(stanza) == "" {
 		return "", fmt.Errorf("stanza 为空")
 	}
@@ -302,7 +315,7 @@ func appendStanza(name, stanza string) (string, error) {
 		return "", fmt.Errorf("access.conf 不可读：%v", err)
 	}
 	content := strings.TrimRight(string(data), "\n") + "\n\n" + stanza + "\n"
-	tmp := fmt.Sprintf("%s.check-%d", cfg.AccessConf, os.Getpid())
+	tmp := fmt.Sprintf("%s.check-%d-%d", cfg.AccessConf, os.Getpid(), time.Now().UnixNano())
 	if err := os.WriteFile(tmp, []byte(content), 0600); err != nil {
 		return "", err
 	}
@@ -326,6 +339,8 @@ var disabledLineRe = regexp.MustCompile(
 
 // enableStanza restores a stanza previously disabled by `user rm`.
 func enableStanza(name string) (string, error) {
+	confWriteMu.Lock()
+	defer confWriteMu.Unlock()
 	blocks := parseDisabledStanzas(cfg.AccessConf)
 	var blk *DisabledStanza
 	for i := range blocks {
@@ -352,7 +367,7 @@ func enableStanza(name string) (string, error) {
 		return "", fmt.Errorf("授权「%s」的行格式不可恢复", name)
 	}
 	content := strings.Join(lines, "\n") + "\n"
-	tmp := fmt.Sprintf("%s.check-%d", cfg.AccessConf, os.Getpid())
+	tmp := fmt.Sprintf("%s.check-%d-%d", cfg.AccessConf, os.Getpid(), time.Now().UnixNano())
 	if err := os.WriteFile(tmp, []byte(content), 0600); err != nil {
 		return "", err
 	}
@@ -405,6 +420,8 @@ func checkProfileName(name string) error {
 
 // saveProfile snapshots the current fwknopd.conf + access.conf.
 func saveProfile(name, note string) error {
+	confWriteMu.Lock()
+	defer confWriteMu.Unlock()
 	if err := checkProfileName(name); err != nil {
 		return err
 	}
@@ -535,6 +552,8 @@ func viewProfile(name string) (map[string]string, error) {
 // applyProfile validates the profile's config pair, backs up the live pair,
 // swaps the profile in, then reloads fwknopd.
 func applyProfile(name string) (string, error) {
+	confWriteMu.Lock()
+	defer confWriteMu.Unlock()
 	if err := checkProfileName(name); err != nil {
 		return "", err
 	}
@@ -572,6 +591,8 @@ func applyProfile(name string) (string, error) {
 }
 
 func deleteProfile(name string) error {
+	confWriteMu.Lock()
+	defer confWriteMu.Unlock()
 	if err := checkProfileName(name); err != nil {
 		return err
 	}
@@ -582,6 +603,8 @@ func deleteProfile(name string) error {
 // 无 meta.json 的旧方案补一份（Name 兜底、Created 保持 0 沉底——不伪造
 // 创建时间），行为与 listProfiles 对残缺 meta 的容忍对齐。
 func updateProfileNote(name, note string) error {
+	confWriteMu.Lock()
+	defer confWriteMu.Unlock()
 	if err := checkProfileName(name); err != nil {
 		return err
 	}
@@ -609,6 +632,8 @@ func updateProfileNote(name, note string) error {
 // 便于「在 xx 方案基础上改一版」的常见变体工作流；目标名已存在时拒绝，
 // 避免静默覆盖他人方案。
 func duplicateProfile(name, target string) error {
+	confWriteMu.Lock()
+	defer confWriteMu.Unlock()
 	if err := checkProfileName(name); err != nil {
 		return err
 	}
@@ -661,6 +686,8 @@ func duplicateProfile(name, target string) error {
    预检；且异机方案的路径类指令（FWKNOP_RUN_DIR 等）在本机合法但不可
    预检通过，强行预检会误拦正常迁移。 */
 func importProfile(name string, data []byte) error {
+	confWriteMu.Lock()
+	defer confWriteMu.Unlock()
 	if err := checkProfileName(name); err != nil {
 		return err
 	}
