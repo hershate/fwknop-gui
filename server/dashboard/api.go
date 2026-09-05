@@ -43,10 +43,16 @@ func valueFieldOK(s string, maxBytes int) bool {
 	return true
 }
 
-// posNameOK — 位置参数（admin 命令名位）额外拒绝前导 '-'：当前 admin 用
-// 手写 strcmp 解析不吃选项，此为防未来引入 getopt 类解析器的纵深防御。
+// posNameOK — 位置参数（admin 命令名位）额外拒绝：
+//   - 前导 '-'：当前 admin 用手写 strcmp 解析不吃选项，此为防未来引入
+//     getopt 类解析器的纵深防御；
+//   - 单引号/反斜杠：撤销时 marker 以 `rm '<name>'` 内嵌名字，而面板
+//     disabledLineRe 用 [^']* 解析——名字含引号会让撤销块在恢复流程中
+//     隐身（签发端拒绝，杜绝此类名字进入生态）。
 func posNameOK(s string) bool {
-	return valueFieldOK(s, 96) && !strings.HasPrefix(s, "-")
+	return valueFieldOK(s, 96) &&
+		!strings.HasPrefix(s, "-") &&
+		!strings.ContainsAny(s, "'\\")
 }
 
 var (

@@ -855,7 +855,21 @@ main(int argc, char **argv)
             else if(strcmp(argv[i], "--require-fingerprint") == 0)
                 require_fp = 1;
             else if(strcmp(argv[i], "--tofu-timeout") == 0 && i+1 < argc)
-                tofu_timeout = atoi(argv[++i]);
+            {
+                /* 审计第 7 轮：atoi 无校验——溢出/负值/带尾巴的输入都会产生
+                   异常宽限期语义（负值 = 宽限期即刻过期，TOFU 直接失效）。
+                   收紧为整数全量校验 + 0..10 年上界，与 --fw-timeout 同规。 */
+                char *end = NULL;
+                long v = strtol(argv[++i], &end, 10);
+                if(end == argv[i] || *end != '\0'
+                    || v < 0 || v > (long)86400 * 365 * 10)
+                {
+                    fprintf(stderr, "[*] --tofu-timeout 必须为 0-%d 的整数秒\n",
+                        86400 * 365 * 10);
+                    return EXIT_FAILURE;
+                }
+                tofu_timeout = (int)v;
+            }
             else if(strcmp(argv[i], "--fw-timeout") == 0 && i+1 < argc)
             {
                 fw_timeout = atoi(argv[++i]);
