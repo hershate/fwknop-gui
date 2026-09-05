@@ -26,7 +26,10 @@ set -u
 # ---- 路径 ----
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORK="${FWKNOPQS_WORK:-/tmp/fwknop-quickstart}"
-DPORT="${FWKNOPQS_DPORT:-62201}"
+# 端口优先级：环境变量 > 现役工作目录 fwknopd.conf 的 PCAP_FILTER（保持与
+# 运行中 fwknopd 一致，knock 无需每次显式带 FWKNOPQS_DPORT）> 默认 62201。
+DPORT="${FWKNOPQS_DPORT:-$(sed -n 's/^PCAP_FILTER[[:space:]]*udp port \([0-9]\+\).*/\1/p' "$WORK/fwknopd.conf" 2>/dev/null)}"
+DPORT="${DPORT:-62201}"
 DASH_ADDR="${FWKNOPQS_DASH_ADDR:-127.0.0.1:8088}"
 FWKNOP="$ROOT/client/fwknop"
 FWKNOPD="$ROOT/server/fwknopd"
@@ -189,7 +192,9 @@ send_knock() {
     say "发送 SPA 包到 127.0.0.1:$DPORT（开放 tcp/$port）..."
     # 客户端成功时默认静默；用 --verbose 取得 'bytes sent' 输出，
     # 并以退出码作为权威的成败信号。
-    "$FWKNOP" -A "tcp/$port" -a 127.0.0.1 -D 127.0.0.1 \
+    # -p 必须显式跟随 $DPORT：fwknop 客户端默认目的端口固定为 62201，
+    # 仅在 DPORT 恰为 62201 时才与服务端一致（否则包发往旧端口，pcap 抓不到）。
+    "$FWKNOP" -A "tcp/$port" -a 127.0.0.1 -D 127.0.0.1 -p "$DPORT" \
         --key-base64-rijndael "$key" --key-base64-hmac "$hmac" --no-save-args \
         --verbose >"$WORK/knock.log" 2>&1
     rc=$?
