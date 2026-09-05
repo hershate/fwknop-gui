@@ -1208,6 +1208,25 @@ const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
    晃到。所有滚动调用统一走 SB()，每次调用时查询（偏好运行中切换也即时生效） */
 const SB = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
 
+/* ==================== 状态 ==================== */
+/* 注意：S 必须先于下方「通知历史恢复」执行——const 存在暂时性死区(TDZ)，
+   若 S 声明晚于首个 S.xxx 引用，整个顶层脚本会以 ReferenceError 中止，
+   页面永久停留在「正在检查面板状态…」加载卡 */
+const S = {
+  page: 'overview',
+  auto: true, ivl: 5000, timer: null,
+  overview: null, metrics: null, events: null, users: null, tofu: null, config: null,
+  writeEnabled: false,
+  /* 持久化值白名单校验（与 ivl 恢复同规）：手改/旧版遗留的非法值会让
+     slice(NaN) 得到永远空白的列表且无表面原因 */
+  evFilter: 'all', evQuery: '', evPage: 0,
+  evPer: [20, 50, 100].includes(+localStorage.getItem('fwknop-ev-per')) ? +localStorage.getItem('fwknop-ev-per') : 20,
+  evTime: 'all',
+  tofuQuery: '', usersQuery: '', pfQuery: '',
+  hist: {},            // key -> [{t, v}] 计数器历史（前端采样，用于迷你趋势）
+  rawMode: false,
+};
+
 /* 通知历史：toast 入档（合并重发的累计计数同步到历史），侧栏铃铛可追溯。
    恢复须校验为数组：「可解析但非数组」（手改/异常写入的 {} 或字符串）会
    让下方 push 抛 TypeError——而 toast 是所有错误反馈的通道，绝不能被拖垮 */
@@ -1764,21 +1783,6 @@ function api(path, opts) {
   });
 }
 
-/* ==================== 状态 ==================== */
-const S = {
-  page: 'overview',
-  auto: true, ivl: 5000, timer: null,
-  overview: null, metrics: null, events: null, users: null, tofu: null, config: null,
-  writeEnabled: false,
-  /* 持久化值白名单校验（与 ivl 恢复同规）：手改/旧版遗留的非法值会让
-     slice(NaN) 得到永远空白的列表且无表面原因 */
-  evFilter: 'all', evQuery: '', evPage: 0,
-  evPer: [20, 50, 100].includes(+localStorage.getItem('fwknop-ev-per')) ? +localStorage.getItem('fwknop-ev-per') : 20,
-  evTime: 'all',
-  tofuQuery: '', usersQuery: '', pfQuery: '',
-  hist: {},            // key -> [{t, v}] 计数器历史（前端采样，用于迷你趋势）
-  rawMode: false,
-};
 const HIST_MAX = 72;   // 5s 间隔约 6 分钟
 const HIST_KEY = 'fwknop-hist';
 /* 趋势历史持久化（sessionStorage，标签页级）：刷新页面不丢迷你趋势 */
