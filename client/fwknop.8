@@ -43,7 +43,7 @@ SPA 本质上是下一代的端口敲门（Port Knocking，PK）技术，它在�
 .sp
 \fBfwknop\fR 生成的 SPA 数据包利用 HMAC 以"先加密后认证"（encrypt-then-authenticate）模型实现认证加密。尽管 HMAC 的使用目前是可选的（通过 \fB\-\-use\-hmac\fR 命令行开关启用），但强烈建议使用，原因有三：\fI1)\fR 没有 HMAC 时，除非使用 GnuPG，否则 \fBfwknop\fR 无法实现密码学强度的认证，但即便如此仍应使用 HMAC；\fI2)\fR 在加密之后应用 HMAC 可以防御针对 CBC 模式的密码分析填充预言攻击（padding oracle），例如 Vaudenay 攻击及相关的伎俩（如较新的针对 SSL 的 "Lucky 13" 攻击）；\fI3)\fR \fBfwknopd\fR 守护进程验证 HMAC 所需的代码比解密 SPA 数据包所需的代码简单得多，因此没有正确 HMAC 的 SPA 数据包甚至不会被送入解密例程。原因 \fI3)\fR 也解释了为什么即使 SPA 数据包使用 GnuPG 加密仍应使用 HMAC——因为除非 HMAC 首先校验通过，否则 SPA 数据不会被送入 \fBlibgpgme\fR 函数处理。GnuPG 和 libgpgme 是相对复杂的代码体，因此通过 HMAC 操作限制潜在攻击者与这些代码交互的能力，有助于维持更强的安全态势。为 SPA 通信生成 HMAC 需要在常规加密密钥之外使用一个专用密钥，两者都可以通过 \fB\-\-key\-gen\fR 选项生成。
 .sp
-\fBfwknop\fR 使用 \fIRijndael\fR 分组密码或通过 \fIGnuPG\fR 及其相关的非对称密码来加密 SPA 数据包。如果选择对称加密方式，则与通常一样，加密密钥在客户端和服务器之间共享（详见 \fBfwknopd\fR 的 \fI/usr/local/etc/fwknop/access\&.conf\fR 文件）。用于 Rijndael 加密的实际加密密钥通过标准的 PBKDF1 密钥派生算法生成，并使用 CBC 模式。如果选择 GnuPG 方式，则加密密钥来自 GnuPG 密钥环。以客户端身份运行的 fwknop 所生成的 SPA 数据包遵循以下格式（在加密和应用 HMAC 之前）：
+\fBfwknop\fR 使用 \fIRijndael\fR 分组密码或通过 \fIGnuPG\fR 及其相关的非对称密码来加密 SPA 数据包。如果选择对称加密方式，则与通常一样，加密密钥在客户端和服务器之间共享（详见 \fBfwknopd\fR 的 \fI/etc/fwknop/access\&.conf\fR 文件）。用于 Rijndael 加密的实际加密密钥通过标准的 PBKDF1 密钥派生算法生成，并使用 CBC 模式。如果选择 GnuPG 方式，则加密密钥来自 GnuPG 密钥环。以客户端身份运行的 fwknop 所生成的 SPA 数据包遵循以下格式（在加密和应用 HMAC 之前）：
 .sp
 .if n \{\
 .RS 4
@@ -111,7 +111,7 @@ SPA 本质上是下一代的端口敲门（Port Knocking，PK）技术，它在�
 \fB\-s\fR，以增强 SPA 通信抵御可能的
 \fI中间人\fR
 （Man\-In\-The\-Middle，MITM）攻击的能力，并在服务器端的
-\fI/usr/local/etc/fwknop/access\&.conf\fR
+\fI/etc/fwknop/access\&.conf\fR
 文件中设置
 \fIREQUIRE_SOURCE_ADDRESS\fR
 变量。注意，最安全的选项是
@@ -497,7 +497,7 @@ user@host\(rq，连接就会被自动转发到内部的 192\&.168\&.10\&.2 系�
 客户端发送 SPA 数据包的源地址。这需要客户端一侧的 root 权限，因为实现此功能需要原始套接字。注意，在此模式下可以给出
 \fB\-\-spoof\-user\fR
 参数，以匹配可能在
-\fI/usr/local/etc/fwknop/access\&.conf\fR
+\fI/etc/fwknop/access\&.conf\fR
 中指定的任何
 \fBREQUIRE_USERNAME\fR
 关键字。
@@ -644,7 +644,7 @@ SPA 服务器在修改防火墙规则集时，使用 SPA 数据包来源的源 I
 \fB\-M, \-\-encryption\-mode\fR=\fI<mode>\fR
 .RS 4
 指定使用 AES 加密 SPA 数据包时的加密模式。默认为 CBC 模式，但只要在服务器端
-\fI/usr/local/etc/fwknop/access\&.conf\fR
+\fI/etc/fwknop/access\&.conf\fR
 文件中通过 ENCRYPTION_MODE 变量同样指定，也可以选择 CFB 或 OFB 等其他模式。一般来说，建议不要给出此参数，直接使用默认值（CBC）。注意，可以指定字符串 \(lqlegacy\(rq，以便按照 2\&.5 之前版本的
 \fBfwknop\fR
 所使用的旧初始化向量策略生成 SPA 数据包。自 2\&.5 版本起，
@@ -1066,7 +1066,7 @@ User\-Agent 字符串，而不是由
 \fBSPOOF_USER\fR、\fBGPG_AGENT_INFO\fR（仅在 \fB\-\-gpg\-agent\fR 模式下使用）。
 .SH "SPA 数据包伪装"
 .sp
-由于 \fBfwknop\fR 将要放行通过防火墙的 IP 放在加密的 SPA 载荷之内（除非使用了 \fB\-s\fR——不推荐，且可在 \fBfwknopd\fR 服务器配置中禁止），SPA 数据包可以很容易地被伪装，而在此场景下这是件好事。也就是说，SPA 数据包的源 IP 会被 \fBfwknopd\fR 守护进程忽略（当 \fI/usr/local/etc/fwknop/access\&.conf\fR 文件中设置了 \fIREQUIRE_SOURCE_ADDRESS\fR 变量时），只有通过认证且被正确解密的 SPA 数据包中所包含的 IP 才会被授予防火墙访问权。这使得例如可以伪装成 www\&.yahoo\&.com 正在向目标系统进行认证，而实际连接却来自一个看似毫不相关的 IP。
+由于 \fBfwknop\fR 将要放行通过防火墙的 IP 放在加密的 SPA 载荷之内（除非使用了 \fB\-s\fR——不推荐，且可在 \fBfwknopd\fR 服务器配置中禁止），SPA 数据包可以很容易地被伪装，而在此场景下这是件好事。也就是说，SPA 数据包的源 IP 会被 \fBfwknopd\fR 守护进程忽略（当 \fI/etc/fwknop/access\&.conf\fR 文件中设置了 \fIREQUIRE_SOURCE_ADDRESS\fR 变量时），只有通过认证且被正确解密的 SPA 数据包中所包含的 IP 才会被授予防火墙访问权。这使得例如可以伪装成 www\&.yahoo\&.com 正在向目标系统进行认证，而实际连接却来自一个看似毫不相关的 IP。
 .SH "示例"
 .sp
 以下示例说明了在几种情况下可以提供给 fwknop 客户端的命令行参数：
@@ -1107,7 +1107,7 @@ User\-Agent 字符串，而不是由
 .RE
 .\}
 .sp
-这些密钥是随机数据的 base64 编码块，\fBKEY_BASE64\fR 和 \fBHMAC_KEY_BASE64\fR 两行都应原样复制并放入 \fI2\&.2\&.2\&.2\fR 上的 \fI/usr/local/etc/fwknop/access\&.conf\fR 文件中。完成此操作后，即可在该系统上启动 \fBfwknopd\fR，设置针对 SSH 连接的默认丢弃策略，然后通过 fwknop 管理对 SSH 的访问。要访问 SSH，只需使用 \fB\-n\fR 参数引用 \&.fwknoprc 文件中的 \fI2\&.2\&.2\&.2\fR 配置节（为便于说明包含了部分 \fB\-\-verbose\fR 输出）：
+这些密钥是随机数据的 base64 编码块，\fBKEY_BASE64\fR 和 \fBHMAC_KEY_BASE64\fR 两行都应原样复制并放入 \fI2\&.2\&.2\&.2\fR 上的 \fI/etc/fwknop/access\&.conf\fR 文件中。完成此操作后，即可在该系统上启动 \fBfwknopd\fR，设置针对 SSH 连接的默认丢弃策略，然后通过 fwknop 管理对 SSH 的访问。要访问 SSH，只需使用 \fB\-n\fR 参数引用 \&.fwknoprc 文件中的 \fI2\&.2\&.2\&.2\fR 配置节（为便于说明包含了部分 \fB\-\-verbose\fR 输出）：
 .sp
 .if n \{\
 .RS 4
@@ -1141,7 +1141,7 @@ User\-Agent 字符串，而不是由
 .\}
 .SS "访问模式示例"
 .sp
-\fBfwknop\fR 最常见的用法是获取对远程系统上 SSH 的访问权，该远程系统部署了 \fBfwknopd\fR 守护进程和默认丢弃的防火墙策略。以下命令演示了这种用法，其中 IP \fI1\&.1\&.1\&.1\fR 是将被允许通过运行于 \fI3\&.3\&.3\&.3\fR 上的防火墙的 IP（注意，\fBfwknopd\fR 读取的 \fI/usr/local/etc/fwknop/access\&.conf\fR 文件中需要有匹配的加密密钥和 HMAC 密钥，配置细节可参见 \fIfwknopd(8)\fR 手册页）。另请注意，下面的示例通过 stdin 提示用户提供加密密钥和 HMAC 密钥，而不是像上面的示例那样使用 \(lq$HOME/\&.fwknoprc\(rq 文件将它们写入磁盘。不过，以下所有示例只需添加 \fB\-\-save\-rc\-stanza\fR 参数即可转换为使用 ~/\&.fwknoprc 文件的方式：
+\fBfwknop\fR 最常见的用法是获取对远程系统上 SSH 的访问权，该远程系统部署了 \fBfwknopd\fR 守护进程和默认丢弃的防火墙策略。以下命令演示了这种用法，其中 IP \fI1\&.1\&.1\&.1\fR 是将被允许通过运行于 \fI3\&.3\&.3\&.3\fR 上的防火墙的 IP（注意，\fBfwknopd\fR 读取的 \fI/etc/fwknop/access\&.conf\fR 文件中需要有匹配的加密密钥和 HMAC 密钥，配置细节可参见 \fIfwknopd(8)\fR 手册页）。另请注意，下面的示例通过 stdin 提示用户提供加密密钥和 HMAC 密钥，而不是像上面的示例那样使用 \(lq$HOME/\&.fwknoprc\(rq 文件将它们写入磁盘。不过，以下所有示例只需添加 \fB\-\-save\-rc\-stanza\fR 参数即可转换为使用 ~/\&.fwknoprc 文件的方式：
 .sp
 .if n \{\
 .RS 4
@@ -1246,9 +1246,9 @@ User\-Agent 字符串，而不是由
 .\}
 .SH "向后兼容性"
 .sp
-在 \fI2\&.5\fR 版本中，\fBfwknop\fR 在密码学使用方面发生了重大变化，包括为 Rijndael 和 GnuPG 两种模式增加了 HMAC 认证加密支持，确保 Rijndael 加密 SPA 数据包时正确使用 PBKDF1 进行密钥派生，并修复了 fwknop 早期版本中的若干缺陷。总体而言，这意味着在使用 Rijndael 时，\fI2\&.5\fR 版本生成的 SPA 数据包与 fwknop 早期版本不兼容。GnuPG 加密模式不受这些更新影响。不过，即使使用 Rijndael，也可以通过在 fwknop 客户端命令行上用 \fB\-M\fR 和/或在 \fI/usr/local/etc/fwknop/access\&.conf\fR 文件中用 \fIENCRYPTION_MODE\fR 变量设置 \fIlegacy\fR 加密模式来支持向后兼容。这样，2\&.5 之前的服务器可以解密 2\&.5 及以后版本的客户端生成的 SPA 数据包（设置 \fI\-M legacy\fR），2\&.5 及以后版本的服务器也可以解密 2\&.5 之前客户端生成的 SPA 数据包（在 access\&.conf 文件中设置 \fIENCRYPTION_MODE legacy\fR）。注意，HMAC 仅从 2\&.5 起才受支持且为可选特性，因此向后兼容仅适用于两端都不使用 HMAC 的配置。强烈建议将所有 fwknop 客户端和服务器升级到 2\&.5，并使用新的 HMAC 模式以获得正确认证的 SPA 通信。向后兼容支持用于使客户端和服务器的分阶段升级更加容易。
+在 \fI2\&.5\fR 版本中，\fBfwknop\fR 在密码学使用方面发生了重大变化，包括为 Rijndael 和 GnuPG 两种模式增加了 HMAC 认证加密支持，确保 Rijndael 加密 SPA 数据包时正确使用 PBKDF1 进行密钥派生，并修复了 fwknop 早期版本中的若干缺陷。总体而言，这意味着在使用 Rijndael 时，\fI2\&.5\fR 版本生成的 SPA 数据包与 fwknop 早期版本不兼容。GnuPG 加密模式不受这些更新影响。不过，即使使用 Rijndael，也可以通过在 fwknop 客户端命令行上用 \fB\-M\fR 和/或在 \fI/etc/fwknop/access\&.conf\fR 文件中用 \fIENCRYPTION_MODE\fR 变量设置 \fIlegacy\fR 加密模式来支持向后兼容。这样，2\&.5 之前的服务器可以解密 2\&.5 及以后版本的客户端生成的 SPA 数据包（设置 \fI\-M legacy\fR），2\&.5 及以后版本的服务器也可以解密 2\&.5 之前客户端生成的 SPA 数据包（在 access\&.conf 文件中设置 \fIENCRYPTION_MODE legacy\fR）。注意，HMAC 仅从 2\&.5 起才受支持且为可选特性，因此向后兼容仅适用于两端都不使用 HMAC 的配置。强烈建议将所有 fwknop 客户端和服务器升级到 2\&.5，并使用新的 HMAC 模式以获得正确认证的 SPA 通信。向后兼容支持用于使客户端和服务器的分阶段升级更加容易。
 .sp
-特别强调，如果 \fBfwknopd\fR 服务器已升级到 2\&.5（或更高版本），但旧客户端无法同时升级，则需在 \fI/usr/local/etc/fwknop/access\&.conf\fR 文件中的每个 \fISOURCE\fR 配置节中添加以下一行：
+特别强调，如果 \fBfwknopd\fR 服务器已升级到 2\&.5（或更高版本），但旧客户端无法同时升级，则需在 \fI/etc/fwknop/access\&.conf\fR 文件中的每个 \fISOURCE\fR 配置节中添加以下一行：
 .sp
 .if n \{\
 .RS 4
