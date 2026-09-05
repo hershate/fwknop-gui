@@ -36,6 +36,8 @@
   #include <stdlib.h>
 #else
   #include <sys/time.h>
+  #include <unistd.h>
+  #include <fcntl.h>
 #endif
 
 #include "fko_common.h"
@@ -72,28 +74,46 @@ get_random_data(unsigned char *data, const size_t len)
         *(data+i) = rnum % 0xff;
 	}
 #else
-	FILE           *rfd;
     struct timeval  tv;
     int             do_time = 0;
-    size_t          amt_read;
+    size_t          nread = 0;
 
-    /* Attempt to read seed data from /dev/urandom.  If that does not
-     * work, then fall back to a time-based method (less secure, but
-     * probably more portable).
-    */
-    if((rfd = fopen(RAND_FILE, "r")) == NULL)
+    /* R2 性能：/dev/urandom fd 进程级缓存。原实现每次调用都
+     * fopen/fread/fclose（一次完整 open+close 系统调用往返，是 SPA
+     * 产包路径上最大的常量开销：每包至少走两处——rand value + salt）。
+     * 熵源不变（仍为内核 urandom），仅避免重复打开；O_CLOEXEC 保证
+     * exec 子进程不继承。失败语义与原实现一致：读不满则回退时间种子。
+     * 并发说明：fwknopd/fwknop 均单线程使用本库；即使多线程竞态，
+     * 最坏情形是重复 open 各自持有有效 fd（幂等写、永不 close），
+     * 不产生 use-after-free 或错误数据。 */
+    static int rfd = -2;    /* -2 = 未初始化, -1 = 不可用, >=0 = 已缓存 */
+
+    if (rfd == -2)
     {
-        do_time = 1;
+        #ifdef O_CLOEXEC
+        rfd = open(RAND_FILE, O_RDONLY | O_CLOEXEC);
+        #else
+        rfd = open(RAND_FILE, O_RDONLY);
+        #endif
+    }
+
+    if (rfd >= 0)
+    {
+        /* Read seed from /dev/urandom（循环读满） */
+        while (nread < len)
+        {
+            ssize_t r = read(rfd, data + nread, len - nread);
+            if (r <= 0)
+                break;
+            nread += (size_t)r;
+        }
+
+        if (nread != len)
+            do_time = 1;
     }
     else
     {
-        /* Read seed from /dev/urandom
-        */
-        amt_read = fread(data, len, 1, rfd);
-        fclose(rfd);
-
-        if (amt_read != 1)
-            do_time = 1;
+        do_time = 1;
     }
 
     if (do_time)
