@@ -22,6 +22,36 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
+)
+
+// valueFieldOK — 传给 fwknopd-admin 的值型输入统一护栏（零信任审计第 2 轮）：
+// admin 把这些值原样 printf 进 stanza 文本（如 "### fwknopd-admin user: %s"），
+// 值里的换行/控制字符能把任意指令行走私进 extractPrintedStanza 提取的
+// stanza 并写入 access.conf（预检只验语法合法、不验行来源）。规则：
+//   - 拒绝控制字符（含 \n\r\t）与非 UTF-8 —— 杜绝结构注入与逐行解析破坏
+//   - 字节长度封顶 —— 对齐 admin 侧 name[128] 的截断语义
+func valueFieldOK(s string, maxBytes int) bool {
+	if s == "" || len(s) > maxBytes || !utf8.ValidString(s) {
+		return false
+	}
+	for _, r := range s {
+		if r < 0x20 || r == 0x7f {
+			return false
+		}
+	}
+	return true
+}
+
+// posNameOK — 位置参数（admin 命令名位）额外拒绝前导 '-'：当前 admin 用
+// 手写 strcmp 解析不吃选项，此为防未来引入 getopt 类解析器的纵深防御。
+func posNameOK(s string) bool {
+	return valueFieldOK(s, 96) && !strings.HasPrefix(s, "-")
+}
+
+var (
+	rePortRange = regexp.MustCompile(`^\d{1,5}-\d{1,5}$`)
+	reDigits    = regexp.MustCompile(`^\d{1,8}$`)
 )
 
 func writeJSON(w http.ResponseWriter, v interface{}) {
@@ -347,8 +377,8 @@ func handleAdminAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	name := strings.TrimSpace(r.FormValue("name"))
-	if name == "" {
-		http.Error(w, "缺少名称", http.StatusBadRequest)
+	if !posNameOK(name) {
+		http.Error(w, "名称非法（1-96 字节、无控制字符、不以 - 开头）", http.StatusBadRequest)
 		return
 	}
 	args := []string{"user", "add", name, "--no-qr"}
@@ -358,6 +388,25 @@ func handleAdminAdd(w http.ResponseWriter, r *http.Request) {
 		{"tofu-timeout", "--tofu-timeout"}, {"fw-timeout", "--fw-timeout"},
 	} {
 		if v := strings.TrimSpace(r.FormValue(f.form)); v != "" {
+			/* 形状校验：数字/端口范围字段收紧到精确形状，文本字段走
+			   通用护栏（这些值都会被 admin 原样嵌进 stanza 文本） */
+			switch f.form {
+			case "port-range":
+				if !rePortRange.MatchString(v) {
+					http.Error(w, "端口范围格式应为 START-END", http.StatusBadRequest)
+					return
+				}
+			case "tofu-timeout", "fw-timeout":
+				if !reDigits.MatchString(v) {
+					http.Error(w, f.form+" 必须为数字", http.StatusBadRequest)
+					return
+				}
+			default:
+				if !valueFieldOK(v, 128) {
+					http.Error(w, f.form+" 含非法字符", http.StatusBadRequest)
+					return
+				}
+			}
 			args = append(args, f.flag, v)
 		}
 	}
@@ -396,8 +445,8 @@ func handleAdminRm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	name := strings.TrimSpace(r.FormValue("name"))
-	if name == "" {
-		http.Error(w, "缺少名称", http.StatusBadRequest)
+	if !posNameOK(name) {
+		http.Error(w, "名称非法（1-96 字节、无控制字符、不以 - 开头）", http.StatusBadRequest)
 		return
 	}
 	out, err := runAdmin("user", "rm", name,
@@ -421,8 +470,12 @@ func handleAdminUserURI(w http.ResponseWriter, r *http.Request) {
 	}
 	name := strings.TrimSpace(r.FormValue("name"))
 	server := strings.TrimSpace(r.FormValue("server"))
-	if name == "" || server == "" {
-		http.Error(w, "缺少名称或服务器地址（access.conf 不记录 SPA 服务器地址，需重新提供）", http.StatusBadRequest)
+	if !posNameOK(name) {
+		http.Error(w, "名称非法（1-96 字节、无控制字符、不以 - 开头）", http.StatusBadRequest)
+		return
+	}
+	if !valueFieldOK(server, 128) {
+		http.Error(w, "服务器地址含非法字符", http.StatusBadRequest)
 		return
 	}
 	out, err := runAdmin("user", "qr", name, "--server", server,
@@ -488,8 +541,8 @@ func handleAdminTofuUnbind(w http.ResponseWriter, r *http.Request) {
 	}
 	key := strings.TrimSpace(r.FormValue("stanza_key"))
 	dev := strings.TrimSpace(r.FormValue("device_id"))
-	if key == "" || dev == "" {
-		http.Error(w, "缺少 stanza_key 或 device_id", http.StatusBadRequest)
+	if !valueFieldOK(key, 256) || !valueFieldOK(dev, 128) {
+		http.Error(w, "stanza_key 或 device_id 含非法字符", http.StatusBadRequest)
 		return
 	}
 	out, err := runAdmin("tofu", "unbind", key, dev,
