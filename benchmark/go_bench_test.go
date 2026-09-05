@@ -74,6 +74,56 @@ func BenchmarkPerfParseAccessConf(b *testing.B) {
 	}
 }
 
+// R5 夹具：操作日志 5000 条（~750KB，超过读尾 256KB 窗口，逼近长期运行
+// 面板的真实体量）。BenchmarkPerfReadOpLogTail 测轮询/登录路径的重复成本。
+func BenchmarkPerfReadOpLogTail100(b *testing.B) {
+	ops := ""
+	for i := 0; i < 5000; i++ {
+		ops += fmt.Sprintf(`{"time":%d,"op":"签发凭证","detail":"user-%04d","ip":"192.168.10.%d","ok":true}`+"\n",
+			1788450000+int64(i), i%1000, 100+i%50)
+	}
+	os.WriteFile(filepath.Join(cfg.RunDir, opLogFileName), []byte(ops), 0600)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = readOpLogTail(100)
+	}
+}
+
+// TestR5OpLogCacheInvalidation — 操作日志缓存红线：logOp 追加后必须立即可见。
+func TestR5OpLogCacheInvalidation(t *testing.T) {
+	oldRun := cfg.RunDir
+	dir := t.TempDir()
+	cfg.RunDir = dir
+	defer func() { cfg.RunDir = oldRun }()
+
+	p := filepath.Join(dir, opLogFileName)
+	os.WriteFile(p, []byte("{\"time\":1,\"op\":\"登录\",\"ok\":true}\n"), 0600)
+
+	e1 := readOpLogTail(10)
+	if len(e1) != 1 || e1[0].Op != "登录" {
+		t.Fatalf("冷读: %v", e1)
+	}
+	if e2 := readOpLogTail(10); len(e2) != 1 || e2[0].Op != "登录" {
+		t.Fatalf("暖读分歧: %v", e2)
+	}
+
+	// 追加一条（经 logOp 真实写路径，mtime/size 变化）→ 必须读到 2 条
+	logOp(nil, "注销", "", true)
+	e3 := readOpLogTail(10)
+	if len(e3) != 2 {
+		t.Fatalf("写入后缓存陈旧: got %d 条, want 2", len(e3))
+	}
+	if e3[1].Op != "注销" {
+		t.Fatalf("追加内容不符: %+v", e3[1])
+	}
+
+	// 文件删除 → 空结果（原错误语义）
+	os.Remove(p)
+	if e4 := readOpLogTail(10); len(e4) != 0 {
+		t.Fatalf("删除后应空: %v", e4)
+	}
+}
+
 // TestR3CacheInvalidation — 缓存红线：文件内容变化后必须立即可见，
 // 未变化时结果与直读一致，缺失文件错误语义不变。
 func TestR3CacheInvalidation(t *testing.T) {

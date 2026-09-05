@@ -26,6 +26,7 @@
 - [report/perf/R2-urandom-fd.md](report/perf/R2-urandom-fd.md) — urandom fd 缓存（产包累计 3.4×）
 - [report/perf/R3-cache.md](report/perf/R3-cache.md) — dashboard 轮询热路径 mtime 缓存（稳态 18~23×）
 - [report/perf/R4-http-gzip-etag.md](report/perf/R4-http-gzip-etag.md) — 页面预压缩 + 强 ETag（首载 1/3，重复访问 304）
+- [report/perf/R5-oplog.md](report/perf/R5-oplog.md) — 操作日志读尾缓存（~132×，登录/轮询路径）
 
 ## 安全审计报告
 

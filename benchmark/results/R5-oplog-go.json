@@ -1,0 +1,25 @@
+{
+ "label": "R5-oplog",
+ "median": {
+  "BenchmarkPerfReadAuditTail50": {
+   "ns_per_op": 6590.0,
+   "b_per_op": 4504,
+   "allocs_per_op": 6
+  },
+  "BenchmarkPerfParseMetrics": {
+   "ns_per_op": 1283.0,
+   "b_per_op": 560,
+   "allocs_per_op": 5
+  },
+  "BenchmarkPerfParseAccessConf": {
+   "ns_per_op": 2532.0,
+   "b_per_op": 4352,
+   "allocs_per_op": 3
+  },
+  "BenchmarkPerfReadOpLogTail100": {
+   "ns_per_op": 28463.0,
+   "b_per_op": 17327,
+   "allocs_per_op": 121
+  }
+ }
+}

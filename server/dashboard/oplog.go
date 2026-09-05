@@ -82,11 +82,75 @@ func logOpFull(r *http.Request, op, detail string, ok bool, reason string) {
 	f.Write(append(data, '\n'))
 }
 
-// readOpLogTail 返回尾部 n 条（旧→新）。只读末尾 256KB 窗口
-// （覆盖约上千条），窗口起点可能落在行中间，丢弃首条残行。
-// 当前文件条数不足 n（多发生在 8MB 单代轮转后不久）时续读上一代
-// .bak 的尾部补齐——「加载更早」因此能跨轮转边界，列表与导出口径一致。
+// readOpLogTail 返回尾部 n 条（旧→新）。R5 性能层：结果按双文件
+// (size, mtime_ns) 缓存——操作日志只在 logOp 追加/轮转时变化，而
+// /api/oplog 轮询与登录「上次登录回顾」每次都重扫 256KB 窗口并解析
+// 上千条 JSON（5000 条日志实测 3.7ms/1.7MB/22.5k allocs 每次）。
+// 缓存命中为 2 次 stat + 切片拷贝；logOp 写入或单代轮转（.bak 替换）
+// 必然改变 stat 键而自动失效。返回副本，调用方改动不污染缓存。
+// 语义与直读完全一致：n 超缓存容量（>1000）直读；直读按缓存容量取
+// 足量再裁尾（尾部 n 条与逐级读等价），条目不足时仍跨 .bak 补齐。
 func readOpLogTail(n int) []OpEntry {
+	if n > opLogCacheMax {
+		return readOpLogTailDirect(n)
+	}
+	curSize, curMtime := statKeyFor(opLogPath())
+	bakSize, bakMtime := statKeyFor(opLogPath() + ".bak")
+
+	opLogCache.mu.Lock()
+	if opLogCache.valid &&
+		opLogCache.curSize == curSize && opLogCache.curMtime == curMtime &&
+		opLogCache.bakSize == bakSize && opLogCache.bakMtime == bakMtime &&
+		len(opLogCache.entries) >= n {
+		out := make([]OpEntry, n)
+		copy(out, opLogCache.entries[len(opLogCache.entries)-n:])
+		opLogCache.mu.Unlock()
+		return out
+	}
+	opLogCache.mu.Unlock()
+
+	out := readOpLogTailDirect(opLogCacheMax)
+	opLogCache.mu.Lock()
+	opLogCache.curSize, opLogCache.curMtime = curSize, curMtime
+	opLogCache.bakSize, opLogCache.bakMtime = bakSize, bakMtime
+	opLogCache.entries = out
+	opLogCache.valid = true
+	opLogCache.mu.Unlock()
+
+	if len(out) > n {
+		out = out[len(out)-n:]
+	}
+	/* 未命中路径返回的子切片与缓存共享底层数组：拷贝后再交出，
+	   与命中路径同守「返回副本」红线 */
+	cp := make([]OpEntry, len(out))
+	copy(cp, out)
+	return cp
+}
+
+const opLogCacheMax = 1000
+
+type opLogCacheT struct {
+	mu                sync.Mutex
+	valid             bool
+	curSize, curMtime int64
+	bakSize, bakMtime int64
+	entries           []OpEntry
+}
+
+var opLogCache opLogCacheT
+
+// statKeyFor 返回 (size, mtime_ns)；文件缺失返回 (-1,-1) 哨兵
+// （缺失本身也是可缓存的稳定状态）。
+func statKeyFor(path string) (int64, int64) {
+	st, err := os.Stat(path)
+	if err != nil {
+		return -1, -1
+	}
+	return st.Size(), st.ModTime().UnixNano()
+}
+
+// readOpLogTailDirect 是无缓存的原始读路径（读尾 256KB 窗口 + 跨 .bak 补齐）。
+func readOpLogTailDirect(n int) []OpEntry {
 	out := readOpLogTailFrom(opLogPath(), n)
 	if len(out) < n {
 		if prev := readOpLogTailFrom(opLogPath()+".bak", n-len(out)); len(prev) > 0 {
