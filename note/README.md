@@ -27,6 +27,10 @@
 - [report/perf/R3-cache.md](report/perf/R3-cache.md) — dashboard 轮询热路径 mtime 缓存（稳态 18~23×）
 - [report/perf/R4-http-gzip-etag.md](report/perf/R4-http-gzip-etag.md) — 页面预压缩 + 强 ETag（首载 1/3，重复访问 304）
 
+## 安全审计报告
+
+- [report/security-audit-2026-09-05.md](report/security-audit-2026-09-05.md) — 网络暴露面五轮安全/稳定性审计（3 类 9 项修复 + 掩码红线测试固化）
+
 ## 发版说明
 
 - [release/2.9.1.md](release/2.9.1.md) — WebUI 2.9.1：一键体检成熟化（7→14 项+钻取闭环+可信度工程）+ 后端解析层修复，42 项提交，回归 124 PASS（2026-08-25）
