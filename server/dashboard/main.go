@@ -27,6 +27,9 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
+	"crypto/sha256"
 	"flag"
 	"fmt"
 	"io/fs"
@@ -39,6 +42,48 @@ import (
 )
 
 const version = "2.9.1"
+
+// uiHandler serves the embedded single-page UI (R4 性能).
+//
+// 页面 ~600KB 且编译期固定：启动时预压缩 gzip（BestCompression，仅一次）
+// 并以内容 SHA-256 作为强 ETag。浏览器二次访问经 If-None-Match 命中回
+// 304（零下载）；首次/强刷传输 gzip 体，LAN 上体量降 ~75%。压缩对浏览器
+// 完全透明，页面语义与原 http.FileServer 一致（同路径、同 Content-Type、
+// 未命中路径 404），单资产结构下 Range/HEAD 由 http.ServeContent 统一处理。
+type uiHandler struct {
+	body []byte
+	gz   []byte
+	etag string
+}
+
+func newUIHandler(webFS fs.FS) *uiHandler {
+	b, err := fs.ReadFile(webFS, "index.html")
+	if err != nil {
+		log.Fatalf("嵌入页面缺失: %v", err)
+	}
+	sum := sha256.Sum256(b)
+	var buf bytes.Buffer
+	zw, _ := gzip.NewWriterLevel(&buf, gzip.BestCompression)
+	if _, err := zw.Write(b); err != nil {
+		log.Fatalf("页面压缩失败: %v", err)
+	}
+	zw.Close()
+	return &uiHandler{body: b, gz: buf.Bytes(), etag: fmt.Sprintf(`"%x"`, sum)}
+}
+
+func (h *uiHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if p := r.URL.Path; p != "/" && p != "/index.html" {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Etag", h.etag)
+	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		w.Header().Set("Content-Encoding", "gzip")
+		http.ServeContent(w, r, "index.html", time.Time{}, bytes.NewReader(h.gz))
+		return
+	}
+	http.ServeContent(w, r, "index.html", time.Time{}, bytes.NewReader(h.body))
+}
 
 type Config struct {
 	RunDir      string
@@ -169,7 +214,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	mux.Handle("/", http.FileServer(http.FS(webFS)))
+	mux.Handle("/", newUIHandler(webFS))
 
 	log.Printf("fwknop-dashboard %s listening on http://%s (run-dir=%s write=%v)",
 		version, cfg.Addr, cfg.RunDir, cfg.EnableWrite)
