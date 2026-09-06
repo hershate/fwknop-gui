@@ -28,6 +28,7 @@
 - [report/perf/R4-http-gzip-etag.md](report/perf/R4-http-gzip-etag.md) — 页面预压缩 + 强 ETag（首载 1/3，重复访问 304）
 - [report/perf/R5-oplog.md](report/perf/R5-oplog.md) — 操作日志读尾缓存（~132×，登录/轮询路径）
 - [report/perf/R6-audit-cold.md](report/perf/R6-audit-cold.md) — 审计尾读冷启动窗口化（16.3×，成本与日志体积解耦）
+- [report/perf/R7-convergence.md](report/perf/R7-convergence.md) — 收敛评估：终态剖析 + 剩余候选项否决理由（专项收官）
 
 ## 安全审计报告
 
