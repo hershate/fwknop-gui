@@ -74,15 +74,27 @@ var (
 	tofuCacheVal    []TofuBinding
 )
 
-/* 审计尾读增量缓存：原实现每次调用全量读取并解析整个审计文件再截取尾部，
-   文件随运行膨胀（概览状态卡自己都会提示「>200MB 拖慢事件页」）后，每次
-   轮询都是 O(文件大小) 的 IO+JSON 解析。改为记录文件偏移只读增量：
-   常态轮询（无新事件）零解析，有事件只解析新增行。 */
+/*
+审计尾读增量缓存：原实现每次调用全量读取并解析整个审计文件再截取尾部，
+
+	文件随运行膨胀（概览状态卡自己都会提示「>200MB 拖慢事件页」）后，每次
+	轮询都是 O(文件大小) 的 IO+JSON 解析。改为记录文件偏移只读增量：
+	常态轮询（无新事件）零解析，有事件只解析新增行。
+*/
 var auditTailCache struct {
 	off  int64        // 已消费到的文件偏移（最后一个完整行之后）
 	tail []AuditEvent // 尾部事件缓存（容量 nMax）
 	nMax int          // 缓存容量，取历史调用 n 的最大值
 }
+
+/*
+auditColdWindow — 冷读窗口（R6）：audit.c 的行缓冲上界 512B 保证每行
+
+	不超过 512 字节，1MB 窗口恒容纳 ≥2000 行（API 上限 500 条的 4 倍），
+	冷启动不再全量解析整个审计文件（10 万行实测 ~283ms/144MB 分配）。
+	窗口内凑不足请求量时回退全量，结果与原实现逐条一致。
+*/
+const auditColdWindow = 1 << 20
 
 // readAuditTail returns the last n audit events (oldest first).
 func readAuditTail(n int) []AuditEvent {
@@ -108,7 +120,18 @@ func readAuditTail(n int) []AuditEvent {
 	if n > c.nMax {
 		c.off, c.tail, c.nMax = 0, nil, n
 	}
-	if _, err := f.Seek(c.off, io.SeekStart); err != nil {
+	/* R6 冷读窗口化：偏移归零且文件大于窗口时跳到窗口起点，只解析尾部。
+	   单一 reader 丢弃起点"残行"（防 bufio 预读丢字节）；残行字节计入
+	   偏移（它位于首个完整行之前，之后每条完整行都会越过它）。窗口内
+	   凑不足 n 条时回退全量解析，保证与原实现逐条一致。 */
+	base := int64(0)
+	if c.off == 0 && size > auditColdWindow {
+		base = size - auditColdWindow
+		if _, err := f.Seek(base, io.SeekStart); err != nil {
+			c.off, c.tail = 0, nil
+			return nil
+		}
+	} else if _, err := f.Seek(c.off, io.SeekStart); err != nil {
 		c.off, c.tail = 0, nil
 		return nil
 	}
@@ -116,6 +139,21 @@ func readAuditTail(n int) []AuditEvent {
 	   才推进偏移——半行不消费，留待下次补齐后重读，防增量模式漏事件 */
 	br := bufio.NewReader(f)
 	var consumed int64
+	if base > 0 {
+		/* 窗口起点残行：其字节（含 \n）直接由 ReadBytes 返回长度记账
+		   （bufio 预读使文件位置不可靠）；读取失败则窗口路径作废回退 */
+		partial, rerr := br.ReadBytes('\n')
+		if rerr != nil {
+			base = 0
+			c.tail = nil
+			if _, err := f.Seek(0, io.SeekStart); err != nil {
+				return nil
+			}
+			br = bufio.NewReader(f)
+		} else {
+			consumed += int64(len(partial))
+		}
+	}
 	for {
 		line, rerr := br.ReadBytes('\n')
 		if rerr == nil { /* 完整行 */
@@ -129,6 +167,31 @@ func readAuditTail(n int) []AuditEvent {
 		}
 		if rerr != nil { /* io.EOF（含半行不消费）或读错误 */
 			break
+		}
+	}
+	/* 回退判定：窗口读到的完整事件不足请求量（病态超长行挤爆窗口的
+	   理论情形）→ 作废窗口路径，从零全量重读，结果与原实现逐条一致 */
+	if base > 0 && len(c.tail) < n {
+		c.off, c.tail = 0, nil
+		if _, err := f.Seek(0, io.SeekStart); err != nil {
+			return nil
+		}
+		br = bufio.NewReader(f)
+		consumed = 0
+		for {
+			line, rerr := br.ReadBytes('\n')
+			if rerr == nil {
+				consumed += int64(len(line))
+				if s := strings.TrimSpace(string(line)); s != "" {
+					var e AuditEvent
+					if json.Unmarshal([]byte(s), &e) == nil {
+						c.tail = append(c.tail, e)
+					}
+				}
+			}
+			if rerr != nil {
+				break
+			}
 		}
 	}
 	c.off += consumed

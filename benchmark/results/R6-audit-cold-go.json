@@ -1,0 +1,30 @@
+{
+ "label": "R6-audit-cold",
+ "median": {
+  "BenchmarkPerfReadAuditTail50": {
+   "ns_per_op": 5753.0,
+   "b_per_op": 4504,
+   "allocs_per_op": 6
+  },
+  "BenchmarkPerfParseMetrics": {
+   "ns_per_op": 1107.0,
+   "b_per_op": 560,
+   "allocs_per_op": 5
+  },
+  "BenchmarkPerfParseAccessConf": {
+   "ns_per_op": 2094.0,
+   "b_per_op": 4352,
+   "allocs_per_op": 3
+  },
+  "BenchmarkPerfAuditCold100k": {
+   "ns_per_op": 17360983.0,
+   "b_per_op": 9176719,
+   "allocs_per_op": 83707
+  },
+  "BenchmarkPerfReadOpLogTail100": {
+   "ns_per_op": 28746.0,
+   "b_per_op": 17327,
+   "allocs_per_op": 121
+  }
+ }
+}

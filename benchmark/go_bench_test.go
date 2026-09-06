@@ -8,9 +8,11 @@ package main
 // 文件读取+解析热路径，这是面板侧用户可感知延迟的主要构成。
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -72,6 +74,80 @@ func BenchmarkPerfParseAccessConf(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, _ = parseAccessConf(path)
 	}
+}
+
+// TestR6AuditTailWindow — R6 窗口化冷读红线：结果与全量解析逐条一致。
+func TestR6AuditTailWindow(t *testing.T) {
+	oldRun := cfg.RunDir
+	dir := t.TempDir()
+	cfg.RunDir = dir
+	defer func() { cfg.RunDir = oldRun }()
+	resetAuditCacheForBench()
+
+	// 2 万行 + 尾部混入超长行（攻击者可控字段可到 ~500B）
+	var bld strings.Builder
+	for i := 0; i < 20000; i++ {
+		bld.WriteString(fmt.Sprintf(`{"time":%d,"event":"open","user":"u%d","device_id":"dev-%04d","src_ip":"192.168.10.135","spa_port":52941,"target_port":22,"stanza":1,"reason":"accepted"}`+"\n", 1788450000+int64(i), i, i%1000))
+	}
+	// 最后 5 行用 400B 长行（把窗口边界压紧）
+	for i := 0; i < 5; i++ {
+		bld.WriteString(fmt.Sprintf(`{"time":%d,"event":"open","user":"u%04d-%s","device_id":"dev","src_ip":"192.168.10.135","spa_port":52941,"target_port":22,"stanza":1,"reason":"accepted"}`+"\n",
+			1788470000+int64(i), i, strings.Repeat("x", 300)))
+	}
+	os.WriteFile(filepath.Join(dir, "fwknopd_audit.log"), []byte(bld.String()), 0600)
+
+	got := readAuditTail(50)
+	if len(got) != 50 {
+		t.Fatalf("窗口读条数 %d != 50", len(got))
+	}
+	// 暴力基准：全文件解析取尾 50
+	data, _ := os.ReadFile(filepath.Join(dir, "fwknopd_audit.log"))
+	var all []AuditEvent
+	for _, ln := range strings.Split(string(data), "\n") {
+		if ln == "" {
+			continue
+		}
+		var e AuditEvent
+		if json.Unmarshal([]byte(ln), &e) == nil {
+			all = append(all, e)
+		}
+	}
+	want := all[len(all)-50:]
+	for i := range want {
+		if got[i].Time != want[i].Time || got[i].User != want[i].User {
+			t.Fatalf("第 %d 条不一致: got %+v want %+v", i, got[i], want[i])
+		}
+	}
+	// 尾部含超长行时窗口仍须拿满（不足则回退全量）
+	if got[49].User != all[len(all)-1].User {
+		t.Fatalf("末条不一致")
+	}
+}
+
+// BenchmarkPerfAuditCold — 冷启动（缓存失效后首读）的 10 万行审计文件成本。
+// 每轮显式重置增量缓存，测的是面板重启/清理审计后的真实冷路径。
+func BenchmarkPerfAuditCold100k(b *testing.B) {
+	var bld strings.Builder
+	for i := 0; i < 100000; i++ {
+		bld.WriteString(fmt.Sprintf(`{"time":%d,"event":"open","user":"u%d","device_id":"dev-%04d","src_ip":"192.168.10.135","spa_port":52941,"target_port":22,"stanza":1,"reason":"accepted"}`+"\n", 1788450000+int64(i), i%1000, i%1000))
+	}
+	os.WriteFile(filepath.Join(cfg.RunDir, "fwknopd_audit.log"), []byte(bld.String()), 0600)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		resetAuditCacheForBench()
+		b.StartTimer()
+		_ = readAuditTail(50)
+	}
+}
+
+// resetAuditCacheForBench 供基准/测试重置包内增量缓存（同包私有）。
+func resetAuditCacheForBench() {
+	auditMu.Lock()
+	auditTailCache.off = 0
+	auditTailCache.tail = nil
+	auditTailCache.nMax = 0
+	auditMu.Unlock()
 }
 
 // R5 夹具：操作日志 5000 条（~750KB，超过读尾 256KB 窗口，逼近长期运行

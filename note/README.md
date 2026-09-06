@@ -27,6 +27,7 @@
 - [report/perf/R3-cache.md](report/perf/R3-cache.md) — dashboard 轮询热路径 mtime 缓存（稳态 18~23×）
 - [report/perf/R4-http-gzip-etag.md](report/perf/R4-http-gzip-etag.md) — 页面预压缩 + 强 ETag（首载 1/3，重复访问 304）
 - [report/perf/R5-oplog.md](report/perf/R5-oplog.md) — 操作日志读尾缓存（~132×，登录/轮询路径）
+- [report/perf/R6-audit-cold.md](report/perf/R6-audit-cold.md) — 审计尾读冷启动窗口化（16.3×，成本与日志体积解耦）
 
 ## 安全审计报告
 
